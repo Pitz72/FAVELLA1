@@ -18,7 +18,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
     p_descrizione = re.compile(r"^La descrizione (?:di|della|del|dell'|degli|delle) (.*?) è \"(.*?)\".(?:\s*#.*)?$", re.IGNORECASE)
     p_oggetto_in_stanza = re.compile(r"^(.*?) è (?:in|nel|nella|negli|nelle|nell') (.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
     p_oggetto = re.compile(r"^(.*?) è una cosa\.(?:\s*#.*)?$", re.IGNORECASE)
-    p_proprieta = re.compile(r"^(.*?) è (?!una cosa|in |nel |nella |negli |nelle |nell')(.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
+    p_proprieta = re.compile(r"^(.*?) è (?!una cosa|in |nel |nella |negli |nelle |nell'|prendibile)(.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
+    p_prendibile = re.compile(r"^(.*?) è prendibile\.(?:\s*#.*)?$", re.IGNORECASE)
 
     with open(percorso_file, 'r', encoding='utf-8') as file:
         for numero_riga, riga in enumerate(file, 1):
@@ -90,6 +91,17 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                 id_ogg = normalizza_nome(match_oggetto.group(1))
                 if not mondo.trova_oggetto(id_ogg):
                     mondo.aggiungi_oggetto(Oggetto(id_ogg))
+                continue
+
+            match_prendibile = p_prendibile.match(riga)
+            if match_prendibile:
+                nome_grezzo_ogg = match_prendibile.group(1)
+                id_ogg = normalizza_nome(nome_grezzo_ogg)
+                oggetto = mondo.trova_oggetto(id_ogg)
+                if oggetto:
+                    oggetto.prendibile = True
+                else:
+                    errori.append(f"[ERRORE] Riga {numero_riga}: Stai definendo 'prendibile' per un oggetto inesistente: '{id_ogg}'")
                 continue
 
             match_proprieta = p_proprieta.match(riga)

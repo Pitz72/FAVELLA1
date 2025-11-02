@@ -1,16 +1,16 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.5)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.6)
 from typing import Callable, List, Dict, Set
 
-class Mondo:
-    """Viene dichiarato prima per permettere i type hint in Azione."""
+class Mondo: # Forward declaration per i type hint
     pass
 
 class Azione:
-    """Rappresenta un'azione standard che il giocatore può compiere."""
-    def __init__(self, nomi: List[str], logica_di_default: Callable[[Mondo, str], None]):
+    """Rappresenta un'azione standard, la sua logica e se richiede un oggetto."""
+    def __init__(self, nomi: List[str], logica: Callable[..., None], richiede_oggetto: bool = True):
         self.nomi = nomi
-        self.logica_di_default = logica_di_default
+        self.logica_di_default = logica
+        self.richiede_oggetto = richiede_oggetto
 
 class Regola:
     """Rappresenta una regola 'Invece di' che sovrascrive un'azione."""
@@ -32,11 +32,12 @@ class Oggetto:
         self.nome = nome
         self.posizione = posizione
         self.proprieta: Set[str] = set()
-        self.descrizione: str = "È un oggetto come tanti." # Nuovo: descrizione dell'oggetto
+        self.descrizione: str = "È un oggetto come tanti."
+        self.prendibile: bool = False # Nuovo: di default gli oggetti non sono prendibili
 
-    def aggiungi_proprieta(self, proprieta: str):
-        """Aggiunge una proprietà all'oggetto."""
-        self.proprieta.add(proprieta)
+    def aggiungi_proprieta(self, prop: str):
+        """Aggiunge una proprietà (aggettivo) all'oggetto."""
+        self.proprieta.add(prop)
 
 class Mondo:
     """Contenitore per l'intero stato del mondo di gioco."""
@@ -44,8 +45,15 @@ class Mondo:
         self.stanze: Dict[str, Stanza] = {}
         self.oggetti: Dict[str, Oggetto] = {}
         self.regole: List[Regola] = []
-        self.azioni: Dict[str, Azione] = {} # Contenitore per le azioni caricate
-        self.mappa_verbi_giocatore: Dict[str, str] = {} # Mappa per normalizzare i verbi del giocatore
+        self.azioni: Dict[str, Azione] = {}
+        self.mappa_verbi_giocatore: Dict[str, str] = {}
+        self.posizione_giocatore: str | None = None # Nuovo: ID della stanza corrente
+        self.inventario: Set[str] = set() # Nuovo: Set di ID degli oggetti posseduti
+
+    def imposta_posizione_iniziale(self):
+        """Imposta la posizione iniziale del giocatore nella prima stanza definita."""
+        if self.stanze:
+            self.posizione_giocatore = list(self.stanze.keys())[0]
 
     def carica_azioni(self, libreria: Dict[str, Azione]):
         """Carica la libreria di azioni e costruisce la mappa di ricerca inversa."""
@@ -70,4 +78,12 @@ class Mondo:
         return self.oggetti.get(nome)
 
     def __str__(self) -> str:
-        return f"[FAVELLA 1] Report di compilazione (v0.5):\n  - Stanze: {len(self.stanze)}\n  - Oggetti: {len(self.oggetti)}\n  - Regole: {len(self.regole)}"
+        report = (
+            f"[FAVELLA 1] Report di compilazione (v0.6):\n"
+            f"  - Stanze: {len(self.stanze)}\n"
+            f"  - Oggetti: {len(self.oggetti)}\n"
+            f"  - Regole: {len(self.regole)}\n"
+        )
+        if self.posizione_giocatore:
+            report += f"  - Posizione iniziale: '{self.posizione_giocatore}'"
+        return report

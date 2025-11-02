@@ -1,21 +1,16 @@
-# Storia di test per FAVELLA 1 v0.5 - Azioni
+# Storia di test per FAVELLA 1 v0.6 - Inventario
 
-La biblioteca è una stanza.
-La descrizione della biblioteca è "Una stanza silenziosa, piena di scaffali polverosi.".
+Il giardino è una stanza.
+La descrizione del giardino è "Un piccolo giardino zen. C'è una statua di drago e una piccola chiave di bronzo per terra.".
 
-Un libro antico è una cosa.
-Il libro antico è in biblioteca.
-La descrizione del libro antico è "È un pesante tomo rilegato in pelle. Sulla copertina è incisa una singola runa.".
+Una statua di drago è una cosa.
+La statua di drago è in giardino.
+La descrizione della statua di drago è "Una statua di pietra massiccia. Impossibile da spostare.".
 
-Una pergamena è una cosa.
-La pergamena è in biblioteca.
-La pergamena è arrotolata.
-La descrizione della pergamena è "Sembra fragile. Forse dovresti leggerla.".
+Una chiave di bronzo è una cosa.
+La chiave di bronzo è in giardino.
+La chiave di bronzo è prendibile. # Testiamo la nuova proprietà
+La descrizione della chiave di bronzo è "Una vecchia chiave ossidata.".
 
-# Sovrascriviamo il comportamento di 'esaminare' per la pergamena
-# Nota: "esaminare" è il nome canonico dell'azione. Funzionerà anche con "guarda", "leggi", etc.
-Invece di esaminare la pergamena: dire "Srotoli la pergamena. C'è scritto: 'La conoscenza è la chiave'.".
-
-# Testiamo un altro verbo ("leggi") mappato sulla stessa azione ("esaminare")
-# per un oggetto diverso, per assicurarci che le regole siano specifiche.
-Invece di leggi il libro antico: dire "Provi ad aprirlo, ma è chiuso da un fermaglio magico.".
+# Test di una regola che impedisce un'azione standard
+Invece di prendere la statua di drago: dire "Provi a sollevarla, ma è incredibilmente pesante.".
