@@ -1,26 +1,22 @@
-# Storia di test per FAVELLA 1 v0.3
+# Storia di test per FAVELLA 1 v0.4 - Interattività (Corretta)
 
-La cucina è una stanza.
-La descrizione della cucina è "Una stanza con mobili bianchi e un forte odore di pulito.".
+La Sala del Trono è una stanza.
+La descrizione della Sala del Trono è "Una stanza imponente. Un trono di pietra si erge su un piedistallo. Sul trono è posata una corona d'oro.".
 
-Il giardino è una stanza.
-La descrizione del giardino è "Un prato verde e curato. Al centro, una grande quercia.".
+Una corona d'oro è una cosa.
+La corona d'oro è pesante.
+La corona d'oro è in Sala del Trono.
 
-# Definiamo gli oggetti
-Una mela è una cosa.
-Una chiave di ferro è una cosa.
-Una porta di legno è una cosa.
+Un piedistallo di pietra è una cosa.
+# CORREZIONE: Usiamo il nome completo per coerenza.
+Il piedistallo di pietra è in Sala del Trono.
 
-# Assegniamo le proprietà
-La mela è rossa.
-La mela è commestibile.
-La chiave di ferro è fredda.
-La porta di legno è massiccia.
-La porta di legno è chiusa.
+# --- Regole di Interazione ---
 
-# Collochiamo gli oggetti
-La mela è in cucina.
-La porta di legno è in giardino.
+Invece di prendere la corona d'oro: dire "Appena la tocchi, senti una scossa magica che ti respinge la mano!".
 
-# Caso di errore: proprietà di un oggetto inesistente
-Lo scudo è indistruttibile.
+# CORREZIONE: Usiamo il nome completo per coerenza.
+Invece di spingere il piedistallo di pietra: dire "Il piedistallo è ancorato al pavimento e non si muove di un millimetro.".
+
+# Test di errore: regola per un oggetto non definito
+Invece di prendere lo scettro: dire "Lo prendi.".
