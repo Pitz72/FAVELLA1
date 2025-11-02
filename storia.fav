@@ -1,0 +1,20 @@
+# Storia di test per FAVELLA 1 v0.2
+
+La cucina è una stanza.
+La descrizione della cucina è "È una stanza piccola e disordinata, con un vago odore di aglio.".
+
+Il salotto è una stanza.
+La descrizione del salotto è "Un ampio salone con un tappeto persiano consunto e un grande camino spento.".
+
+# Testiamo la normalizzazione
+La sala da pranzo è una stanza.
+La descrizione di sala da pranzo è "Un tavolo di legno scuro domina la stanza.".
+
+Una mela rossa è una cosa.
+La mela rossa è in cucina.
+
+Un giornale è una cosa.
+Un giornale è nel salotto.
+
+# Caso di errore: descrizione di una stanza che non esiste
+La descrizione della cantina è "Scende nell'oscurità.".
