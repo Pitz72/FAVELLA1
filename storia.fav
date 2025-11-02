@@ -1,20 +1,26 @@
-# Storia di test per FAVELLA 1 v0.2
+# Storia di test per FAVELLA 1 v0.3
 
 La cucina è una stanza.
-La descrizione della cucina è "È una stanza piccola e disordinata, con un vago odore di aglio.".
+La descrizione della cucina è "Una stanza con mobili bianchi e un forte odore di pulito.".
 
-Il salotto è una stanza.
-La descrizione del salotto è "Un ampio salone con un tappeto persiano consunto e un grande camino spento.".
+Il giardino è una stanza.
+La descrizione del giardino è "Un prato verde e curato. Al centro, una grande quercia.".
 
-# Testiamo la normalizzazione
-La sala da pranzo è una stanza.
-La descrizione di sala da pranzo è "Un tavolo di legno scuro domina la stanza.".
+# Definiamo gli oggetti
+Una mela è una cosa.
+Una chiave di ferro è una cosa.
+Una porta di legno è una cosa.
 
-Una mela rossa è una cosa.
-La mela rossa è in cucina.
+# Assegniamo le proprietà
+La mela è rossa.
+La mela è commestibile.
+La chiave di ferro è fredda.
+La porta di legno è massiccia.
+La porta di legno è chiusa.
 
-Un giornale è una cosa.
-Un giornale è nel salotto.
+# Collochiamo gli oggetti
+La mela è in cucina.
+La porta di legno è in giardino.
 
-# Caso di errore: descrizione di una stanza che non esiste
-La descrizione della cantina è "Scende nell'oscurità.".
+# Caso di errore: proprietà di un oggetto inesistente
+Lo scudo è indistruttibile.

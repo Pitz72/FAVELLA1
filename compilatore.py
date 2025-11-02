@@ -1,6 +1,5 @@
-
 # compilatore.py
-# Micro-Compilatore per FAVELLA 1 (v0.2)
+# Micro-Compilatore per FAVELLA 1 (v0.3) - Correzione Finale e Definitiva
 
 from strutture import Mondo, Stanza, Oggetto
 from utils import normalizza_nome
@@ -8,87 +7,87 @@ import sys
 import re
 
 def analizza_file(percorso_file: str) -> Mondo:
-    """
-    Analizza un file sorgente .fav e costruisce un oggetto Mondo.
-    """
     mondo = Mondo()
     
-    # --- Grammatica v0.2 ---
-    p_stanza = re.compile(r"^(.*) è una stanza\.$", re.IGNORECASE)
-    # Regex più flessibile per la descrizione
-    p_descrizione = re.compile(r"^La descrizione (?:di|della|del|dell'|degli|delle) (.*) è \"(.*)\"\.$", re.IGNORECASE)
-    p_oggetto_in_stanza = re.compile(r"^(.*) è (?:in|nel|nella|negli|nelle|nell') (.*)\.$", re.IGNORECASE)
-    p_oggetto = re.compile(r"^(.*) è una cosa\.$", re.IGNORECASE)
+    # --- Grammatica v0.3 (con regex specifiche e non-greedy) ---
+    p_stanza = re.compile(r"^(.*?) è una stanza\.(?:\s*#.*)?$", re.IGNORECASE)
+    p_descrizione = re.compile(r"^La descrizione (?:di|della|del|dell'|degli|delle) (.*?) è \"(.*?)\"\.(?:\s*#.*)?$", re.IGNORECASE)
+    p_oggetto_in_stanza = re.compile(r"^(.*?) è (?:in|nel|nella|negli|nelle|nell') (.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
+    p_oggetto = re.compile(r"^(.*?) è una cosa\.(?:\s*#.*)?$", re.IGNORECASE)
+    # REGEX FINALE: Escludiamo "una cosa" e le preposizioni di luogo in modo esplicito e non ambiguo.
+    p_proprieta = re.compile(r"^(.*?) è (?!una cosa|in |nel |nella |negli |nelle |nell')(.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
 
     with open(percorso_file, 'r', encoding='utf-8') as file:
         for numero_riga, riga in enumerate(file, 1):
+            riga_originale = riga
             riga = riga.strip()
-            if not riga or riga.startswith('#'): # Ignora righe vuote e commenti
+            if not riga or riga.startswith('#'):
                 continue
 
-            # Tenta di matchare ogni regola della grammatica
-            match_stanza = p_stanza.match(riga)
-            if match_stanza:
-                nome_grezzo = match_stanza.group(1)
-                id_stanza = normalizza_nome(nome_grezzo)
-                if not mondo.trova_stanza(id_stanza):
-                    mondo.aggiungi_stanza(Stanza(id_stanza))
+            # La logica di match è cruciale, testiamo prima i casi più specifici.
+
+            if p_descrizione.match(riga):
+                match = p_descrizione.match(riga)
+                nome_grezzo, testo = match.groups()
+                id_entita = normalizza_nome(nome_grezzo)
+                stanza = mondo.trova_stanza(id_entita)
+                if stanza:
+                    stanza.descrizione = testo
                 else:
-                    print(f"[ATTENZIONE] Riga {numero_riga}: La stanza '{id_stanza}' è già stata definita.")
+                    print(f"[ERRORE] Riga {numero_riga}: Stai descrivendo una stanza inesistente: '{id_entita}'")
                 continue
 
-            match_descrizione = p_descrizione.match(riga)
-            if match_descrizione:
-                nome_grezzo_stanza = match_descrizione.group(1)
-                testo_descrizione = match_descrizione.group(2)
-                id_stanza = normalizza_nome(nome_grezzo_stanza)
+            if p_oggetto_in_stanza.match(riga):
+                match = p_oggetto_in_stanza.match(riga)
+                nome_ogg, nome_sta = match.groups()
+                id_ogg, id_sta = normalizza_nome(nome_ogg), normalizza_nome(nome_sta)
                 
-                stanza_trovata = mondo.trova_stanza(id_stanza)
-                if stanza_trovata:
-                    stanza_trovata.descrizione = testo_descrizione
+                oggetto = mondo.trova_oggetto(id_ogg)
+                stanza = mondo.trova_stanza(id_sta)
+
+                if oggetto and stanza:
+                    oggetto.posizione = id_sta
+                    stanza.oggetti[id_ogg] = oggetto
+                elif not stanza:
+                    print(f"[ERRORE] Riga {numero_riga}: Stanza inesistente '{id_sta}'")
                 else:
-                    print(f"[ERRORE] Riga {numero_riga}: Stai cercando di descrivere una stanza inesistente: '{id_stanza}'")
+                    print(f"[ERRORE] Riga {numero_riga}: Oggetto inesistente '{id_ogg}'")
                 continue
 
-            match_oggetto_in_stanza = p_oggetto_in_stanza.match(riga)
-            if match_oggetto_in_stanza:
-                nome_grezzo_oggetto = match_oggetto_in_stanza.group(1)
-                nome_grezzo_stanza = match_oggetto_in_stanza.group(2)
-                id_oggetto = normalizza_nome(nome_grezzo_oggetto)
-                id_stanza = normalizza_nome(nome_grezzo_stanza)
-                
-                if not mondo.oggetti.get(id_oggetto):
-                    print(f"[ATTENZIONE] Riga {numero_riga}: L'oggetto '{id_oggetto}' viene collocato prima di essere definito come 'una cosa'. Lo definisco implicitamente.")
-                    mondo.aggiungi_oggetto(Oggetto(id_oggetto))
-
-                mondo.oggetti[id_oggetto].posizione = id_stanza
-                if mondo.trova_stanza(id_stanza):
-                     mondo.stanze[id_stanza].oggetti[id_oggetto] = mondo.oggetti[id_oggetto]
-                else:
-                     print(f"[ERRORE] Riga {numero_riga}: Stai collocando un oggetto in una stanza inesistente: '{id_stanza}'")
+            if p_stanza.match(riga):
+                match = p_stanza.match(riga)
+                id_sta = normalizza_nome(match.group(1))
+                if not mondo.trova_stanza(id_sta):
+                    mondo.aggiungi_stanza(Stanza(id_sta))
                 continue
             
-            match_oggetto = p_oggetto.match(riga)
-            if match_oggetto:
-                nome_grezzo_oggetto = match_oggetto.group(1)
-                id_oggetto = normalizza_nome(nome_grezzo_oggetto)
-                if not mondo.oggetti.get(id_oggetto):
-                    mondo.aggiungi_oggetto(Oggetto(id_oggetto))
-                else:
-                    print(f"[ATTENZIONE] Riga {numero_riga}: L'oggetto '{id_oggetto}' è già stato definito.")
+            if p_oggetto.match(riga):
+                match = p_oggetto.match(riga)
+                id_ogg = normalizza_nome(match.group(1))
+                if not mondo.trova_oggetto(id_ogg):
+                    mondo.aggiungi_oggetto(Oggetto(id_ogg))
                 continue
 
-            print(f"[ERRORE DI SINTASSI] Riga {numero_riga}: Non capisco la frase -> '{riga}'")
+            if p_proprieta.match(riga):
+                match = p_proprieta.match(riga)
+                nome_ogg, nome_prop = match.groups()
+                id_ogg = normalizza_nome(nome_ogg)
+                id_prop = normalizza_nome(nome_prop.strip())
+                oggetto = mondo.trova_oggetto(id_ogg)
+                if oggetto:
+                    oggetto.aggiungi_proprieta(id_prop)
+                else:
+                    print(f"[ERRORE] Riga {numero_riga}: Stai assegnando una proprietà a un oggetto inesistente: '{id_ogg}'")
+                continue
 
+            print(f"[ERRORE DI SINTASSI] Riga {numero_riga}: Non capisco la frase -> '{riga_originale.strip()}'")
     return mondo
 
 def main():
     if len(sys.argv) != 2:
         print("Uso: python compilatore.py <percorso_file.fav>")
         sys.exit(1)
-    
     percorso_file = sys.argv[1]
-    
     try:
         mondo_compilato = analizza_file(percorso_file)
         print("\n" + str(mondo_compilato))
