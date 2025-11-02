@@ -1,20 +1,21 @@
-# Storia di test per FAVELLA 1 v0.2
+# Storia di test per FAVELLA 1 v0.5 - Azioni
 
-La cucina è una stanza.
-La descrizione della cucina è "È una stanza piccola e disordinata, con un vago odore di aglio.".
+La biblioteca è una stanza.
+La descrizione della biblioteca è "Una stanza silenziosa, piena di scaffali polverosi.".
 
-Il salotto è una stanza.
-La descrizione del salotto è "Un ampio salone con un tappeto persiano consunto e un grande camino spento.".
+Un libro antico è una cosa.
+Il libro antico è in biblioteca.
+La descrizione del libro antico è "È un pesante tomo rilegato in pelle. Sulla copertina è incisa una singola runa.".
 
-# Testiamo la normalizzazione
-La sala da pranzo è una stanza.
-La descrizione di sala da pranzo è "Un tavolo di legno scuro domina la stanza.".
+Una pergamena è una cosa.
+La pergamena è in biblioteca.
+La pergamena è arrotolata.
+La descrizione della pergamena è "Sembra fragile. Forse dovresti leggerla.".
 
-Una mela rossa è una cosa.
-La mela rossa è in cucina.
+# Sovrascriviamo il comportamento di 'esaminare' per la pergamena
+# Nota: "esaminare" è il nome canonico dell'azione. Funzionerà anche con "guarda", "leggi", etc.
+Invece di esaminare la pergamena: dire "Srotoli la pergamena. C'è scritto: 'La conoscenza è la chiave'.".
 
-Un giornale è una cosa.
-Un giornale è nel salotto.
-
-# Caso di errore: descrizione di una stanza che non esiste
-La descrizione della cantina è "Scende nell'oscurità.".
+# Testiamo un altro verbo ("leggi") mappato sulla stessa azione ("esaminare")
+# per un oggetto diverso, per assicurarci che le regole siano specifiche.
+Invece di leggi il libro antico: dire "Provi ad aprirlo, ma è chiuso da un fermaglio magico.".
