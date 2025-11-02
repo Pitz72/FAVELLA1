@@ -11,14 +11,16 @@ FAVELLA 1 è un progetto per creare un linguaggio di programmazione per narrativ
 ## Stack Tecnologico
 - **Linguaggio:** Python 3
 
-## Stato Attuale: Progetto 0.2 (Completato)
-Il compilatore ora supporta la Grammatica v0.2.
+## Stato Attuale: Progetto 0.3 (Completato)
+Il compilatore ora supporta la **Grammatica v0.3**.
 
 - **Funzionalità Implementate:**
     - **Definizione di Stanze e Oggetti.**
     - **Posizionamento di Oggetti nelle Stanze.**
+    - **Descrizioni delle Stanze.**
+    - **NUOVO: Assegnazione di Proprietà agli Oggetti.** Esempio: `La mela è rossa.`
     - **Normalizzazione dei Nomi:** Il compilatore riconosce nomi con articoli diversi (es. "La cucina" e "cucina").
-    - **Descrizioni delle Stanze:** È possibile definire una descrizione testuale per ogni stanza.
+    - **Supporto per Commenti:** Il compilatore ignora le righe che iniziano con `#` e i commenti a fine riga.
 
 ## Come Eseguire
 Per analizzare una storia, eseguire il compilatore:
