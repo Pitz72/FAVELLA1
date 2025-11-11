@@ -1,12 +1,19 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.7 - Corretto)
+# Interprete Interattivo per FAVELLA 1 (v0.9)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
 from utils import normalizza_nome
-from libreria_azioni import LIBRERIA_AZIONI
+from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
+
+DIREZIONI_VALIDI = {
+    "nord": "nord", "n": "nord",
+    "sud": "sud", "s": "sud",
+    "est": "est", "e": "est",
+    "ovest": "ovest", "o": "ovest"
+}
 
 def mostra_stanza(mondo: Mondo):
     """Stampa la descrizione completa della stanza corrente del giocatore."""
@@ -21,7 +28,12 @@ def mostra_stanza(mondo: Mondo):
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
         nomi_oggetti = [ogg.nome for ogg in oggetti_nella_stanza]
-        print(f"Vedi qui: {', '.join(nomi_oggetti)}.")
+        print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
+
+    # Mostra le uscite disponibili
+    if stanza_corrente.uscite:
+        uscite_str = ", ".join([f"{d.capitalize()} ({mondo.trova_stanza(id_s).nome.capitalize()})" for d, id_s in stanza_corrente.uscite.items()])
+        print(f"Uscite: {uscite_str}.")
 
 def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
     """Cerca di risolvere un nome parziale in un ID oggetto univoco nello scope attuale."""
@@ -77,8 +89,18 @@ def gioca(mondo: Mondo):
         
         parti = comando_pulito.split(maxsplit=1)
         verbo_giocatore = parti[0]
-        nome_parziale_ogg = normalizza_nome(parti[1]) if len(parti) > 1 else ""
+        argomento_comando = parti[1] if len(parti) > 1 else ""
 
+        # --- Gestione Movimento ---
+        direzione_normalizzata = DIREZIONI_VALIDI.get(verbo_giocatore)
+        if direzione_normalizzata:
+            vecchia_posizione = mondo.posizione_giocatore
+            muovi_logica_default(mondo, direzione_normalizzata)
+            if mondo.posizione_giocatore != vecchia_posizione: # Se il movimento è avvenuto
+                mostra_stanza(mondo)
+            continue
+
+        # --- Gestione Azioni Standard ---
         nome_azione = mondo.mappa_verbi_giocatore.get(verbo_giocatore)
         if not nome_azione:
             print("Non capisco questo verbo.")
@@ -87,25 +109,33 @@ def gioca(mondo: Mondo):
 
         id_oggetto_risolto = None
         if azione.richiede_oggetto:
-            if not nome_parziale_ogg:
+            if not argomento_comando:
                 print(f"Cosa vorresti {verbo_giocatore}?")
                 continue
-            id_oggetto_risolto = risolvi_nome_oggetto(mondo, nome_parziale_ogg)
+            id_oggetto_risolto = risolvi_nome_oggetto(mondo, argomento_comando)
             if not id_oggetto_risolto or id_oggetto_risolto == "<ambiguo>":
                 if id_oggetto_risolto is None:
                     print("Non vedo nulla del genere qui.")
                 continue
 
-        # --- MOTORE DI GIOCO ---
-        # 1. Controllo Regole "Invece di"
+        # --- MOTORE DI GIOCO v0.9 ---
+        # 1. Controllo Regole "Invece di" con Valutazione Condizioni
         regola_applicata = False
         if azione.richiede_oggetto:
             verbi_da_controllare = {verbo_giocatore, nome_azione}
             for regola in mondo.regole:
                 if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
-                    print(regola.risposta)
-                    regola_applicata = True
-                    break
+                    # NUOVO: Valutazione della condizione se presente
+                    if regola.condizione:
+                        if regola.condizione.valuta(mondo):
+                            print(regola.risposta)
+                            regola_applicata = True
+                            break
+                    else:
+                        # Se non c'è condizione, la regola si applica sempre
+                        print(regola.risposta)
+                        regola_applicata = True
+                        break
         if regola_applicata:
             continue
 
@@ -115,7 +145,11 @@ def gioca(mondo: Mondo):
         else:
             azione.logica_di_default(mondo)
         
-        mostra_stanza(mondo)
+        # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
+        # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
+        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere"]:
+            mostra_stanza(mondo)
+
 
 def main():
     if len(sys.argv) != 2:

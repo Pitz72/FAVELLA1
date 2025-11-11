@@ -1,9 +1,35 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.6)
-from typing import Callable, List, Dict, Set
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8)
+from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
     pass
+
+# --- NUOVA Gerarchia delle Condizioni ---
+class Condizione:
+    """Classe base astratta per tutte le condizioni."""
+    def valuta(self, mondo: 'Mondo') -> bool:
+        raise NotImplementedError("La valutazione deve essere implementata da una sottoclasse.")
+
+class CondizionePossesso(Condizione):
+    """Rappresenta la condizione 'se il giocatore ha [oggetto]'."""
+    def __init__(self, id_oggetto: str):
+        self.id_oggetto = id_oggetto
+    
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return self.id_oggetto in mondo.inventario
+
+class CondizioneProprieta(Condizione):
+    """Rappresenta la condizione 'se [oggetto] è [proprietà]'."""
+    def __init__(self, id_oggetto: str, proprieta: str):
+        self.id_oggetto = id_oggetto
+        self.proprieta = proprieta
+    
+    def valuta(self, mondo: 'Mondo') -> bool:
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        return oggetto is not None and self.proprieta in oggetto.proprieta
+
+# --- Classi Esistenti (con modifiche) ---
 
 class Azione:
     """Rappresenta un'azione standard, la sua logica e se richiede un oggetto."""
@@ -13,11 +39,12 @@ class Azione:
         self.richiede_oggetto = richiede_oggetto
 
 class Regola:
-    """Rappresenta una regola 'Invece di' che sovrascrive un'azione."""
-    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str):
+    """Rappresenta una regola 'Invece di', ora con una condizione opzionale."""
+    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str, condizione: Optional[Condizione] = None):
         self.verbo = verbo
         self.id_oggetto_bersaglio = id_oggetto_bersaglio
         self.risposta = risposta
+        self.condizione = condizione
 
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""
@@ -25,6 +52,7 @@ class Stanza:
         self.nome = nome
         self.descrizione = descrizione
         self.oggetti: Dict[str, 'Oggetto'] = {}
+        self.uscite: Dict[str, str] = {}
 
 class Oggetto:
     """Rappresenta un oggetto nel mondo di gioco."""
@@ -33,7 +61,7 @@ class Oggetto:
         self.posizione = posizione
         self.proprieta: Set[str] = set()
         self.descrizione: str = "È un oggetto come tanti."
-        self.prendibile: bool = False # Nuovo: di default gli oggetti non sono prendibili
+        self.prendibile: bool = False
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -47,8 +75,8 @@ class Mondo:
         self.regole: List[Regola] = []
         self.azioni: Dict[str, Azione] = {}
         self.mappa_verbi_giocatore: Dict[str, str] = {}
-        self.posizione_giocatore: str | None = None # Nuovo: ID della stanza corrente
-        self.inventario: Set[str] = set() # Nuovo: Set di ID degli oggetti posseduti
+        self.posizione_giocatore: str | None = None
+        self.inventario: Set[str] = set()
 
     def imposta_posizione_iniziale(self):
         """Imposta la posizione iniziale del giocatore nella prima stanza definita."""
@@ -79,7 +107,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.6):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.8):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Regole: {len(self.regole)}\n"

@@ -1,16 +1,25 @@
-# Storia di test per FAVELLA 1 v0.6 - Inventario
+# Storia di test per FAVELLA 1 v0.9 - Condizioni e Puzzle
 
-Il giardino è una stanza.
-La descrizione del giardino è "Un piccolo giardino zen. C'è una statua di drago e una piccola chiave di bronzo per terra.".
+La prigione è una stanza.
+La descrizione della prigione è "Una cella umida. Una pesante porta di ferro blocca l'uscita a nord.".
 
-Una statua di drago è una cosa.
-La statua di drago è in giardino.
-La descrizione della statua di drago è "Una statua di pietra massiccia. Impossibile da spostare.".
+Una porta di ferro è una cosa.
+La porta di ferro è in prigione.
+La porta di ferro è chiusa.
+La descrizione della porta di ferro è "Una solida porta di ferro con una grossa serratura.".
 
-Una chiave di bronzo è una cosa.
-La chiave di bronzo è in giardino.
-La chiave di bronzo è prendibile. # Testiamo la nuova proprietà
-La descrizione della chiave di bronzo è "Una vecchia chiave ossidata.".
+Una chiave arrugginita è una cosa.
+La chiave arrugginita è in prigione.
+La chiave arrugginita è prendibile.
+La descrizione della chiave arrugginita è "Una vecchia chiave ossidata, forse può aprire qualcosa.".
 
-# Test di una regola che impedisce un'azione standard
-Invece di prendere la statua di drago: dire "Provi a sollevarla, ma è incredibilmente pesante.".
+# --- Regole Condizionali ---
+
+# Regola semplice senza condizione (fallback)
+Invece di aprire la porta di ferro: dire "È chiusa a chiave.".
+
+# Regola con condizione di possesso
+Invece di aprire la porta di ferro se il giocatore ha la chiave arrugginita: dire "Usi la chiave arrugginita. La serratura scatta e la porta si apre!".
+
+# Regola con condizione di proprietà
+Invece di esaminare la porta di ferro se la porta di ferro è chiusa: dire "È una solida porta di ferro, chiusa da una grossa serratura. Sembra che serva una chiave.".

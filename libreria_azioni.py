@@ -55,6 +55,48 @@ def inventario_logica_default(mondo: Mondo):
             nome_visualizzato = mondo.oggetti[id_ogg].nome
             print(f"  - {nome_visualizzato}")
 
+def muovi_logica_default(mondo: Mondo, direzione: str):
+    """Logica di default per l'azione di MOVIMENTO."""
+    stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
+    if direzione in stanza_corrente.uscite:
+        nuova_stanza_id = stanza_corrente.uscite[direzione]
+        mondo.posizione_giocatore = nuova_stanza_id
+        # La descrizione della nuova stanza verrà mostrata da gioco.py
+    else:
+        print("Non puoi andare in quella direzione.")
+
+def guarda_logica_default(mondo: Mondo):
+    """Logica di default per l'azione GUARDA (ristampa la descrizione della stanza)."""
+    stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
+    if not stanza_corrente:
+        print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
+        return
+
+    print(f"\n--- {stanza_corrente.nome.capitalize()} ---")
+    print(stanza_corrente.descrizione)
+    
+    oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
+    if oggetti_nella_stanza:
+        nomi_oggetti = [ogg.nome for ogg in oggetti_nella_stanza]
+        print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
+
+def aiuto_logica_default(mondo: Mondo):
+    """Logica di default per l'azione AIUTO."""
+    print("\n--- AIUTO ---")
+    print("Comandi disponibili:")
+    print("  - Movimento: nord, sud, est, ovest (o n, s, e, o)")
+    print("  - Interazione: esamina <oggetto>, prendi <oggetto>, lascia <oggetto>")
+    print("  - Informazioni: inventario (o i, zaino), guarda, aiuto")
+    print("  - Sistema: esci")
+    print("\nCerca di usare verbi semplici e nomi di oggetti.")
+
+def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
+    """Logica di default per l'azione USARE [ogg1] CON [ogg2]."""
+    if id_oggetto2:
+        print("Non sembra avere alcun effetto.")
+    else:
+        print("Come vorresti usarlo?")
+
 # --- DEFINIZIONE DELLA LIBRERIA ---
 LIBRERIA_AZIONI = {
     "esaminare": Azione(
@@ -73,5 +115,20 @@ LIBRERIA_AZIONI = {
         nomi=["inventario", "i", "zaino"],
         logica=inventario_logica_default, 
         richiede_oggetto=False
+    ),
+    "guarda": Azione(
+        nomi=["guarda", "osserva", "descrivi"], # Alias per ristampare la descrizione della stanza
+        logica=guarda_logica_default,
+        richiede_oggetto=False
+    ),
+    "aiuto": Azione(
+        nomi=["aiuto", "help", "?"],
+        logica=aiuto_logica_default,
+        richiede_oggetto=False
+    ),
+    "usare": Azione(
+        nomi=["usa", "usare", "apri", "aprire"],
+        logica=usare_con_logica_default,
+        richiede_oggetto=True
     ),
 }

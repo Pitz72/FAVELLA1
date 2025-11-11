@@ -16,23 +16,27 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.0.7 - Mondo Dinamico
+## 🚀 Stato Attuale: v0.0.9 - Logica Condizionale e Puzzle
 
-FAVELLA 1 ha superato la fase di motore statico e ora supporta un mondo di gioco dinamico e interattivo. Il compilatore è basato sulla **Grammatica v0.6**.
+FAVELLA 1 è ora un motore di Interactive Fiction maturo con **logica condizionale**. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo.
 
 ### Funzionalità Chiave
 
 -   **Definizione del Mondo:** Crea `Stanze` e `Oggetti` con una sintassi naturale.
--   **Descrizioni Dettagliate:** Arricchisci il tuo mondo con descrizioni per ogni entità (`La descrizione del libro è "..."`).
--   **Proprietà degli Oggetti:** Assegna attributi agli oggetti (`La spada è affilata.`).
--   **Motore ad Azioni Standard:** Il gioco comprende un set di azioni di base con comportamenti di default:
-    -   `esaminare` (e alias come `guarda`, `leggi`, `osserva`...)
-    -   `prendere` (e alias come `raccogli`, `afferra`...)
-    -   `lasciare` (e alias come `molla`, `posa`...)
-    -   `inventario` (e alias come `i`, `zaino`)
--   **Inventario del Giocatore:** Il giocatore può raccogliere e trasportare oggetti che sono stati definiti come `prendibili`.
--   **Regole Personalizzate:** Sovrascrivi qualsiasi azione standard per creare puzzle, interazioni uniche e ostacoli (`Invece di prendere la statua: dire "È troppo pesante."`).
--   **Compilatore Robusto:** Il sistema rileva errori di sintassi nel tuo file di storia e ti guida nella correzione.
+-   **Descrizioni Dettagliate:** Arricchisci il tuo mondo con descrizioni per ogni entità.
+-   **Proprietà degli Oggetti:** Assegna attributi dinamici agli oggetti (`La porta è chiusa.`).
+-   **Motore ad Azioni Standard:** Set completo di azioni con comportamenti personalizzabili:
+    -   `esaminare`, `prendere`, `lasciare`, `inventario`
+    -   `guarda`, `aiuto`, `usare`
+    -   Movimento: `nord`, `sud`, `est`, `ovest` (e alias `n`, `s`, `e`, `o`)
+-   **Inventario del Giocatore:** Sistema completo di raccolta e gestione oggetti.
+-   **Regole Condizionali:** Crea puzzle complessi con logica basata su condizioni:
+    -   `Invece di aprire la porta se il giocatore ha la chiave: dire "La porta si apre!".`
+    -   `Invece di esaminare la porta se la porta è chiusa: dire "È chiusa a chiave.".`
+-   **Sistema di Puzzle:** Meccaniche chiave-serratura e interazioni basate sullo stato del mondo.
+-   **Compilatore Robusto:** Rilevamento errori con messaggi chiari e guida alla correzione.
+-   **Output Ottimizzato:** Interfaccia testuale pulita e professionale.
+-   **Movimento tra Stanze:** Esplorazione con connessioni bidirezionali automatiche.
 
 ---
 
@@ -47,17 +51,24 @@ Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre di
     ```
 
 2.  **Scrivi la tua Storia:**
-    Apri il file `storia.fav` con un editor di testo e modificalo, oppure creane uno nuovo. La sintassi è semplice:
+    Apri il file `storia.fav` con un editor di testo e modificalo, oppure creane uno nuovo. Esempio con puzzle:
     ```
-    # La mia prima stanza
-    L'ingresso della grotta è una stanza.
-    La descrizione dell'ingresso è "L'aria è umida e senti un'eco lontana.".
+    # Definizione del mondo
+    La prigione è una stanza.
+    La descrizione della prigione è "Una cella umida con una porta di ferro a nord.".
 
-    # Un oggetto che si può prendere
-    Una torcia è una cosa.
-    La torcia è nell'ingresso della grotta.
-    La torcia è prendibile.
-    La descrizione della torcia è "Una semplice torcia di legno e pece.".
+    # Oggetti interattivi
+    Una porta di ferro è una cosa.
+    La porta di ferro è in prigione.
+    La porta di ferro è chiusa.
+
+    Una chiave arrugginita è una cosa.
+    La chiave arrugginita è in prigione.
+    La chiave arrugginita è prendibile.
+
+    # Regole condizionali per creare un puzzle
+    Invece di aprire la porta di ferro: dire "È chiusa a chiave.".
+    Invece di aprire la porta di ferro se il giocatore ha la chiave arrugginita: dire "La porta si apre!".
     ```
 
 3.  **Esegui il Gioco:**
@@ -66,7 +77,15 @@ Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre di
     python gioco.py storia.fav
     ```
 
-    Apparirà il mondo che hai creato. Inserisci comandi come `prendi la torcia`, `inventario` o `esamina l'ingresso` e vedi la tua storia prendere vita. Per uscire, digita `esci`.
+    Apparirà il mondo che hai creato. Inserisci comandi come:
+    - `nord` o `n` per muoverti tra le stanze
+    - `prendi la torcia` per raccogliere oggetti
+    - `inventario` o `i` per vedere cosa possiedi
+    - `esamina la torcia` per ispezionare oggetti
+    - `guarda` per ristampare la descrizione della stanza
+    - `aiuto` per vedere tutti i comandi disponibili
+    
+    Per uscire, digita `esci`.
 
 ---
 
@@ -74,9 +93,13 @@ Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre di
 
 FAVELLA 1 è un progetto in crescita. Le prossime tappe includono:
 
--   [ ] **Movimento tra Stanze:** Collegare le stanze tra loro (`Il nord dalla biblioteca porta al giardino.`).
--   [ ] **Contenitori:** Oggetti che possono contenerne altri (`Il forziere è un contenitore.`).
--   [ ] **Interazioni Complesse:** Azioni che coinvolgono più oggetti (`usa la chiave con il forziere`).
+-   **Azioni a Due Oggetti:** Implementazione completa di `usa X con Y`
+-   **Condizioni Composte:** Logica AND, OR, NOT per puzzle più complessi
+-   **Contenitori:** Oggetti che possono contenerne altri
+-   **Modifiche Dinamiche:** Cambiare proprietà degli oggetti durante il gioco
+-   **Personaggi Non Giocanti (NPC):** Entità con cui dialogare
+-   **Sistema di Dialoghi:** Conversazioni ramificate
+-   **Eventi Temporali:** Azioni che si attivano dopo un certo numero di turni
 
 ---
 
