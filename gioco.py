@@ -118,24 +118,30 @@ def gioca(mondo: Mondo):
                     print("Non vedo nulla del genere qui.")
                 continue
 
-        # --- MOTORE DI GIOCO v0.9 ---
+        # --- MOTORE DI GIOCO v0.9.1 ---
         # 1. Controllo Regole "Invece di" con Valutazione Condizioni
+        # PRIORITÀ: Prima le regole condizionali, poi quelle senza condizione
         regola_applicata = False
         if azione.richiede_oggetto:
             verbi_da_controllare = {verbo_giocatore, nome_azione}
+            
+            # FASE 1: Cerca regole CON condizione che si applicano
             for regola in mondo.regole:
                 if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
-                    # NUOVO: Valutazione della condizione se presente
-                    if regola.condizione:
-                        if regola.condizione.valuta(mondo):
-                            print(regola.risposta)
-                            regola_applicata = True
-                            break
-                    else:
-                        # Se non c'è condizione, la regola si applica sempre
+                    if regola.condizione and regola.condizione.valuta(mondo):
                         print(regola.risposta)
                         regola_applicata = True
                         break
+            
+            # FASE 2: Se nessuna regola condizionale si applica, cerca regole SENZA condizione
+            if not regola_applicata:
+                for regola in mondo.regole:
+                    if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
+                        if not regola.condizione:
+                            print(regola.risposta)
+                            regola_applicata = True
+                            break
+        
         if regola_applicata:
             continue
 

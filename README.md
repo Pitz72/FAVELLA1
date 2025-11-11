@@ -16,9 +16,9 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.0.9.1 - Logica Condizionale e Puzzle (Stabile)
+## 🚀 Stato Attuale: v0.0.9.2 - Logica Condizionale e Puzzle (Production-Ready)
 
-FAVELLA 1 è ora un motore di Interactive Fiction maturo con **logica condizionale** completamente funzionale. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo.
+FAVELLA 1 è ora un motore di Interactive Fiction maturo e **completamente funzionale** con logica condizionale. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo. Sistema testato e stabile, pronto per la produzione.
 
 ### Funzionalità Chiave
 
@@ -30,10 +30,11 @@ FAVELLA 1 è ora un motore di Interactive Fiction maturo con **logica condiziona
     -   `guarda`, `aiuto`, `usare`
     -   Movimento: `nord`, `sud`, `est`, `ovest` (e alias `n`, `s`, `e`, `o`)
 -   **Inventario del Giocatore:** Sistema completo di raccolta e gestione oggetti.
--   **Regole Condizionali:** Crea puzzle complessi con logica basata su condizioni:
-    -   `Invece di aprire la porta se il giocatore ha la chiave: dire "La porta si apre!".`
-    -   `Invece di esaminare la porta se la porta è chiusa: dire "È chiusa a chiave.".`
--   **Sistema di Puzzle:** Meccaniche chiave-serratura e interazioni basate sullo stato del mondo.
+-   **Regole Condizionali con Priorità:** Crea puzzle complessi con logica basata su condizioni:
+    -   Possesso: `Invece di apri la porta se il giocatore ha la chiave: dire "La porta si apre!".`
+    -   Proprietà: `Invece di esamina la porta se la porta è chiusa: dire "È chiusa a chiave.".`
+    -   **Sistema a Due Fasi:** Le regole condizionali hanno priorità automatica sulle regole base
+-   **Sistema di Puzzle Funzionante:** Meccaniche chiave-serratura completamente testate e giocabili.
 -   **Compilatore Robusto:** Rilevamento errori con messaggi chiari e guida alla correzione.
 -   **Output Ottimizzato:** Interfaccia testuale pulita e professionale.
 -   **Movimento tra Stanze:** Esplorazione con connessioni bidirezionali automatiche.
@@ -80,13 +81,28 @@ Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre di
 
     Apparirà il mondo che hai creato. Inserisci comandi come:
     - `nord` o `n` per muoverti tra le stanze
-    - `prendi la torcia` per raccogliere oggetti
+    - `prendi chiave` per raccogliere oggetti
     - `inventario` o `i` per vedere cosa possiedi
-    - `esamina la torcia` per ispezionare oggetti
+    - `esamina porta` per ispezionare oggetti
+    - `apri porta` per interagire (le regole condizionali reagiranno al contesto!)
     - `guarda` per ristampare la descrizione della stanza
     - `aiuto` per vedere tutti i comandi disponibili
     
     Per uscire, digita `esci`.
+
+4.  **Esempio di Gameplay:**
+    ```
+    > apri porta
+    È chiusa a chiave.
+    
+    > prendi chiave
+    Preso: chiave arrugginita.
+    
+    > apri porta
+    Usi la chiave arrugginita. La serratura scatta e la porta si apre!
+    ```
+    
+    Le regole condizionali reagiscono automaticamente allo stato del gioco!
 
 ---
 
