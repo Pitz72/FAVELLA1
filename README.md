@@ -16,9 +16,9 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.0.9 - Logica Condizionale e Puzzle
+## 🚀 Stato Attuale: v0.0.9.1 - Logica Condizionale e Puzzle (Stabile)
 
-FAVELLA 1 è ora un motore di Interactive Fiction maturo con **logica condizionale**. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo.
+FAVELLA 1 è ora un motore di Interactive Fiction maturo con **logica condizionale** completamente funzionale. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo.
 
 ### Funzionalità Chiave
 
@@ -67,8 +67,9 @@ Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre di
     La chiave arrugginita è prendibile.
 
     # Regole condizionali per creare un puzzle
-    Invece di aprire la porta di ferro: dire "È chiusa a chiave.".
-    Invece di aprire la porta di ferro se il giocatore ha la chiave arrugginita: dire "La porta si apre!".
+    # IMPORTANTE: Usa sempre la forma imperativa (apri, non aprire)
+    Invece di apri la porta di ferro: dire "È chiusa a chiave.".
+    Invece di apri la porta di ferro se il giocatore ha la chiave arrugginita: dire "La porta si apre!".
     ```
 
 3.  **Esegui il Gioco:**
@@ -100,6 +101,27 @@ FAVELLA 1 è un progetto in crescita. Le prossime tappe includono:
 -   **Personaggi Non Giocanti (NPC):** Entità con cui dialogare
 -   **Sistema di Dialoghi:** Conversazioni ramificate
 -   **Eventi Temporali:** Azioni che si attivano dopo un certo numero di turni
+
+---
+
+## 📝 Note per gli Autori
+
+### Convenzione Importante per le Regole:
+Quando scrivi regole `Invece di`, usa sempre la **forma imperativa** del verbo (come la digiterebbe il giocatore):
+
+✅ **CORRETTO:**
+```
+Invece di apri la porta: dire "È chiusa.".
+Invece di prendi la spada: dire "È troppo pesante.".
+Invece di esamina il libro: dire "Le pagine sono vuote.".
+```
+
+❌ **ERRATO:**
+```
+Invece di aprire la porta: dire "È chiusa.".
+Invece di prendere la spada: dire "È troppo pesante.".
+Invece di esaminare il libro: dire "Le pagine sono vuote.".
+```
 
 ---
 
