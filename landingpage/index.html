@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Scopri FAVELLA 1, un nuovo linguaggio di programmazione open-source per narrativa interattiva basato sulla lingua italiana. Un progetto sperimentale sviluppato in partnership con l'IA.">
+    <meta name="keywords" content="Favella 1, narrativa interattiva, avventure testuali, linguaggio di programmazione, Python, sviluppo AI, open source, game design narrativo, Inform 7 italiano">
+    <title>FAVELLA 1 - Scrivi storie, non codice.</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="icon.png" type="image/png">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="Favella1Logo.png" alt="FAVELLA 1 Logo" class="logo-img">
+                <span class="logo-text">{F1}</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#progetto" class="nav-link">Il Progetto</a></li>
+                <li><a href="#aggiornamenti" class="nav-link">Aggiornamenti</a></li>
+                <li><a href="#manuale" class="nav-link">Manuale</a></li>
+                <li><a href="#collabora" class="nav-link">Collabora</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="hero-container">
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="terminal-body">
+                    <span class="terminal-prompt">favella@v0.0.9.2:~$</span>
+                    <span id="typed-text" class="typed-text"></span>
+                    <span class="cursor">_</span>
+                </div>
+            </div>
+            <p class="hero-subtitle">
+                FAVELLA 1 è un nuovo linguaggio di programmazione per creare narrativa interattiva, basato sulla lingua italiana.
+            </p>
+            <div class="hero-cta">
+                <a href="#manuale" class="btn btn-primary">Inizia a Leggere il Manuale</a>
+                <a href="https://github.com/tuo-utente/favella1" class="link-secondary" target="_blank">
+                    Vai al Progetto su GitHub <span class="arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Il Progetto Section -->
+    <section id="progetto" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-decorator">{</span>
+            </div>
+            <h2 class="section-title">Cos'è FAVELLA 1?</h2>
+            <div class="content-grid">
+                <div class="content-text">
+                    <p class="lead-text">
+                        FAVELLA 1 nasce da una domanda semplice: <em>e se potessimo programmare videogiochi scrivendo in italiano?</em>
+                    </p>
+                    <p>
+                        Tutto è iniziato con <strong>Inform 7</strong>, un linguaggio rivoluzionario che permetteva di creare avventure testuali scrivendo in inglese naturale. Ma per chi parla italiano, c'era sempre una barriera linguistica. Così è nata l'idea: creare un linguaggio simile, ma completamente italiano.
+                    </p>
+                    <p>
+                        Invece di adattare Inform 7, ho scelto di costruire FAVELLA da zero. Questo progetto è un <strong>esperimento di sviluppo in partnership con l'intelligenza artificiale</strong>. Ogni funzionalità, ogni riga di codice, è il risultato di un dialogo continuo con un LLM (Large Language Model).
+                    </p>
+                    <p>
+                        Il processo è iterativo: definisco un obiettivo, discuto le specifiche con l'IA, genero il codice, testo, raffino. Ogni sessione di sviluppo è documentata nei log, creando una cronaca trasparente dell'evoluzione del progetto.
+                    </p>
+                    <p class="highlight-text">
+                        FAVELLA 1 non è solo un linguaggio di programmazione: è una dimostrazione di come l'IA possa essere un partner creativo nello sviluppo software, amplificando le capacità umane senza sostituirle.
+                    </p>
+                </div>
+                <div class="content-visual">
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-icon">💡</div>
+                            <div class="flow-label">Idea</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">💬</div>
+                            <div class="flow-label">Dialogo con LLM</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">📋</div>
+                            <div class="flow-label">Specifiche</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">⚙️</div>
+                            <div class="flow-label">Codice Generato</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">🧪</div>
+                            <div class="flow-label">Test & Refactoring</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step active">
+                            <div class="flow-icon">✨</div>
+                            <div class="flow-label">Nuova Feature</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Aggiornamenti Section -->
+    <section id="aggiornamenti" class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-decorator">{</span>
+            </div>
+            <h2 class="section-title">Stato del Progetto e Log di Sviluppo</h2>
+            
+            <!-- Current Version Card -->
+            <div class="version-card">
+                <div class="version-badge">Versione Attuale</div>
+                <h3 class="version-number">v0.0.9.2 <span class="version-status">Stabile</span></h3>
+                <p class="version-description">
+                    Sistema di regole condizionali completamente funzionale con priorità automatica. 
+                    Puzzle complessi testati e giocabili. Production-ready.
+                </p>
+                <div class="version-features">
+                    <span class="feature-tag">✅ Logica Condizionale</span>
+                    <span class="feature-tag">✅ Sistema Puzzle</span>
+                    <span class="feature-tag">✅ Priorità Regole</span>
+                    <span class="feature-tag">✅ Movimento Multi-Stanza</span>
+                </div>
+            </div>
+
+            <!-- Development Logs -->
+            <div class="logs-container">
+                <h3 class="logs-title">Cronologia dello Sviluppo</h3>
+                
+                <div class="log-accordion">
+                    <div class="log-item">
+                        <button class="log-header" onclick="toggleLog(this)">
+                            <span class="log-version">v0.0.9.2</span>
+                            <span class="log-title-text">Correzione Logica di Priorità delle Regole Condizionali</span>
+                            <span class="log-icon">+</span>
+                        </button>
+                        <div class="log-content">
+                            <p><strong>Obiettivo:</strong> Correzione bug critico che impediva alle regole condizionali di avere priorità sulle regole base.</p>
+                            <p><strong>Soluzione:</strong> Implementato sistema a due fasi - prima controlla regole condizionali, poi regole fallback.</p>
+                            <p><strong>Risultato:</strong> Puzzle completamente funzionanti e giocabili. Sistema production-ready.</p>
+                        </div>
+                    </div>
+
+                    <div class="log-item">
+                        <button class="log-header" onclick="toggleLog(this)">
+                            <span class="log-version">v0.0.9.1</span>
+                            <span class="log-title-text">Correzione Bug Allineamento Verbi nelle Regole</span>
+                            <span class="log-icon">+</span>
+                        </button>
+                        <div class="log-content">
+                            <p><strong>Problema:</strong> Disallineamento tra verbi all'infinito nelle regole e imperativo nei comandi.</p>
+                            <p><strong>Soluzione:</strong> Stabilita convenzione: usare sempre forma imperativa nelle regole.</p>
+                            <p><strong>Impatto:</strong> Regole ora corrispondono esattamente ai comandi del giocatore.</p>
+                        </div>
+                    </div>
+
+                    <div class="log-item">
+                        <button class="log-header" onclick="toggleLog(this)">
+                            <span class="log-version">v0.0.9</span>
+                            <span class="log-title-text">Implementazione Logica Condizionale e Puzzle</span>
+                            <span class="log-icon">+</span>
+                        </button>
+                        <div class="log-content">
+                            <p><strong>Grammatica v0.8:</strong> Introdotte regole condizionali con due tipi di condizione.</p>
+                            <p><strong>Funzionalità:</strong> Possesso oggetti e proprietà dinamiche.</p>
+                            <p><strong>Architettura:</strong> Gerarchia Condizioni estensibile, motore di valutazione dinamica.</p>
+                        </div>
+                    </div>
+
+                    <div class="log-item">
+                        <button class="log-header" onclick="toggleLog(this)">
+                            <span class="log-version">v0.0.8</span>
+                            <span class="log-title-text">Movimento e Esplorazione</span>
+                            <span class="log-icon">+</span>
+                        </button>
+                        <div class="log-content">
+                            <p><strong>Grammatica v0.7:</strong> Connessioni bidirezionali tra stanze.</p>
+                            <p><strong>Direzioni:</strong> Nord, sud, est, ovest con alias brevi.</p>
+                            <p><strong>Nuove Azioni:</strong> guarda, aiuto per migliorare l'esperienza.</p>
+                        </div>
+                    </div>
+
+                    <div class="log-item">
+                        <button class="log-header" onclick="toggleLog(this)">
+                            <span class="log-version">v0.0.7.1</span>
+                            <span class="log-title-text">Miglioramenti UI/UX</span>
+                            <span class="log-icon">+</span>
+                        </button>
+                        <div class="log-content">
+                            <p><strong>Output Migliorato:</strong> "Puoi vedere qui:" invece di "Vedi qui:"</p>
+                            <p><strong>Logica Selettiva:</strong> Ristampa stanza solo quando necessario.</p>
+                            <p><strong>Risultato:</strong> Esperienza di gioco più fluida e meno verbosa.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Manuale Section -->
+    <section id="manuale" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-decorator">{</span>
+            </div>
+            <h2 class="section-title">Impara FAVELLA 1: Manuale di Riferimento</h2>
+            
+            <div class="manual-intro">
+                <p class="lead-text">
+                    Benvenuto in FAVELLA 1, il linguaggio di programmazione per creare narrativa interattiva in italiano. 
+                    La filosofia è semplice: <strong>il tuo codice è una storia</strong>.
+                </p>
+            </div>
+
+            <div class="manual-content">
+                <!-- Concetti di Base -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">1. Concetti di Base</h3>
+                    
+                    <h4 class="manual-subheading">Commenti</h4>
+                    <p>Per aggiungere note al tuo codice che il compilatore ignorerà, usa il simbolo <code>#</code>.</p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Questa è la mia prima storia.
+La foresta incantata è una stanza. # Questa riga verrà eseguita.</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Struttura delle Frasi</h4>
+                    <p>Ogni istruzione in FAVELLA è una frase che deve terminare con un <strong>punto <code>.</code></strong></p>
+                </div>
+
+                <!-- Definire il Mondo -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">2. Definire il Mondo di Gioco</h3>
+                    
+                    <h4 class="manual-subheading">Creare le Stanze</h4>
+                    <p><strong>Sintassi:</strong> <code>[NOME DELLA STANZA] è una stanza.</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">Il castello è una stanza.
+La piazza del mercato è una stanza.</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Dare una Descrizione alle Stanze</h4>
+                    <p><strong>Sintassi:</strong> <code>La descrizione di [NOME STANZA] è "[TESTO]".</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">La descrizione del castello è "Un'enorme sala del trono. Un tappeto rosso consunto conduce verso un imponente trono di pietra.".</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Collegare le Stanze</h4>
+                    <p><strong>Sintassi:</strong> <code>[NOME STANZA 1] collega [DIREZIONE] a [NOME STANZA 2].</code></p>
+                    <p><em>Direzioni valide:</em> <code>nord</code>, <code>sud</code>, <code>est</code>, <code>ovest</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Il collegamento è bidirezionale automaticamente
+La piazza del mercato collega nord a il castello.</code></pre>
+                    </div>
+                </div>
+
+                <!-- Oggetti -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">3. Popolare il Mondo con Oggetti</h3>
+                    
+                    <h4 class="manual-subheading">Creare un Oggetto</h4>
+                    <p><strong>Sintassi:</strong> <code>[NOME OGGETTO] è una cosa.</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">Una spada lucente è una cosa.
+Una vecchia pergamena è una cosa.</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Posizionare un Oggetto</h4>
+                    <p><strong>Sintassi:</strong> <code>[NOME OGGETTO] è in [NOME STANZA].</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">La spada lucente è nella sala del trono.
+La vecchia pergamena è sul tavolo di legno.</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Descrivere un Oggetto</h4>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">La descrizione della spada lucente è "Un'elsa finemente decorata e una lama che brilla di luce propria.".</code></pre>
+                    </div>
+                </div>
+
+                <!-- Proprietà -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">4. Definire le Proprietà degli Oggetti</h3>
+                    
+                    <h4 class="manual-subheading">Assegnare una Proprietà</h4>
+                    <p><strong>Sintassi:</strong> <code>[NOME OGGETTO] è [PROPRIETÀ].</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">La porta di legno è chiusa.
+Il calice d'oro è pesante.</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Rendere un Oggetto "Prendibile"</h4>
+                    <p>Di default, gli oggetti non possono essere raccolti.</p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella">La chiave arrugginita è prendibile.</code></pre>
+                    </div>
+                </div>
+
+                <!-- Regole -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">5. Creare l'Interattività: Le Regole</h3>
+                    
+                    <h4 class="manual-subheading">La Regola "Invece di" (Semplice)</h4>
+                    <p><strong>Sintassi:</strong> <code>Invece di [VERBO ALL'IMPERATIVO] [NOME OGGETTO]: dire "[TESTO]".</code></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Questa regola impedirà sempre al giocatore di prendere la statua
+Invece di prendi la statua di marmo: dire "È troppo pesante per essere sollevata.".</code></pre>
+                    </div>
+
+                    <h4 class="manual-subheading">Le Regole Condizionali (Avanzate)</h4>
+                    <p class="highlight-box">
+                        <strong>⚡ Potente!</strong> Le regole condizionali si attivano solo se una condizione è vera, 
+                        permettendoti di creare puzzle complessi.
+                    </p>
+                    
+                    <p><strong>Tipo 1: Se il giocatore ha un oggetto</strong></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Questa regola si attiva solo se il giocatore ha la chiave
+Invece di apri la porta di ferro se il giocatore ha la chiave arrugginita: dire "La chiave gira nella serratura e la porta si apre!".</code></pre>
+                    </div>
+
+                    <p><strong>Tipo 2: Se un oggetto ha una proprietà</strong></p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Questa regola si attiva solo se la porta ha la proprietà "chiusa"
+Invece di esamina la porta di ferro se la porta di ferro è chiusa: dire "La porta è sbarrata da una serratura complessa.".</code></pre>
+                    </div>
+
+                    <div class="important-note">
+                        <strong>📌 Importante:</strong> Le regole condizionali hanno sempre <strong>priorità</strong> sulle regole semplici. 
+                        Questo ti permette di definire un comportamento di fallback e uno specifico che lo sovrascrive quando le condizioni cambiano.
+                    </div>
+                </div>
+
+                <!-- Esempio Completo -->
+                <div class="manual-section">
+                    <h3 class="manual-heading">6. Esempio Completo: Il Puzzle della Prigione</h3>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copia</button>
+                        <pre><code class="language-favella"># Storia di test - Il Puzzle della Prigione
+
+La prigione è una stanza.
+La descrizione della prigione è "Una cella umida. Una pesante porta di ferro blocca l'uscita a nord.".
+
+Una porta di ferro è una cosa.
+La porta di ferro è in prigione.
+La porta di ferro è chiusa.
+La descrizione della porta di ferro è "Una solida porta di ferro con una grossa serratura.".
+
+Una chiave arrugginita è una cosa.
+La chiave arrugginita è in prigione.
+La chiave arrugginita è prendibile.
+La descrizione della chiave arrugginita è "Una vecchia chiave ossidata, forse può aprire qualcosa.".
+
+# Regole per creare il puzzle
+Invece di apri la porta di ferro: dire "È chiusa a chiave.".
+Invece di apri la porta di ferro se il giocatore ha la chiave arrugginita: dire "Usi la chiave arrugginita. La serratura scatta e la porta si apre!".
+Invece di esamina la porta di ferro se la porta di ferro è chiusa: dire "È una solida porta di ferro, chiusa da una grossa serratura. Sembra che serva una chiave.".</code></pre>
+                    </div>
+
+                    <div class="gameplay-example">
+                        <h4>Esempio di Gameplay:</h4>
+                        <div class="terminal-output">
+                            <div class="terminal-line"><span class="prompt">&gt;</span> apri porta</div>
+                            <div class="terminal-response">È chiusa a chiave.</div>
+                            <div class="terminal-line"><span class="prompt">&gt;</span> prendi chiave</div>
+                            <div class="terminal-response">Preso: chiave arrugginita.</div>
+                            <div class="terminal-line"><span class="prompt">&gt;</span> apri porta</div>
+                            <div class="terminal-response success">Usi la chiave arrugginita. La serratura scatta e la porta si apre!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Collabora Section -->
+    <section id="collabora" class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-decorator">{</span>
+            </div>
+            <h2 class="section-title">Unisciti all'Avventura</h2>
+            
+            <div class="collaborate-content">
+                <p class="lead-text">
+                    FAVELLA 1 è un progetto <strong>open-source</strong> e la community è il suo cuore pulsante.
+                </p>
+                <p>
+                    Ci sono molti modi per contribuire, indipendentemente dal tuo livello di esperienza:
+                </p>
+                
+                <div class="contribute-grid">
+                    <div class="contribute-card">
+                        <div class="contribute-icon">📝</div>
+                        <h3>Scrivi Storie</h3>
+                        <p>Testa il linguaggio creando avventure testuali. Le tue storie possono diventare esempi per altri autori.</p>
+                    </div>
+                    <div class="contribute-card">
+                        <div class="contribute-icon">🐛</div>
+                        <h3>Segnala Bug</h3>
+                        <p>Hai trovato un comportamento inaspettato? Apri una issue su GitHub con una descrizione dettagliata.</p>
+                    </div>
+                    <div class="contribute-card">
+                        <div class="contribute-icon">💡</div>
+                        <h3>Suggerisci Funzionalità</h3>
+                        <p>Hai un'idea per una nuova funzionalità grammaticale? Condividila nelle discussioni!</p>
+                    </div>
+                    <div class="contribute-card">
+                        <div class="contribute-icon">⚙️</div>
+                        <h3>Contribuisci al Codice</h3>
+                        <p>Se conosci Python, puoi contribuire direttamente al compilatore o all'interprete.</p>
+                    </div>
+                </div>
+
+                <div class="cta-buttons">
+                    <a href="https://github.com/tuo-utente/favella1" class="btn btn-primary btn-large" target="_blank">
+                        Visita il Repository su GitHub
+                    </a>
+                    <a href="https://github.com/tuo-utente/favella1/discussions" class="btn btn-secondary btn-large" target="_blank">
+                        Partecipa alla Discussione
+                    </a>
+                </div>
+
+                <div class="contact-info">
+                    <p>Per idee o proposte, puoi contattarmi a <a href="mailto:tua-email@example.com" class="email-link">tua-email@example.com</a></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-text">
+                    Progetto FAVELLA 1 © 2025 - <a href="#" class="footer-link">Il Tuo Nome/Nickname</a>
+                </p>
+                <p class="footer-subtitle">
+                    Un esperimento di sviluppo in partnership con l'Intelligenza Artificiale.
+                </p>
+                <div class="footer-links">
+                    <a href="https://github.com/tuo-utente" class="footer-link" target="_blank">GitHub</a>
+                    <span class="footer-separator">•</span>
+                    <a href="https://linkedin.com/in/tuo-profilo" class="footer-link" target="_blank">LinkedIn</a>
+                    <span class="footer-separator">•</span>
+                    <a href="#" class="footer-link">Portfolio</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -61,6 +61,89 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
     else:
         return None
 
+def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
+    """
+    Esegue un singolo comando di gioco.
+    Restituisce True se il gioco deve continuare, False se il giocatore vuole uscire.
+    """
+    comando_pulito = comando_grezzo.strip().lower()
+    if not comando_pulito:
+        return True
+    if comando_pulito in ["esci", "quit"]:
+        print("A presto!")
+        return False
+    
+    parti = comando_pulito.split(maxsplit=1)
+    verbo_giocatore = parti[0]
+    argomento_comando = parti[1] if len(parti) > 1 else ""
+
+    # --- Gestione Movimento ---
+    direzione_normalizzata = DIREZIONI_VALIDI.get(verbo_giocatore)
+    if direzione_normalizzata:
+        vecchia_posizione = mondo.posizione_giocatore
+        muovi_logica_default(mondo, direzione_normalizzata)
+        if mondo.posizione_giocatore != vecchia_posizione: # Se il movimento è avvenuto
+            mostra_stanza(mondo)
+        return True
+
+    # --- Gestione Azioni Standard ---
+    nome_azione = mondo.mappa_verbi_giocatore.get(verbo_giocatore)
+    if not nome_azione:
+        print("Non capisco questo verbo.")
+        return True
+    azione = mondo.azioni[nome_azione]
+
+    id_oggetto_risolto = None
+    if azione.richiede_oggetto:
+        if not argomento_comando:
+            print(f"Cosa vorresti {verbo_giocatore}?")
+            return True
+        id_oggetto_risolto = risolvi_nome_oggetto(mondo, argomento_comando)
+        if not id_oggetto_risolto or id_oggetto_risolto == "<ambiguo>":
+            if id_oggetto_risolto is None:
+                print("Non vedo nulla del genere qui.")
+            return True
+
+    # --- MOTORE DI GIOCO v0.9.1 ---
+    # 1. Controllo Regole "Invece di" con Valutazione Condizioni
+    # PRIORITÀ: Prima le regole condizionali, poi quelle senza condizione
+    regola_applicata = False
+    if azione.richiede_oggetto:
+        verbi_da_controllare = {verbo_giocatore, nome_azione}
+        
+        # FASE 1: Cerca regole CON condizione che si applicano
+        for regola in mondo.regole:
+            if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
+                if regola.condizione and regola.condizione.valuta(mondo):
+                    print(regola.risposta)
+                    regola_applicata = True
+                    break
+        
+        # FASE 2: Se nessuna regola condizionale si applica, cerca regole SENZA condizione
+        if not regola_applicata:
+            for regola in mondo.regole:
+                if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
+                    if not regola.condizione:
+                        print(regola.risposta)
+                        regola_applicata = True
+                        break
+    
+    if regola_applicata:
+        return True
+
+    # 2. Esecuzione Logica di Default
+    if azione.richiede_oggetto:
+        azione.logica_di_default(mondo, id_oggetto_risolto)
+    else:
+        azione.logica_di_default(mondo)
+    
+    # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
+    # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
+    if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere"]:
+        mostra_stanza(mondo)
+    
+    return True
+
 def gioca(mondo: Mondo):
     """Avvia il ciclo di gioco interattivo."""
     mondo.carica_azioni(LIBRERIA_AZIONI)
@@ -81,80 +164,8 @@ def gioca(mondo: Mondo):
         except EOFError:
             print("\nA presto!"); break
             
-        comando_pulito = comando_grezzo.strip().lower()
-        if not comando_pulito:
-            continue
-        if comando_pulito in ["esci", "quit"]:
-            print("A presto!"); break
-        
-        parti = comando_pulito.split(maxsplit=1)
-        verbo_giocatore = parti[0]
-        argomento_comando = parti[1] if len(parti) > 1 else ""
-
-        # --- Gestione Movimento ---
-        direzione_normalizzata = DIREZIONI_VALIDI.get(verbo_giocatore)
-        if direzione_normalizzata:
-            vecchia_posizione = mondo.posizione_giocatore
-            muovi_logica_default(mondo, direzione_normalizzata)
-            if mondo.posizione_giocatore != vecchia_posizione: # Se il movimento è avvenuto
-                mostra_stanza(mondo)
-            continue
-
-        # --- Gestione Azioni Standard ---
-        nome_azione = mondo.mappa_verbi_giocatore.get(verbo_giocatore)
-        if not nome_azione:
-            print("Non capisco questo verbo.")
-            continue
-        azione = mondo.azioni[nome_azione]
-
-        id_oggetto_risolto = None
-        if azione.richiede_oggetto:
-            if not argomento_comando:
-                print(f"Cosa vorresti {verbo_giocatore}?")
-                continue
-            id_oggetto_risolto = risolvi_nome_oggetto(mondo, argomento_comando)
-            if not id_oggetto_risolto or id_oggetto_risolto == "<ambiguo>":
-                if id_oggetto_risolto is None:
-                    print("Non vedo nulla del genere qui.")
-                continue
-
-        # --- MOTORE DI GIOCO v0.9.1 ---
-        # 1. Controllo Regole "Invece di" con Valutazione Condizioni
-        # PRIORITÀ: Prima le regole condizionali, poi quelle senza condizione
-        regola_applicata = False
-        if azione.richiede_oggetto:
-            verbi_da_controllare = {verbo_giocatore, nome_azione}
-            
-            # FASE 1: Cerca regole CON condizione che si applicano
-            for regola in mondo.regole:
-                if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
-                    if regola.condizione and regola.condizione.valuta(mondo):
-                        print(regola.risposta)
-                        regola_applicata = True
-                        break
-            
-            # FASE 2: Se nessuna regola condizionale si applica, cerca regole SENZA condizione
-            if not regola_applicata:
-                for regola in mondo.regole:
-                    if regola.verbo in verbi_da_controllare and regola.id_oggetto_bersaglio == id_oggetto_risolto:
-                        if not regola.condizione:
-                            print(regola.risposta)
-                            regola_applicata = True
-                            break
-        
-        if regola_applicata:
-            continue
-
-        # 2. Esecuzione Logica di Default
-        if azione.richiede_oggetto:
-            azione.logica_di_default(mondo, id_oggetto_risolto)
-        else:
-            azione.logica_di_default(mondo)
-        
-        # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
-        # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere"]:
-            mostra_stanza(mondo)
+        if not elabora_comando(mondo, comando_grezzo):
+            break
 
 
 def main():

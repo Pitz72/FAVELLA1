@@ -16,34 +16,46 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.0.9.2 - Logica Condizionale e Puzzle (Production-Ready)
+## 🚀 Stato Attuale: v0.1.0 - FAVELLA STUDIO (Alpha)
 
-FAVELLA 1 è ora un motore di Interactive Fiction maturo e **completamente funzionale** con logica condizionale. Il compilatore è basato sulla **Grammatica v0.8**, permettendo la creazione di puzzle complessi e narrativa dinamica basata sullo stato del mondo. Sistema testato e stabile, pronto per la produzione.
+Il progetto ha raggiunto una nuova milestone con il rilascio di **FAVELLA STUDIO**, un IDE grafico completo per scrivere e testare le tue storie senza usare il terminale.
 
-### Funzionalità Chiave
+### Novità: FAVELLA STUDIO (IDE)
+- **Editor Visuale:** Scrivi codice con evidenziazione della sintassi.
+- **Mappa Automatica:** Visualizza il grafo delle stanze e delle connessioni in tempo reale.
+- **Console Integrata:** Compila e gioca direttamente nell'interfaccia.
 
--   **Definizione del Mondo:** Crea `Stanze` e `Oggetti` con una sintassi naturale.
--   **Descrizioni Dettagliate:** Arricchisci il tuo mondo con descrizioni per ogni entità.
--   **Proprietà degli Oggetti:** Assegna attributi dinamici agli oggetti (`La porta è chiusa.`).
--   **Motore ad Azioni Standard:** Set completo di azioni con comportamenti personalizzabili:
-    -   `esaminare`, `prendere`, `lasciare`, `inventario`
-    -   `guarda`, `aiuto`, `usare`
-    -   Movimento: `nord`, `sud`, `est`, `ovest` (e alias `n`, `s`, `e`, `o`)
--   **Inventario del Giocatore:** Sistema completo di raccolta e gestione oggetti.
--   **Regole Condizionali con Priorità:** Crea puzzle complessi con logica basata su condizioni:
-    -   Possesso: `Invece di apri la porta se il giocatore ha la chiave: dire "La porta si apre!".`
-    -   Proprietà: `Invece di esamina la porta se la porta è chiusa: dire "È chiusa a chiave.".`
-    -   **Sistema a Due Fasi:** Le regole condizionali hanno priorità automatica sulle regole base
--   **Sistema di Puzzle Funzionante:** Meccaniche chiave-serratura completamente testate e giocabili.
--   **Compilatore Robusto:** Rilevamento errori con messaggi chiari e guida alla correzione.
--   **Output Ottimizzato:** Interfaccia testuale pulita e professionale.
--   **Movimento tra Stanze:** Esplorazione con connessioni bidirezionali automatiche.
+### Core del Linguaggio (v0.9.2)
+- **Logica Condizionale:** Supporto completo per regole `Invece di ... se ...`.
+- **Puzzle:** Creazione di meccaniche chiave-serratura e interazioni complesse.
+- **Mondo Dinamico:** Stanze, oggetti, contenitori e proprietà.
 
 ---
 
 ## 🎮 Come Iniziare
 
-Per provare FAVELLA 1, hai solo bisogno di Python 3. Non sono richieste altre dipendenze.
+Puoi usare FAVELLA in due modi: tramite il nuovo IDE grafico o da riga di comando.
+
+### Opzione A: FAVELLA STUDIO (Consigliata)
+
+1.  **Installa le dipendenze:**
+    ```bash
+    pip install PySide6 networkx matplotlib
+    ```
+
+2.  **Avvia l'IDE:**
+    ```bash
+    python favella_studio.py
+    ```
+
+3.  **Divertiti:**
+    - Apri un file `.fav` (es. `storia.fav`).
+    - Premi **"Compila & Verifica"** per vedere la mappa.
+    - Premi **"Gioca"** per testare la tua avventura.
+
+### Opzione B: Riga di Comando (Legacy)
+
+Per i puristi del terminale, l'interprete classico è sempre disponibile:
 
 1.  **Clona il Repository:**
     ```sh
