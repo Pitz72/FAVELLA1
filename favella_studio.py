@@ -286,8 +286,13 @@ class FavellaStudio(QMainWindow):
         
         self.current_file_path = None
         self.game_session = GameSession(self.on_game_output)
+        
+        self.unsaved_changes = False
 
         self.setup_ui()
+        
+        # Connect text changed signal
+        self.editor.textChanged.connect(self.on_text_changed)
 
     def setup_ui(self):
         # Central Widget & Splitter
@@ -362,6 +367,8 @@ class FavellaStudio(QMainWindow):
                 with open(path, 'r', encoding='utf-8') as f:
                     self.editor.setPlainText(f.read())
                 self.current_file_path = path
+                self.unsaved_changes = False
+                self.setWindowTitle(f"Favella Studio v0.1 - {os.path.basename(path)}")
                 self.status_bar.showMessage(f"Caricato: {path}")
             except Exception as e:
                 QMessageBox.critical(self, "Errore", f"Impossibile aprire il file:\n{e}")
@@ -376,6 +383,8 @@ class FavellaStudio(QMainWindow):
         try:
             with open(self.current_file_path, 'w', encoding='utf-8') as f:
                 f.write(self.editor.toPlainText())
+            self.unsaved_changes = False
+            self.setWindowTitle(f"Favella Studio v0.1 - {os.path.basename(self.current_file_path)}")
             self.status_bar.showMessage(f"Salvato: {self.current_file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Errore", f"Impossibile salvare il file:\n{e}")
@@ -445,6 +454,36 @@ class FavellaStudio(QMainWindow):
 
     def on_game_output(self, text):
         self.console_widget.append_text(text)
+
+    def on_text_changed(self):
+        if not self.unsaved_changes:
+            self.unsaved_changes = True
+            current_title = self.windowTitle()
+            if not current_title.endswith("*"):
+                self.setWindowTitle(current_title + " *")
+
+    def closeEvent(self, event):
+        if self.unsaved_changes:
+            reply = QMessageBox.question(
+                self, 
+                'Modifiche non salvate',
+                "Ci sono modifiche non salvate. Vuoi salvare prima di uscire?",
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Save
+            )
+
+            if reply == QMessageBox.StandardButton.Save:
+                self.save_file()
+                if not self.unsaved_changes: # Se il salvataggio è andato a buon fine
+                    event.accept()
+                else:
+                    event.ignore()
+            elif reply == QMessageBox.StandardButton.Discard:
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
 
 def main():
     app = QApplication(sys.argv)

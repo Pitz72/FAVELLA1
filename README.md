@@ -16,7 +16,7 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.1.0 - FAVELLA STUDIO (Alpha)
+## 🚀 Stato Attuale: v0.1.0.1 - FAVELLA STUDIO (Alpha)
 
 Il progetto ha raggiunto una nuova milestone con il rilascio di **FAVELLA STUDIO**, un IDE grafico completo per scrivere e testare le tue storie senza usare il terminale.
 
