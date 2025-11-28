@@ -39,12 +39,19 @@ class Azione:
         self.richiede_oggetto = richiede_oggetto
 
 class Regola:
-    """Rappresenta una regola 'Invece di', ora con una condizione opzionale."""
-    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str, condizione: Optional[Condizione] = None):
+    """Rappresenta una regola 'Invece di', ora con supporto per due oggetti e conseguenze."""
+    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str, 
+                 condizione: Optional[Condizione] = None,
+                 preposizione: Optional[str] = None,
+                 id_oggetto_secondario: Optional[str] = None,
+                 conseguenza_testo: Optional[str] = None):
         self.verbo = verbo
         self.id_oggetto_bersaglio = id_oggetto_bersaglio
         self.risposta = risposta
         self.condizione = condizione
+        self.preposizione = preposizione
+        self.id_oggetto_secondario = id_oggetto_secondario
+        self.conseguenza_testo = conseguenza_testo
 
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""

@@ -16,16 +16,18 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.1.0.1 - FAVELLA STUDIO (Alpha)
+## 🚀 Stato Attuale: v0.1.2 - Conseguenze Dinamiche (Alpha)
 
-Il progetto ha raggiunto una nuova milestone con il rilascio di **FAVELLA STUDIO**, un IDE grafico completo per scrivere e testare le tue storie senza usare il terminale.
+Il progetto ha raggiunto una nuova milestone con il rilascio di **FAVELLA STUDIO**, un IDE grafico completo, e un motore linguistico che ora supporta **conseguenze dinamiche** e interazioni complesse.
 
 ### Novità: FAVELLA STUDIO (IDE)
 - **Editor Visuale:** Scrivi codice con evidenziazione della sintassi.
 - **Mappa Automatica:** Visualizza il grafo delle stanze e delle connessioni in tempo reale.
 - **Console Integrata:** Compila e gioca direttamente nell'interfaccia.
 
-### Core del Linguaggio (v0.9.2)
+### Core del Linguaggio (v0.2.1)
+- **Conseguenze Dinamiche:** Regole che modificano il mondo (`... e adesso la porta è aperta`).
+- **Interazioni a Due Oggetti:** Supporto per comandi come `usa chiave con porta`.
 - **Logica Condizionale:** Supporto completo per regole `Invece di ... se ...`.
 - **Puzzle:** Creazione di meccaniche chiave-serratura e interazioni complesse.
 - **Mondo Dinamico:** Stanze, oggetti, contenitori e proprietà.

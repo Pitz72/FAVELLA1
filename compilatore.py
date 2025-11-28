@@ -10,16 +10,23 @@ def analizza_file(percorso_file: str) -> Mondo | None:
     mondo = Mondo()
     errori = []
     
-    # --- Grammatica v0.8 - Regole Condizionali (PRIORITÀ MASSIMA) ---
-    # Pattern per: Invece di [verbo] [oggetto] se il giocatore ha [oggetto2]: dire "...".
+    # --- Grammatica v0.2.0 - Regole a Due Oggetti (PRIORITÀ MASSIMA) ---
+    # Pattern per: Invece di [verbo] [ogg1] [prep] [ogg2]: dire "..." [e adesso ...].
+    p_regola_due_oggetti = re.compile(
+        r"^Invece di (.*?) (.*?) (su|con|contro|in) (.*?): dire \"(.*?)\"(?:\.| e adesso (.*)\.)(?:\s*#.*)?$",
+        re.IGNORECASE
+    )
+
+    # --- Grammatica v0.8 - Regole Condizionali ---
+    # Pattern per: Invece di [verbo] [oggetto] se il giocatore ha [oggetto2]: dire "..." [e adesso ...].
     p_regola_cond_possesso = re.compile(
-        r"^Invece di (.*?) (.*?) se il giocatore ha (.*?): dire \"(.*?)\"\.(?:\s*#.*)?$",
+        r"^Invece di (.*?) (.*?) se il giocatore ha (.*?): dire \"(.*?)\"(?:\.| e adesso (.*)\.)(?:\s*#.*)?$",
         re.IGNORECASE
     )
     
-    # Pattern per: Invece di [verbo] [oggetto] se [oggetto2] è [proprietà]: dire "...".
+    # Pattern per: Invece di [verbo] [oggetto] se [oggetto2] è [proprietà]: dire "..." [e adesso ...].
     p_regola_cond_proprieta = re.compile(
-        r"^Invece di (.*?) (.*?) se (.*?) è (.*?): dire \"(.*?)\"\.(?:\s*#.*)?$",
+        r"^Invece di (.*?) (.*?) se (.*?) è (.*?): dire \"(.*?)\"(?:\.| e adesso (.*)\.)(?:\s*#.*)?$",
         re.IGNORECASE
     )
     
@@ -27,7 +34,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
     p_connessione = re.compile(r"^(.*?) collega (nord|sud|est|ovest) a (.*?)\.(?:\s*#.*)?$", re.IGNORECASE)
 
     # --- Grammatica v0.4 ---
-    p_regola_invece_di = re.compile(r"^Invece di (.*?) (.*): dire \"(.*)\"\.(?:\s*#.*)?$", re.IGNORECASE)
+    # Pattern per: Invece di [verbo] [oggetto]: dire "..." [e adesso ...].
+    p_regola_invece_di = re.compile(r"^Invece di (.*?) (.*): dire \"(.*?)\"(?:\.| e adesso (.*)\.)(?:\s*#.*)?$", re.IGNORECASE)
 
     # Regex della v0.3
     p_stanza = re.compile(r"^(.*?) è una stanza\.(?:\s*#.*)?$", re.IGNORECASE)
@@ -46,16 +54,38 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
             # --- Logica di Parsing ---
             
+            # PRIORITÀ 0: Regole a Due Oggetti (v0.2.0)
+            match_due_oggetti = p_regola_due_oggetti.match(riga)
+            if match_due_oggetti:
+                verbo, ogg1_grezzo, prep, ogg2_grezzo, risposta, conseguenza = match_due_oggetti.groups()
+                id_ogg1 = normalizza_nome(ogg1_grezzo)
+                id_ogg2 = normalizza_nome(ogg2_grezzo)
+                
+                if mondo.trova_oggetto(id_ogg1) and mondo.trova_oggetto(id_ogg2):
+                    nuova_regola = Regola(
+                        verbo=verbo.lower(), 
+                        id_oggetto_bersaglio=id_ogg1, 
+                        risposta=risposta,
+                        preposizione=prep.lower(),
+                        id_oggetto_secondario=id_ogg2,
+                        conseguenza_testo=conseguenza
+                    )
+                    mondo.aggiungi_regola(nuova_regola)
+                else:
+                     errori.append(f"[ERRORE] Riga {numero_riga}: Uno degli oggetti non esiste: '{id_ogg1}' o '{id_ogg2}'")
+                continue
+
             # PRIORITÀ 1: Regole Condizionali (v0.8)
             match_cond_possesso = p_regola_cond_possesso.match(riga)
             if match_cond_possesso:
-                verbo, ogg_grezzo, ogg_condizione_grezzo, risposta = match_cond_possesso.groups()
+                verbo, ogg_grezzo, ogg_condizione_grezzo, risposta, conseguenza = match_cond_possesso.groups()
                 id_ogg = normalizza_nome(ogg_grezzo)
                 id_ogg_condizione = normalizza_nome(ogg_condizione_grezzo)
                 
-                if mondo.trova_oggetto(id_ogg):
+                # Permetti anche direzioni come "oggetti" per le regole di movimento
+                if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
                     condizione = CondizionePossesso(id_ogg_condizione)
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione)
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza_testo=conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")
@@ -63,14 +93,14 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             
             match_cond_proprieta = p_regola_cond_proprieta.match(riga)
             if match_cond_proprieta:
-                verbo, ogg_grezzo, ogg_condizione_grezzo, proprieta_grezzo, risposta = match_cond_proprieta.groups()
+                verbo, ogg_grezzo, ogg_condizione_grezzo, proprieta_grezzo, risposta, conseguenza = match_cond_proprieta.groups()
                 id_ogg = normalizza_nome(ogg_grezzo)
                 id_ogg_condizione = normalizza_nome(ogg_condizione_grezzo)
                 id_proprieta = normalizza_nome(proprieta_grezzo)
                 
-                if mondo.trova_oggetto(id_ogg):
+                if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
                     condizione = CondizioneProprieta(id_ogg_condizione, id_proprieta)
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione)
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza_testo=conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")
@@ -103,11 +133,11 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             # PRIORITÀ 3: Regole semplici (v0.4)
             match_regola = p_regola_invece_di.match(riga)
             if match_regola:
-                verbo, ogg_grezzo, risposta = match_regola.groups()
+                verbo, ogg_grezzo, risposta, conseguenza = match_regola.groups()
                 id_ogg = normalizza_nome(ogg_grezzo)
 
-                if mondo.trova_oggetto(id_ogg):
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta)
+                if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, conseguenza_testo=conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")

@@ -1,25 +1,50 @@
-# Storia di test per FAVELLA 1 v0.9 - Condizioni e Puzzle
+# Storia Avanzata per FAVELLA 1 v0.1.2 - "La Fuga dal Laboratorio"
 
-La prigione è una stanza.
-La descrizione della prigione è "Una cella umida. Una pesante porta di ferro blocca l'uscita a nord.".
+# --- DEFINIZIONE STANZE ---
 
-Una porta di ferro è una cosa.
-La porta di ferro è in prigione.
-La porta di ferro è chiusa.
-La descrizione della porta di ferro è "Una solida porta di ferro con una grossa serratura.".
+La cella di contenimento è una stanza.
+La descrizione della cella di contenimento è "Una stanza bianca, asettica. C'è una porta blindata a nord.".
 
-Una chiave arrugginita è una cosa.
-La chiave arrugginita è in prigione.
-La chiave arrugginita è prendibile.
-La descrizione della chiave arrugginita è "Una vecchia chiave ossidata, forse può aprire qualcosa.".
+Il corridoio è una stanza.
+La descrizione del corridoio è "Un lungo corridoio buio. Vedi l'uscita verso la libertà a est.".
+Il corridoio collega sud a la cella di contenimento.
 
-# --- Regole Condizionali ---
+# --- DEFINIZIONE OGGETTI ---
 
-# Regola semplice senza condizione (fallback)
-Invece di apri la porta di ferro: dire "È chiusa a chiave.".
+Una porta blindata è una cosa.
+La porta blindata è in cella di contenimento.
+La porta blindata è chiusa.
+La descrizione della porta blindata è "È sigillata elettronicamente. Serve una keycard.".
 
-# Regola con condizione di possesso
-Invece di apri la porta di ferro se il giocatore ha la chiave arrugginita: dire "Usi la chiave arrugginita. La serratura scatta e la porta si apre!".
+Una keycard magnetica è una cosa.
+La keycard magnetica è prendibile.
+La keycard magnetica è in cella di contenimento.
+La descrizione della keycard magnetica è "Una tessera di plastica con un chip dorato.".
 
-# Regola con condizione di proprietà
-Invece di esamina la porta di ferro se la porta di ferro è chiusa: dire "È una solida porta di ferro, chiusa da una grossa serratura. Sembra che serva una chiave.".
+Una mela rossa è una cosa.
+La mela rossa è prendibile.
+La mela rossa è in cella di contenimento.
+La descrizione della mela rossa è "Sembra deliziosa.".
+
+Un vecchio tappeto è una cosa.
+Il vecchio tappeto è in corridoio.
+La descrizione del vecchio tappeto è "Un tappeto logoro.".
+
+Una botola segreta è una cosa.
+# Nota: La botola non è in nessuna stanza all'inizio (è nel nulla), o nascosta.
+# Per semplicità in questa versione, la mettiamo nel nulla e la facciamo apparire.
+
+# --- REGOLE DI GIOCO ---
+
+# 1. Puzzle Principale: Aprire la porta
+# Se provo ad andare a nord e la porta è chiusa
+Invece di vai nord se la porta blindata è chiusa: dire "La porta blindata ti sbarra la strada.".
+
+# Usare la card sulla porta (Cambio di Stato + Feedback)
+Invece di usa la keycard magnetica su la porta blindata: dire "Bip! La luce diventa verde e la porta scatta." e adesso la porta blindata è aperta.
+
+# 2. Oggetto Consumabile (Rimozione oggetto)
+Invece di mangia la mela rossa: dire "Gnam! Era succosa." e adesso la mela rossa è nel nulla.
+
+# 3. Oggetto che fa apparire altro oggetto (Spostamento)
+Invece di sposta il vecchio tappeto: dire "Sotto il tappeto trovi una botola segreta!" e adesso la botola segreta è in corridoio.

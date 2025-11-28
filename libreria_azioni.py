@@ -93,9 +93,9 @@ def aiuto_logica_default(mondo: Mondo):
 def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """Logica di default per l'azione USARE [ogg1] CON [ogg2]."""
     if id_oggetto2:
-        print("Non sembra avere alcun effetto.")
+        print(f"Usare {mondo.trova_oggetto(id_oggetto1).nome} con {mondo.trova_oggetto(id_oggetto2).nome} non ha alcun effetto particolare.")
     else:
-        print("Come vorresti usarlo?")
+        print("Con cosa vuoi usarlo?")
 
 # --- DEFINIZIONE DELLA LIBRERIA ---
 LIBRERIA_AZIONI = {
@@ -127,8 +127,13 @@ LIBRERIA_AZIONI = {
         richiede_oggetto=False
     ),
     "usare": Azione(
-        nomi=["usa", "usare", "apri", "aprire"],
+        nomi=["usa", "usare", "apri", "aprire", "mangia", "mangiare", "sposta", "spostare"],
         logica=usare_con_logica_default,
         richiede_oggetto=True
+    ),
+    "vai": Azione(
+        nomi=["vai", "andare", "cammina", "corri"],
+        logica=muovi_logica_default, # Riutilizziamo la logica di movimento
+        richiede_oggetto=True # Richiede la direzione come oggetto
     ),
 }
