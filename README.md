@@ -16,16 +16,16 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.1.2 - Conseguenze Dinamiche (Alpha)
+## 🚀 Stato Attuale: v0.2.0 - Il Grande Salto (Alpha)
 
-Il progetto ha raggiunto una nuova milestone con il rilascio di **FAVELLA STUDIO**, un IDE grafico completo, e un motore linguistico che ora supporta **conseguenze dinamiche** e interazioni complesse.
+Il progetto ha raggiunto una nuova milestone fondamentale con la completa rimozione del motore a espressioni regolari. FAVELLA ora utilizza un **parser formale EBNF (Lark)** per generare un Abstract Syntax Tree (AST), garantendo massima scalabilità. Inoltre include **FAVELLA STUDIO**, un IDE grafico, e un Object Model robusto.
 
 ### Novità: FAVELLA STUDIO (IDE)
 - **Editor Visuale:** Scrivi codice con evidenziazione della sintassi.
 - **Mappa Automatica:** Visualizza il grafo delle stanze e delle connessioni in tempo reale.
 - **Console Integrata:** Compila e gioca direttamente nell'interfaccia.
 
-### Core del Linguaggio (v0.2.1)
+### Core del Linguaggio (Grammatica v0.3.0)
 - **Conseguenze Dinamiche:** Regole che modificano il mondo (`... e adesso la porta è aperta`).
 - **Interazioni a Due Oggetti:** Supporto per comandi come `usa chiave con porta`.
 - **Logica Condizionale:** Supporto completo per regole `Invece di ... se ...`.

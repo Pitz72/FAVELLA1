@@ -9,9 +9,9 @@ Ecco il documento. Puoi salvarlo come `MANUALE.md` nella directory principale de
 ---
 
 ```markdown
-# Manuale di Riferimento per FAVELLA 1 (v0.0.9)
+# Manuale di Riferimento per FAVELLA 1 (v0.2.0 / Grammatica v0.3.0)
 
-Benvenuto in FAVELLA 1, il linguaggio di programmazione per creare narrativa interattiva in italiano. Questa guida ti mostrerà come usare la grammatica attuale per costruire il tuo primo mondo di gioco.
+Benvenuto in FAVELLA 1, il linguaggio di programmazione per creare narrativa interattiva in italiano. Questa guida ti mostrerà come usare la grammatica attuale (v0.3.0) per costruire il tuo primo mondo di gioco.
 
 La filosofia di FAVELLA è semplice: **il tuo codice è una storia**. Scriverai frasi in italiano per descrivere luoghi, oggetti e regole, e il compilatore si occuperà di trasformare le tue parole in un mondo giocabile.
 
@@ -359,8 +359,8 @@ Invece di usa la chiave con la porta: dire "La porta si apre con un click!".
 Invece di usa il martello contro il muro: dire "Non vuoi rompere il muro.".
 ```
 
-### Conseguenze Dinamiche (v0.2.1)
-Puoi far sì che una regola modifichi lo stato del mondo aggiungendo la clausola `e adesso` alla fine.
+### Conseguenze Dinamiche (Compile-Time)
+Puoi far sì che una regola modifichi lo stato del mondo aggiungendo la clausola `e adesso` alla fine. (Queste clausole vengono pre-compilate internamente per la massima stabilità).
 
 **Sintassi:** `Invece di ... : dire "..." e adesso [CONSEGUENZA].`
 

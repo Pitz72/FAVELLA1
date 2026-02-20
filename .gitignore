@@ -130,3 +130,16 @@ dmypy.json
 
 # Esclusioni Progetto
 landingpage/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDEs ed Editor
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
