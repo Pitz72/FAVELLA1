@@ -5,7 +5,7 @@ from typing import Callable, List, Dict, Set, Optional
 class Mondo: # Forward declaration per i type hint
     pass
 
-# --- NUOVA Gerarchia delle Condizioni ---
+# --- NUOVA Gerarchia delle Condizioni e Conseguenze ---
 class Condizione:
     """Classe base astratta per tutte le condizioni."""
     def valuta(self, mondo: 'Mondo') -> bool:
@@ -29,6 +29,56 @@ class CondizioneProprieta(Condizione):
         oggetto = mondo.trova_oggetto(self.id_oggetto)
         return oggetto is not None and self.proprieta in oggetto.proprieta
 
+class Conseguenza:
+    """Classe base astratta per tutte le conseguenze."""
+    def esegui(self, mondo: 'Mondo'):
+        raise NotImplementedError("L'esecuzione deve essere implementata da una sottoclasse.")
+
+class ConseguenzaProprieta(Conseguenza):
+    """Rappresenta un cambio di proprietà (es. 'la porta è aperta')."""
+    def __init__(self, id_oggetto: str, proprieta: str):
+        self.id_oggetto = id_oggetto
+        self.proprieta = proprieta
+
+    def esegui(self, mondo: 'Mondo'):
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if oggetto:
+            oggetto.aggiungi_proprieta(self.proprieta)
+            if self.proprieta == "aperta" and "chiusa" in oggetto.proprieta:
+                oggetto.proprieta.remove("chiusa")
+            elif self.proprieta == "chiusa" and "aperta" in oggetto.proprieta:
+                oggetto.proprieta.remove("aperta")
+
+class ConseguenzaSpostamento(Conseguenza):
+    """Rappresenta uno spostamento di un oggetto (es. verso l'inventario, una stanza o il nulla)."""
+    def __init__(self, id_oggetto: str, destinazione: str):
+        self.id_oggetto = id_oggetto
+        self.destinazione = destinazione
+
+    def esegui(self, mondo: 'Mondo'):
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if not oggetto:
+            return
+
+        vecchia_posizione = oggetto.posizione
+        
+        # Rimozione da stanza o inventario pregressi
+        if vecchia_posizione == "inventario":
+            mondo.inventario.discard(self.id_oggetto)
+        elif vecchia_posizione and vecchia_posizione in mondo.stanze:
+            mondo.stanze[vecchia_posizione].oggetti.pop(self.id_oggetto, None)
+
+        if self.destinazione == "nulla":
+            oggetto.posizione = None
+        elif self.destinazione == "inventario":
+            mondo.inventario.add(self.id_oggetto)
+            oggetto.posizione = "inventario"
+        else:
+            stanza_dest = mondo.trova_stanza(self.destinazione)
+            if stanza_dest:
+                stanza_dest.oggetti[self.id_oggetto] = oggetto
+                oggetto.posizione = self.destinazione
+
 # --- Classi Esistenti (con modifiche) ---
 
 class Azione:
@@ -39,19 +89,19 @@ class Azione:
         self.richiede_oggetto = richiede_oggetto
 
 class Regola:
-    """Rappresenta una regola 'Invece di', ora con supporto per due oggetti e conseguenze."""
+    """Rappresenta una regola 'Invece di', ora con supporto per due oggetti e conseguenze compilarte."""
     def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str, 
                  condizione: Optional[Condizione] = None,
                  preposizione: Optional[str] = None,
                  id_oggetto_secondario: Optional[str] = None,
-                 conseguenza_testo: Optional[str] = None):
+                 conseguenza: Optional[Conseguenza] = None):
         self.verbo = verbo
         self.id_oggetto_bersaglio = id_oggetto_bersaglio
         self.risposta = risposta
         self.condizione = condizione
         self.preposizione = preposizione
         self.id_oggetto_secondario = id_oggetto_secondario
-        self.conseguenza_testo = conseguenza_testo
+        self.conseguenza = conseguenza
 
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""

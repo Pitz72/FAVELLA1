@@ -1,10 +1,49 @@
 # compilatore.py
 # Micro-Compilatore per FAVELLA 1 (v0.9)
 
-from strutture import Mondo, Stanza, Oggetto, Regola, CondizionePossesso, CondizioneProprieta
+from strutture import Mondo, Stanza, Oggetto, Regola, CondizionePossesso, CondizioneProprieta, ConseguenzaProprieta, ConseguenzaSpostamento
 from utils import normalizza_nome
 import sys
 import re
+
+def costruisci_conseguenza(testo: str, mondo: Mondo, numero_riga: int, errori: list):
+    if not testo:
+        return None
+    p_proprieta = re.compile(r"^(.*?) è (?!in |nel |nella |negli |nelle |nell'|sul |sulla |sullo |sui |sugli |sulle )(.*?)$", re.IGNORECASE)
+    p_posizione = re.compile(r"^(.*?) è (?:in|nel|nella|negli|nelle|nell'|sul|sulla|sullo|sui|sugli|sulle) (.*?)$", re.IGNORECASE)
+
+    match_pos = p_posizione.match(testo)
+    if match_pos:
+        nome_ogg, nome_luogo = match_pos.groups()
+        id_ogg = normalizza_nome(nome_ogg)
+        id_luogo = normalizza_nome(nome_luogo)
+
+        if not mondo.trova_oggetto(id_ogg):
+            errori.append(f"[ERRORE] Riga {numero_riga}: Oggetto inesistente nella conseguenza '{id_ogg}'")
+            return None
+        
+        if id_luogo in ["nulla", "nessun luogo", "nessuno"]:
+            id_luogo = "nulla"
+        elif id_luogo != "inventario" and not mondo.trova_stanza(id_luogo):
+            errori.append(f"[ERRORE] Riga {numero_riga}: Luogo inesistente nella conseguenza '{id_luogo}'")
+            return None
+
+        return ConseguenzaSpostamento(id_ogg, id_luogo)
+
+    match_prop = p_proprieta.match(testo)
+    if match_prop:
+        nome_ogg, nome_prop = match_prop.groups()
+        id_ogg = normalizza_nome(nome_ogg)
+        id_prop = normalizza_nome(nome_prop)
+
+        if not mondo.trova_oggetto(id_ogg):
+            errori.append(f"[ERRORE] Riga {numero_riga}: Oggetto inesistente nella conseguenza '{id_ogg}'")
+            return None
+
+        return ConseguenzaProprieta(id_ogg, id_prop)
+
+    errori.append(f"[ERRORE] Riga {numero_riga}: Sintassi conseguenza non riconosciuta '{testo}'")
+    return None
 
 def analizza_file(percorso_file: str) -> Mondo | None:
     mondo = Mondo()
@@ -62,13 +101,14 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                 id_ogg2 = normalizza_nome(ogg2_grezzo)
                 
                 if mondo.trova_oggetto(id_ogg1) and mondo.trova_oggetto(id_ogg2):
+                    obj_conseguenza = costruisci_conseguenza(conseguenza, mondo, numero_riga, errori)
                     nuova_regola = Regola(
                         verbo=verbo.lower(), 
                         id_oggetto_bersaglio=id_ogg1, 
                         risposta=risposta,
                         preposizione=prep.lower(),
                         id_oggetto_secondario=id_ogg2,
-                        conseguenza_testo=conseguenza
+                        conseguenza=obj_conseguenza
                     )
                     mondo.aggiungi_regola(nuova_regola)
                 else:
@@ -85,7 +125,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                 # Permetti anche direzioni come "oggetti" per le regole di movimento
                 if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
                     condizione = CondizionePossesso(id_ogg_condizione)
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza_testo=conseguenza)
+                    obj_conseguenza = costruisci_conseguenza(conseguenza, mondo, numero_riga, errori)
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza=obj_conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")
@@ -100,7 +141,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                 
                 if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
                     condizione = CondizioneProprieta(id_ogg_condizione, id_proprieta)
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza_testo=conseguenza)
+                    obj_conseguenza = costruisci_conseguenza(conseguenza, mondo, numero_riga, errori)
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, condizione, conseguenza=obj_conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")
@@ -137,7 +179,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                 id_ogg = normalizza_nome(ogg_grezzo)
 
                 if mondo.trova_oggetto(id_ogg) or id_ogg in ["nord", "sud", "est", "ovest"]:
-                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, conseguenza_testo=conseguenza)
+                    obj_conseguenza = costruisci_conseguenza(conseguenza, mondo, numero_riga, errori)
+                    nuova_regola = Regola(verbo.lower(), id_ogg, risposta, conseguenza=obj_conseguenza)
                     mondo.aggiungi_regola(nuova_regola)
                 else:
                     errori.append(f"[ERRORE] Riga {numero_riga}: Regola per oggetto inesistente: '{id_ogg}'")

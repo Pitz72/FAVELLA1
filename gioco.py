@@ -127,8 +127,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                     if regola.condizione and regola.condizione.valuta(mondo):
                         print(regola.risposta)
-                        if regola.conseguenza_testo:
-                            applica_conseguenza(mondo, regola.conseguenza_testo)
+                        if regola.conseguenza:
+                            regola.conseguenza.esegui(mondo)
                         regola_movimento_applicata = True
                         break
             
@@ -138,8 +138,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                     if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                         if not regola.condizione:
                             print(regola.risposta)
-                            if regola.conseguenza_testo:
-                                applica_conseguenza(mondo, regola.conseguenza_testo)
+                            if regola.conseguenza:
+                                regola.conseguenza.esegui(mondo)
                             regola_movimento_applicata = True
                             break
 
@@ -227,8 +227,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             break
         
         if regola_applicata:
-            if regola_da_eseguire and regola_da_eseguire.conseguenza_testo:
-                applica_conseguenza(mondo, regola_da_eseguire.conseguenza_testo)
+            if regola_da_eseguire and regola_da_eseguire.conseguenza:
+                regola_da_eseguire.conseguenza.esegui(mondo)
             return True
 
         # 2. Esecuzione Logica di Default
@@ -253,105 +253,6 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         traceback.print_exc()
         return True # Non crashare il gioco, continua
 
-def applica_conseguenza(mondo: Mondo, testo: str):
-    """
-    Esegue una conseguenza di cambio stato (v0.1.2).
-    Supporta:
-    - [OGGETTO] è [PROPRIETÀ] (es. "la porta è aperta")
-    - [OGGETTO] è in [LUOGO] (es. "la chiave è in inventario", "la mela è nel nulla")
-    """
-    import re
-    
-    # Pattern per proprietà: [OGGETTO] è [PROPRIETÀ]
-    # Esclude "in", "nel", ecc. per non confondersi con la posizione
-    p_proprieta = re.compile(r"^(.*?) è (?!in |nel |nella |negli |nelle |nell'|sul |sulla |sullo |sui |sugli |sulle )(.*?)$", re.IGNORECASE)
-    
-    # Pattern per posizione: [OGGETTO] è in [LUOGO]
-    p_posizione = re.compile(r"^(.*?) è (?:in|nel|nella|negli|nelle|nell'|sul|sulla|sullo|sui|sugli|sulle) (.*?)$", re.IGNORECASE)
-
-    match_pos = p_posizione.match(testo)
-    if match_pos:
-        nome_ogg, nome_luogo = match_pos.groups()
-        id_ogg = normalizza_nome(nome_ogg)
-        id_luogo = normalizza_nome(nome_luogo)
-        
-        oggetto = mondo.trova_oggetto(id_ogg)
-        if not oggetto:
-            print(f"[ERRORE CONSEGUENZA] Oggetto '{id_ogg}' non trovato.")
-            return
-
-        # Rimozione dal gioco ("nel nulla")
-        if id_luogo in ["nulla", "nessun luogo", "nessuno"]:
-            # Rimuovi dalla posizione attuale
-            if oggetto.posizione == "inventario":
-                mondo.inventario.remove(id_ogg)
-            elif oggetto.posizione and oggetto.posizione in mondo.stanze:
-                del mondo.stanze[oggetto.posizione].oggetti[id_ogg]
-            
-            oggetto.posizione = None
-            # print(f"[DEBUG] {oggetto.nome} rimosso dal gioco.")
-            return
-
-        # Spostamento in Inventario
-        if id_luogo == "inventario":
-            # Rimuovi da vecchia pos
-            if oggetto.posizione and oggetto.posizione in mondo.stanze:
-                del mondo.stanze[oggetto.posizione].oggetti[id_ogg]
-            
-            mondo.inventario.add(id_ogg)
-            oggetto.posizione = "inventario"
-            return
-
-        # Spostamento in Stanza
-        stanza_dest = mondo.trova_stanza(id_luogo)
-        if stanza_dest:
-            # Rimuovi da vecchia pos
-            if id_ogg in mondo.inventario:
-                mondo.inventario.remove(id_ogg)
-            elif oggetto.posizione and oggetto.posizione in mondo.stanze:
-                del mondo.stanze[oggetto.posizione].oggetti[id_ogg]
-            
-            stanza_dest.oggetti[id_ogg] = oggetto
-            oggetto.posizione = id_luogo
-        else:
-            print(f"[ERRORE CONSEGUENZA] Luogo '{id_luogo}' non trovato.")
-        return
-
-    match_prop = p_proprieta.match(testo)
-    if match_prop:
-        nome_ogg, nome_prop = match_prop.groups()
-        id_ogg = normalizza_nome(nome_ogg)
-        id_prop = normalizza_nome(nome_prop)
-        
-        oggetto = mondo.trova_oggetto(id_ogg)
-        if oggetto:
-            oggetto.aggiungi_proprieta(id_prop)
-            # Logica speciale per stati opposti (opzionale ma utile)
-            if id_prop == "aperta" and "chiusa" in oggetto.proprieta:
-                oggetto.proprieta.remove("chiusa")
-            elif id_prop == "chiusa" and "aperta" in oggetto.proprieta:
-                oggetto.proprieta.remove("aperta")
-        else:
-            print(f"[ERRORE CONSEGUENZA] Oggetto '{id_ogg}' non trovato.")
-        return
-
-    # 2. Esecuzione Logica di Default
-    if azione.richiede_oggetto:
-        # Passiamo anche il secondo oggetto se presente (la logica dell'azione deve supportarlo)
-        try:
-            azione.logica_di_default(mondo, id_oggetto1, id_oggetto2)
-        except TypeError:
-             # Fallback per azioni che non accettano il secondo argomento
-             azione.logica_di_default(mondo, id_oggetto1)
-    else:
-        azione.logica_di_default(mondo)
-    
-    # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
-    # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-    if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare"]:
-        mostra_stanza(mondo)
-    
-    return True
 
 def gioca(mondo: Mondo):
     """Avvia il ciclo di gioco interattivo."""

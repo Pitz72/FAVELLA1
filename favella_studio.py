@@ -444,9 +444,9 @@ class FavellaStudio(QMainWindow):
         self.console_widget.clear_console()
         
         # Start game session
-        # Importante: dobbiamo passare una COPIA o ricompilare per evitare di sporcare lo stato "pulito"
-        # Per ora usiamo l'oggetto mondo così com'è, ma resettiamo la posizione
-        self.game_session.start_game(self.last_compiled_world)
+        # Importante: usiamo copy.deepcopy per avviare il gioco con un grafo vergine ad ogni partita
+        import copy
+        self.game_session.start_game(copy.deepcopy(self.last_compiled_world))
         self.console_widget.input_line.setFocus()
 
     def on_console_input(self, cmd):
