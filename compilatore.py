@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.2.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.3.0)
 # Usa Lark per generare un AST (Abstract Syntax Tree) senza regex.
 
 from lark import Lark, Transformer, v_args
@@ -107,8 +107,8 @@ class FavellaTransformer(Transformer):
     # --- Nodi Entità e Testo ---
     
     def entita(self, *tokens):
-        # Unisce i token che formano il nome dell'entità e normalizza
-        return normalizza_nome(" ".join(t.value for t in tokens))
+        # Unisce i token che formano il nome dell'entità preservando il nome originale
+        return " ".join(t.value for t in tokens)
 
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali
@@ -125,25 +125,32 @@ class FavellaTransformer(Transformer):
 
     # --- Dichiarazioni Semplici ---
 
-    def def_stanza(self, id_stanza):
-        if not self.mondo.trova_stanza(id_stanza):
-            self.mondo.aggiungi_stanza(Stanza(id_stanza))
+    def def_stanza(self, nome_grezzo):
+        id_stanza = normalizza_nome(nome_grezzo)
+        stanza = self.mondo.trova_stanza(id_stanza)
+        if not stanza:
+            stanza = Stanza(id_stanza)
+            stanza.nome_visualizzato = nome_grezzo
+            self.mondo.aggiungi_stanza(stanza)
         return None
 
-    def def_oggetto(self, id_oggetto):
-        if not self.mondo.trova_oggetto(id_oggetto):
-            self.mondo.aggiungi_oggetto(Oggetto(id_oggetto))
+    def def_oggetto(self, nome_grezzo):
+        id_oggetto = normalizza_nome(nome_grezzo)
+        oggetto = self.mondo.trova_oggetto(id_oggetto)
+        if not oggetto:
+            oggetto = Oggetto(id_oggetto)
+            oggetto.nome_visualizzato = nome_grezzo
+            self.mondo.aggiungi_oggetto(oggetto)
         return None
 
     def def_descrizione(self, *tokens):
         # I token attesi non ignorati: l'entità e il testo
-        # Troviamo il testo quotato che è sempre alla fine (selezioniamo l'ultimo) e l'entità (i primi)
         testo = tokens[-1]
-        id_entita = tokens[0] 
-        # NOTA: Lark, se non usa `?` o alias con `_`, passa tutti i non-terminali valutati (entita, testo)
+        nome_grezzo = tokens[0] 
         if len(tokens) > 2:
-            id_entita = tokens[-2] # In caso ci fosse un token preposizione catturato
+            nome_grezzo = tokens[-2] # In caso ci fosse un token preposizione catturato
 
+        id_entita = normalizza_nome(nome_grezzo)
         stanza = self.mondo.trova_stanza(id_entita)
         if stanza:
             stanza.descrizione = testo
@@ -154,10 +161,12 @@ class FavellaTransformer(Transformer):
             oggetto.descrizione = testo
             return None
 
-        self.errori.append(f"Descrizione per entità inesistente: '{id_entita}'")
+        self.errori.append(f"Descrizione per entità inesistente: '{nome_grezzo}'")
         return None
 
-    def def_posizione(self, id_ogg, prep, id_luogo):
+    def def_posizione(self, ogg_grezzo, prep, luogo_grezzo):
+        id_ogg = normalizza_nome(ogg_grezzo)
+        id_luogo = normalizza_nome(luogo_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         stanza = self.mondo.trova_stanza(id_luogo)
 
@@ -165,83 +174,99 @@ class FavellaTransformer(Transformer):
             oggetto.posizione = id_luogo
             stanza.oggetti[id_ogg] = oggetto
         elif not stanza:
-            self.errori.append(f"Stanza inesistente '{id_luogo}' per posizionare '{id_ogg}'")
+            self.errori.append(f"Stanza inesistente '{luogo_grezzo}' per posizionare '{ogg_grezzo}'")
         else:
-            self.errori.append(f"Oggetto inesistente '{id_ogg}' da posizionare")
+            self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
         return None
 
-    def def_prendibile(self, id_ogg):
+    def def_prendibile(self, ogg_grezzo):
+        id_ogg = normalizza_nome(ogg_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         if oggetto:
             oggetto.prendibile = True
         else:
-            self.errori.append(f"'prendibile' per oggetto inesistente: '{id_ogg}'")
+            self.errori.append(f"'prendibile' per oggetto inesistente: '{ogg_grezzo}'")
         return None
 
-    def def_proprieta(self, id_ogg, proprieta):
+    def def_proprieta(self, ogg_grezzo, proprieta_grezzo):
+        id_ogg = normalizza_nome(ogg_grezzo)
+        proprieta = normalizza_nome(proprieta_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         if oggetto:
             oggetto.aggiungi_proprieta(proprieta)
         else:
-            self.errori.append(f"Proprietà '{proprieta}' per oggetto inesistente: '{id_ogg}'")
+            self.errori.append(f"Proprietà '{proprieta_grezzo}' per oggetto inesistente: '{ogg_grezzo}'")
         return None
 
-    def def_connessione(self, id_sta1, direzione, id_sta2):
+    def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo):
+        id_sta1 = normalizza_nome(sta1_grezzo)
+        id_sta2 = normalizza_nome(sta2_grezzo)
+        
         if not self.mondo.trova_stanza(id_sta1):
-            self.mondo.aggiungi_stanza(Stanza(id_sta1))
+            stanza1 = Stanza(id_sta1)
+            stanza1.nome_visualizzato = sta1_grezzo
+            self.mondo.aggiungi_stanza(stanza1)
         if not self.mondo.trova_stanza(id_sta2):
-            self.mondo.aggiungi_stanza(Stanza(id_sta2))
+            stanza2 = Stanza(id_sta2)
+            stanza2.nome_visualizzato = sta2_grezzo
+            self.mondo.aggiungi_stanza(stanza2)
         
         stanza1 = self.mondo.trova_stanza(id_sta1)
         stanza2 = self.mondo.trova_stanza(id_sta2)
 
-        stanza1.uscite[direzione] = id_sta2
+        # Normalizza la direzione al suo nome completo
+        DIREZIONI_MAP = {
+            "n": "nord", "nord": "nord",
+            "s": "sud", "sud": "sud",
+            "e": "est", "est": "est",
+            "o": "ovest", "ovest": "ovest"
+        }
+        direzione_norm = DIREZIONI_MAP.get(direzione, direzione)
+
+        stanza1.uscite[direzione_norm] = id_sta2
 
         # Connessione automatica di ritorno
         direzione_opposta = {
             "nord": "sud", "sud": "nord",
-            "est": "ovest", "ovest": "est",
-            "n": "s", "s": "n", "e": "o", "o": "e"
-        }[direzione]
+            "est": "ovest", "ovest": "est"
+        }[direzione_norm]
         stanza2.uscite[direzione_opposta] = id_sta1
         return None
 
+
     # --- Condizioni e Conseguenze (Sub-Alberi) ---
 
-    def cond_possesso(self, id_oggetto):
-        return CondizionePossesso(id_oggetto)
+    def cond_possesso(self, ogg_grezzo):
+        return CondizionePossesso(normalizza_nome(ogg_grezzo))
 
-    def cond_proprieta(self, id_oggetto, proprieta):
-        return CondizioneProprieta(id_oggetto, proprieta)
+    def cond_proprieta(self, ogg_grezzo, proprieta_grezzo):
+        return CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
 
-    def cons_spostamento(self, id_oggetto, prep, destinazione):
+    def cons_spostamento(self, ogg_grezzo, prep, dest_grezzo):
+        id_oggetto = normalizza_nome(ogg_grezzo)
+        destinazione = normalizza_nome(dest_grezzo)
         if destinazione in ["nulla", "nessun luogo", "nessuno"]:
             destinazione = "nulla"
-        # Valideremo l'esistenza dell'oggetto nella def_regola per stampare errori
         return ConseguenzaSpostamento(id_oggetto, destinazione)
 
-    def cons_nulla(self, id_oggetto):
-        return ConseguenzaSpostamento(id_oggetto, "nulla")
+    def cons_nulla(self, ogg_grezzo):
+        return ConseguenzaSpostamento(normalizza_nome(ogg_grezzo), "nulla")
 
-    def cons_proprieta(self, id_oggetto, proprieta):
-        return ConseguenzaProprieta(id_oggetto, proprieta)
+    def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
+        return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
 
     # --- La Regola Complessa ---
     
     def def_regola(self, *args):
         # args contiene figli nell'ordine: verbo, ogg1, [prep, ogg2], [condizione], risposta testuale, [conseguenza]
-        # Dato che gli elementi opzionali generano `None` se assenti in Lark quando configurato correttamente, 
-        # oppure non vengono passati a seconda della struct, Lark passa i nodi figli catturati dall'albero.
-        
-        # Filtriamo dai None e estraiamo iterando (poiché abbiamo elementi opzionali senza token wrapper esplicito)
         args_puliti = [a for a in args if a is not None]
         
         verbo = args_puliti[0]
-        id_ogg1 = args_puliti[1]
+        ogg1_grezzo = args_puliti[1]
         
         # Inizializza opzionali
         prep_azione = None
-        id_ogg2 = None
+        ogg2_grezzo = None
         condizione = None
         risposta = ""
         conseguenza = None
@@ -251,7 +276,7 @@ class FavellaTransformer(Transformer):
         # Check per preposizione + secondo oggetto
         if idx < len(args_puliti) and args_puliti[idx] in ("su", "con", "contro", "in"):
             prep_azione = args_puliti[idx]
-            id_ogg2 = args_puliti[idx+1]
+            ogg2_grezzo = args_puliti[idx+1]
             idx += 2
             
         # Check per condizione
@@ -268,18 +293,22 @@ class FavellaTransformer(Transformer):
         if idx < len(args_puliti) and isinstance(args_puliti[idx], (ConseguenzaProprieta, ConseguenzaSpostamento)):
             conseguenza = args_puliti[idx]
             
-            # Valida conseguenza a compile-time
-            if not self.mondo.trova_oggetto(conseguenza.id_oggetto):
-                self.errori.append(f"Oggetto inesistente nella conseguenza: '{conseguenza.id_oggetto}'")
-            if isinstance(conseguenza, ConseguenzaSpostamento) and conseguenza.destinazione not in ["nulla", "inventario"]:
-                if not self.mondo.trova_stanza(conseguenza.destinazione):
-                    self.errori.append(f"Luogo inesistente nella conseguenza: '{conseguenza.destinazione}'")
-
+        id_ogg1 = normalizza_nome(ogg1_grezzo)
+        id_ogg2 = normalizza_nome(ogg2_grezzo) if ogg2_grezzo else None
+        
         # Verifica entità principali della regola
         if self.mondo.trova_oggetto(id_ogg1) or id_ogg1 in ["nord", "sud", "est", "ovest", "n", "s", "e", "o"]:
             if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
-                self.errori.append(f"Regola per secondo oggetto inesistente: '{id_ogg2}'")
+                self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
             else:
+                # Valida conseguenza a compile-time
+                if conseguenza:
+                    if not self.mondo.trova_oggetto(conseguenza.id_oggetto):
+                        self.errori.append(f"Oggetto inesistente nella conseguenza: '{conseguenza.id_oggetto}'")
+                    if isinstance(conseguenza, ConseguenzaSpostamento) and conseguenza.destinazione not in ["nulla", "inventario"]:
+                        if not self.mondo.trova_stanza(conseguenza.destinazione):
+                            self.errori.append(f"Luogo inesistente nella conseguenza: '{conseguenza.destinazione}'")
+                
                 nuova_regola = Regola(
                     verbo=verbo, 
                     id_oggetto_bersaglio=id_ogg1, 
@@ -291,7 +320,7 @@ class FavellaTransformer(Transformer):
                 )
                 self.mondo.aggiungi_regola(nuova_regola)
         else:
-            self.errori.append(f"Regola per oggetto principale inesistente: '{id_ogg1}'")
+            self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
             
         return None
 

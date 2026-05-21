@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.3.0)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -106,7 +106,8 @@ class Regola:
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""
     def __init__(self, nome: str, descrizione: str = "Non vedi nulla di particolare."):
-        self.nome = nome
+        self.nome = nome  # ID normalizzato (es. "cella di contenimento")
+        self.nome_visualizzato = nome  # Nome originale visualizzabile (es. "La cella di contenimento")
         self.descrizione = descrizione
         self.oggetti: Dict[str, 'Oggetto'] = {}
         self.uscite: Dict[str, str] = {}
@@ -114,7 +115,8 @@ class Stanza:
 class Oggetto:
     """Rappresenta un oggetto nel mondo di gioco."""
     def __init__(self, nome: str, posizione: str = None):
-        self.nome = nome
+        self.nome = nome  # ID normalizzato (es. "keycard magnetica")
+        self.nome_visualizzato = nome  # Nome originale visualizzabile (es. "Una keycard magnetica")
         self.posizione = posizione
         self.proprieta: Set[str] = set()
         self.descrizione: str = "È un oggetto come tanti."

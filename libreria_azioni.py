@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.2)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.3.0)
 
 from strutture import Mondo, Azione
 
@@ -28,7 +28,7 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str):
     oggetto.posizione = "inventario"
     # Rimuovi l'oggetto dalla stanza in cui si trovava
     del mondo.stanze[mondo.posizione_giocatore].oggetti[id_oggetto]
-    print(f"Preso: {oggetto.nome}.")
+    print(f"Preso: {oggetto.nome_visualizzato}.")
 
 def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione LASCIARE."""
@@ -42,7 +42,7 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     mondo.inventario.remove(id_oggetto)
     oggetto.posizione = stanza_corrente.nome
     stanza_corrente.oggetti[id_oggetto] = oggetto
-    print(f"Lasciato: {oggetto.nome}.")
+    print(f"Lasciato: {oggetto.nome_visualizzato}.")
 
 def inventario_logica_default(mondo: Mondo):
     """Logica di default per l'azione INVENTARIO."""
@@ -52,7 +52,7 @@ def inventario_logica_default(mondo: Mondo):
         print("Stai portando:")
         for id_ogg in sorted(list(mondo.inventario)):
             # Prendiamo il nome originale dell'oggetto per una visualizzazione più gradevole
-            nome_visualizzato = mondo.oggetti[id_ogg].nome
+            nome_visualizzato = mondo.oggetti[id_ogg].nome_visualizzato
             print(f"  - {nome_visualizzato}")
 
 def muovi_logica_default(mondo: Mondo, direzione: str):
@@ -72,12 +72,12 @@ def guarda_logica_default(mondo: Mondo):
         print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
         return
 
-    print(f"\n--- {stanza_corrente.nome.capitalize()} ---")
+    print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
     print(stanza_corrente.descrizione)
     
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
-        nomi_oggetti = [ogg.nome for ogg in oggetti_nella_stanza]
+        nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
 
 def aiuto_logica_default(mondo: Mondo):
@@ -93,7 +93,7 @@ def aiuto_logica_default(mondo: Mondo):
 def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """Logica di default per l'azione USARE [ogg1] CON [ogg2]."""
     if id_oggetto2:
-        print(f"Usare {mondo.trova_oggetto(id_oggetto1).nome} con {mondo.trova_oggetto(id_oggetto2).nome} non ha alcun effetto particolare.")
+        print(f"Usare {mondo.trova_oggetto(id_oggetto1).nome_visualizzato} con {mondo.trova_oggetto(id_oggetto2).nome_visualizzato} non ha alcun effetto particolare.")
     else:
         print("Con cosa vuoi usarlo?")
 

@@ -1,5 +1,5 @@
 """
-FAVELLA STUDIO (v0.1)
+FAVELLA STUDIO (v0.4.0)
 IDE per il linguaggio di narrativa interattiva FAVELLA 1.
 
 DIPENDENZE:
@@ -7,7 +7,7 @@ Per eseguire questo software, installare le seguenti librerie:
 pip install PySide6 networkx matplotlib
 
 AUTORE: Antigravity (Google Deepmind)
-DATA: 2025-11-28
+DATA: 2026-05-21
 """
 
 import sys
@@ -24,7 +24,7 @@ from PySide6.QtGui import (
     QAction, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, 
     QIcon, QKeySequence, QTextCursor
 )
-from PySide6.QtCore import Qt, Signal, QObject, Slot
+from PySide6.QtCore import Qt, Signal, QObject, Slot, QThread
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -121,7 +121,44 @@ class CodeEditor(QPlainTextEdit):
         self.highlighter = FavellaHighlighter(self.document())
         self.setTabStopDistance(40) # 4 spaces
 
+    def highlight_error_line(self, line_number: int):
+        self.clear_error_highlight()
+        block = self.document().findBlockByLineNumber(line_number - 1)
+        if block.isValid():
+            selection = QTextEdit.ExtraSelection()
+            # Rosso scuro soffuso Cyber per gli errori
+            selection.format.setBackground(QColor("#4a1515"))
+            selection.format.setProperty(QTextCharFormat.FullWidthSelection, True)
+            selection.cursor = QTextCursor(block)
+            selection.cursor.clearSelection()
+            self.setExtraSelections([selection])
+            
+            # Sposta il cursore ed evidenzia la riga
+            self.setTextCursor(selection.cursor)
+            self.ensureCursorVisible()
+
+    def clear_error_highlight(self):
+        self.setExtraSelections([])
+
 # --- 3. VISUALIZATION COMPONENTS ---
+
+class LayoutWorker(QThread):
+    """
+    Worker thread per calcolare il layout del grafo in background
+    evitando di bloccare il thread principale (UI freeze).
+    """
+    finished = Signal(dict, nx.DiGraph)
+
+    def __init__(self, G):
+        super().__init__()
+        self.G = G
+
+    def run(self):
+        try:
+            pos = nx.spring_layout(self.G, seed=42, k=0.5)
+        except Exception:
+            pos = nx.shell_layout(self.G)
+        self.finished.emit(pos, self.G)
 
 class MapWidget(QWidget):
     """
@@ -131,10 +168,13 @@ class MapWidget(QWidget):
         super().__init__()
         self.layout = QVBoxLayout(self)
         self.figure = Figure(figsize=(5, 5), dpi=100)
+        self.figure.patch.set_facecolor('#1e1e24') # Sfondo scuro premium per Matplotlib
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.layout.addWidget(self.canvas)
         self.ax = self.figure.add_subplot(111)
+        self.ax.set_facecolor('#1e1e24')
         self.ax.axis('off')
+        self.worker = None
 
     def draw_map(self, mondo: strutture.Mondo):
         self.ax.clear()
@@ -146,10 +186,9 @@ class MapWidget(QWidget):
 
         G = nx.DiGraph()
 
-        # Aggiungi nodi (stanze)
+        # Aggiungi nodi (stanze) usando il bellissimo nome_visualizzato
         for id_stanza, stanza in mondo.stanze.items():
-            # Usa il nome visualizzato se possibile, altrimenti l'ID
-            label = stanza.nome.capitalize()
+            label = stanza.nome_visualizzato.capitalize() if hasattr(stanza, 'nome_visualizzato') else stanza.nome.capitalize()
             G.add_node(id_stanza, label=label)
 
         # Aggiungi archi (connessioni)
@@ -157,25 +196,32 @@ class MapWidget(QWidget):
             for direzione, id_destinazione in stanza.uscite.items():
                 G.add_edge(id_stanza, id_destinazione, label=direzione)
 
-        # Layout
-        try:
-            pos = nx.spring_layout(G, seed=42, k=0.5) # k regola la distanza
-        except:
-            pos = nx.shell_layout(G)
+        # Gestione interruzione thread precedente
+        if self.worker and self.worker.isRunning():
+            self.worker.terminate()
+            self.worker.wait()
 
-        # Disegna nodi
-        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color='lightblue', node_size=2000, alpha=0.9)
+        self.worker = LayoutWorker(G)
+        self.worker.finished.connect(self.on_layout_finished)
+        self.worker.start()
+
+    def on_layout_finished(self, pos, G):
+        self.ax.clear()
+        self.ax.axis('off')
+
+        # Disegna nodi con stile scuro e bordo blu elettrico
+        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color='#24242b', node_size=2000, alpha=0.9, edgecolors='#4e9aec', linewidths=1.5)
         
-        # Disegna label nodi
+        # Disegna label nodi (testo bianco coordinato)
         labels = nx.get_node_attributes(G, 'label')
-        nx.draw_networkx_labels(G, pos, labels, ax=self.ax, font_size=9, font_weight='bold')
+        nx.draw_networkx_labels(G, pos, labels, ax=self.ax, font_size=8, font_color='#e1e1e6', font_weight='bold')
 
-        # Disegna archi
-        nx.draw_networkx_edges(G, pos, ax=self.ax, edge_color='gray', arrows=True, arrowsize=20)
+        # Disegna archi (blu scuro/grigio cyberpunk)
+        nx.draw_networkx_edges(G, pos, ax=self.ax, edge_color='#34343d', arrows=True, arrowsize=15, connectionstyle='arc3,rad=0.08')
         
-        # Disegna label archi (direzioni)
+        # Disegna label archi (direzioni, scritte in grigio con riquadro scuro sfumato)
         edge_labels = nx.get_edge_attributes(G, 'label')
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, ax=self.ax, font_size=8)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, ax=self.ax, font_size=8, font_color='#9ca3af', bbox=dict(facecolor='#121214', edgecolor='none', alpha=0.8))
 
         self.figure.tight_layout()
         self.canvas.draw()
@@ -235,8 +281,9 @@ class GameSession:
 
     def handle_stdout(self, text):
         # Filtra newline vuoti eccessivi se necessario
-        if text:
-            self.output_callback(text.rstrip())
+        cleaned = text.rstrip()
+        if cleaned:
+            self.output_callback(cleaned)
 
     def start_game(self, mondo: strutture.Mondo):
         print("[DEBUG] start_game called")
@@ -281,7 +328,7 @@ class GameSession:
 class FavellaStudio(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Favella Studio v0.1")
+        self.setWindowTitle("Favella Studio v0.4.0")
         self.resize(1200, 800)
         
         self.current_file_path = None
@@ -368,7 +415,7 @@ class FavellaStudio(QMainWindow):
                     self.editor.setPlainText(f.read())
                 self.current_file_path = path
                 self.unsaved_changes = False
-                self.setWindowTitle(f"Favella Studio v0.1 - {os.path.basename(path)}")
+                self.setWindowTitle(f"Favella Studio v0.4.0 - {os.path.basename(path)}")
                 self.status_bar.showMessage(f"Caricato: {path}")
             except Exception as e:
                 QMessageBox.critical(self, "Errore", f"Impossibile aprire il file:\n{e}")
@@ -384,7 +431,7 @@ class FavellaStudio(QMainWindow):
             with open(self.current_file_path, 'w', encoding='utf-8') as f:
                 f.write(self.editor.toPlainText())
             self.unsaved_changes = False
-            self.setWindowTitle(f"Favella Studio v0.1 - {os.path.basename(self.current_file_path)}")
+            self.setWindowTitle(f"Favella Studio v0.4.0 - {os.path.basename(self.current_file_path)}")
             self.status_bar.showMessage(f"Salvato: {self.current_file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Errore", f"Impossibile salvare il file:\n{e}")
@@ -397,6 +444,9 @@ class FavellaStudio(QMainWindow):
         if not code.strip():
             self.status_bar.showMessage("Niente da compilare.")
             return
+
+        # Pulisce evidenziazioni degli errori precedenti
+        self.editor.clear_error_highlight()
 
         # Crea file temporaneo per la compilazione
         with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8', delete=False, suffix='.fav') as tmp:
@@ -433,6 +483,15 @@ class FavellaStudio(QMainWindow):
         else:
             self.status_bar.showMessage("Errore di compilazione.")
             self.action_play.setEnabled(False)
+            
+            # Estrae la riga dell'errore sintattico tramite regex
+            import re
+            riga_match = re.search(r"Riga (\d+)", output_log)
+            if riga_match:
+                riga_err = int(riga_match.group(1))
+                self.editor.highlight_error_line(riga_err)
+                self.status_bar.showMessage(f"Errore di sintassi alla riga {riga_err}!")
+            
             QMessageBox.warning(self, "Errori di Compilazione", f"Il compilatore ha riscontrato errori:\n\n{output_log}")
 
     def play_game(self):
@@ -450,7 +509,10 @@ class FavellaStudio(QMainWindow):
         self.console_widget.input_line.setFocus()
 
     def on_console_input(self, cmd):
-        self.game_session.process_command(cmd)
+        if not self.game_session.mondo:
+            self.console_widget.append_text("Nessuna sessione di gioco attiva. Compila una storia valida e clicca su 'Gioca' per iniziare!", color="#ff6b6b")
+        else:
+            self.game_session.process_command(cmd)
 
     def on_game_output(self, text):
         self.console_widget.append_text(text)
@@ -485,9 +547,192 @@ class FavellaStudio(QMainWindow):
         else:
             event.accept()
 
+CYBER_STYLESHEET = """
+QMainWindow {
+    background-color: #121214;
+    color: #e1e1e6;
+}
+
+QToolBar {
+    background-color: #1a1a1e;
+    border-bottom: 1px solid #2d2d34;
+    spacing: 12px;
+    padding: 6px;
+}
+
+QToolBar QToolButton {
+    background-color: #24242b;
+    color: #e1e1e6;
+    border: 1px solid #34343d;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+QToolBar QToolButton:hover {
+    background-color: #2d2d38;
+    border-color: #4e9aec;
+}
+
+QToolBar QToolButton:pressed {
+    background-color: #1e1e24;
+}
+
+QToolBar QToolButton:disabled {
+    background-color: #121214;
+    color: #5d5d66;
+    border-color: #1a1a1e;
+}
+
+QMenuBar {
+    background-color: #121214;
+    color: #e1e1e6;
+    border-bottom: 1px solid #1a1a1e;
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 6px 12px;
+}
+
+QMenuBar::item:selected {
+    background-color: #24242b;
+    border-radius: 4px;
+}
+
+QMenu {
+    background-color: #1a1a1e;
+    color: #e1e1e6;
+    border: 1px solid #2d2d34;
+}
+
+QMenu::item {
+    padding: 6px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #24242b;
+    color: #4e9aec;
+}
+
+QStatusBar {
+    background-color: #121214;
+    color: #9ca3af;
+    border-top: 1px solid #1a1a1e;
+}
+
+QSplitter::handle {
+    background-color: #2d2d34;
+}
+
+QTabWidget::pane {
+    border: 1px solid #2d2d34;
+    background-color: #1a1a1e;
+    border-radius: 4px;
+}
+
+QTabBar::tab {
+    background-color: #121214;
+    color: #9ca3af;
+    border: 1px solid #2d2d34;
+    border-bottom-color: transparent;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 8px 16px;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+QTabBar::tab:selected {
+    background-color: #1a1a1e;
+    color: #4e9aec;
+    border-bottom: 2px solid #4e9aec;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #1e1e24;
+    color: #e1e1e6;
+}
+
+QPlainTextEdit {
+    background-color: #1e1e24;
+    color: #f3f4f6;
+    border: 1px solid #2d2d34;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+QTextEdit {
+    background-color: #1e1e24;
+    color: #f3f4f6;
+    border: 1px solid #2d2d34;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+QLineEdit {
+    background-color: #1e1e24;
+    color: #f3f4f6;
+    border: 1px solid #2d2d34;
+    border-radius: 4px;
+    padding: 6px 12px;
+}
+
+QLineEdit:focus {
+    border-color: #4e9aec;
+}
+
+QMessageBox {
+    background-color: #1a1a1e;
+    color: #e1e1e6;
+}
+
+QMessageBox QLabel {
+    color: #e1e1e6;
+}
+
+QMessageBox QPushButton {
+    background-color: #24242b;
+    color: #e1e1e6;
+    border: 1px solid #34343d;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+
+QMessageBox QPushButton:hover {
+    background-color: #2d2d38;
+    border-color: #4e9aec;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background: #121214;
+    width: 10px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #2d2d34;
+    min-height: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #4e9aec;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+}
+"""
+
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion") # Look moderno cross-platform
+    app.setStyleSheet(CYBER_STYLESHEET) # Applica stile Cyber-Scrittore scuro
     
     window = FavellaStudio()
     window.show()

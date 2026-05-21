@@ -16,20 +16,22 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.2.0 - Il Grande Salto (Alpha)
+## 🚀 Stato Attuale: v0.4.0 - Il Grande Salto (Alpha)
 
-Il progetto ha raggiunto una nuova milestone fondamentale con la completa rimozione del motore a espressioni regolari. FAVELLA ora utilizza un **parser formale EBNF (Lark)** per generare un Abstract Syntax Tree (AST), garantendo massima scalabilità. Inoltre include **FAVELLA STUDIO**, un IDE grafico, e un Object Model robusto.
+Il progetto ha raggiunto una nuova milestone fondamentale con la completa rimozione del motore a espressioni regolari e l'introduzione di un **parser formale EBNF (Lark)** per generare un Abstract Syntax Tree (AST), garantendo massima scalabilità. Inoltre include **FAVELLA STUDIO**, un IDE grafico premium, e un Object Model robusto.
 
-### Novità: FAVELLA STUDIO (IDE)
-- **Editor Visuale:** Scrivi codice con evidenziazione della sintassi.
-- **Mappa Automatica:** Visualizza il grafo delle stanze e delle connessioni in tempo reale.
-- **Console Integrata:** Compila e gioca direttamente nell'interfaccia.
+### Novità: FAVELLA STUDIO (IDE Premium v0.4.0)
+- **Design System Premium "Cyber-Scrittore":** Una splendida Dark Mode con stili coordinati per menu, toolbar, schede (tab) e finestre di dialogo, ottimizzando la leggibilità della prosa.
+- **Rendering Asincrono della Mappa:** Visualizza il grafo delle stanze e delle connessioni in tempo reale. Il calcolo delle posizioni dei nodi è delegato ad un thread secondario (`QThread`) eliminando ogni freeze dell'interfaccia.
+- **Marker Visivi degli Errori Sintattici:** Evidenziazione visiva automatica in rosso scuro soffuso della riga d'errore Lark per assistere l'autore nel debug del codice.
+- **Console di Gioco Ottimizzata:** Cattura l'output del gioco eliminando spazi e righe vuote duplicate e fornendo un feedback visivo immediato se il gioco non è attivo.
 
-### Core del Linguaggio (Grammatica v0.3.0)
+### Core del Linguaggio (Grammatica v0.4.0)
+- **Conservazione dell'Estetica Originale:** I nomi di stanze e oggetti conservano gli articoli e la capitalizzazione originali scritti dall'autore (es. `"Una keycard magnetica"`, `"La cella di contenimento"`), pur mantenendo l'ID normalizzato per la logica.
+- **Preposizioni Tolleranti:** Tolleranza ed eliminazione del problema *"guess-the-preposition"* nei comandi a due oggetti (es. `usa la keycard con la porta` si mappa automaticamente a `usa la keycard su la porta`).
 - **Conseguenze Dinamiche:** Regole che modificano il mondo (`... e adesso la porta è aperta`).
 - **Interazioni a Due Oggetti:** Supporto per comandi come `usa chiave con porta`.
 - **Logica Condizionale:** Supporto completo per regole `Invece di ... se ...`.
-- **Puzzle:** Creazione di meccaniche chiave-serratura e interazioni complesse.
 - **Mondo Dinamico:** Stanze, oggetti, contenitori e proprietà.
 
 ---

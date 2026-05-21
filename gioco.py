@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.9)
+# Interprete Interattivo per FAVELLA 1 (v0.3.0)
 
 import sys
 import traceback
@@ -22,17 +22,17 @@ def mostra_stanza(mondo: Mondo):
         print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
         return
 
-    print(f"\n--- {stanza_corrente.nome.capitalize()} ---")
+    print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
     print(stanza_corrente.descrizione)
     
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
-        nomi_oggetti = [ogg.nome for ogg in oggetti_nella_stanza]
+        nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
 
     # Mostra le uscite disponibili
     if stanza_corrente.uscite:
-        uscite_str = ", ".join([f"{d.capitalize()} ({mondo.trova_stanza(id_s).nome.capitalize()})" for d, id_s in stanza_corrente.uscite.items()])
+        uscite_str = ", ".join([f"{d.capitalize()} ({mondo.trova_stanza(id_s).nome_visualizzato.capitalize()})" for d, id_s in stanza_corrente.uscite.items()])
         print(f"Uscite: {uscite_str}.")
 
 def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
@@ -47,19 +47,23 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
     oggetti_in_scope = list(stanza_corrente.oggetti.keys()) + list(mondo.inventario)
     
     # Priorità 0: Direzioni (anche con "a " davanti)
-    nome_pulito = nome_parziale
+    nome_pulito = nome_parziale.strip().lower()
     if nome_pulito.startswith("a ") and len(nome_pulito) > 2:
         nome_pulito = nome_pulito[2:].strip()
         
-    if nome_pulito in ["nord", "sud", "est", "ovest"]:
-        return nome_pulito
+    if nome_pulito in ["nord", "sud", "est", "ovest", "n", "s", "e", "o"]:
+        mappa_direzioni = {"n": "nord", "s": "sud", "e": "est", "o": "ovest"}
+        return mappa_direzioni.get(nome_pulito, nome_pulito)
+
+    # Normalizza l'input per trovare gli oggetti del gioco
+    nome_normalizzato = normalizza_nome(nome_parziale)
 
     # Priorità 1: Corrispondenza esatta
-    if nome_parziale in oggetti_in_scope:
-        return nome_parziale
+    if nome_normalizzato in oggetti_in_scope:
+        return nome_normalizzato
 
     # Priorità 2: Corrispondenza parziale univoca
-    candidati = [id_ogg for id_ogg in oggetti_in_scope if nome_parziale in id_ogg]
+    candidati = [id_ogg for id_ogg in oggetti_in_scope if nome_normalizzato in id_ogg]
     
     if len(candidati) == 1:
         return candidati[0]
@@ -68,6 +72,7 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
         return "<ambiguo>"
     else:
         return None
+
 
 PREPOSIZIONI = ["su", "con", "contro", "in"]
 
@@ -199,6 +204,18 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola_applicata = True
                         regola_da_eseguire = regola
                         break
+                
+                # FALLBACK tollerante per le preposizioni nelle regole a due oggetti
+                if not regola_applicata:
+                    for regola in mondo.regole:
+                        if (regola.verbo in verbi_da_controllare and 
+                            regola.id_oggetto_bersaglio == id_oggetto1 and
+                            regola.id_oggetto_secondario == id_oggetto2):
+                            
+                            print(regola.risposta)
+                            regola_applicata = True
+                            regola_da_eseguire = regola
+                            break
             
             # FASE 1: Regole Condizionali (1 Oggetto)
             if not regola_applicata:
