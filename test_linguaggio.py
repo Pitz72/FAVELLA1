@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.4)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.5)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -571,6 +571,78 @@ def test_scanner_raccoglie_contatori():
     _check("bottino" not in tab.tutti, "il contatore NON è tra le entità")
 
 
+def test_evento_al_turno():
+    print("[evento: 'Al turno N' scatta una sola volta]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una candela è una cosa.\nLa candela è in cella.\n"
+        'Al turno 2: dire "Buio." e adesso la candela è nel nulla.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and len(mondo.eventi) == 1, "un evento registrato")
+    ev = mondo.eventi[0]
+    _check(ev.tipo == "al" and ev.n == 2, "tipo 'al', turno 2")
+    _check(ev.scatta_a(1) is False and ev.scatta_a(2) is True and ev.scatta_a(3) is False,
+           "scatta solo al turno 2")
+    _check(len(ev.conseguenze) == 1, "ha una conseguenza")
+    ev.esegui_conseguenze(mondo)
+    _check(mondo.trova_oggetto("candela").posizione is None,
+           "la conseguenza dell'evento sposta la candela nel nulla")
+
+
+def test_evento_ogni_turni():
+    print("[evento: 'Ogni N turni' scatta ai multipli]")
+    src = (
+        "La cella è una stanza.\n"
+        'Ogni 3 turni: dire "Rumore.".\n'
+    )
+    mondo, _ = compila(src)
+    ev = mondo.eventi[0] if mondo and mondo.eventi else None
+    _check(ev is not None and ev.tipo == "ogni" and ev.n == 3, "tipo 'ogni', ogni 3 turni")
+    _check(ev is not None and ev.scatta_a(3) and ev.scatta_a(6) and not ev.scatta_a(4),
+           "scatta a 3, 6, ... e non a 4")
+
+
+def test_evento_numero_invalido_warning():
+    print("[evento: 'Ogni 0 turni' = warning, evento ignorato]")
+    src = (
+        "La cella è una stanza.\n"
+        'Ogni 0 turni: dire "Mai.".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check(mondo and len(mondo.eventi) == 0, "l'evento invalido non è registrato")
+    _check("ignorato" in log.lower(), "il log avvisa che l'evento è ignorato")
+
+
+def test_runtime_eventi_a_turni():
+    print("[runtime: gli eventi scattano al turno giusto nel loop]")
+    from gioco import elabora_comando
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una candela è una cosa.\nLa candela è in cella.\n"
+        'Al turno 2: dire "Si spegne." e adesso la candela è nel nulla.\n'
+        'Al turno 3: dire "Crollo!" e adesso perdi.\n'
+    )
+    mondo, _ = compila(src)
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        c1 = elabora_comando(mondo, "esamina candela")  # turno 1
+        c2 = elabora_comando(mondo, "esamina candela")  # turno 2 -> evento candela
+        candela_dopo_t2 = mondo.trova_oggetto("candela").posizione
+        c3 = elabora_comando(mondo, "esamina candela")  # turno 3 -> perdi
+    out = buf.getvalue()
+    _check(mondo.turno_corrente == 3, "il contatore dei turni è avanzato a 3")
+    _check(candela_dopo_t2 is None, "al turno 2 l'evento ha rimosso la candela")
+    _check(c1 is True and c2 is True and c3 is False,
+           "il gioco continua fino al turno 3, poi termina")
+    _check("HAI PERSO" in out, "l'evento terminale al turno 3 chiude la partita")
+
+
 def test_scanner_raccoglie_variabili():
     print("[scanner: 'X è uno stato' popola le variabili, non le entità]")
     src = (
@@ -669,6 +741,8 @@ _CORPUS_GUARDIA = (
     'Invece di usa la chiave su la porta di ferro se il giocatore non ha la '
     'chiave oppure la porta di ferro non è aperta: dire "No." '
     'e adesso la chiave è nel nulla e adesso l\'allarme è spento.\n'  # cons_variabile
+    'Al turno 3: dire "Ticchettio." e adesso aumenta il punteggio.\n'  # evento_al [Livello 3]
+    'Ogni 5 turni: dire "Rintocco.".\n'               # evento_ogni
 )
 
 
@@ -798,6 +872,11 @@ def main():
         test_contatore_diventa,
         test_contatore_confronti,
         test_scanner_raccoglie_contatori,
+        # Livello 3 — eventi a turni
+        test_evento_al_turno,
+        test_evento_ogni_turni,
+        test_evento_numero_invalido_warning,
+        test_runtime_eventi_a_turni,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,
@@ -815,7 +894,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.4)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.5)")
     print("=" * 60)
     for t in tests:
         t()

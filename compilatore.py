@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.7.4)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.5)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -7,7 +7,7 @@ import difflib
 from lark import Lark, Transformer, v_args
 from lark.exceptions import UnexpectedInput
 from strutture import (
-    Mondo, Stanza, Oggetto, Regola,
+    Mondo, Stanza, Oggetto, Regola, Evento,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
     CondizioneContatore,
@@ -48,6 +48,8 @@ PAROLE_RISERVATE = frozenset({
     # contatori numerici (Livello 3 / G3): dichiarazione, confronti, mutazioni
     "contatore", "almeno", "più", "meno",
     "aumenta", "diminuisci", "diventa",
+    # eventi a turni (Livello 3)
+    "al", "turno", "turni", "ogni",
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
@@ -204,6 +206,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_stato
                   | def_stato_valore
                   | def_contatore
+                  | def_evento
 
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
@@ -229,6 +232,12 @@ _GRAMMAR_TEMPLATE = r"""
     // Contatori numerici: 'X è un contatore.' (valore iniziale 0). Distinto da
     // def_stato per il lookahead "un" vs "uno".
     def_contatore: VARIABILE "è" "un" "contatore" "."
+
+    // --- EVENTI A TURNI (Livello 3) ---
+    // 'Al turno N: ...' scatta una sola volta; 'Ogni N turni: ...' a ogni
+    // multiplo di N. Riusano la stessa coda di conseguenze delle regole.
+    def_evento: "Al" "turno" NUMERO ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_al
+              | "Ogni" NUMERO ( "turno" | "turni" ) ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_ogni
 
     // --- REGOLE (INVECE DI) ---
     // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai nord").
@@ -689,8 +698,43 @@ class FavellaTransformer(Transformer):
     def cons_termina(self):
         return ConseguenzaFinePartita("terminata")
 
+    # --- Eventi a turni (Livello 3) ---
+
+    def _valida_conseguenze(self, conseguenze):
+        """Validazione a compile-time condivisa da regole ed eventi: l'oggetto di
+        una conseguenza (se presente) e la destinazione di uno spostamento devono
+        esistere."""
+        for c in conseguenze:
+            id_cons = getattr(c, "id_oggetto", None)
+            if id_cons is not None and not self.mondo.trova_oggetto(id_cons):
+                self.errori.append(f"Oggetto inesistente nella conseguenza: '{id_cons}'")
+            if isinstance(c, ConseguenzaSpostamento) and c.destinazione not in ["nulla", "inventario"]:
+                if not self.mondo.trova_stanza(c.destinazione):
+                    self.errori.append(f"Luogo inesistente nella conseguenza: '{c.destinazione}'")
+
+    def _crea_evento(self, tipo, args):
+        # args: (NUMERO, TESTO_QUOTATO, conseguenza*)
+        numero = args[0]
+        risposta = args[1]
+        conseguenze = [a for a in args[2:] if isinstance(a, Conseguenza)]
+        if numero < 1:
+            self.warnings.append(
+                f"Evento '{tipo} ... {numero}': il numero di turni deve essere "
+                f"almeno 1; evento ignorato."
+            )
+            return None
+        self._valida_conseguenze(conseguenze)
+        self.mondo.aggiungi_evento(Evento(tipo, numero, risposta, conseguenze))
+        return None
+
+    def evento_al(self, *args):
+        return self._crea_evento("al", args)
+
+    def evento_ogni(self, *args):
+        return self._crea_evento("ogni", args)
+
     # --- La Regola Complessa ---
-    
+
     def def_regola(self, *args):
         # args (ordine): verbo, ogg1, [prep, ogg2], [condizione], risposta, [conseguenza...]
         # [v0.6.0] la condizione può essere composita (Condizione base/And/Or/Not)
@@ -740,16 +784,9 @@ class FavellaTransformer(Transformer):
             if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
                 self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
             else:
-                # Valida ogni conseguenza a compile-time. Non tutte agiscono su
-                # un oggetto (es. ConseguenzaFinePartita): validiamo l'oggetto
-                # solo per quelle che lo dichiarano.
-                for conseguenza in conseguenze:
-                    id_cons = getattr(conseguenza, "id_oggetto", None)
-                    if id_cons is not None and not self.mondo.trova_oggetto(id_cons):
-                        self.errori.append(f"Oggetto inesistente nella conseguenza: '{id_cons}'")
-                    if isinstance(conseguenza, ConseguenzaSpostamento) and conseguenza.destinazione not in ["nulla", "inventario"]:
-                        if not self.mondo.trova_stanza(conseguenza.destinazione):
-                            self.errori.append(f"Luogo inesistente nella conseguenza: '{conseguenza.destinazione}'")
+                # Valida ogni conseguenza a compile-time (logica condivisa con
+                # gli eventi). Non tutte agiscono su un oggetto (es. fine partita).
+                self._valida_conseguenze(conseguenze)
 
                 nuova_regola = Regola(
                     verbo=verbo,

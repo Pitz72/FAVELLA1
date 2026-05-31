@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.7.2)
+# Interprete Interattivo per FAVELLA 1 (v0.7.5)
 
 import sys
 import traceback
@@ -92,11 +92,47 @@ def partita_finita(mondo: Mondo) -> bool:
         print("\n*** La partita è terminata. ***")
     return True
 
+def avanza_turno_e_processa(mondo: Mondo) -> bool:
+    """[Livello 3] Avanza il contatore dei turni di un'unità e attiva gli eventi
+    temporali che scattano a quel turno. Restituisce True se un evento ha
+    terminato la partita (il loop deve fermarsi)."""
+    mondo.turno_corrente += 1
+    t = mondo.turno_corrente
+    for evento in mondo.eventi:
+        if evento.scatta_a(t):
+            print(evento.risposta)
+            evento.esegui_conseguenze(mondo)
+            if partita_finita(mondo):
+                return True
+    return False
+
+
 def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     """
-    Esegue un singolo comando di gioco.
-    Restituisce True se il gioco deve continuare, False se il giocatore vuole uscire.
+    Esegue un singolo comando di gioco e, se il comando rappresenta un turno,
+    avanza il contatore dei turni elaborando gli eventi temporali (Livello 3).
+    Restituisce True se il gioco deve continuare, False se deve terminare
+    (uscita del giocatore, fine partita o evento terminale).
     """
+    comando_pulito = comando_grezzo.strip().lower()
+    if not comando_pulito:
+        return True
+    if comando_pulito in ["esci", "quit"]:
+        print("A presto!")
+        return False
+
+    # Un comando non vuoto e diverso da 'esci' conta come un turno di gioco.
+    continua = _esegui_comando(mondo, comando_grezzo)
+    if not continua:
+        return False
+    if avanza_turno_e_processa(mondo):
+        return False
+    return True
+
+
+def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
+    """Elabora un singolo comando (parsing + applicazione di regole/azioni),
+    senza gestire l'avanzamento dei turni. Restituisce True per continuare."""
     try:
         comando_pulito = comando_grezzo.strip().lower()
         if not comando_pulito:
@@ -104,7 +140,7 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if comando_pulito in ["esci", "quit"]:
             print("A presto!")
             return False
-        
+
         # --- PARSING INTELLIGENTE v0.2 ---
         # Cerchiamo preposizioni per spezzare il comando
         verbo_giocatore = ""

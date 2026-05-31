@@ -4,6 +4,29 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.7.5] - 2026-05-31
+### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
+- **Eventi a turni**: costrutti temporali a livello di mondo.
+  - `Al turno 3: dire "..." e adesso ...` — scatta **una sola volta** al turno N.
+  - `Ogni 5 turni: dire "..." e adesso ...` — scatta a **ogni multiplo** di N.
+  Riusano la stessa coda di conseguenze delle regole (incluse fine partita,
+  stati e contatori), così si può far perdere allo scadere del tempo o
+  incrementare un contatore a ogni turno.
+- `strutture.py`: classe `Evento` (`scatta_a()`, `esegui_conseguenze()`),
+  `Mondo.eventi` + `turno_corrente` + `aggiungi_evento()`.
+- `gioco.py`: contatore dei turni nel loop. `elabora_comando` è ora un wrapper
+  che, dopo un comando reale, chiama `avanza_turno_e_processa(mondo)` (avanza il
+  turno e attiva gli eventi scattati, terminando se un evento chiude la partita);
+  la logica del comando è in `_esegui_comando`. Header allineato a v0.7.5.
+  Policy: ogni comando non vuoto e diverso da `esci` conta come un turno.
+- `compilatore.py`: regola `def_evento` (forme `evento_al`/`evento_ogni`), parole
+  riservate `al`/`turno`/`turni`/`ogni`; validazione conseguenze condivisa
+  (`_valida_conseguenze`, usata anche da `def_regola`); un numero di turni < 1 è
+  un warning e l'evento è ignorato. Suite a **133 asserzioni** (era 119), con
+  test d'integrazione del loop e guardia anti-ambiguità estesa agli eventi.
+
+---
+
 ## [0.7.4] - 2026-05-31
 ### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
 - **Contatori numerici** (completano `[G3]`), sulla stessa classe di simboli

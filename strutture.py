@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.4)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.5)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -213,6 +213,29 @@ class Regola:
         for conseguenza in self.conseguenze:
             conseguenza.esegui(mondo)
 
+class Evento:
+    """[Livello 3] Evento temporale: scatta in base al contatore dei turni.
+    Tipo 'al' -> una sola volta al turno N; tipo 'ogni' -> a ogni multiplo di N.
+    Riusa la stessa coda di conseguenze delle regole."""
+    def __init__(self, tipo: str, n: int, risposta: str,
+                 conseguenze: Optional[List[Conseguenza]] = None):
+        self.tipo = tipo            # 'al' oppure 'ogni'
+        self.n = n
+        self.risposta = risposta
+        self.conseguenze: List[Conseguenza] = conseguenze or []
+
+    def scatta_a(self, turno: int) -> bool:
+        """Vero se l'evento deve attivarsi al turno dato."""
+        if self.n <= 0:
+            return False
+        if self.tipo == "al":
+            return turno == self.n
+        return turno % self.n == 0   # 'ogni'
+
+    def esegui_conseguenze(self, mondo: 'Mondo'):
+        for conseguenza in self.conseguenze:
+            conseguenza.esegui(mondo)
+
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""
     def __init__(self, nome: str, descrizione: str = "Non vedi nulla di particolare."):
@@ -253,6 +276,9 @@ class Mondo:
         # fine partita non lo porta a "vinta"/"persa"/"terminata". Il loop di
         # gioco lo controlla dopo ogni comando per fermarsi.
         self.stato_partita: str = "in_corso"
+        # [Livello 3] Eventi temporali e contatore dei turni di gioco.
+        self.eventi: List['Evento'] = []
+        self.turno_corrente: int = 0
         # [Livello 3 / G3] Stato astratto del mondo: variabili con nome ('stati')
         # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
@@ -300,6 +326,9 @@ class Mondo:
     def aggiungi_regola(self, regola: Regola):
         self.regole.append(regola)
 
+    def aggiungi_evento(self, evento: 'Evento'):
+        self.eventi.append(evento)
+
     def aggiungi_stanza(self, stanza: Stanza):
         self.stanze[stanza.nome] = stanza
 
@@ -314,11 +343,12 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.7.4):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.7.5):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"
             f"  - Regole: {len(self.regole)}\n"
+            f"  - Eventi: {len(self.eventi)}\n"
         )
         if self.posizione_giocatore:
             report += f"  - Posizione iniziale: '{self.posizione_giocatore}'"
