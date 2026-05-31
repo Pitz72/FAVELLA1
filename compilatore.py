@@ -1,6 +1,6 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.6.1)
-# Usa Lark per generare un AST (Abstract Syntax Tree) senza regex.
+# Micro-Compilatore Formale per FAVELLA 1 (v0.6.2)
+# Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
 from lark import Lark, Transformer, v_args
@@ -137,118 +137,146 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
 
 
 # ==============================================================================
-# 1. LA GRAMMATICA EBNF DI FAVELLA 1 (La Costituzione)
+# 1. LA GRAMMATICA EBNF DI FAVELLA 1 (La Costituzione) — Passata 2, LALR(1)
 # ==============================================================================
+#
+# [Livello 2.5] La grammatica non è più statica: il terminale ENTITA viene
+# GENERATO per-file dalla symbol-table (Passata 1) come alternanza CHIUSA dei
+# soli nomi dichiarati (longest-match, articolo opzionale). Questo elimina alla
+# radice l'ambiguità del vecchio `entita: WORD+` aperto e permette di usare il
+# parser LALR(1), unambiguo PER COSTRUZIONE (i conflitti emergono a build-time).
+#
+# Conseguenza di design: le PROPRIETÀ coniate (`è chiusa`) sono un terminale
+# SEPARATO `PROPRIETA`, di una sola parola e a priorità bassa, così non possono
+# inghiottire i keyword che le seguono (`e`, `oppure`, `:`). I nomi multiparola
+# restano pienamente supportati, ma solo per le ENTITÀ (es. "cella di
+# contenimento"), non per le proprietà di stato (sempre monoparola).
+#
+# Sparite, finalmente, tutte le priorità-cerotto `.2`/`.1` della v0.6.x: con i
+# nomi come token chiusi non servono più.
 
-FAVELLA_GRAMMAR = r"""
-    // Punto di ingresso: un file è una serie di dichiarazioni terminate da punto.
+# Pseudo-simboli SEMPRE risolvibili come ENTITA (destinazioni speciali delle
+# conseguenze di spostamento), oltre ai nomi dichiarati dall'autore.
+SIMBOLI_SPECIALI = ("inventario", "nulla")
+
+# Template della grammatica: __ENTITA__ verrà sostituito a runtime con la regex
+# generata dai simboli noti.
+_GRAMMAR_TEMPLATE = r"""
     start: dichiarazione+
 
     ?dichiarazione: def_stanza
                   | def_oggetto
                   | def_descrizione
                   | def_posizione
-                  | def_prendibile
                   | def_proprieta
                   | def_connessione
                   | def_regola
                   | def_giocatore
 
     // --- DEFINIZIONI BASE ---
-    //
-    // NOTA SULLE PRIORITÀ DI REGOLA (i suffissi .2 / .1):
-    // 'def_proprieta' (entita "è" entita) è un catch-all che entra in ambiguità
-    // con le definizioni specifiche (oggetto, stanza, posizione, prendibile).
-    // Assegnando priorità più alta (.2) alle regole specifiche rispetto a
-    // 'def_proprieta' (.1) rendiamo ESPLICITA e deterministica la scelta del
-    // resolver di Earley, invece di affidarci al suo tie-break interno.
-    // La garanzia anti-regressione è data dalla suite test_linguaggio.py.
-
-    // [stanza] è una stanza.
-    def_stanza.2: entita "è" "una" "stanza" "."
-
-    // [oggetto] è una cosa.
-    def_oggetto.2: entita "è" "una" "cosa" "."
-
-    // La descrizione di [entita] è "[testo]".
-    def_descrizione: "La" "descrizione" ( "di" | "del" | "della" | "dell'" | "degli" | "delle" ) entita "è" TESTO_QUOTATO "."
-
-    // [oggetto] è in [luogo].
-    def_posizione.2: entita "è" PREP_LUOGO entita "."
-
-    // [oggetto] è prendibile.
-    def_prendibile.2: entita "è" "prendibile" "."
-
-    // [oggetto] è [proprieta]. (Catch-all a priorità più bassa)
-    def_proprieta.1: entita "è" entita "."
-
-    // [stanza] collega [direzione] a [stanza].
-    def_connessione: entita "collega" DIREZIONE "a" entita "."
-
-    // Il giocatore comincia in [stanza]. (Posizione iniziale esplicita)
-    def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO entita "."
-
+    def_stanza: ENTITA "è" "una" "stanza" "."
+    def_oggetto: ENTITA "è" "una" "cosa" "."
+    def_descrizione: "La" "descrizione" ( "di" | "del" | "della" | "dell'" | "degli" | "delle" ) ENTITA "è" TESTO_QUOTATO "."
+    def_posizione: ENTITA "è" PREP_LUOGO ENTITA "."
+    // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
+    // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
+    def_proprieta: ENTITA "è" PROPRIETA "."
+    def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA "."
+    def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
 
     // --- REGOLE (INVECE DI) ---
-    // Sintassi: Invece di [verbo] [ogg1] [prep_azione] [ogg2] se [condizione]: dire "[risposta]" e adesso [conseguenza] e adesso [conseguenza]...
-    // [v0.6.0] La condizione può essere booleana composita; le conseguenze possono essere multiple.
+    // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai nord").
+    def_regola: "Invece" "di" VERBO ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
 
-    def_regola: "Invece" "di" VERBO entita (PREP_AZIONE entita)? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
-
-    // --- CONDIZIONI (logica booleana, v0.6.0) ---
-    // Precedenza: OR (più bassa) < AND < atomo. Le parentesi forzano il raggruppamento.
-    // OR usa "oppure" (NON "o", che è l'abbreviazione di "ovest"). AND usa "e".
-    // La negazione è infissa, come in italiano: "non ha", "non è".
+    // --- CONDIZIONI (logica booleana) ---
+    // Precedenza: OR (più bassa) < AND < atomo. Parentesi per raggruppare.
+    // OR usa "oppure" (NON "o", abbreviazione di "ovest"). AND usa "e".
+    // La negazione è infissa: "non ha", "non è". Con ENTITA chiuso il token
+    // "non" non può più essere assorbito: niente più priorità di regola.
     ?condizione: cond_or
-    ?cond_or: cond_and ( "oppure" cond_and )+        -> make_or
+    ?cond_or: cond_and ( "oppure" cond_and )+ -> make_or
             | cond_and
-    ?cond_and: cond_base ( "e" cond_base )+          -> make_and
+    ?cond_and: cond_base ( "e" cond_base )+ -> make_and
              | cond_base
     ?cond_base: cond_possesso
               | cond_possesso_neg
               | cond_proprieta
               | cond_proprieta_neg
               | "(" cond_or ")"
-
-    // Le forme NEGATE hanno priorità più alta (.2): senza di essa il token "non"
-    // verrebbe assorbito dentro 'entita' (è una WORD valida) e vincerebbe la
-    // forma affermativa, invertendo la semantica della condizione.
-    cond_possesso:      "il" "giocatore" "ha" entita
-    cond_possesso_neg.2: "il" "giocatore" "non" "ha" entita
-    cond_proprieta:      entita "è" entita
-    cond_proprieta_neg.2: entita "non" "è" entita
+    cond_possesso: "il" "giocatore" "ha" ENTITA
+    cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
+    cond_proprieta: ENTITA "è" PROPRIETA
+    cond_proprieta_neg: ENTITA "non" "è" PROPRIETA
 
     // --- CONSEGUENZE ---
-    ?conseguenza: entita "è" PREP_LUOGO entita -> cons_spostamento // (in, nel...)
-                | entita "è" "nel" "nulla"     -> cons_nulla       // Speciale
-                | entita "è" entita            -> cons_proprieta   // (es. aperta)
-
+    // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
+    // gli pseudo-simboli "inventario"/"nulla" iniettati nella regex.
+    ?conseguenza: ENTITA "è" PREP_LUOGO ENTITA -> cons_spostamento
+                | ENTITA "è" PROPRIETA          -> cons_proprieta
 
     // --- TERMINALI LESSICALI ---
-
     PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
     PREP_AZIONE: "su" | "con" | "contro" | "in"
     DIREZIONE: "nord" | "sud" | "est" | "ovest" | "n" | "s" | "e" | "o"
-    
-    // Un verbo è una parola.
+
     VERBO: WORD
-    
-    // Un'entità è una lista di parole. Earley risolverà l'ambiguità con le stringhe letterali ("è", "una", "stanza")
-    entita: WORD+
-    
-    // Una parola è una sequenza di lettere, numeri o apostrofi (es. dell'albero)
-    WORD: /[a-zA-ZÀ-ÿ0-9\']+/
-    
+    WORD: /[a-zA-ZÀ-ÿ0-9']+/
+
+    // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
+    // costruisci_grammatica(). Il flag /i la rende case-insensitive.
+    ENTITA: /__ENTITA__/i
+
+    // PROPRIETA: aggettivo di stato coniato. UNA sola parola, priorità BASSA
+    // (-1): i keyword strutturali vincono sempre la contesa lessicale.
+    PROPRIETA.-1: /[a-zA-ZÀ-ÿ0-9']+/
+
     // Testo tra virgolette doppie, con supporto per escape (\" e \\)
     TESTO_QUOTATO: /"(\\.|[^"\\])*"/
 
-    // Ignora spazi e commenti
     %import common.WS
     %ignore WS
-    
     COMMENT: /#[^\n]*/
     %ignore COMMENT
 """
+
+
+def _pattern_nome(nome: str) -> str:
+    """Trasforma un nome (eventualmente multiparola) in un pattern regex con
+    spazi flessibili: 'porta blindata' -> 'porta\\s+blindata'."""
+    return r"\s+".join(re.escape(parola) for parola in nome.split())
+
+
+def _costruisci_regex_entita(simboli) -> str:
+    """Costruisce la regex del terminale ENTITA come alternanza CHIUSA dei nomi
+    noti (+ pseudo-simboli speciali), ordinata per lunghezza decrescente per
+    garantire il LONGEST-MATCH (re usa leftmost-first, non longest), con
+    articolo iniziale opzionale e confine di parola finale."""
+    nomi = set(simboli) | set(SIMBOLI_SPECIALI)
+    if not nomi:
+        # Nessun nome dichiarato: una regex che non matcha mai (qualunque
+        # riferimento a entità produrrà un errore di parsing intercettabile).
+        return r"(?!)"
+    alternanza = "|".join(sorted((_pattern_nome(n) for n in nomi),
+                                  key=len, reverse=True))
+    art_con_spazio = [a for a in ARTICOLI if not a.endswith("'")]
+    art_apostrofo = [a for a in ARTICOLI if a.endswith("'")]
+    sp = "|".join(sorted((re.escape(a) for a in art_con_spazio), key=len, reverse=True))
+    ap = "|".join(sorted((re.escape(a) for a in art_apostrofo), key=len, reverse=True))
+    prefisso_articolo = rf"(?:(?:{sp})\s+|(?:{ap}))?"
+    return rf"{prefisso_articolo}(?:{alternanza})\b"
+
+
+def costruisci_grammatica(simboli) -> str:
+    """Restituisce la grammatica concreta per questo file, con il terminale
+    ENTITA risolto dai simboli noti (Passata 2)."""
+    return _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
+
+
+def costruisci_parser(simboli) -> Lark:
+    """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
+    costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
+    GrammarError a build-time, non come scelta silenziosa a runtime."""
+    return Lark(costruisci_grammatica(simboli), start="start", parser="lalr")
 
 # ==============================================================================
 # 2. IL TRANSFORMER DELL'AST
@@ -268,9 +296,16 @@ class FavellaTransformer(Transformer):
 
     # --- Nodi Entità e Testo ---
 
-    def entita(self, *tokens):
-        # Unisce i token che formano il nome dell'entità preservando il nome originale
-        return " ".join(t.value for t in tokens)
+    def ENTITA(self, token):
+        # Il terminale ENTITA è un singolo token risolto dalla symbol-table; il
+        # suo valore preserva il nome ORIGINALE dell'autore (articolo e
+        # maiuscole) per i nomi visualizzati. La normalizzazione a ID avviene
+        # nei metodi di regola tramite normalizza_nome().
+        return token.value
+
+    def PROPRIETA(self, token):
+        # Aggettivo di stato coniato (monoparola).
+        return token.value
 
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
@@ -342,23 +377,21 @@ class FavellaTransformer(Transformer):
             self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
         return None
 
-    def def_prendibile(self, ogg_grezzo):
-        id_ogg = normalizza_nome(ogg_grezzo)
-        oggetto = self.mondo.trova_oggetto(id_ogg)
-        if oggetto:
-            oggetto.prendibile = True
-        else:
-            self.errori.append(f"'prendibile' per oggetto inesistente: '{ogg_grezzo}'")
-        return None
-
     def def_proprieta(self, ogg_grezzo, proprieta_grezzo):
+        # [Livello 2.5] 'è prendibile' è confluito qui come PROPRIETÀ SPECIALE:
+        # avere una regola def_prendibile separata creava l'unica vera collisione
+        # lessicale residua (`è prendibile` = keyword vs proprietà). Trattando
+        # 'prendibile' come proprietà speciale, la grammatica diventa 0-ambigua.
         id_ogg = normalizza_nome(ogg_grezzo)
         proprieta = normalizza_nome(proprieta_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
-        if oggetto:
-            oggetto.aggiungi_proprieta(proprieta)
-        else:
+        if not oggetto:
             self.errori.append(f"Proprietà '{proprieta_grezzo}' per oggetto inesistente: '{ogg_grezzo}'")
+            return None
+        if proprieta == "prendibile":
+            oggetto.prendibile = True
+        else:
+            oggetto.aggiungi_proprieta(proprieta)
         return None
 
     def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo):
@@ -427,14 +460,13 @@ class FavellaTransformer(Transformer):
         return CondizioneOr(list(condizioni))
 
     def cons_spostamento(self, ogg_grezzo, prep, dest_grezzo):
+        # dest_grezzo è un'ENTITA: un nome di stanza dichiarato oppure uno
+        # pseudo-simbolo speciale ("inventario", "nulla").
         id_oggetto = normalizza_nome(ogg_grezzo)
         destinazione = normalizza_nome(dest_grezzo)
         if destinazione in ["nulla", "nessun luogo", "nessuno"]:
             destinazione = "nulla"
         return ConseguenzaSpostamento(id_oggetto, destinazione)
-
-    def cons_nulla(self, ogg_grezzo):
-        return ConseguenzaSpostamento(normalizza_nome(ogg_grezzo), "nulla")
 
     def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
@@ -586,19 +618,19 @@ class FavellaTransformer(Transformer):
         return []
 
 # ==============================================================================
-# 3. MOTORE PRINCIPALE DI COMPILAZIONE
+# 3. MOTORE PRINCIPALE DI COMPILAZIONE (due passate)
 # ==============================================================================
-
-# Inizializza il parser Lark una sola volta a livello di modulo usando l'Earley Algorithm
-parser = Lark(FAVELLA_GRAMMAR, start='start', parser='earley')
 
 def analizza_file(percorso_file: str) -> Mondo | None:
     """
-    Legge un file .fav, ne elabora l'albero sintattico (AST) tramite Lark
-    e genera in output l'istanza finale del Mondo popolato.
+    Legge un file .fav e lo compila in un Mondo popolato, con la pipeline a
+    DUE PASSATE (Livello 2.5):
+      Passata 1  costruisce la symbol-table dei nomi dichiarati;
+      Passata 2  istanzia il parser LALR(1) con ENTITA risolto dai simboli,
+                 genera l'AST, lo trasforma in oggetti e valida la semantica.
     """
     errori = []
-    
+
     try:
         with open(percorso_file, 'r', encoding='utf-8') as file:
             testo = file.read()
@@ -611,14 +643,18 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # editor di testo) con le versioni dritte attese dalla grammatica.
         testo = normalizza_tipografia(testo)
 
-        # 1. PARSING FORMALE (Testo -> AST)
+        # 1. PASSATA 1 — Symbol-table dei nomi dichiarati.
+        simboli = costruisci_symbol_table(testo)
+
+        # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA chiuso (Testo -> AST).
+        parser = costruisci_parser(simboli.tutti)
         tree = parser.parse(testo)
 
-        # 2. TRASFORMAZIONE (AST -> Oggetti Python)
+        # 3. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer()
         transformer.transform(tree)
 
-        # 3. VALIDAZIONE SEMANTICA GLOBALE
+        # 4. VALIDAZIONE SEMANTICA GLOBALE
         transformer.valida_post()
 
         # Estrae i log dal transformer

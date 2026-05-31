@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -16,8 +16,11 @@ import tempfile
 import contextlib
 
 from compilatore import (
-    analizza_file, costruisci_symbol_table, PAROLE_RISERVATE,
+    analizza_file, costruisci_symbol_table, costruisci_grammatica,
+    costruisci_parser, PAROLE_RISERVATE,
 )
+from lark import Lark
+from lark.exceptions import GrammarError
 
 # --- Mini-framework minimale (niente pytest richiesto) -----------------------
 
@@ -373,6 +376,79 @@ def test_parole_riservate_coprono_le_keyword():
     _check(not mancanti, f"tutte le keyword chiave sono riservate (mancano: {mancanti})")
 
 
+# --- Test: GUARDIA ANTI-AMBIGUITÀ PERMANENTE [Livello 2.5 / G1] --------------
+#
+# Questa è la rete di sicurezza definitiva contro la regressione dell'ambiguità
+# grammaticale. In v0.6.0 il corpus qui sotto produceva da 1 a 7 alberi per
+# frase (nodi `_ambig`) sotto Earley; con il terminale ENTITA chiuso ne produce
+# esattamente UNO, e LALR(1) si costruisce senza conflitti.
+
+# Corpus che esercita tutti i costrutti storicamente ambigui.
+_CORPUS_GUARDIA = (
+    "La cella è una stanza.\n"
+    "Il corridoio è una stanza.\n"
+    "La cella collega nord a corridoio.\n"
+    "Una porta di ferro è una cosa.\n"        # nome-entità multiparola
+    "La porta di ferro è in cella.\n"          # def_posizione
+    "La porta di ferro è chiusa.\n"            # def_proprieta
+    "La porta di ferro è prendibile.\n"        # def_prendibile
+    "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
+    'Invece di apri la porta di ferro se la porta di ferro è chiusa e il '
+    'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta.\n'
+    'Invece di usa la chiave su la porta di ferro se il giocatore non ha la '
+    'chiave oppure la porta di ferro non è aperta: dire "No." '
+    'e adesso la chiave è nel nulla.\n'
+)
+
+
+def _conta_ambig(tree):
+    return sum(1 for st in tree.iter_subtrees() if st.data == "_ambig")
+
+
+def test_guardia_lalr_si_costruisce_senza_conflitti():
+    print("[guardia: LALR(1) si costruisce senza conflitti]")
+    simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
+    try:
+        costruisci_parser(simboli.tutti)
+        ok = True
+        msg = ""
+    except GrammarError as e:
+        ok = False
+        msg = str(e)
+    _check(ok, f"il parser LALR(1) si costruisce senza GrammarError ({msg})")
+
+
+def test_guardia_zero_ambiguita():
+    print("[guardia: il corpus produce UN SOLO albero (0 _ambig)]")
+    simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
+    grammatica = costruisci_grammatica(simboli.tutti)
+    # Stesso grammar, ma con Earley in modalità 'explicit' per CONTARE gli alberi.
+    parser_amb = Lark(grammatica, start="start", parser="earley",
+                      ambiguity="explicit")
+    tree = parser_amb.parse(_CORPUS_GUARDIA)
+    n = _conta_ambig(tree)
+    _check(n == 0, f"nessun nodo ambiguo nel corpus (trovati: {n})")
+
+
+def test_guardia_nome_con_parola_chiave_disambiguato():
+    print("[guardia: un nome che contiene una parola-chiave non genera ambiguità]")
+    # 'via est' contiene 'est' (direzione); 'cosa preziosa' contiene 'cosa'.
+    src = (
+        "La via est è una stanza.\n"
+        "Una cosa preziosa è una cosa.\n"
+        "La cosa preziosa è in via est.\n"
+    )
+    simboli = costruisci_symbol_table(src)
+    grammatica = costruisci_grammatica(simboli.tutti)
+    parser_amb = Lark(grammatica, start="start", parser="earley",
+                      ambiguity="explicit")
+    tree = parser_amb.parse(src)
+    _check(_conta_ambig(tree) == 0, "0 alberi ambigui anche con nomi 'pericolosi'")
+    mondo, _ = compila(src)
+    _check(mondo is not None and "cosa preziosa" in mondo.oggetti,
+           "l'oggetto 'cosa preziosa' è risolto correttamente")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -402,10 +478,14 @@ def main():
         test_scanner_connessione_introduce_stanze,
         test_scanner_ignora_punti_nelle_stringhe,
         test_parole_riservate_coprono_le_keyword,
+        # Livello 2.5 — guardia anti-ambiguità permanente
+        test_guardia_lalr_si_costruisce_senza_conflitti,
+        test_guardia_zero_ambiguita,
+        test_guardia_nome_con_parola_chiave_disambiguato,
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.2)")
     print("=" * 60)
     for t in tests:
         t()
