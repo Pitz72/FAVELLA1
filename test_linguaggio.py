@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1869,6 +1869,153 @@ def test_opzione_condizionale_selezione_per_numero_coerente():
            "scegliere 1 segue l'opzione condizionata disponibile")
 
 
+# --- Test: LINTER SEMANTICO [Livello 6 / 0.11.1] -----------------------------
+#
+# Analisi statica non bloccante (canale 'warnings'): stanze irraggiungibili,
+# oggetti orfani, regole morte, stati/contatori inutilizzati. Sorgenti minimali
+# e auto-coerenti, così ogni test isola un solo tipo di avviso.
+
+def test_lint_stanza_irraggiungibile():
+    print("[linter: stanza irraggiungibile dal punto di partenza]")
+    src = (
+        "La prima è una stanza.\n"
+        "La seconda è una stanza.\n"
+        "Il giocatore comincia in prima.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("irraggiungibile" in log and "seconda" in log,
+           "la stanza 'seconda', non collegata, è segnalata irraggiungibile")
+
+
+def test_lint_stanza_collegata_non_segnalata():
+    print("[linter: una stanza raggiungibile non è segnalata]")
+    src = (
+        "La prima è una stanza.\n"
+        "La seconda è una stanza.\n"
+        "La prima collega nord a seconda.\n"
+        "Il giocatore comincia in prima.\n"
+    )
+    mondo, log = compila(src)
+    _check("irraggiungibile" not in log,
+           "con la connessione nessuna stanza è irraggiungibile")
+
+
+def test_lint_oggetto_orfano():
+    print("[linter: oggetto mai collocato]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una gemma è una cosa.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("mai collocato" in log and "gemma" in log,
+           "la gemma non collocata da nessuna parte è segnalata orfana")
+
+
+def test_lint_oggetto_collocato_non_orfano():
+    print("[linter: un oggetto collocato non è orfano]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è in cella.\n"
+    )
+    mondo, log = compila(src)
+    _check("mai collocato" not in log, "un oggetto in una stanza non è orfano")
+
+
+def test_lint_oggetto_introdotto_da_conseguenza_non_orfano():
+    print("[linter: un oggetto introdotto da una conseguenza non è orfano]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        "Una gemma è una cosa.\n"
+        'Invece di usa la leva: dire "Appare." e adesso la gemma è in cella.\n'
+    )
+    mondo, log = compila(src)
+    _check("mai collocato" not in log,
+           "la gemma, introdotta da una conseguenza, non è segnalata orfana")
+
+
+def test_lint_regola_morta_specifica():
+    print("[linter: regola specifica oscurata da una precedente identica]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una porta è una cosa.\nLa porta è in cella.\n"
+        'Invece di esamina la porta: dire "Una.".\n'
+        'Invece di esamina la porta: dire "Due.".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("Regola morta" in log,
+           "la seconda regola con la stessa firma è segnalata morta")
+
+
+def test_lint_regola_condizionale_non_morta():
+    print("[linter: una condizionale dopo un'incondizionata NON è morta]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una porta è una cosa.\nLa porta è in cella.\nLa porta è chiusa.\n"
+        'Invece di esamina la porta: dire "Base.".\n'
+        'Invece di esamina la porta se la porta è chiusa: dire "Cond.".\n'
+    )
+    mondo, log = compila(src)
+    _check("Regola morta" not in log,
+           "la condizionale ha comunque la precedenza di fase: non è morta")
+
+
+def test_lint_regola_globale_morta():
+    print("[linter: regola globale oscurata da una globale incondizionata]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        'Invece di guarda: dire "Primo.".\n'
+        'Invece di guarda: dire "Secondo.".\n'
+    )
+    mondo, log = compila(src)
+    _check("Regola morta" in log and "globale" in log,
+           "la seconda regola globale sullo stesso verbo è morta")
+
+
+def test_lint_variabile_inutilizzata():
+    print("[linter: stato dichiarato ma mai usato]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\nIl semaforo è rosso.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("mai usato" in log and "semaforo" in log,
+           "lo stato 'semaforo', mai letto, è segnalato inutilizzato")
+
+
+def test_lint_variabile_usata_in_interpolazione():
+    print("[linter: una variabile usata in [var] non è inutilizzata]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è un contatore.\n"
+        'La descrizione della cella è "Hai [punteggio] punti.".\n'
+    )
+    mondo, log = compila(src)
+    _check("mai usato" not in log,
+           "il contatore interpolato in un testo conta come usato")
+
+
+def test_lint_variabile_usata_in_condizione():
+    print("[linter: una variabile usata in una condizione non è inutilizzata]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è un contatore.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        'Invece di esamina la leva se il punteggio è almeno 1: dire "Ok.".\n'
+    )
+    mondo, log = compila(src)
+    _check("mai usato" not in log,
+           "un contatore confrontato in una condizione conta come usato")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -2011,6 +2158,18 @@ def main():
         test_opzione_condizionale_nascosta_se_falsa,
         test_opzione_condizionale_visibile_se_vera,
         test_opzione_condizionale_selezione_per_numero_coerente,
+        # Livello 6 — linter semantico (0.11.1)
+        test_lint_stanza_irraggiungibile,
+        test_lint_stanza_collegata_non_segnalata,
+        test_lint_oggetto_orfano,
+        test_lint_oggetto_collocato_non_orfano,
+        test_lint_oggetto_introdotto_da_conseguenza_non_orfano,
+        test_lint_regola_morta_specifica,
+        test_lint_regola_condizionale_non_morta,
+        test_lint_regola_globale_morta,
+        test_lint_variabile_inutilizzata,
+        test_lint_variabile_usata_in_interpolazione,
+        test_lint_variabile_usata_in_condizione,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -2018,7 +2177,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.1)")
     print("=" * 60)
     for t in tests:
         t()

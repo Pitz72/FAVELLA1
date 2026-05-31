@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.11.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.11.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -1257,6 +1257,192 @@ class FavellaTransformer(Transformer):
                         f"nodo '{opz.destinazione}', che non esiste: la scelta "
                         f"chiuderà comunque la conversazione."
                     )
+
+        # [Livello 6 / 0.11.1] LINTER SEMANTICO — analisi statica non bloccante
+        # sul mondo compilato (vedi sotto). Eseguita in coda alla validazione, sul
+        # canale 'warnings' già esistente: zero modifiche alla grammatica.
+        self.analisi_statica()
+
+    # ==========================================================================
+    # LINTER SEMANTICO (Livello 6 / patch 0.11.1)
+    # ==========================================================================
+    #
+    # Analisi statica del Mondo compilato: emette WARNING (non bloccanti) per i
+    # problemi che non rompono la compilazione ma quasi sempre tradiscono un
+    # errore d'autore. È puramente in LETTURA sul Mondo e non tocca la grammatica
+    # (rischio-ambiguità nullo). Quattro controlli:
+    #   1. stanze irraggiungibili (reachability dal punto di partenza);
+    #   2. oggetti orfani (mai collocati né introdotti da una conseguenza);
+    #   3. regole morte (oscurate da una precedente che scatta sempre);
+    #   4. stati/contatori dichiarati ma mai usati.
+
+    def analisi_statica(self):
+        """Esegue i controlli del linter semantico e accoda i relativi avvisi."""
+        self._lint_stanze_irraggiungibili()
+        self._lint_oggetti_orfani()
+        self._lint_regole_morte()
+        self._lint_variabili_inutilizzate()
+
+    def _lint_stanze_irraggiungibili(self):
+        # Reachability dal punto di partenza sulla sola topologia statica
+        # ('collega' -> stanza.uscite). Il giocatore non viene mai spostato da una
+        # conseguenza, quindi le uscite sono l'unico modo di cambiare stanza: una
+        # stanza non raggiunta qui è davvero irraggiungibile a runtime. La
+        # partenza è quella dichiarata ('Il giocatore comincia in X.'); in
+        # mancanza, la prima stanza definita (come imposta_posizione_iniziale).
+        m = self.mondo
+        if not m.stanze:
+            return
+        partenza = (m.posizione_iniziale if m.posizione_iniziale in m.stanze
+                    else next(iter(m.stanze)))
+        raggiunte = set()
+        coda = [partenza]
+        while coda:
+            corrente = coda.pop()
+            if corrente in raggiunte:
+                continue
+            raggiunte.add(corrente)
+            stanza = m.trova_stanza(corrente)
+            if not stanza:
+                continue
+            for dest in stanza.uscite.values():
+                if dest not in raggiunte:
+                    coda.append(dest)
+        for id_stanza in m.stanze:
+            if id_stanza not in raggiunte:
+                self.warnings.append(
+                    f"Stanza '{id_stanza}' irraggiungibile dal punto di partenza "
+                    f"('{partenza}'): nessun percorso di uscite la collega."
+                )
+
+    def _lint_oggetti_orfani(self):
+        # Un oggetto è 'orfano' se non è collocato da nessuna parte (posizione
+        # None: non in una stanza, in un contenitore o su un supporto) E nessuna
+        # conseguenza lo introduce nel gioco (spostandolo in una stanza,
+        # nell'inventario o in un contenitore/supporto). Vale anche per NPC,
+        # contenitori e supporti. Uno spostamento 'nel nulla' non conta come
+        # collocazione (rimuove l'oggetto).
+        m = self.mondo
+        introdotti = set()
+        for cons in self._tutte_le_conseguenze():
+            if isinstance(cons, ConseguenzaSpostamento) and cons.destinazione != "nulla":
+                introdotti.add(cons.id_oggetto)
+        for id_ogg, ogg in m.oggetti.items():
+            if ogg.posizione is None and id_ogg not in introdotti:
+                self.warnings.append(
+                    f"Oggetto '{id_ogg}' mai collocato: non è in una stanza né in un "
+                    f"contenitore/supporto, e nessuna conseguenza lo introduce. Il "
+                    f"giocatore non potrà mai trovarlo."
+                )
+
+    def _lint_regole_morte(self):
+        # Una regola è 'morta' (non scatterà mai) quando una regola PRECEDENTE con
+        # identica firma (verbo, bersaglio, secondario, preposizione) e SENZA
+        # condizione la oscura. Per le regole specifiche solo se anche la corrente
+        # è incondizionata (a runtime le condizionali hanno comunque la precedenza
+        # di fase su 1 oggetto, vedi gioco._esegui_comando); per le regole globali
+        # sempre (sono valutate in un unico ciclo: la prima che combacia vince).
+        # Criterio volutamente CONSERVATIVO: nessun falso positivo.
+        m = self.mondo
+        viste = []  # (firma, incondizionata?) delle regole già scorse, in ordine
+        for regola in m.regole:
+            firma = (regola.verbo, regola.id_oggetto_bersaglio,
+                     regola.id_oggetto_secondario, regola.preposizione)
+            globale = regola.id_oggetto_bersaglio is None
+            oscurata = any(
+                f_prec == firma and incond_prec and (globale or regola.condizione is None)
+                for f_prec, incond_prec in viste
+            )
+            if oscurata:
+                dove = "globale" if globale else f"su '{regola.id_oggetto_bersaglio}'"
+                self.warnings.append(
+                    f"Regola morta: 'Invece di {regola.verbo}' ({dove}) è oscurata "
+                    f"da una regola precedente con la stessa firma che scatta "
+                    f"sempre: non scatterà mai."
+                )
+            viste.append((firma, regola.condizione is None))
+
+    def _lint_variabili_inutilizzate(self):
+        # Uno 'stato'/contatore dichiarato ma mai referenziato — in una condizione,
+        # in una conseguenza o in un'interpolazione [nome] di un testo d'autore — è
+        # codice morto: quasi sempre un refuso o un residuo di una versione passata.
+        m = self.mondo
+        if not m.variabili:
+            return
+        usate = set()
+        for cond in self._tutte_le_condizioni():
+            usate |= self._variabili_in_condizione(cond)
+        for cons in self._tutte_le_conseguenze():
+            if isinstance(cons, (ConseguenzaVariabile, ConseguenzaContatore)):
+                usate.add(cons.nome)
+        for testo in self._tutti_i_testi():
+            for ph in estrai_placeholder(testo):
+                usate.add(normalizza_nome(ph))
+        for nome in m.variabili:
+            if nome not in usate:
+                self.warnings.append(
+                    f"Stato/contatore '{nome}' dichiarato ma mai usato: nessuna "
+                    f"condizione, conseguenza o interpolazione [{nome}] vi fa "
+                    f"riferimento."
+                )
+
+    # --- Raccoglitori condivisi dal linter (puro attraversamento del Mondo) ---
+
+    def _tutte_le_condizioni(self):
+        """Tutte le condizioni presenti nel mondo: regole, opzioni di dialogo e
+        descrizioni condizionali."""
+        m = self.mondo
+        condizioni = [r.condizione for r in m.regole if r.condizione is not None]
+        for nodo in m.dialogo_nodi.values():
+            condizioni += [o.condizione for o in nodo.opzioni if o.condizione is not None]
+        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
+            condizioni += [c for c, _ in ent.descrizioni_condizionali]
+        return condizioni
+
+    def _tutte_le_conseguenze(self):
+        """Tutte le conseguenze del mondo: regole, eventi e opzioni di dialogo."""
+        m = self.mondo
+        conseguenze = []
+        for r in m.regole:
+            conseguenze.extend(r.conseguenze)
+        for e in m.eventi:
+            conseguenze.extend(e.conseguenze)
+        for nodo in m.dialogo_nodi.values():
+            for opz in nodo.opzioni:
+                conseguenze.extend(opz.conseguenze)
+        return conseguenze
+
+    def _tutti_i_testi(self):
+        """Tutti i testi d'autore che passano per l'interpolazione [var]:
+        descrizioni (anche condizionali), risposte di regole/eventi, battute e
+        testi delle opzioni di dialogo."""
+        m = self.mondo
+        testi = []
+        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
+            testi.append(ent.descrizione)
+            testi += [t for _, t in ent.descrizioni_condizionali]
+        testi += [r.risposta for r in m.regole]
+        testi += [e.risposta for e in m.eventi]
+        for nodo in m.dialogo_nodi.values():
+            testi.append(nodo.battuta)
+            testi += [o.testo for o in nodo.opzioni]
+        return testi
+
+    def _variabili_in_condizione(self, condizione):
+        """Estrae ricorsivamente i nomi di stati/contatori referenziati in una
+        condizione (anche dentro And/Or/Not)."""
+        if condizione is None:
+            return set()
+        if isinstance(condizione, (CondizioneVariabile, CondizioneContatore)):
+            return {condizione.nome}
+        if isinstance(condizione, CondizioneNot):
+            return self._variabili_in_condizione(condizione.condizione)
+        if isinstance(condizione, (CondizioneAnd, CondizioneOr)):
+            nomi = set()
+            for sub in condizione.condizioni:
+                nomi |= self._variabili_in_condizione(sub)
+            return nomi
+        return set()
 
     def _atomi_proprieta(self, condizione):
         """Estrae ricorsivamente tutti gli atomi CondizioneProprieta annidati in

@@ -4,6 +4,31 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.11.1] - 2026-05-31
+### Roadmap del Linguaggio — Livello 6 «Maturità toolchain»: LINTER SEMANTICO 🔍
+Prima patch del Livello 6 (verso la release `0.12.0`). Introduce un **linter
+semantico** nel compilatore: analisi statica **non bloccante** sul mondo
+compilato, che emette avvisi sul canale `warnings` già esistente. **Nessuna
+modifica alla grammatica** → invariante LALR(1) 0-ambiguo intatto per costruzione.
+
+Quattro controlli (in `FavellaTransformer.analisi_statica`, eseguita in coda a
+`valida_post`):
+- **Stanze irraggiungibili** — reachability (BFS) dal punto di partenza sulle
+  uscite (`collega`); una stanza non raggiunta è segnalata.
+- **Oggetti orfani** — oggetti (NPC/contenitori/supporti inclusi) mai collocati
+  e mai introdotti da una conseguenza di spostamento.
+- **Regole morte** — regole oscurate da una precedente con identica firma
+  (verbo, bersaglio, secondario, preposizione) che scatta sempre; criterio
+  conservativo allineato all'ordine delle fasi del runtime (zero falsi positivi).
+- **Stati/contatori inutilizzati** — variabili dichiarate ma mai lette in una
+  condizione, conseguenza o interpolazione `[var]`.
+
+Suite: **302 asserzioni** (era 287), tutte verdi; guardia anti-ambiguità
+invariata. Superficie pubblica `analizza_file()` intatta. Header `compilatore.py`
+e `test_linguaggio.py` a **v0.11.1**.
+
+---
+
 ## [0.11.0] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 5b «NPC e dialoghi ramificati» COMPLETATO 🗣️
 Release minore che consolida le patch `0.10.1` → `0.10.4` e aggiunge al linguaggio
