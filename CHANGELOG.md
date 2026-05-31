@@ -4,6 +4,32 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.11.2] - 2026-05-31
+### Roadmap del Linguaggio — Livello 6: MODULI / IMPORT MULTI-.FAV 📦
+Seconda patch del Livello 6 (verso `0.12.0`). Introduce gli **import multi-file**
+come **preprocessore (Passata 0)** testuale: la direttiva
+
+    Includi "file.fav".
+
+viene espansa in un unico sorgente **prima** delle due passate, quindi **non
+raggiunge mai il parser** → invariante LALR(1) 0-ambiguo intatto per costruzione.
+
+Il preprocessore (`compilatore.espandi_inclusioni`) gestisce:
+- **Path relativi** al file che include (anche in sottocartelle).
+- **Deduplica** — lo stesso file incluso più volte (diamanti) è espanso una sola volta.
+- **Rilevamento dei cicli** — un'inclusione circolare è un **errore bloccante**.
+- **File incluso mancante** — errore bloccante con il nome del file.
+- **Source map** riga-espansa → (file, riga): gli errori di sintassi e le
+  diagnosi d'entità sono **attribuiti al file e alla riga originali**.
+- Il path quotato è *vocabolario nuovo tra virgolette* (come alias/verbi); le
+  direttive dentro stringhe/commenti non vengono interpretate.
+
+Suite: **314 asserzioni** (era 302), tutte verdi; guardia anti-ambiguità
+invariata. Superficie pubblica `analizza_file()` intatta. Header `compilatore.py`
+e `test_linguaggio.py` a **v0.11.2**.
+
+---
+
 ## [0.11.1] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 6 «Maturità toolchain»: LINTER SEMANTICO 🔍
 Prima patch del Livello 6 (verso la release `0.12.0`). Introduce un **linter

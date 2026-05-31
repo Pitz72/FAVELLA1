@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -18,6 +18,7 @@ import contextlib
 from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
+    espandi_inclusioni,
 )
 
 
@@ -2016,6 +2017,102 @@ def test_lint_variabile_usata_in_condizione():
            "un contatore confrontato in una condizione conta come usato")
 
 
+# --- Test: MODULI / IMPORT MULTI-.FAV [Livello 6 / 0.11.2] -------------------
+#
+# Preprocessore Passata 0: 'Includi "file.fav".' espanso prima delle due passate.
+# I test scrivono piccoli progetti multi-file in cartelle temporanee.
+
+def _scrivi_progetto(files: dict) -> str:
+    """Scrive i file dati (nome relativo -> contenuto) in una cartella temporanea
+    e ne restituisce il percorso. I nomi possono includere sottocartelle."""
+    d = tempfile.mkdtemp(prefix="favimp_")
+    for nome, contenuto in files.items():
+        percorso = os.path.join(d, nome)
+        sub = os.path.dirname(percorso)
+        if sub and not os.path.isdir(sub):
+            os.makedirs(sub, exist_ok=True)
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write(contenuto)
+    return d
+
+
+def _compila_path(percorso):
+    """Compila il file al percorso dato, catturando lo stdout (log)."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        mondo = analizza_file(percorso)
+    return mondo, buf.getvalue()
+
+
+def test_include_basico():
+    print("[import: 'Includi' unisce le definizioni di più file]")
+    d = _scrivi_progetto({
+        "main.fav": ('Includi "stanze.fav".\n'
+                     "Una torcia è una cosa.\nLa torcia è nella sala.\n"),
+        "stanze.fav": "La sala è una stanza.\n",
+    })
+    mondo, log = _compila_path(os.path.join(d, "main.fav"))
+    _check(mondo is not None, "il progetto multi-file compila")
+    _check(mondo and "sala" in mondo.stanze, "la stanza dal file incluso è presente")
+    _check(mondo and "torcia" in mondo.oggetti, "l'oggetto del file radice è presente")
+
+
+def test_include_dedup():
+    print("[import: lo stesso file incluso due volte è espanso una sola volta]")
+    d = _scrivi_progetto({
+        "main.fav": 'Includi "b.fav".\nIncludi "b.fav".\n',
+        "b.fav": "La cella è una stanza.\n",
+    })
+    testo, mappa, err = espandi_inclusioni(os.path.join(d, "main.fav"))
+    _check(not err, "nessun errore con doppio include")
+    _check(testo.count("La cella è una stanza.") == 1,
+           "il contenuto del file incluso due volte appare una sola volta")
+
+
+def test_include_ciclo():
+    print("[import: un ciclo di inclusione è un errore bloccante]")
+    d = _scrivi_progetto({
+        "main.fav": 'La cella è una stanza.\nIncludi "b.fav".\n',
+        "b.fav": 'Includi "main.fav".\n',
+    })
+    mondo, log = _compila_path(os.path.join(d, "main.fav"))
+    _check(mondo is None, "il ciclo blocca la compilazione")
+    _check("ciclo" in log.lower(), "il log spiega il ciclo di inclusione")
+
+
+def test_include_path_relativo():
+    print("[import: path relativo in una sottocartella]")
+    d = _scrivi_progetto({
+        "main.fav": 'Includi "moduli/extra.fav".\n',
+        "moduli/extra.fav": "La cripta è una stanza.\n",
+    })
+    mondo, log = _compila_path(os.path.join(d, "main.fav"))
+    _check(mondo is not None and "cripta" in mondo.stanze,
+           "il path relativo in sottocartella è risolto e incluso")
+
+
+def test_include_file_mancante():
+    print("[import: un file incluso mancante è bloccante]")
+    d = _scrivi_progetto({
+        "main.fav": 'La cella è una stanza.\nIncludi "assente.fav".\n',
+    })
+    mondo, log = _compila_path(os.path.join(d, "main.fav"))
+    _check(mondo is None, "un include mancante blocca la compilazione")
+    _check("non trovato" in log.lower(), "il log segnala il file incluso mancante")
+
+
+def test_include_errore_attribuito_al_file():
+    print("[import: l'errore nel file incluso è attribuito a quel file (source map)]")
+    d = _scrivi_progetto({
+        "main.fav": 'La cella è una stanza.\nIncludi "rotto.fav".\n',
+        "rotto.fav": "La porta è una banana.\n",   # 'porta' mai dichiarata: errore
+    })
+    mondo, log = _compila_path(os.path.join(d, "main.fav"))
+    _check(mondo is None, "l'errore nel file incluso blocca la compilazione")
+    _check("rotto.fav" in log,
+           "l'errore è attribuito al file incluso 'rotto.fav' via source map")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -2170,6 +2267,13 @@ def main():
         test_lint_variabile_inutilizzata,
         test_lint_variabile_usata_in_interpolazione,
         test_lint_variabile_usata_in_condizione,
+        # Livello 6 — moduli / import multi-.fav (0.11.2)
+        test_include_basico,
+        test_include_dedup,
+        test_include_ciclo,
+        test_include_path_relativo,
+        test_include_file_mancante,
+        test_include_errore_attribuito_al_file,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -2177,7 +2281,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.2)")
     print("=" * 60)
     for t in tests:
         t()

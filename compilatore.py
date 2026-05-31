@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.11.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.11.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -20,6 +20,7 @@ from utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
     DIREZIONI_BASE, estrai_placeholder,
 )
+import os
 import sys
 
 # Vocabolario chiuso dei verbi riconosciuti dal motore di gioco. Serve per
@@ -1497,6 +1498,99 @@ def valida_direzioni_dichiarate(coppie, simboli):
     return coppie_ok, nomi_extra, errori
 
 
+# ==============================================================================
+# 0bis. PREPROCESSORE DEGLI IMPORT MULTI-FILE (Passata 0) — Livello 6 / 0.11.2
+# ==============================================================================
+#
+# La direttiva 'Includi "file.fav".' viene espansa TESTUALMENTE in un unico
+# sorgente PRIMA delle due passate: non raggiunge mai il parser, quindi non
+# tocca la grammatica (invariante LALR intatto). Gestisce: risoluzione dei path
+# relativi (rispetto al file che include), deduplica (lo stesso file è incluso
+# una sola volta — diamanti), rilevamento dei cicli (errore bloccante) e una
+# source map riga-espansa -> (file, riga) per attribuire gli errori al file giusto.
+
+# Una direttiva occupa un'INTERA riga: 'Includi "percorso".' (spazi ai lati
+# ammessi). Il path è quotato (vocabolario nuovo tra virgolette, come alias/verbi).
+_RE_INCLUDI = re.compile(r'^\s*Includi\s+"((?:\\.|[^"\\])*)"\s*\.\s*$')
+
+
+def _aggiorna_stato_stringa(linea: str, dentro: bool) -> bool:
+    """Aggiorna il flag «siamo dentro una stringa quotata» scorrendo la riga e
+    invertendolo a ogni virgoletta doppia non escappata. Evita che il
+    preprocessore scambi per direttiva un 'Includi \"...\".' che capiti dentro il
+    testo di una descrizione (anche multilinea)."""
+    i = 0
+    while i < len(linea):
+        c = linea[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == '"':
+            dentro = not dentro
+        i += 1
+    return dentro
+
+
+def espandi_inclusioni(percorso_radice: str):
+    """PASSATA 0 — Espande ricorsivamente le direttive 'Includi "...".'.
+
+    Restituisce (testo_espanso, mappa_righe, errori):
+      - testo_espanso: il sorgente unito di tutti i file, senza le direttive;
+      - mappa_righe: lista parallela alle righe di testo_espanso; ogni elemento è
+        (percorso_file, numero_riga_originale 1-based);
+      - errori: messaggi bloccanti (cicli di inclusione, file inclusi mancanti).
+    La normalizzazione tipografica [L2] è applicata per-file qui. Una
+    FileNotFoundError sul file RADICE viene propagata (la gestisce analizza_file,
+    come in precedenza)."""
+    righe_out = []
+    mappa = []
+    errori = []
+    gia_inclusi = set()
+
+    def _espandi(percorso, catena, is_root):
+        # 'catena' = stack dei realpath in corso di inclusione (per i cicli).
+        real = os.path.realpath(percorso)
+        if real in catena:
+            nomi = " -> ".join(os.path.basename(p) for p in catena + [real])
+            errori.append(f"Ciclo di inclusione rilevato: {nomi}.")
+            return
+        if real in gia_inclusi:
+            return  # già incluso altrove: deduplica (diamante)
+        try:
+            with open(percorso, "r", encoding="utf-8") as f:
+                testo = normalizza_tipografia(f.read())
+        except FileNotFoundError:
+            if is_root:
+                raise
+            errori.append(f"File incluso non trovato: '{percorso}'.")
+            return
+        gia_inclusi.add(real)
+        base = os.path.dirname(os.path.abspath(percorso))
+        dentro_stringa = False
+        for n, linea in enumerate(testo.split("\n"), 1):
+            if not dentro_stringa:
+                m = _RE_INCLUDI.match(linea)
+                if m:
+                    _espandi(os.path.join(base, m.group(1)), catena + [real], False)
+                    continue
+            righe_out.append(linea)
+            mappa.append((percorso, n))
+            dentro_stringa = _aggiorna_stato_stringa(linea, dentro_stringa)
+
+    _espandi(percorso_radice, [], True)
+    return "\n".join(righe_out), mappa, errori
+
+
+def _posizione_origine(mappa_righe, linea) -> str:
+    """Formatta '  [file, riga N]' dalla source map e dal numero di riga nel
+    sorgente espanso. Stringa vuota se la mappa non copre quella riga (es. file
+    a sorgente singolo, dove la riga coincide già con l'originale)."""
+    if mappa_righe and isinstance(linea, int) and 1 <= linea <= len(mappa_righe):
+        file_o, riga_o = mappa_righe[linea - 1]
+        return f"  [{file_o}, riga {riga_o}]"
+    return ""
+
+
 def analizza_file(percorso_file: str) -> Mondo | None:
     """
     Legge un file .fav e lo compila in un Mondo popolato, con la pipeline a
@@ -1506,18 +1600,24 @@ def analizza_file(percorso_file: str) -> Mondo | None:
                  genera l'AST, lo trasforma in oggetti e valida la semantica.
     """
     errori = []
+    mappa_righe = []
 
     try:
-        with open(percorso_file, 'r', encoding='utf-8') as file:
-            testo = file.read()
+        # 0. PASSATA 0 — Preprocessore degli import multi-file [Livello 6 / 0.11.2].
+        # Espande 'Includi "file.fav".' in un unico sorgente PRIMA delle due
+        # passate: la direttiva non raggiunge mai il parser (invariante LALR
+        # intatto). La normalizzazione tipografica [L2] è applicata per-file dentro
+        # il preprocessore; 'mappa_righe' associa ogni riga del sorgente espanso al
+        # file e alla riga originali, per attribuire gli errori al file giusto.
+        testo, mappa_righe, inc_errori = espandi_inclusioni(percorso_file)
+        if inc_errori:
+            print("\n[FAVELLA 1] Errore negli import (Includi):")
+            for err in inc_errori:
+                print(f" - {err}")
+            return None
 
         if not testo.strip():
-            return Mondo() # File vuoto
-
-        # 0. NORMALIZZAZIONE TIPOGRAFICA [L2]
-        # Sostituisce apostrofi e virgolette "curve" (tipici di copia-incolla da
-        # editor di testo) con le versioni dritte attese dalla grammatica.
-        testo = normalizza_tipografia(testo)
+            return Mondo() # File vuoto (eventualmente dopo l'espansione)
 
         # 1. PASSATA 1 — Symbol-table dei nomi dichiarati.
         simboli = costruisci_symbol_table(testo)
@@ -1567,13 +1667,13 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         diagnosi = diagnostica_entita_sconosciuta(testo, e, simboli)
         if diagnosi:
             print("\n[FAVELLA 1] Errore: entità non dichiarata")
-            print(f"Riga {e.line}, Colonna {e.column}")
+            print(f"Riga {e.line}, Colonna {e.column}{_posizione_origine(mappa_righe, e.line)}")
             print(f" - {diagnosi}")
             return None
 
         # Errore sintattico formale sollevato da Lark (Es: manca punto, ortografia)
         print("\n[ERRORE DI SINTASSI FAVELLA]")
-        print(f"Riga {e.line}, Colonna {e.column}")
+        print(f"Riga {e.line}, Colonna {e.column}{_posizione_origine(mappa_righe, e.line)}")
 
         # Mostra il frammento di codice errato
         contesto = e.get_context(testo, span=40)
