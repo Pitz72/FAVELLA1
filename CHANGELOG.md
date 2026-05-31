@@ -4,6 +4,32 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.0] - 2026-05-31
+### Roadmap del Linguaggio — Livello 3 «Stato di gioco e meccaniche» COMPLETATO
+Release minore che consolida le patch 0.7.1 → 0.7.5. Il linguaggio FAVELLA passa
+da descrittore di mondi statici a motore di **avventure complete**, con stato
+astratto e meccaniche temporali. In sintesi (dettaglio per-patch sotto e in
+`documentazione/0.8.0.md`):
+- **Proprietà opposte dichiarabili** (`M5`): `Accesa e spenta sono opposte.`
+- **Fine partita**: conseguenze `vinci` / `perdi` / `termina`.
+- **Stato astratto** (`G3`): **stati** enum-like (`Il semaforo è uno stato.` →
+  `… è rosso`, `se … è verde`) e **contatori** numerici (`Il punteggio è un
+  contatore.`, `aumenta … di N`, `diventa N`, confronti `almeno`/`più di`/`meno di`).
+- **Eventi a turni**: `Al turno N: …`, `Ogni N turni: …`.
+
+Vincoli mantenuti per tutto il livello: grammatica **LALR(1) non ambigua per
+costruzione** (guardia permanente: 1 albero / 0 conflitti) e superficie pubblica
+`analizza_file()` invariata. Header dei moduli core allineati a **v0.8.0**
+(`compilatore`, `strutture`, `gioco`, `libreria_azioni`, suite). Suite del
+linguaggio: **133 asserzioni**, tutte verdi (erano 65 a inizio livello).
+
+> Nota architetturale chiave: stati e contatori sono una **terza classe di
+> simboli chiusi** (terminale `VARIABILE`) disgiunta da `ENTITA`/`PROPRIETA`,
+> raccolta in Passata 1. È questa separazione a garantire **zero ambiguità** tra
+> i costrutti su variabili e quelli su oggetti.
+
+---
+
 ## [0.7.5] - 2026-05-31
 ### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
 - **Eventi a turni**: costrutti temporali a livello di mondo.
