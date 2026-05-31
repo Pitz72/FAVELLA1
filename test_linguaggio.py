@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.12.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -12,13 +12,14 @@
 import io
 import sys
 import os
+import re
 import tempfile
 import contextlib
 
 from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
-    espandi_inclusioni,
+    espandi_inclusioni, _GRAMMAR_TEMPLATE,
 )
 
 
@@ -2113,6 +2114,58 @@ def test_include_errore_attribuito_al_file():
            "l'errore è attribuito al file incluso 'rotto.fav' via source map")
 
 
+# --- Test: SPEC EBNF FORMALE VERSIONATA [Livello 6 / 0.11.3] -----------------
+#
+# Guardia anti-drift: la specifica tecnica documentazione/grammatica-<ver>.md
+# deve restare allineata ai NOMI DI REGOLA della grammatica reale. Se si aggiunge
+# o rinomina una regola def_/cond_/cons_ senza aggiornare la spec, questo test
+# fallisce.
+
+_SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
+                          "grammatica-0.12.0.md")
+
+
+def _nomi_regole_grammatica():
+    """Estrae dai nomi di regola/azione del template di grammatica quelli
+    «autore-facing» (def_*, cond_*, cons_*)."""
+    nomi = set()
+    for m in re.finditer(r"(?m)^\s*\??([A-Za-z_]\w*)(?:\.-?\d+)?:", _GRAMMAR_TEMPLATE):
+        nomi.add(m.group(1))
+    for m in re.finditer(r"->\s*(\w+)", _GRAMMAR_TEMPLATE):
+        nomi.add(m.group(1))
+    return {n for n in nomi if n.startswith(("def_", "cond_", "cons_"))}
+
+
+def test_spec_ebnf_esiste():
+    print("[spec EBNF: il documento tecnico versionato esiste]")
+    _check(os.path.exists(_SPEC_EBNF),
+           "documentazione/grammatica-0.12.0.md è presente")
+
+
+def test_spec_ebnf_allineata_alla_grammatica():
+    print("[spec EBNF: cita tutte le regole def_/cond_/cons_ della grammatica]")
+    if not os.path.exists(_SPEC_EBNF):
+        _check(False, "spec EBNF mancante")
+        return
+    with open(_SPEC_EBNF, "r", encoding="utf-8") as f:
+        spec = f.read()
+    nomi = _nomi_regole_grammatica()
+    mancanti = sorted(n for n in nomi if n not in spec)
+    _check(not mancanti,
+           f"la spec cita tutte le regole def_/cond_/cons_ (mancanti: {mancanti})")
+
+
+def test_spec_ebnf_documenta_terminali_chiusi():
+    print("[spec EBNF: documenta i terminali chiusi generati per-file]")
+    if not os.path.exists(_SPEC_EBNF):
+        _check(False, "spec EBNF mancante")
+        return
+    with open(_SPEC_EBNF, "r", encoding="utf-8") as f:
+        spec = f.read()
+    for term in ("ENTITA", "VARIABILE", "DIREZIONE", "PROPRIETA", "TESTO_QUOTATO"):
+        _check(term in spec, f"la spec documenta il terminale {term}")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -2274,6 +2327,10 @@ def main():
         test_include_path_relativo,
         test_include_file_mancante,
         test_include_errore_attribuito_al_file,
+        # Livello 6 — spec EBNF formale versionata (0.11.3)
+        test_spec_ebnf_esiste,
+        test_spec_ebnf_allineata_alla_grammatica,
+        test_spec_ebnf_documenta_terminali_chiusi,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -2281,7 +2338,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.12.0)")
     print("=" * 60)
     for t in tests:
         t()

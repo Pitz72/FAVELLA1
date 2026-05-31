@@ -4,6 +4,25 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.11.3] - 2026-05-31
+### Roadmap del Linguaggio — Livello 6: SPEC EBNF FORMALE VERSIONATA 📐
+Terza patch del Livello 6 (verso `0.12.0`). Aggiunge il documento tecnico
+**`documentazione/grammatica-0.12.0.md`**: la specifica formale versionata della
+grammatica di FAVELLA 1 — scheletro statico in EBNF (Lark) + modello dei
+**terminali chiusi generati per-file** (`ENTITA`/`VARIABILE`/`DIREZIONE`),
+priorità lessicali (`PROPRIETA`, `NUMERO`, `_PREP_DESCR`) e invariante LALR(1).
+Non è il manuale d'autore: descrive il linguaggio dal lato compilatore.
+
+**Guardia anti-drift**: nuovi test verificano che la spec citi tutte le regole
+`def_/cond_/cons_` della grammatica reale (`_GRAMMAR_TEMPLATE`) e documenti i
+terminali chiusi — così la spec non potrà divergere dal codice senza far fallire
+la suite.
+
+Suite: **321 asserzioni** (era 314), tutte verdi. Header `test_linguaggio.py` a
+**v0.11.3** (il compilatore non cambia in questa patch).
+
+---
+
 ## [0.11.2] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 6: MODULI / IMPORT MULTI-.FAV 📦
 Seconda patch del Livello 6 (verso `0.12.0`). Introduce gli **import multi-file**
