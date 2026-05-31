@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1178,6 +1178,12 @@ _CORPUS_GUARDIA = (
     'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
     # [Livello 5] Descrizione CONDIZIONALE: clausola 'se' tra ENTITA e "è".
     'La descrizione della porta di ferro se l\'allarme è attivo è "Sigillata.".\n'
+    # [Livello 5b] NPC e dialoghi: personaggio, nodo d'ingresso, battuta (con
+    # interpolazione), opzione di uscita. Etichette/testi quotati: 0 ambiguità.
+    "Il mercante è un personaggio.\nIl mercante è in cella.\n"
+    'Il dialogo del mercante comincia con "saluto".\n'
+    'Il mercante al nodo "saluto" dice "Benvenuto, hai [punteggio] punti!".\n'
+    'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
 )
 
 
@@ -1576,6 +1582,127 @@ def test_concordanza_elenco_plurale():
     _check("delle chiavi" in out, "l'oggetto plurale usa il partitivo 'delle'")
 
 
+# --- Test: LIVELLO 5b — NPC e dialoghi, fondazione (1.0.1) --------------------
+
+_SRC_NPC = (
+    "La piazza è una stanza.\n"
+    "Il mercante è un personaggio.\n"
+    "Il mercante è in piazza.\n"
+    'Il dialogo del mercante comincia con "saluto".\n'
+    'Il mercante al nodo "saluto" dice "Benvenuto, viaggiatore!".\n'
+    'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+)
+
+
+def test_npc_dichiarazione():
+    print("[NPC: 'X è un personaggio' crea un oggetto-personaggio]")
+    mondo, _ = compila(_SRC_NPC)
+    _check(mondo is not None, "compila senza errori")
+    npc = mondo.oggetti.get("mercante")
+    _check(npc is not None and npc.is_personaggio, "il mercante è un personaggio")
+    _check(npc is not None and npc.posizione == "piazza", "il mercante è in piazza")
+
+
+def test_dialogo_struttura():
+    print("[dialogo: nodo d'ingresso, battuta e opzione registrati]")
+    mondo, _ = compila(_SRC_NPC)
+    npc = mondo.oggetti.get("mercante")
+    _check(npc is not None and npc.dialogo_iniziale == "saluto", "nodo d'ingresso = 'saluto'")
+    nodo = mondo.dialogo_nodi.get("saluto")
+    _check(nodo is not None and nodo.battuta == "Benvenuto, viaggiatore!", "battuta registrata")
+    _check(nodo is not None and len(nodo.opzioni) == 1 and nodo.opzioni[0].chiude,
+           "una sola opzione, che chiude il dialogo")
+
+
+def test_dialogo_avvio_runtime():
+    print("[dialogo: 'parla con X' avvia la conversazione e mostra le opzioni]")
+    mondo = runtime(_SRC_NPC)
+    out = esegui(mondo, "parla con mercante")
+    _check("Benvenuto, viaggiatore!" in out, "viene mostrata la battuta")
+    _check("1. Addio." in out, "l'opzione è elencata e numerata")
+    _check(mondo.in_dialogo() and mondo.nodo_dialogo == "saluto",
+           "il mondo è in dialogo sul nodo d'ingresso")
+
+
+def test_dialogo_scelta_chiude():
+    print("[dialogo: scegliere l'opzione di uscita termina la conversazione]")
+    mondo = runtime(_SRC_NPC)
+    esegui(mondo, "parla con mercante")
+    out = esegui(mondo, "1")
+    _check("Fine della conversazione." in out, "la conversazione si conclude")
+    _check(not mondo.in_dialogo(), "il mondo non è più in dialogo")
+
+
+def test_dialogo_scelta_per_testo():
+    print("[dialogo: l'opzione si può scegliere anche per testo]")
+    mondo = runtime(_SRC_NPC)
+    esegui(mondo, "parla con mercante")
+    esegui(mondo, "addio.")   # match testuale dell'opzione "Addio."
+    _check(not mondo.in_dialogo(), "scelta per testo conclude il dialogo")
+
+
+def test_dialogo_uscita_universale_non_esce_dal_gioco():
+    print("[dialogo: 'esci' chiude il dialogo, non il gioco]")
+    mondo = runtime(_SRC_NPC)
+    esegui(mondo, "parla con mercante")
+    from gioco import elabora_comando
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        continua = elabora_comando(mondo, "esci")
+    _check(continua is True, "il gioco continua (esci non termina la partita)")
+    _check(not mondo.in_dialogo(), "ma la conversazione è chiusa")
+
+
+def test_dialogo_non_consuma_turno():
+    print("[dialogo: parlare e scegliere non fa avanzare i turni]")
+    mondo = runtime(_SRC_NPC)
+    esegui(mondo, "parla con mercante")
+    esegui(mondo, "1")
+    _check(mondo.turno_corrente == 0, "il tempo del mondo non è avanzato durante il dialogo")
+
+
+def test_dialogo_battuta_interpolata():
+    print("[dialogo: la battuta interpola i segnaposto [var]]")
+    src = (
+        "La piazza è una stanza.\n"
+        "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+        "L'oro è un contatore.\n"
+        'Il dialogo del mercante comincia con "saluto".\n'
+        'Il mercante al nodo "saluto" dice "Hai [oro] monete.".\n'
+        'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "parla con mercante")
+    _check("Hai 0 monete." in out, "la battuta interpola il contatore 'oro'")
+
+
+def test_personaggio_senza_dialogo_warning():
+    print("[NPC senza nodo d'ingresso: warning non bloccante]")
+    src = (
+        "La piazza è una stanza.\n"
+        "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila (warning non bloccante)")
+    _check("mercante" in log and "dialogo" in log.lower(),
+           "il log avvisa che il personaggio non ha dialogo")
+
+
+def test_dialogo_su_non_personaggio_errore():
+    print("[dialogo riferito a non-personaggio: errore bloccante]")
+    src = (
+        "La piazza è una stanza.\n"
+        "La statua è una cosa.\nLa statua è in piazza.\n"
+        'Il dialogo della statua comincia con "saluto".\n'
+        'La statua al nodo "saluto" dice "...".\n'
+        'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("personaggio" in log.lower(), "il log spiega che serve un personaggio")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1693,6 +1820,17 @@ def main():
         test_concordanza_oggetto_metodo,
         test_concordanza_elenco_stanza_singolari,
         test_concordanza_elenco_plurale,
+        # Livello 5b — NPC e dialoghi, fondazione (1.0.1)
+        test_npc_dichiarazione,
+        test_dialogo_struttura,
+        test_dialogo_avvio_runtime,
+        test_dialogo_scelta_chiude,
+        test_dialogo_scelta_per_testo,
+        test_dialogo_uscita_universale_non_esce_dal_gioco,
+        test_dialogo_non_consuma_turno,
+        test_dialogo_battuta_interpolata,
+        test_personaggio_senza_dialogo_warning,
+        test_dialogo_su_non_personaggio_errore,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1700,7 +1838,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.1)")
     print("=" * 60)
     for t in tests:
         t()

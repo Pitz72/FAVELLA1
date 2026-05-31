@@ -4,6 +4,29 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.1] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+- **NPC e dialoghi, fondazione** (`[Livello 5b]`). Prima patch del sistema di
+  dialogo: personaggi e conversazione modale minima.
+  - **Personaggi**: `Il mercante è un personaggio.` introduce un NPC (un oggetto
+    speciale che vive in una stanza ed è raggiungibile).
+  - **Nodo d'ingresso**: `Il dialogo del mercante comincia con "saluto".`
+  - **Battuta**: `Il mercante al nodo "saluto" dice "Benvenuto, viaggiatore!".`
+  - **Opzione di uscita**: `Al nodo "saluto" l'opzione "Addio." chiude il dialogo.`
+  - **Runtime**: `parla con X` avvia una conversazione modale; la battuta dell'NPC
+    e le opzioni numerate vengono mostrate; il giocatore sceglie per **numero** o
+    per **testo**; `esci`/`addio`/`basta` chiudono la conversazione (non il gioco).
+    Le interazioni di dialogo **non consumano un turno** di gioco. Le battute e le
+    opzioni passano per l'interpolazione `[var]` (Livello 5).
+- **Principio LALR-safe**: etichette dei nodi e testi delle opzioni sono *sempre
+  quotati* (vocabolario nuovo, come alias/verbi del Livello 4) → non entrano in
+  contesa con i terminali chiusi. Si evitano di proposito `porta`/`parla` come
+  keyword di grammatica (collidono con nomi-oggetto comuni: «la porta»). Guardia
+  anti-ambiguità estesa con un NPC e un dialogo completo: **1 albero / 0 conflitti**.
+- **Suite del linguaggio**: **267 asserzioni** (erano 247). Header core a **v1.0.1**.
+
+---
+
 ## [1.0.0] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 5 «Espressività narrativa» COMPLETATO 🎉
 **Prima release maggiore.** Consolida le patch `0.9.1` → `0.9.4` e porta a

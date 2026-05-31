@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.0.0)
+# Interprete Interattivo per FAVELLA 1 (v1.0.1)
 
 import sys
 import traceback
@@ -126,16 +126,132 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     comando_pulito = comando_grezzo.strip().lower()
     if not comando_pulito:
         return True
-    if comando_pulito in ["esci", "quit"]:
+    # [Livello 5b] Durante una conversazione 'esci' chiude il dialogo (gestito in
+    # _esegui_comando), NON il gioco: l'uscita dal gioco vale solo fuori dialogo.
+    era_in_dialogo = mondo.in_dialogo()
+    if not era_in_dialogo and comando_pulito in ["esci", "quit"]:
         print("A presto!")
         return False
 
-    # Un comando non vuoto e diverso da 'esci' conta come un turno di gioco.
     continua = _esegui_comando(mondo, comando_grezzo)
     if not continua:
         return False
+    # [Livello 5b] Le interazioni di dialogo (avvio, scelte, uscita) non consumano
+    # un turno di gioco: il tempo del mondo non avanza mentre si conversa.
+    if era_in_dialogo or mondo.in_dialogo():
+        return True
     if avanza_turno_e_processa(mondo):
         return False
+    return True
+
+
+# [Livello 5b] Parole che, durante una conversazione, la concludono comunque.
+USCITE_DIALOGO = ("esci", "basta", "addio", "arrivederci", "smetti")
+
+
+def _opzioni_disponibili(mondo: Mondo, nodo):
+    """Opzioni del nodo attualmente proponibili (filtrate per condizione)."""
+    return [o for o in nodo.opzioni if o.disponibile(mondo)]
+
+
+def _mostra_nodo(mondo: Mondo):
+    """Stampa la battuta dell'NPC al nodo corrente e l'elenco numerato delle
+    opzioni disponibili. Un nodo senza opzioni chiude la conversazione."""
+    npc = mondo.trova_oggetto(mondo.dialogo_attivo)
+    nodo = mondo.dialogo_nodi.get(mondo.nodo_dialogo)
+    if nodo is None:
+        mondo.termina_dialogo()
+        return
+    nome = npc.nome_visualizzato.capitalize() if npc else "?"
+    if nodo.battuta:
+        print(f"\n{nome}: {rendi_testo(mondo, nodo.battuta)}")
+    opzioni = _opzioni_disponibili(mondo, nodo)
+    if not opzioni:
+        print("(La conversazione si chiude.)")
+        mondo.termina_dialogo()
+        return
+    for i, opz in enumerate(opzioni, 1):
+        print(f"  {i}. {rendi_testo(mondo, opz.testo)}")
+
+
+def _avvia_dialogo(mondo: Mondo, bersaglio_grezzo: str) -> bool:
+    """Avvia una conversazione con un NPC raggiungibile, posizionandosi sul suo
+    nodo d'ingresso. Restituisce sempre True (il gioco continua)."""
+    if not bersaglio_grezzo:
+        print("Con chi vuoi parlare?")
+        return True
+    id_npc = risolvi_nome_oggetto(mondo, bersaglio_grezzo)
+    if not id_npc or id_npc == "<ambiguo>":
+        if id_npc is None:
+            print(f"Non vedo '{bersaglio_grezzo}' qui.")
+        return True
+    npc = mondo.trova_oggetto(id_npc)
+    if not npc or not npc.is_personaggio:
+        print("Non puoi parlarci.")
+        return True
+    if not npc.dialogo_iniziale or npc.dialogo_iniziale not in mondo.dialogo_nodi:
+        print(f"{npc.nome_visualizzato.capitalize()} non ha nulla da dire.")
+        return True
+    mondo.dialogo_attivo = id_npc
+    mondo.nodo_dialogo = npc.dialogo_iniziale
+    _mostra_nodo(mondo)
+    return True
+
+
+def _seleziona_opzione(comando: str, opzioni):
+    """Risolve il comando del giocatore in un'opzione: per numero, poi per testo
+    esatto, infine per corrispondenza parziale univoca. None se nessuna combacia."""
+    if comando.isdigit():
+        idx = int(comando)
+        if 1 <= idx <= len(opzioni):
+            return opzioni[idx - 1]
+        return None
+    for opz in opzioni:
+        if opz.testo.strip().lower() == comando:
+            return opz
+    parziali = [o for o in opzioni if comando in o.testo.strip().lower()]
+    return parziali[0] if len(parziali) == 1 else None
+
+
+def _gestisci_scelta_dialogo(mondo: Mondo, comando: str) -> bool:
+    """Gestisce un comando mentre è in corso una conversazione: seleziona
+    un'opzione, ne esegue le conseguenze e transita al nodo successivo, oppure
+    chiude il dialogo. Restituisce False solo se una conseguenza termina la partita."""
+    if comando in USCITE_DIALOGO:
+        print("Concludi la conversazione.")
+        mondo.termina_dialogo()
+        return True
+
+    nodo = mondo.dialogo_nodi.get(mondo.nodo_dialogo)
+    if nodo is None:
+        mondo.termina_dialogo()
+        return True
+
+    opzioni = _opzioni_disponibili(mondo, nodo)
+    scelta = _seleziona_opzione(comando, opzioni)
+    if scelta is None:
+        print("Non è una scelta valida. Indica il numero di un'opzione (o 'esci').")
+        return True
+
+    # Conseguenze della scelta (riuso della coda del Livello 3), poi transizione.
+    for conseguenza in scelta.conseguenze:
+        conseguenza.esegui(mondo)
+    if partita_finita(mondo):
+        mondo.termina_dialogo()
+        return False
+
+    if scelta.chiude or not scelta.destinazione:
+        mondo.termina_dialogo()
+        print("(Fine della conversazione.)")
+        return True
+
+    if scelta.destinazione not in mondo.dialogo_nodi:
+        # Nodo successivo inesistente: chiudi con grazia (già segnalato a compile-time).
+        mondo.termina_dialogo()
+        return True
+
+    mondo.nodo_dialogo = scelta.destinazione
+    _mostra_nodo(mondo)
     return True
 
 
@@ -146,6 +262,12 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         comando_pulito = comando_grezzo.strip().lower()
         if not comando_pulito:
             return True
+
+        # [Livello 5b] Se è in corso una conversazione, il comando è una scelta di
+        # dialogo (numero o testo dell'opzione, oppure un'uscita): instradalo lì.
+        if mondo.in_dialogo():
+            return _gestisci_scelta_dialogo(mondo, comando_pulito)
+
         if comando_pulito in ["esci", "quit"]:
             print("A presto!")
             return False
@@ -161,8 +283,13 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         parole = comando_pulito.split()
         if not parole:
             return True
-        
+
         verbo_giocatore = parole[0]
+
+        # [Livello 5b] 'parla con X' (o 'parla X') avvia un dialogo con un NPC.
+        if verbo_giocatore in ("parla", "parlare", "conversa", "conversare"):
+            bersaglio = " ".join(p for p in parole[1:] if p != "con")
+            return _avvia_dialogo(mondo, bersaglio)
         
         # Cerca la prima preposizione nota
         indice_prep = -1

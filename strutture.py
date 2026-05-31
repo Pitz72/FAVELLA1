@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v1.0.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v1.0.1)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -248,6 +248,36 @@ def _descrizione_attuale(entita, mondo: 'Mondo') -> str:
             return testo
     return entita.descrizione
 
+# --- [Livello 5b] NPC e dialoghi ramificati ---
+#
+# Un dialogo è un grafo di NODI (etichettati). Ogni nodo ha una BATTUTA (ciò che
+# l'NPC dice) e una lista di OPZIONI del giocatore. Ogni opzione può: portare a un
+# altro nodo, oppure chiudere il dialogo; eseguire conseguenze (Livello 3, riuso);
+# essere subordinata a una condizione (mostrata solo se vera). Le etichette dei
+# nodi e i testi delle opzioni sono VOCABOLARIO NUOVO -> introdotti tra virgolette
+# (come alias/verbi del Livello 4), così non riaprono l'ambiguità grammaticale.
+
+class OpzioneDialogo:
+    """Una scelta del giocatore all'interno di un nodo di dialogo."""
+    def __init__(self, testo: str, destinazione: Optional[str] = None,
+                 chiude: bool = False, conseguenze: Optional[List['Conseguenza']] = None,
+                 condizione: Optional['Condizione'] = None):
+        self.testo = testo                  # ciò che il giocatore può scegliere
+        self.destinazione = destinazione    # etichetta del nodo successivo (o None)
+        self.chiude = chiude                # True se l'opzione termina il dialogo
+        self.conseguenze: List['Conseguenza'] = conseguenze or []
+        self.condizione = condizione        # disponibile solo se vera (None = sempre)
+
+    def disponibile(self, mondo: 'Mondo') -> bool:
+        return self.condizione is None or self.condizione.valuta(mondo)
+
+class NodoDialogo:
+    """Un nodo del grafo di dialogo: la battuta dell'NPC più le opzioni offerte."""
+    def __init__(self, etichetta: str):
+        self.etichetta = etichetta
+        self.battuta: str = ""
+        self.opzioni: List[OpzioneDialogo] = []
+
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""
     def __init__(self, nome: str, descrizione: str = "Non vedi nulla di particolare."):
@@ -281,6 +311,10 @@ class Oggetto:
         self.is_contenitore: bool = False
         self.is_supporto: bool = False
         self.contenuto: Set[str] = set()
+        # [Livello 5b] NPC: un personaggio con cui il giocatore può 'parlare'.
+        # 'dialogo_iniziale' è l'etichetta del nodo di partenza della conversazione.
+        self.is_personaggio: bool = False
+        self.dialogo_iniziale: Optional[str] = None
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -348,6 +382,30 @@ class Mondo:
         self.direzioni: Dict[str, str] = {}
         self.opposte_direzioni: Dict[str, str] = {}
         self._inizializza_direzioni_base()
+        # [Livello 5b] Dialoghi. 'dialogo_nodi' è il registro GLOBALE dei nodi
+        # (etichetta -> NodoDialogo); le etichette sono uniche nel gioco. Ogni NPC
+        # punta al proprio nodo d'ingresso via Oggetto.dialogo_iniziale. Lo stato
+        # della conversazione in corso è runtime: 'dialogo_attivo' = id dell'NPC con
+        # cui si sta parlando (o None), 'nodo_dialogo' = etichetta del nodo corrente.
+        self.dialogo_nodi: Dict[str, 'NodoDialogo'] = {}
+        self.dialogo_attivo: Optional[str] = None
+        self.nodo_dialogo: Optional[str] = None
+
+    def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
+        """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
+        nodo = self.dialogo_nodi.get(etichetta)
+        if nodo is None:
+            nodo = NodoDialogo(etichetta)
+            self.dialogo_nodi[etichetta] = nodo
+        return nodo
+
+    def in_dialogo(self) -> bool:
+        """Vero se è in corso una conversazione con un NPC."""
+        return self.dialogo_attivo is not None
+
+    def termina_dialogo(self):
+        self.dialogo_attivo = None
+        self.nodo_dialogo = None
 
     def dichiara_variabile(self, nome: str):
         """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
@@ -513,7 +571,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v1.0.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v1.0.1):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"

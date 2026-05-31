@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.0.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -13,6 +13,7 @@ from strutture import (
     CondizioneContatore,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
+    OpzioneDialogo,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
@@ -73,6 +74,10 @@ PAROLE_RISERVATE = frozenset({
     "direzioni",
     # contenitori e supporti (Livello 4 / M1)
     "contenitore", "supporto",
+    # NPC e dialoghi (Livello 5b). NB: si evitano di proposito 'porta' e 'parla'
+    # come keyword (collidono con nomi-oggetto comuni: "la porta"); la transizione
+    # tra nodi usa 'conduce' (vedi 1.0.2).
+    "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -119,6 +124,8 @@ _RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNO
 # 'X è un contenitore' / 'X è un supporto' introducono un OGGETTO. [Livello 4 / M1]
 _RE_DEF_CONTENITORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contenitore$", re.IGNORECASE)
 _RE_DEF_SUPPORTO = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+supporto$", re.IGNORECASE)
+# 'X è un personaggio' introduce un OGGETTO speciale (un NPC). [Livello 5b]
+_RE_DEF_PERSONAGGIO = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+personaggio$", re.IGNORECASE)
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
@@ -178,9 +185,10 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
             tab.variabili.add(normalizza_nome(m.group("nome")))
             continue
 
-        m = _RE_DEF_CONTENITORE.match(frase) or _RE_DEF_SUPPORTO.match(frase)
+        m = (_RE_DEF_CONTENITORE.match(frase) or _RE_DEF_SUPPORTO.match(frase)
+             or _RE_DEF_PERSONAGGIO.match(frase))
         if m:
-            # Un contenitore/supporto è a tutti gli effetti un OGGETTO.
+            # Un contenitore/supporto/personaggio è a tutti gli effetti un OGGETTO.
             tab.oggetti.add(normalizza_nome(m.group("nome")))
             continue
 
@@ -245,6 +253,10 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_contatore
                   | def_contenitore
                   | def_supporto
+                  | def_personaggio
+                  | def_dialogo_inizio
+                  | def_battuta
+                  | def_opzione
                   | def_direzioni
                   | def_evento
 
@@ -256,6 +268,9 @@ _GRAMMAR_TEMPLATE = r"""
     // priorità bassa, non può essere la keyword "un"): stesso schema di def_contatore.
     def_contenitore: ENTITA "è" "un" "contenitore" "."
     def_supporto: ENTITA "è" "un" "supporto" "."
+    // [Livello 5b] NPC: un personaggio con cui 'parlare'. Stesso schema di
+    // contenitore/supporto (distinto sul token "un").
+    def_personaggio: ENTITA "è" "un" "personaggio" "."
     // [Livello 4 / M1] Verbo personalizzato. La parola-comando è quotata (come
     // gli alias: vocabolario nuovo, non ancora un token noto), così non collide
     // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
@@ -304,6 +319,19 @@ _GRAMMAR_TEMPLATE = r"""
     // multiplo di N. Riusano la stessa coda di conseguenze delle regole.
     def_evento: "Al" "turno" NUMERO ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_al
               | "Ogni" NUMERO ( "turno" | "turni" ) ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_ogni
+
+    // --- NPC E DIALOGHI (Livello 5b) ---
+    // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
+    // nuovo, come alias/verbi): non entrano in contesa con i terminali chiusi.
+    //   'Il dialogo del mercante comincia con "saluto".' — nodo d'ingresso dell'NPC.
+    //     Inizia con "Il" (come def_giocatore): lookahead "dialogo" vs "giocatore".
+    //   'Il mercante al nodo "saluto" dice "Benvenuto!".' — battuta dell'NPC al nodo.
+    //     Inizia con ENTITA: dopo l'entità il lookahead "al" la distingue da è/si/collega.
+    //   'Al nodo "saluto" l'opzione "Addio." chiude il dialogo.' — opzione del giocatore.
+    //     Inizia con "Al": lookahead "nodo" vs "turno" (eventi). [1.0.1: solo 'chiude'.]
+    def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
+    def_battuta: ENTITA "al" "nodo" TESTO_QUOTATO "dice" TESTO_QUOTATO "."
+    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO "chiude" "il" "dialogo" "."
 
     // --- REGOLE (INVECE DI) ---
     // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai
@@ -552,6 +580,12 @@ class FavellaTransformer(Transformer):
         self.errori = []        # Errori bloccanti: la compilazione fallisce
         self.warnings = []      # Avvisi non bloccanti: la compilazione prosegue
         self.start_dichiarato_raw = None  # Nome grezzo della stanza di partenza
+        # [Livello 5b] Pending dei dialoghi, risolti in valida_post (le
+        # dichiarazioni possono precedere quella del personaggio):
+        #   _dialogo_inizio: npc_id -> etichetta del nodo d'ingresso;
+        #   _nodo_speaker:   etichetta del nodo -> npc_id che vi parla (per validare).
+        self._dialogo_inizio = {}
+        self._nodo_speaker = {}
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -634,6 +668,38 @@ class FavellaTransformer(Transformer):
         # [Livello 4 / M1] 'X è un supporto.': un oggetto su cui se ne posano altri
         # (sempre visibili, senza apertura).
         self._crea_o_trova_oggetto(nome_grezzo).is_supporto = True
+        return None
+
+    def def_personaggio(self, nome_grezzo):
+        # [Livello 5b] 'X è un personaggio.': un NPC con cui il giocatore può
+        # 'parlare'. È un oggetto speciale (vive in una stanza, è raggiungibile).
+        self._crea_o_trova_oggetto(nome_grezzo).is_personaggio = True
+        return None
+
+    # --- Dialoghi (Livello 5b) ---
+
+    def def_dialogo_inizio(self, npc_grezzo, etichetta):
+        # 'Il dialogo del mercante comincia con "saluto".' — registra il nodo
+        # d'ingresso. La validazione (l'NPC esiste, è un personaggio, il nodo è
+        # definito) è rimandata a valida_post: le dichiarazioni possono essere
+        # in qualsiasi ordine.
+        self._dialogo_inizio[normalizza_nome(npc_grezzo)] = etichetta
+        return None
+
+    def def_battuta(self, npc_grezzo, etichetta, battuta):
+        # 'Il mercante al nodo "saluto" dice "Benvenuto!".' — la battuta dell'NPC
+        # al nodo. I nodi sono GLOBALI (etichetta unica nel gioco); il nome dell'NPC
+        # serve alla leggibilità e alla validazione (registrato in _nodo_speaker).
+        self.mondo.nodo_dialogo_di(etichetta).battuta = battuta
+        self._nodo_speaker[etichetta] = normalizza_nome(npc_grezzo)
+        return None
+
+    def def_opzione(self, etichetta, testo_opzione):
+        # [1.0.1] 'Al nodo "saluto" l'opzione "Addio." chiude il dialogo.' — opzione
+        # che termina la conversazione. Le varianti 'conduce a' / conseguenze /
+        # condizioni arrivano nelle patch successive del livello.
+        self.mondo.nodo_dialogo_di(etichetta).opzioni.append(
+            OpzioneDialogo(testo_opzione, chiude=True))
         return None
 
     def def_verbo(self, testo_quotato):
@@ -1110,6 +1176,41 @@ class FavellaTransformer(Transformer):
                 f"Segnaposto '[{ph}]' non corrisponde ad alcuno stato, contatore "
                 f"od oggetto: resterà invariato nel testo (possibile refuso)."
             )
+
+        # 5. [Livello 5b] Dialoghi: coerenza di NPC e nodi.
+        #    - il nodo d'ingresso dichiarato deve appartenere a un personaggio e
+        #      avere una battuta definita; risolviamo l'ingresso sull'oggetto NPC;
+        #    - chi 'parla' a un nodo deve essere un personaggio;
+        #    - un personaggio senza nodo d'ingresso non è interrogabile (warning).
+        for npc_id, etichetta in self._dialogo_inizio.items():
+            npc = m.trova_oggetto(npc_id)
+            if not npc or not npc.is_personaggio:
+                self.errori.append(
+                    f"Dialogo riferito a '{npc_id}', che non è un personaggio "
+                    f"(dichiaralo con '{npc_id} è un personaggio.')."
+                )
+                continue
+            if etichetta not in m.dialogo_nodi:
+                self.warnings.append(
+                    f"Il dialogo di '{npc_id}' comincia con il nodo '{etichetta}', "
+                    f"ma nessuna battuta lo definisce: la conversazione sarà vuota."
+                )
+            npc.dialogo_iniziale = etichetta
+
+        for etichetta, npc_id in self._nodo_speaker.items():
+            npc = m.trova_oggetto(npc_id)
+            if not npc or not npc.is_personaggio:
+                self.warnings.append(
+                    f"Al nodo '{etichetta}' parla '{npc_id}', che non è un "
+                    f"personaggio: la battuta non sarà mai mostrata."
+                )
+
+        for id_ogg, ogg in m.oggetti.items():
+            if ogg.is_personaggio and not ogg.dialogo_iniziale:
+                self.warnings.append(
+                    f"Il personaggio '{id_ogg}' non ha un dialogo: dichiara il nodo "
+                    f"d'ingresso con 'Il dialogo di {id_ogg} comincia con \"...\".'."
+                )
 
     def _atomi_proprieta(self, condizione):
         """Estrae ricorsivamente tutti gli atomi CondizioneProprieta annidati in
