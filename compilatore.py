@@ -1,12 +1,19 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.3.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.5.0)
 # Usa Lark per generare un AST (Abstract Syntax Tree) senza regex.
 
+import re
 from lark import Lark, Transformer, v_args
 from lark.exceptions import UnexpectedInput
 from strutture import Mondo, Stanza, Oggetto, Regola, CondizionePossesso, CondizioneProprieta, ConseguenzaProprieta, ConseguenzaSpostamento
+from libreria_azioni import LIBRERIA_AZIONI
 from utils import normalizza_nome
 import sys
+
+# Vocabolario chiuso dei verbi riconosciuti dal motore di gioco. Serve per
+# validare a compile-time i verbi delle regole "Invece di" (un verbo non in
+# questo insieme genera una regola morta che non si attiverà mai a runtime).
+VERBI_VALIDI = {verbo for azione in LIBRERIA_AZIONI.values() for verbo in azione.nomi}
 
 # ==============================================================================
 # 1. LA GRAMMATICA EBNF DI FAVELLA 1 (La Costituzione)
@@ -24,29 +31,41 @@ FAVELLA_GRAMMAR = r"""
                   | def_proprieta
                   | def_connessione
                   | def_regola
+                  | def_giocatore
 
     // --- DEFINIZIONI BASE ---
-    
+    //
+    // NOTA SULLE PRIORITÀ DI REGOLA (i suffissi .2 / .1):
+    // 'def_proprieta' (entita "è" entita) è un catch-all che entra in ambiguità
+    // con le definizioni specifiche (oggetto, stanza, posizione, prendibile).
+    // Assegnando priorità più alta (.2) alle regole specifiche rispetto a
+    // 'def_proprieta' (.1) rendiamo ESPLICITA e deterministica la scelta del
+    // resolver di Earley, invece di affidarci al suo tie-break interno.
+    // La garanzia anti-regressione è data dalla suite test_linguaggio.py.
+
     // [stanza] è una stanza.
-    def_stanza: entita "è" "una" "stanza" "."
+    def_stanza.2: entita "è" "una" "stanza" "."
 
     // [oggetto] è una cosa.
-    def_oggetto: entita "è" "una" "cosa" "."
+    def_oggetto.2: entita "è" "una" "cosa" "."
 
     // La descrizione di [entita] è "[testo]".
     def_descrizione: "La" "descrizione" ( "di" | "del" | "della" | "dell'" | "degli" | "delle" ) entita "è" TESTO_QUOTATO "."
 
     // [oggetto] è in [luogo].
-    def_posizione: entita "è" PREP_LUOGO entita "."
+    def_posizione.2: entita "è" PREP_LUOGO entita "."
 
     // [oggetto] è prendibile.
-    def_prendibile: entita "è" "prendibile" "."
+    def_prendibile.2: entita "è" "prendibile" "."
 
-    // [oggetto] è [proprieta]. (Esclude "una cosa", "prendibile", preposizioni di luogo)
-    def_proprieta: entita "è" entita "."
+    // [oggetto] è [proprieta]. (Catch-all a priorità più bassa)
+    def_proprieta.1: entita "è" entita "."
 
     // [stanza] collega [direzione] a [stanza].
     def_connessione: entita "collega" DIREZIONE "a" entita "."
+
+    // Il giocatore comincia in [stanza]. (Posizione iniziale esplicita)
+    def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO entita "."
 
 
     // --- REGOLE (INVECE DI) ---
@@ -79,8 +98,8 @@ FAVELLA_GRAMMAR = r"""
     // Una parola è una sequenza di lettere, numeri o apostrofi (es. dell'albero)
     WORD: /[a-zA-ZÀ-ÿ0-9\']+/
     
-    // Testo tra virgolette doppie
-    TESTO_QUOTATO: /"[^"]*"/
+    // Testo tra virgolette doppie, con supporto per escape (\" e \\)
+    TESTO_QUOTATO: /"(\\.|[^"\\])*"/
 
     // Ignora spazi e commenti
     %import common.WS
@@ -102,17 +121,20 @@ class FavellaTransformer(Transformer):
     def __init__(self):
         super().__init__()
         self.mondo = Mondo()
-        self.errori = []
+        self.errori = []        # Errori bloccanti: la compilazione fallisce
+        self.warnings = []      # Avvisi non bloccanti: la compilazione prosegue
+        self.start_dichiarato_raw = None  # Nome grezzo della stanza di partenza
 
     # --- Nodi Entità e Testo ---
-    
+
     def entita(self, *tokens):
         # Unisce i token che formano il nome dell'entità preservando il nome originale
         return " ".join(t.value for t in tokens)
 
     def TESTO_QUOTATO(self, token):
-        # Rimuove le virgolette iniziali e finali
-        return token.value[1:-1]
+        # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
+        contenuto = token.value[1:-1]
+        return re.sub(r'\\(.)', r'\1', contenuto)
         
     def VERBO(self, token):
         return token.value.lower()
@@ -233,6 +255,15 @@ class FavellaTransformer(Transformer):
         stanza2.uscite[direzione_opposta] = id_sta1
         return None
 
+    def def_giocatore(self, *tokens):
+        # tokens: (PREP_LUOGO, entita_stanza) — l'ultimo è il nome della stanza.
+        # La stanza potrebbe non essere ancora stata definita a questo punto del
+        # transform: la validazione di esistenza è rimandata a valida_post().
+        nome_grezzo = tokens[-1]
+        self.start_dichiarato_raw = nome_grezzo
+        self.mondo.posizione_iniziale = normalizza_nome(nome_grezzo)
+        return None
+
 
     # --- Condizioni e Conseguenze (Sub-Alberi) ---
 
@@ -321,8 +352,63 @@ class FavellaTransformer(Transformer):
                 self.mondo.aggiungi_regola(nuova_regola)
         else:
             self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
-            
+
         return None
+
+    # --- Validazione semantica globale (dopo il transform completo) ---
+
+    def valida_post(self):
+        """
+        Esegue i controlli che richiedono la visione dell'intero mondo, una
+        volta che tutte le dichiarazioni sono state processate. Popola errori
+        (bloccanti) e warnings (non bloccanti).
+        """
+        m = self.mondo
+
+        # 1. [GG1] La stanza di partenza dichiarata deve esistere.
+        if self.start_dichiarato_raw is not None:
+            if not m.trova_stanza(m.posizione_iniziale):
+                self.errori.append(
+                    f"Stanza di partenza inesistente: 'Il giocatore comincia in "
+                    f"{self.start_dichiarato_raw}' (la stanza '{m.posizione_iniziale}' "
+                    f"non è definita)."
+                )
+
+        # 2. [GG3] Il verbo di ogni regola deve appartenere al vocabolario noto,
+        #    altrimenti la regola è "morta" (non si attiverà mai a runtime).
+        for regola in m.regole:
+            if regola.verbo not in VERBI_VALIDI:
+                self.warnings.append(
+                    f"Verbo '{regola.verbo}' non riconosciuto in una regola "
+                    f"'Invece di': la regola non si attiverà mai. Usa un verbo noto "
+                    f"al motore (es. usa, apri, prendi, esamina, mangia, sposta, vai)."
+                )
+
+        # 3. [GG2] Una condizione 'se [oggetto] è [proprietà]' che controlla una
+        #    proprietà mai assegnata a quell'oggetto (né come stato iniziale né
+        #    via conseguenza) è quasi sempre un refuso: resterebbe sempre falsa.
+        proprieta_assegnabili = set()  # insieme di tuple (id_oggetto, proprieta)
+        for id_ogg, ogg in m.oggetti.items():
+            for prop in ogg.proprieta:
+                proprieta_assegnabili.add((id_ogg, prop))
+        for regola in m.regole:
+            cons = regola.conseguenza
+            if isinstance(cons, ConseguenzaProprieta):
+                proprieta_assegnabili.add((cons.id_oggetto, cons.proprieta))
+
+        for regola in m.regole:
+            cond = regola.condizione
+            if isinstance(cond, CondizioneProprieta):
+                if not m.trova_oggetto(cond.id_oggetto):
+                    self.warnings.append(
+                        f"Condizione su oggetto inesistente: '{cond.id_oggetto}'."
+                    )
+                elif (cond.id_oggetto, cond.proprieta) not in proprieta_assegnabili:
+                    self.warnings.append(
+                        f"La proprietà '{cond.proprieta}' di '{cond.id_oggetto}' non "
+                        f"è mai assegnata da nessuna parte: possibile refuso? La "
+                        f"condizione resterà sempre falsa."
+                    )
 
 # ==============================================================================
 # 3. MOTORE PRINCIPALE DI COMPILAZIONE
@@ -341,26 +427,42 @@ def analizza_file(percorso_file: str) -> Mondo | None:
     try:
         with open(percorso_file, 'r', encoding='utf-8') as file:
             testo = file.read()
-            
+
         if not testo.strip():
             return Mondo() # File vuoto
 
+        # 0. NORMALIZZAZIONE TIPOGRAFICA [L2]
+        # Sostituisce apostrofi e virgolette "curve" (tipici di copia-incolla da
+        # editor di testo) con le versioni dritte attese dalla grammatica.
+        testo = (testo
+                 .replace('’', "'").replace('‘', "'")
+                 .replace('“', '"').replace('”', '"'))
+
         # 1. PARSING FORMALE (Testo -> AST)
         tree = parser.parse(testo)
-        
+
         # 2. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer()
         transformer.transform(tree)
-        
+
+        # 3. VALIDAZIONE SEMANTICA GLOBALE
+        transformer.valida_post()
+
         # Estrae i log dal transformer
         errori.extend(transformer.errori)
-        
+
+        # Avvisi non bloccanti: mostrati sempre, ma non interrompono la build
+        if transformer.warnings:
+            print("\n[FAVELLA 1] Avvisi (non bloccanti):")
+            for w in transformer.warnings:
+                print(f" - {w}")
+
         if errori:
             print("\n[FAVELLA 1] Trovati errori di logica durante la costruzione:")
             for err in errori:
                 print(f" - {err}")
             return None
-            
+
         return transformer.mondo
 
     except UnexpectedInput as e:

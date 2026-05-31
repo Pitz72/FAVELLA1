@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.3.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.5.0)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -135,11 +135,20 @@ class Mondo:
         self.azioni: Dict[str, Azione] = {}
         self.mappa_verbi_giocatore: Dict[str, str] = {}
         self.posizione_giocatore: str | None = None
+        # ID della stanza di partenza dichiarata esplicitamente dall'autore
+        # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
+        self.posizione_iniziale: str | None = None
         self.inventario: Set[str] = set()
 
     def imposta_posizione_iniziale(self):
-        """Imposta la posizione iniziale del giocatore nella prima stanza definita."""
-        if self.stanze:
+        """Imposta la posizione iniziale del giocatore.
+
+        Usa la stanza dichiarata esplicitamente dall'autore ('Il giocatore
+        comincia in X.'); in mancanza, ripiega sulla prima stanza definita.
+        """
+        if self.posizione_iniziale and self.posizione_iniziale in self.stanze:
+            self.posizione_giocatore = self.posizione_iniziale
+        elif self.stanze:
             self.posizione_giocatore = list(self.stanze.keys())[0]
 
     def carica_azioni(self, libreria: Dict[str, Azione]):
@@ -166,7 +175,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.8):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.5.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Regole: {len(self.regole)}\n"

@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.3.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.5.0)
 
 from strutture import Mondo, Azione
 

@@ -9,6 +9,9 @@ Il corridoio è una stanza.
 La descrizione del corridoio è "Un lungo corridoio buio. Vedi l'uscita verso la libertà a est.".
 Il corridoio collega sud a la cella di contenimento.
 
+# Posizione di partenza esplicita (v0.5.0): il giocatore inizia nella cella.
+Il giocatore comincia in la cella di contenimento.
+
 # --- DEFINIZIONE OGGETTI ---
 
 Una porta blindata è una cosa.

@@ -16,9 +16,16 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.4.0 - Il Grande Salto (Alpha)
+## 🚀 Stato Attuale: v0.5.0 - Linguaggio Robusto (Alpha)
 
-Il progetto ha raggiunto una nuova milestone fondamentale con la completa rimozione del motore a espressioni regolari e l'introduzione di un **parser formale EBNF (Lark)** per generare un Abstract Syntax Tree (AST), garantendo massima scalabilità. Inoltre include **FAVELLA STUDIO**, un IDE grafico premium, e un Object Model robusto.
+La v0.5.0 apre la **roadmap evolutiva del linguaggio** (un piano a 6 livelli) con il **Livello 1 — Consolidamento e Robustezza**. Obiettivo: impedire all'autore di scrivere una storia "rotta" senza alcun feedback. Le fondamenta introdotte nella v0.4.0 (parser formale EBNF con **Lark**/AST e **FAVELLA STUDIO**, l'IDE grafico premium) restano il cuore del progetto.
+
+### Novità del Linguaggio (v0.5.0)
+- **Posizione iniziale esplicita:** nuova primitiva `Il giocatore comincia in [stanza].` — basta affidarsi all'ordine di scrittura per decidere dove parte il giocatore.
+- **Diagnostica d'autore:** avvisi non bloccanti per i **refusi nelle proprietà** (es. `chuisa`), per i **verbi sconosciuti** nelle regole, e per le condizioni sempre false.
+- **Grammatica disambiguata:** priorità di regola esplicite + **suite di test del linguaggio** (`python test_linguaggio.py`) come garanzia anti-regressione.
+- **Stringhe con escape:** ora puoi inserire virgolette dentro le battute (`dire "Disse \"ciao\".".`).
+- **Tolleranza tipografica:** apostrofi e virgolette "curve" da copia-incolla vengono normalizzate automaticamente.
 
 ### Novità: FAVELLA STUDIO (IDE Premium v0.4.0)
 - **Design System Premium "Cyber-Scrittore":** Una splendida Dark Mode con stili coordinati per menu, toolbar, schede (tab) e finestre di dialogo, ottimizzando la leggibilità della prosa.
