@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.0.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -77,7 +77,7 @@ PAROLE_RISERVATE = frozenset({
     # NPC e dialoghi (Livello 5b). NB: si evitano di proposito 'porta' e 'parla'
     # come keyword (collidono con nomi-oggetto comuni: "la porta"); la transizione
     # tra nodi usa 'conduce' (vedi 1.0.2).
-    "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude",
+    "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude", "conduce",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -328,10 +328,15 @@ _GRAMMAR_TEMPLATE = r"""
     //   'Il mercante al nodo "saluto" dice "Benvenuto!".' — battuta dell'NPC al nodo.
     //     Inizia con ENTITA: dopo l'entità il lookahead "al" la distingue da è/si/collega.
     //   'Al nodo "saluto" l'opzione "Addio." chiude il dialogo.' — opzione del giocatore.
-    //     Inizia con "Al": lookahead "nodo" vs "turno" (eventi). [1.0.1: solo 'chiude'.]
+    //     Inizia con "Al": lookahead "nodo" vs "turno" (eventi).
     def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
     def_battuta: ENTITA "al" "nodo" TESTO_QUOTATO "dice" TESTO_QUOTATO "."
-    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO "chiude" "il" "dialogo" "."
+    // [1.0.2] L'opzione ha un ESITO: 'conduce al nodo "X"' (ramificazione) oppure
+    // 'chiude il dialogo'. Dopo il testo dell'opzione il lookahead "conduce" vs
+    // "chiude" distingue le due alternative: LALR(1) 0-ambiguo.
+    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO opzione_esito "."
+    opzione_esito: "conduce" "al" "nodo" TESTO_QUOTATO -> esito_conduce
+                 | "chiude" "il" "dialogo"             -> esito_chiude
 
     // --- REGOLE (INVECE DI) ---
     // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai
@@ -694,12 +699,23 @@ class FavellaTransformer(Transformer):
         self._nodo_speaker[etichetta] = normalizza_nome(npc_grezzo)
         return None
 
-    def def_opzione(self, etichetta, testo_opzione):
-        # [1.0.1] 'Al nodo "saluto" l'opzione "Addio." chiude il dialogo.' — opzione
-        # che termina la conversazione. Le varianti 'conduce a' / conseguenze /
-        # condizioni arrivano nelle patch successive del livello.
-        self.mondo.nodo_dialogo_di(etichetta).opzioni.append(
-            OpzioneDialogo(testo_opzione, chiude=True))
+    def esito_conduce(self, dest_etichetta):
+        # [1.0.2] Esito 'conduce al nodo "X"': transizione a un altro nodo.
+        return ("conduce", dest_etichetta)
+
+    def esito_chiude(self):
+        # Esito 'chiude il dialogo': termina la conversazione.
+        return ("chiude", None)
+
+    def def_opzione(self, etichetta, testo_opzione, esito):
+        # 'Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "presentazione".'
+        # oppure '... chiude il dialogo.'. L'esito è prodotto da opzione_esito.
+        tipo, destinazione = esito
+        if tipo == "chiude":
+            opz = OpzioneDialogo(testo_opzione, chiude=True)
+        else:
+            opz = OpzioneDialogo(testo_opzione, destinazione=destinazione)
+        self.mondo.nodo_dialogo_di(etichetta).opzioni.append(opz)
         return None
 
     def def_verbo(self, testo_quotato):
@@ -1211,6 +1227,17 @@ class FavellaTransformer(Transformer):
                     f"Il personaggio '{id_ogg}' non ha un dialogo: dichiara il nodo "
                     f"d'ingresso con 'Il dialogo di {id_ogg} comincia con \"...\".'."
                 )
+
+        # [1.0.2] Ogni opzione che 'conduce a' un nodo deve puntare a un nodo
+        # esistente, altrimenti la ramificazione è morta (vicolo cieco a runtime).
+        for etichetta, nodo in m.dialogo_nodi.items():
+            for opz in nodo.opzioni:
+                if opz.destinazione and opz.destinazione not in m.dialogo_nodi:
+                    self.warnings.append(
+                        f"Al nodo '{etichetta}' l'opzione '{opz.testo}' conduce al "
+                        f"nodo '{opz.destinazione}', che non esiste: la scelta "
+                        f"chiuderà comunque la conversazione."
+                    )
 
     def _atomi_proprieta(self, condizione):
         """Estrae ricorsivamente tutti gli atomi CondizioneProprieta annidati in

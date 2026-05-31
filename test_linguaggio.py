@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1183,7 +1183,10 @@ _CORPUS_GUARDIA = (
     "Il mercante è un personaggio.\nIl mercante è in cella.\n"
     'Il dialogo del mercante comincia con "saluto".\n'
     'Il mercante al nodo "saluto" dice "Benvenuto, hai [punteggio] punti!".\n'
+    'Al nodo "saluto" l\'opzione "Chi sei?" conduce al nodo "chi".\n'   # ramificazione [1.0.2]
     'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+    'Il mercante al nodo "chi" dice "Un mercante.".\n'
+    'Al nodo "chi" l\'opzione "Addio." chiude il dialogo.\n'
 )
 
 
@@ -1703,6 +1706,66 @@ def test_dialogo_su_non_personaggio_errore():
     _check("personaggio" in log.lower(), "il log spiega che serve un personaggio")
 
 
+# --- Test: LIVELLO 5b — ramificazione dei dialoghi (1.0.2) --------------------
+
+_SRC_RAMI = (
+    "La piazza è una stanza.\n"
+    "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+    'Il dialogo del mercante comincia con "saluto".\n'
+    'Il mercante al nodo "saluto" dice "Che vuoi sapere?".\n'
+    'Al nodo "saluto" l\'opzione "Chi sei?" conduce al nodo "chi".\n'
+    'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+    'Il mercante al nodo "chi" dice "Un mercante di spezie.".\n'
+    'Al nodo "chi" l\'opzione "Torna indietro." conduce al nodo "saluto".\n'
+    'Al nodo "chi" l\'opzione "Addio." chiude il dialogo.\n'
+)
+
+
+def test_ramificazione_struttura():
+    print("[ramificazione: opzione 'conduce al nodo' registra la destinazione]")
+    mondo, _ = compila(_SRC_RAMI)
+    nodo = mondo.dialogo_nodi.get("saluto")
+    opz_chi = next((o for o in nodo.opzioni if "Chi sei" in o.testo), None)
+    _check(opz_chi is not None and opz_chi.destinazione == "chi" and not opz_chi.chiude,
+           "l'opzione conduce al nodo 'chi'")
+
+
+def test_ramificazione_transizione_runtime():
+    print("[ramificazione: scegliere transita al nodo successivo]")
+    mondo = runtime(_SRC_RAMI)
+    esegui(mondo, "parla con mercante")
+    out = esegui(mondo, "1")   # "Chi sei?" -> nodo "chi"
+    _check("Un mercante di spezie." in out, "mostra la battuta del nodo di arrivo")
+    _check(mondo.nodo_dialogo == "chi", "il nodo corrente è 'chi'")
+
+
+def test_ramificazione_ritorno_e_chiusura():
+    print("[ramificazione: ritorno a un nodo precedente e chiusura]")
+    mondo = runtime(_SRC_RAMI)
+    esegui(mondo, "parla con mercante")
+    esegui(mondo, "1")                       # -> chi
+    out = esegui(mondo, "torna indietro.")   # match testuale -> saluto
+    _check("Che vuoi sapere?" in out and mondo.nodo_dialogo == "saluto",
+           "si torna al nodo 'saluto'")
+    esegui(mondo, "2")                        # Addio -> chiude
+    _check(not mondo.in_dialogo(), "la conversazione si chiude")
+
+
+def test_ramificazione_nodo_inesistente_warning():
+    print("[ramificazione: transizione verso un nodo inesistente -> warning]")
+    src = (
+        "La piazza è una stanza.\n"
+        "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+        'Il dialogo del mercante comincia con "saluto".\n'
+        'Il mercante al nodo "saluto" dice "Ciao.".\n'
+        'Al nodo "saluto" l\'opzione "Vai." conduce al nodo "inesistente".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila (warning non bloccante)")
+    _check("inesistente" in log and "non esiste" in log.lower(),
+           "il log avvisa della transizione verso un nodo inesistente")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1831,6 +1894,11 @@ def main():
         test_dialogo_battuta_interpolata,
         test_personaggio_senza_dialogo_warning,
         test_dialogo_su_non_personaggio_errore,
+        # Livello 5b — ramificazione dei dialoghi (1.0.2)
+        test_ramificazione_struttura,
+        test_ramificazione_transizione_runtime,
+        test_ramificazione_ritorno_e_chiusura,
+        test_ramificazione_nodo_inesistente_warning,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1838,7 +1906,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.2)")
     print("=" * 60)
     for t in tests:
         t()

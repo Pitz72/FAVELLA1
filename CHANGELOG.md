@@ -4,6 +4,25 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.2] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+- **Ramificazione dei dialoghi** (`[Livello 5b]`). Un'opzione può ora **condurre a
+  un altro nodo**, non solo chiudere la conversazione:
+  - `Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "presentazione".`
+  - `Al nodo "saluto" l'opzione "Addio." chiude il dialogo.`
+  - A runtime, scegliere un'opzione con transizione mostra la battuta e le opzioni
+    del nodo di arrivo; si possono creare cicli (tornare a un nodo precedente).
+- **Grammatica**: l'opzione ha un **esito** (`opzione_esito`): `conduce al nodo
+  "X"` oppure `chiude il dialogo`. Dopo il testo dell'opzione il lookahead
+  `conduce` vs `chiude` distingue le alternative → **LALR(1) 0-ambiguo**. Nuova
+  parola riservata `conduce` (si evita `porta`, che è un nome-oggetto comune).
+- **Validazione**: un'opzione che conduce a un nodo **inesistente** genera un
+  avviso non bloccante (ramificazione morta). Guardia anti-ambiguità estesa con
+  un dialogo a più nodi e una transizione.
+- **Suite del linguaggio**: **274 asserzioni** (erano 267). Header core a **v1.0.2**.
+
+---
+
 ## [1.0.1] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
 - **NPC e dialoghi, fondazione** (`[Livello 5b]`). Prima patch del sistema di
