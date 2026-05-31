@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.4)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.5)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -164,13 +164,9 @@ class ConseguenzaSpostamento(Conseguenza):
         if not oggetto:
             return
 
-        vecchia_posizione = oggetto.posizione
-        
-        # Rimozione da stanza o inventario pregressi
-        if vecchia_posizione == "inventario":
-            mondo.inventario.discard(self.id_oggetto)
-        elif vecchia_posizione and vecchia_posizione in mondo.stanze:
-            mondo.stanze[vecchia_posizione].oggetti.pop(self.id_oggetto, None)
+        # Rimozione dalla posizione precedente (stanza, inventario o
+        # contenitore/supporto). [Livello 4 / M1] centralizzata in rimuovi_da_posizione.
+        mondo.rimuovi_da_posizione(oggetto)
 
         if self.destinazione == "nulla":
             oggetto.posizione = None
@@ -182,6 +178,12 @@ class ConseguenzaSpostamento(Conseguenza):
             if stanza_dest:
                 stanza_dest.oggetti[self.id_oggetto] = oggetto
                 oggetto.posizione = self.destinazione
+            else:
+                # [Livello 4 / M1] Destinazione = contenitore/supporto.
+                contenitore = mondo.trova_oggetto(self.destinazione)
+                if contenitore and (contenitore.is_contenitore or contenitore.is_supporto):
+                    contenitore.contenuto.add(self.id_oggetto)
+                    oggetto.posizione = self.destinazione
 
 # --- Classi Esistenti (con modifiche) ---
 
@@ -413,6 +415,75 @@ class Mondo:
 
     def trova_oggetto(self, nome: str) -> Oggetto | None:
         return self.oggetti.get(nome)
+
+    # --- [Livello 4 / M1] Contenitori e supporti: raggiungibilità ---
+
+    def contenitore_aperto(self, oggetto: 'Oggetto') -> bool:
+        """Un contenitore è aperto (contenuto visibile) finché non è 'chiusa'."""
+        return "chiusa" not in oggetto.proprieta
+
+    def oggetto_raggiungibile(self, id_oggetto: str, _visti: Set[str] = None) -> bool:
+        """Vero se l'oggetto è alla portata del giocatore: nella stanza corrente,
+        nell'inventario, oppure dentro/sopra un contenitore/supporto a sua volta
+        raggiungibile (un contenitore deve essere aperto). Risolve la catena di
+        contenimento; il set _visti previene cicli patologici."""
+        if _visti is None:
+            _visti = set()
+        if id_oggetto in _visti:
+            return False
+        _visti.add(id_oggetto)
+        oggetto = self.trova_oggetto(id_oggetto)
+        if not oggetto:
+            return False
+        if id_oggetto in self.inventario:
+            return True
+        pos = oggetto.posizione
+        if pos == self.posizione_giocatore:
+            return True
+        if not pos or pos == "inventario":
+            return pos == "inventario"
+        contenitore = self.trova_oggetto(pos)
+        if not contenitore:
+            return False  # pos è una stanza diversa da quella corrente
+        if contenitore.is_supporto:
+            return self.oggetto_raggiungibile(pos, _visti)
+        if contenitore.is_contenitore:
+            return self.contenitore_aperto(contenitore) and self.oggetto_raggiungibile(pos, _visti)
+        return False
+
+    def oggetti_raggiungibili(self) -> Set[str]:
+        """Insieme degli id di tutti gli oggetti alla portata del giocatore,
+        incluso il contenuto (ricorsivo) dei contenitori aperti e dei supporti
+        presenti nella stanza o nell'inventario."""
+        risultato: Set[str] = set()
+        coda = list(self.inventario)
+        stanza = self.trova_stanza(self.posizione_giocatore)
+        if stanza:
+            coda += list(stanza.oggetti.keys())
+        while coda:
+            id_ogg = coda.pop()
+            if id_ogg in risultato:
+                continue
+            risultato.add(id_ogg)
+            ogg = self.trova_oggetto(id_ogg)
+            if not ogg:
+                continue
+            if ogg.is_supporto or (ogg.is_contenitore and self.contenitore_aperto(ogg)):
+                coda += [c for c in ogg.contenuto if c not in risultato]
+        return risultato
+
+    def rimuovi_da_posizione(self, oggetto: 'Oggetto'):
+        """Rimuove l'oggetto dalla posizione attuale (stanza, inventario o
+        contenitore/supporto) senza riposizionarlo."""
+        pos = oggetto.posizione
+        if pos == "inventario" or oggetto.nome in self.inventario:
+            self.inventario.discard(oggetto.nome)
+        elif pos and pos in self.stanze:
+            self.stanze[pos].oggetti.pop(oggetto.nome, None)
+        elif pos:
+            contenitore = self.trova_oggetto(pos)
+            if contenitore:
+                contenitore.contenuto.discard(oggetto.nome)
 
     def __str__(self) -> str:
         report = (

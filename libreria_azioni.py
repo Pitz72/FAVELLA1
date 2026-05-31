@@ -1,20 +1,34 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.8.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.8.5)
 
 from strutture import Mondo, Azione
+
+def _elenca_contenuto(mondo: Mondo, oggetto):
+    """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
+    uno e (per i contenitori) se è aperto."""
+    if oggetto.is_contenitore and not mondo.contenitore_aperto(oggetto):
+        print("È chiuso.")
+        return
+    if oggetto.is_contenitore or oggetto.is_supporto:
+        nomi = [mondo.oggetti[c].nome_visualizzato
+                for c in sorted(oggetto.contenuto) if c in mondo.oggetti]
+        if nomi:
+            dove = "Sopra" if oggetto.is_supporto else "Dentro"
+            print(f"{dove} vedi: {', '.join(nomi)}.")
 
 def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione ESAMINARE."""
     oggetto = mondo.trova_oggetto(id_oggetto)
-    if oggetto and (oggetto.posizione == mondo.posizione_giocatore or id_oggetto in mondo.inventario):
+    if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
         print(oggetto.descrizione)
+        _elenca_contenuto(mondo, oggetto)
     else:
         print("Non vedi nulla del genere qui.")
 
 def prendi_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione PRENDERE."""
     oggetto = mondo.trova_oggetto(id_oggetto)
-    if not oggetto or oggetto.posizione != mondo.posizione_giocatore:
+    if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto):
         print("Non vedi nulla del genere qui.")
         return
     if id_oggetto in mondo.inventario:
@@ -23,12 +37,42 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str):
     if not oggetto.prendibile:
         print("Non puoi prenderlo.")
         return
-    
+
+    # [Livello 4 / M1] Rimuove l'oggetto da dove si trova (stanza, contenitore o
+    # supporto) e lo mette nell'inventario.
+    mondo.rimuovi_da_posizione(oggetto)
     mondo.inventario.add(id_oggetto)
     oggetto.posizione = "inventario"
-    # Rimuovi l'oggetto dalla stanza in cui si trovava
-    del mondo.stanze[mondo.posizione_giocatore].oggetti[id_oggetto]
     print(f"Preso: {oggetto.nome_visualizzato}.")
+
+def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
+    """[Livello 4 / M1] Logica di default per METTERE [ogg1] in/su [ogg2]."""
+    if not id_oggetto2:
+        print("Dove vuoi metterlo?")
+        return
+    oggetto = mondo.trova_oggetto(id_oggetto1)
+    dest = mondo.trova_oggetto(id_oggetto2)
+    if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto1):
+        print("Non ce l'hai e non lo vedi qui.")
+        return
+    if not dest or not mondo.oggetto_raggiungibile(id_oggetto2):
+        print("Non vedi nulla del genere qui.")
+        return
+    if id_oggetto1 == id_oggetto2:
+        print("Non puoi metterlo dentro se stesso.")
+        return
+    if not (dest.is_contenitore or dest.is_supporto):
+        print(f"In {dest.nome_visualizzato} non ci puoi mettere niente.")
+        return
+    if dest.is_contenitore and not mondo.contenitore_aperto(dest):
+        print(f"{dest.nome_visualizzato.capitalize()} è chiuso.")
+        return
+
+    mondo.rimuovi_da_posizione(oggetto)
+    dest.contenuto.add(id_oggetto1)
+    oggetto.posizione = id_oggetto2
+    dove = "su" if dest.is_supporto else "in"
+    print(f"Hai messo {oggetto.nome_visualizzato} {dove} {dest.nome_visualizzato}.")
 
 def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione LASCIARE."""
@@ -129,6 +173,12 @@ LIBRERIA_AZIONI = {
     "usare": Azione(
         nomi=["usa", "usare", "apri", "aprire", "mangia", "mangiare", "sposta", "spostare"],
         logica=usare_con_logica_default,
+        richiede_oggetto=True
+    ),
+    "mettere": Azione(
+        nomi=["metti", "mettere", "poni", "porre", "inserisci", "inserire",
+              "infila", "infilare", "appoggia", "appoggiare"],
+        logica=metti_logica_default,
         richiede_oggetto=True
     ),
     "vai": Azione(

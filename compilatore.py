@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.8.4)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.8.5)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -866,7 +866,11 @@ class FavellaTransformer(Transformer):
             if id_cons is not None and not self.mondo.trova_oggetto(id_cons):
                 self.errori.append(f"Oggetto inesistente nella conseguenza: '{id_cons}'")
             if isinstance(c, ConseguenzaSpostamento) and c.destinazione not in ["nulla", "inventario"]:
-                if not self.mondo.trova_stanza(c.destinazione):
+                # [Livello 4 / M1] La destinazione può essere una stanza OPPURE un
+                # contenitore/supporto (vi si sposta l'oggetto dentro/sopra).
+                dest = self.mondo.trova_stanza(c.destinazione)
+                dest_ogg = self.mondo.trova_oggetto(c.destinazione)
+                if not dest and not (dest_ogg and (dest_ogg.is_contenitore or dest_ogg.is_supporto)):
                     self.errori.append(f"Luogo inesistente nella conseguenza: '{c.destinazione}'")
 
     def _crea_evento(self, tipo, args):

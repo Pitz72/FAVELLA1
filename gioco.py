@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.8.3)
+# Interprete Interattivo per FAVELLA 1 (v0.8.5)
 
 import sys
 import traceback
@@ -37,8 +37,10 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
     if not stanza_corrente:
         return None
 
-    oggetti_in_scope = list(stanza_corrente.oggetti.keys()) + list(mondo.inventario)
-    
+    # [Livello 4 / M1] Lo scope include il contenuto dei contenitori aperti e dei
+    # supporti raggiungibili, non solo gli oggetti direttamente nella stanza.
+    oggetti_in_scope = list(mondo.oggetti_raggiungibili())
+
     # Priorità 0: Direzioni (anche con "a " davanti). [Livello 4 / L1] La mappa
     # forma->canonica vive sul mondo (base + personalizzate).
     nome_pulito = nome_parziale.strip().lower()
@@ -325,7 +327,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         
         # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata"]:
+        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata", "mettere"]:
             mostra_stanza(mondo)
         
         return True

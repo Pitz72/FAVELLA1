@@ -4,6 +4,37 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.5] - 2026-05-31
+### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
+- **Contenitori e supporti** (`[M1]`) — *runtime*. La meccanica di gioco completa
+  il modello introdotto in 0.8.4:
+  - **Visibilità a catena**: un oggetto è raggiungibile se è nella stanza,
+    nell'inventario, o dentro/sopra un contenitore/supporto a sua volta
+    raggiungibile. Un **contenitore chiuso** (`è chiusa`) nasconde il contenuto;
+    aprirlo lo rivela. I supporti sono sempre accessibili.
+  - **Nuovo verbo `metti`** (`metti`, `poni`, `inserisci`, `infila`, `appoggia`…):
+    `metti la gemma in la scatola`, `metti la tazza sul tavolo`. Rifiuta i
+    contenitori chiusi e gli oggetti che non sono contenitori/supporti.
+  - **`esamina`** di un contenitore aperto/supporto ne elenca il contenuto
+    (`Dentro vedi: …` / `Sopra vedi: …`); chiuso, dice «È chiuso.».
+  - **`prendi`** funziona anche su oggetti dentro contenitori aperti / sui supporti.
+  - Le **conseguenze di spostamento** accettano ora un contenitore/supporto come
+    destinazione: `… e adesso la gemma è nella scatola.`
+- `strutture.py`: `Mondo.oggetto_raggiungibile()`, `oggetti_raggiungibili()`,
+  `contenitore_aperto()`, `rimuovi_da_posizione()` (centralizza la rimozione da
+  stanza/inventario/contenitore); `ConseguenzaSpostamento` gestisce le
+  destinazioni contenitore/supporto.
+- `libreria_azioni.py`: `esamina`/`prendi` riscritte sulla raggiungibilità; nuova
+  azione `mettere` con la sua logica di default; helper `_elenca_contenuto`.
+- `compilatore.py`: `_valida_conseguenze` accetta destinazioni contenitore/supporto.
+- `gioco.py`: lo scope di `risolvi_nome_oggetto` usa `oggetti_raggiungibili()`;
+  `mettere` escluso dalla ristampa automatica della stanza.
+- `test_linguaggio.py`: sei nuovi test runtime (scope contenitore aperto,
+  chiuso↔apertura, metti in contenitore/su supporto, rifiuto chiuso, conseguenza
+  di spostamento in contenitore). Suite a **192 asserzioni** (era 174).
+
+---
+
 ## [0.8.4] - 2026-05-31
 ### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
 - **Contenitori e supporti** (`[M1]`) — *modello e grammatica* (il runtime arriva

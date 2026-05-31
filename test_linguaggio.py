@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.4)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.5)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -60,6 +60,25 @@ def compila(sorgente):
     finally:
         os.unlink(path)
     return mondo, buf.getvalue()
+
+
+def runtime(src):
+    """Compila e prepara un mondo pronto al gioco (azioni + posizione iniziale)."""
+    from libreria_azioni import LIBRERIA_AZIONI
+    mondo, _ = compila(src)
+    if mondo:
+        mondo.carica_azioni(LIBRERIA_AZIONI)
+        mondo.imposta_posizione_iniziale()
+    return mondo
+
+
+def esegui(mondo, comando):
+    """Esegue un comando di gioco e restituisce l'output catturato."""
+    from gioco import elabora_comando
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        elabora_comando(mondo, comando)
+    return buf.getvalue()
 
 
 # --- Test: disambiguazione delle definizioni base ----------------------------
@@ -665,6 +684,99 @@ def test_scanner_raccoglie_contenitori():
     _check("scrigno" in tab.oggetti, "il contenitore è tra gli oggetti")
 
 
+# --- Test: contenitori e supporti — runtime [Livello 4 / M1] -----------------
+
+_MONDO_CONTENITORE = (
+    "La cella è una stanza.\n"
+    "Il giocatore comincia in cella.\n"
+    "Una scatola è un contenitore.\nLa scatola è in cella.\n"
+    "Una gemma è una cosa.\nLa gemma è prendibile.\n"
+)
+
+
+def test_runtime_contenitore_aperto_scope():
+    print("[runtime: il contenuto di un contenitore aperto è raggiungibile]")
+    mondo = runtime(_MONDO_CONTENITORE + "La gemma è nella scatola.\n")
+    _check(mondo is not None, "compila e prepara il runtime")
+    _check("gemma" in mondo.oggetti_raggiungibili(),
+           "la gemma in un contenitore aperto è nello scope")
+    out = esegui(mondo, "prendi gemma")
+    _check("Preso" in out and "gemma" in mondo.inventario,
+           "si può prendere la gemma da dentro il contenitore aperto")
+    _check(mondo.trova_oggetto("scatola").contenuto == set(),
+           "presa la gemma, il contenitore è vuoto")
+
+
+def test_runtime_contenitore_chiuso_nasconde():
+    print("[runtime: un contenitore chiuso nasconde il contenuto, l'apertura lo rivela]")
+    src = (_MONDO_CONTENITORE + "La gemma è nella scatola.\n"
+           "La scatola è chiusa.\n"
+           'Invece di apri la scatola: dire "Si apre." e adesso la scatola è aperta.\n')
+    mondo = runtime(src)
+    _check("gemma" not in mondo.oggetti_raggiungibili(),
+           "con la scatola chiusa la gemma non è raggiungibile")
+    out = esegui(mondo, "prendi gemma")
+    _check("gemma" not in mondo.inventario and ("vedo" in out.lower() or "vedi" in out.lower()),
+           "non si può prendere dalla scatola chiusa")
+    esegui(mondo, "apri scatola")
+    out2 = esegui(mondo, "prendi gemma")
+    _check("Preso" in out2 and "gemma" in mondo.inventario,
+           "aperta la scatola, la gemma diventa prendibile")
+
+
+def test_runtime_metti_in_contenitore():
+    print("[runtime: 'metti X in contenitore' colloca l'oggetto dentro]")
+    mondo = runtime(_MONDO_CONTENITORE + "La gemma è in cella.\n")
+    esegui(mondo, "prendi gemma")
+    out = esegui(mondo, "metti gemma in scatola")
+    _check("messo" in out.lower(), "il comando metti conferma l'azione")
+    _check(mondo.trova_oggetto("gemma").posizione == "scatola",
+           "la gemma ora vive nel contenitore")
+    _check("gemma" in mondo.trova_oggetto("scatola").contenuto,
+           "il contenitore registra la gemma")
+    _check("gemma" not in mondo.inventario, "la gemma non è più nell'inventario")
+
+
+def test_runtime_metti_su_supporto():
+    print("[runtime: 'metti X su supporto' posa l'oggetto sopra]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Un tavolo è un supporto.\nIl tavolo è in cella.\n"
+        "Una tazza è una cosa.\nLa tazza è prendibile.\nLa tazza è in cella.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi tazza")
+    out = esegui(mondo, "metti tazza su tavolo")
+    _check("messo" in out.lower(), "il comando conferma")
+    _check("tazza" in mondo.trova_oggetto("tavolo").contenuto,
+           "la tazza è sul supporto")
+
+
+def test_runtime_metti_in_contenitore_chiuso_rifiutato():
+    print("[runtime: non si mette nulla in un contenitore chiuso]")
+    src = _MONDO_CONTENITORE + "La gemma è in cella.\nLa scatola è chiusa.\n"
+    mondo = runtime(src)
+    esegui(mondo, "prendi gemma")
+    out = esegui(mondo, "metti gemma in scatola")
+    _check("chiuso" in out.lower(), "il motore rifiuta: la scatola è chiusa")
+    _check("gemma" not in mondo.trova_oggetto("scatola").contenuto,
+           "la gemma non è entrata nella scatola chiusa")
+
+
+def test_runtime_conseguenza_sposta_in_contenitore():
+    print("[runtime: conseguenza 'e adesso X è nella scatola']")
+    src = (_MONDO_CONTENITORE + "La gemma è in cella.\n"
+           'Invece di usa la gemma: dire "La riponi." e adesso la gemma è nella scatola.\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "compila (la destinazione contenitore è valida)")
+    esegui(mondo, "usa gemma")
+    _check(mondo.trova_oggetto("gemma").posizione == "scatola",
+           "la conseguenza ha spostato la gemma dentro il contenitore")
+    _check("gemma" in mondo.trova_oggetto("scatola").contenuto,
+           "il contenitore registra la gemma spostata via conseguenza")
+
+
 # --- Test: condizioni di fine partita [Livello 3] ----------------------------
 
 def test_fine_partita_vinci():
@@ -1189,6 +1301,13 @@ def main():
         test_collocazione_su_supporto,
         test_collocazione_su_non_contenitore_errore,
         test_scanner_raccoglie_contenitori,
+        # Livello 4 — contenitori e supporti, runtime (M1)
+        test_runtime_contenitore_aperto_scope,
+        test_runtime_contenitore_chiuso_nasconde,
+        test_runtime_metti_in_contenitore,
+        test_runtime_metti_su_supporto,
+        test_runtime_metti_in_contenitore_chiuso_rifiutato,
+        test_runtime_conseguenza_sposta_in_contenitore,
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
@@ -1232,7 +1351,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.4)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.5)")
     print("=" * 60)
     for t in tests:
         t()
