@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -356,6 +356,74 @@ def test_opposti_default_aperta_chiusa():
     mondo.regole[0].esegui_conseguenze(mondo)
     _check("aperta" in porta.proprieta and "chiusa" not in porta.proprieta,
            "aprire rimuove 'chiusa' anche senza dichiarazione esplicita")
+
+
+# --- Test: alias/sinonimi di oggetti [Livello 4] -----------------------------
+
+def test_alias_risoluzione_esatta():
+    print("[alias: il giocatore può riferire l'oggetto col sinonimo]")
+    from gioco import risolvi_nome_oggetto
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una torcia è una cosa.\nLa torcia è in cella.\n"
+        'La torcia si chiama anche "lanterna".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and mondo.alias.get("lanterna") == "torcia",
+           "l'alias 'lanterna' rimanda all'id canonico 'torcia'")
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    _check(risolvi_nome_oggetto(mondo, "lanterna") == "torcia",
+           "l'input 'lanterna' risolve all'oggetto 'torcia'")
+    _check(risolvi_nome_oggetto(mondo, "torcia") == "torcia",
+           "il nome canonico continua a risolvere")
+
+
+def test_alias_multiparola_quotato():
+    print("[alias: sinonimo multiparola tra virgolette]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una keycard magnetica è una cosa.\nLa keycard magnetica è in cella.\n"
+        'La keycard magnetica si chiama anche "tessera blu".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and mondo.alias.get("tessera blu") == "keycard magnetica",
+           "alias multiparola normalizzato e mappato all'oggetto")
+
+
+def test_alias_parziale():
+    print("[alias: match parziale univoco via sinonimo]")
+    from gioco import risolvi_nome_oggetto
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una torcia è una cosa.\nLa torcia è in cella.\n"
+        'La torcia si chiama anche "lanterna".\n'
+    )
+    mondo, _ = compila(src)
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    _check(risolvi_nome_oggetto(mondo, "lant") == "torcia",
+           "un prefisso dell'alias risolve comunque all'oggetto")
+
+
+def test_alias_su_non_oggetto_warning():
+    print("[alias: bersaglio non-oggetto (una stanza) = warning non bloccante]")
+    # 'cella' è dichiarata (quindi è una ENTITA valida e la frase parsa), ma è una
+    # STANZA, non un oggetto: l'alias non potrà mai risolvere un oggetto -> warning.
+    src = (
+        "La cella è una stanza.\n"
+        'La cella si chiama anche "stanzino".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("alias" in log.lower() and "stanzino" in log.lower(),
+           "il log avvisa che l'alias non punta a un oggetto")
 
 
 # --- Test: condizioni di fine partita [Livello 3] ----------------------------
@@ -730,6 +798,7 @@ _CORPUS_GUARDIA = (
     "La porta di ferro è prendibile.\n"        # def_prendibile
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
+    'La chiave si chiama anche "chiavetta".\n'         # def_alias [Livello 4]
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
     "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
@@ -851,6 +920,11 @@ def main():
         test_conseguenze_multiple,
         test_conseguenze_multiple_forma_breve,
         test_refuso_dentro_condizione_composita,
+        # Livello 4 — alias/sinonimi di oggetti
+        test_alias_risoluzione_esatta,
+        test_alias_multiparola_quotato,
+        test_alias_parziale,
+        test_alias_su_non_oggetto_warning,
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
@@ -894,7 +968,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.1)")
     print("=" * 60)
     for t in tests:
         t()

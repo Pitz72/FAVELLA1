@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.8.0)
+# Interprete Interattivo per FAVELLA 1 (v0.8.1)
 
 import sys
 import traceback
@@ -58,13 +58,25 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
     # Normalizza l'input per trovare gli oggetti del gioco
     nome_normalizzato = normalizza_nome(nome_parziale)
 
-    # Priorità 1: Corrispondenza esatta
+    # [Livello 4] Risoluzione alias: un nome alternativo dichiarato dall'autore
+    # ('La torcia si chiama anche "lanterna".') rimanda all'id canonico. Il nome
+    # proprio dell'oggetto ha comunque la precedenza (controllato dopo).
+    alias = getattr(mondo, "alias", {})
+    nome_risolto = alias.get(nome_normalizzato, nome_normalizzato)
+
+    # Priorità 1: Corrispondenza esatta (sul nome, poi sull'alias risolto)
     if nome_normalizzato in oggetti_in_scope:
         return nome_normalizzato
+    if nome_risolto in oggetti_in_scope:
+        return nome_risolto
 
-    # Priorità 2: Corrispondenza parziale univoca
+    # Priorità 2: Corrispondenza parziale univoca. Il pool di candidati include
+    # gli id in scope e gli alias (parziali) che rimandano a oggetti in scope.
     candidati = [id_ogg for id_ogg in oggetti_in_scope if nome_normalizzato in id_ogg]
-    
+    for ali, canonico in alias.items():
+        if canonico in oggetti_in_scope and nome_normalizzato in ali and canonico not in candidati:
+            candidati.append(canonico)
+
     if len(candidati) == 1:
         return candidati[0]
     elif len(candidati) > 1:

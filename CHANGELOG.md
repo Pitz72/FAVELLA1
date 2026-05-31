@@ -4,6 +4,33 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.1] - 2026-05-31
+### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
+- **Alias/sinonimi di oggetti**: l'autore può dare a un oggetto un nome
+  alternativo con cui il giocatore potrà riferirlo.
+  ```
+  La torcia si chiama anche "lanterna".
+  ```
+  Il sinonimo è una **stringa quotata** (può essere multiparola, es.
+  `"vecchia lanterna"`); a runtime il parser dei comandi lo risolve all'oggetto
+  canonico (corrispondenza esatta e parziale). Il nome proprio dell'oggetto ha
+  sempre la precedenza. Gli alias servono l'input del **giocatore**: nelle regole
+  d'autore (`Invece di …`) vale il nome canonico.
+- `strutture.py`: `Mondo.alias: Dict[str, str]` (alias normalizzato → id canonico)
+  + `dichiara_alias()`. Header e report a v0.8.1.
+- `compilatore.py`: regola `def_alias`
+  (`ENTITA "si" "chiama" "anche" TESTO_QUOTATO "."`); si distingue dalle altre
+  dichiarazioni che iniziano con `ENTITA` grazie al keyword `si`, senza conflitti
+  LALR. Parole riservate `si`/`chiama`/`anche`. Validazione non bloccante: alias
+  verso oggetto inesistente o verso una non-entità-oggetto → *warning*.
+- `gioco.py`: `risolvi_nome_oggetto` consulta `mondo.alias` (esatto e parziale).
+- `test_linguaggio.py`: quattro nuovi test (risoluzione esatta, multiparola,
+  parziale, warning su bersaglio non-oggetto); corpus della guardia esteso con
+  una `def_alias`. Suite a **142 asserzioni** (era 133); guardia anti-ambiguità
+  (1 albero / 0 conflitti LALR) verde.
+
+---
+
 ## [0.8.0] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 3 «Stato di gioco e meccaniche» COMPLETATO
 Release minore che consolida le patch 0.7.1 → 0.7.5. Il linguaggio FAVELLA passa

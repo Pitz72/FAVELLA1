@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.8.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.8.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -62,6 +62,8 @@ PAROLE_RISERVATE = frozenset({
     "invece", "se", "dire", "e", "adesso", "oppure", "non", "ha",
     # proprietà opposte (Livello 3 / M5)
     "sono", "opposte",
+    # alias/sinonimi di oggetti (Livello 4)
+    "si", "chiama", "anche",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -200,6 +202,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_posizione
                   | def_proprieta
                   | def_opposti
+                  | def_alias
                   | def_connessione
                   | def_regola
                   | def_giocatore
@@ -220,6 +223,11 @@ _GRAMMAR_TEMPLATE = r"""
     // Inizia con PROPRIETA (priorità bassa): nessun'altra dichiarazione parte con
     // PROPRIETA, quindi LALR distingue questo costrutto al primo token.
     def_opposti: PROPRIETA "e" PROPRIETA "sono" "opposte" "."
+    // [Livello 4] Alias/sinonimo di un oggetto: il nome alternativo è una
+    // stringa quotata (non un token ENTITA, perché per definizione non è ancora
+    // un nome dichiarato). Si distingue dalle altre dichiarazioni che iniziano
+    // con ENTITA grazie al keyword "si" (nessun'altra usa ENTITA "si").
+    def_alias: ENTITA "si" "chiama" "anche" TESTO_QUOTATO "."
     def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA "."
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
 
@@ -578,6 +586,25 @@ class FavellaTransformer(Transformer):
         self.mondo.dichiara_opposte(prop_a, prop_b)
         return None
 
+    def def_alias(self, ent_grezzo, alias_testo):
+        # [Livello 4] 'La torcia si chiama anche "lanterna".'. Il primo token è
+        # un'ENTITA dichiarata (l'oggetto canonico); il secondo è la stringa
+        # quotata con il nome alternativo. Normalizziamo entrambi come ID. La
+        # verifica che il bersaglio sia un oggetto esistente è in valida_post
+        # (l'alias può comparire prima della dichiarazione dell'oggetto).
+        id_canonico = normalizza_nome(ent_grezzo)
+        alias = normalizza_nome(alias_testo)
+        if not alias:
+            self.warnings.append("Alias vuoto ignorato.")
+            return None
+        if alias == id_canonico:
+            self.warnings.append(
+                f"Alias '{alias}' uguale al nome dell'oggetto: ignorato."
+            )
+            return None
+        self.mondo.dichiara_alias(alias, id_canonico)
+        return None
+
     def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo):
         id_sta1 = normalizza_nome(sta1_grezzo)
         id_sta2 = normalizza_nome(sta2_grezzo)
@@ -820,6 +847,21 @@ class FavellaTransformer(Transformer):
                     f"Stanza di partenza inesistente: 'Il giocatore comincia in "
                     f"{self.start_dichiarato_raw}' (la stanza '{m.posizione_iniziale}' "
                     f"non è definita)."
+                )
+
+        # 1bis. [Livello 4] Ogni alias deve puntare a un OGGETTO esistente,
+        #    altrimenti è morto (il giocatore non potrà mai risolverlo). Un alias
+        #    che coincide con l'id di un'entità esistente è ambiguo e va segnalato.
+        for alias, id_canonico in m.alias.items():
+            if not m.trova_oggetto(id_canonico):
+                self.warnings.append(
+                    f"Alias '{alias}' per oggetto inesistente '{id_canonico}': "
+                    f"il sinonimo non risolverà mai nulla."
+                )
+            if m.trova_oggetto(alias) or m.trova_stanza(alias):
+                self.warnings.append(
+                    f"L'alias '{alias}' coincide con il nome di un'entità "
+                    f"esistente: il nome proprio ha la precedenza."
                 )
 
         # 2. [GG3] Il verbo di ogni regola deve appartenere al vocabolario noto,

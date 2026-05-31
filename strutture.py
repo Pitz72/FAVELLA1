@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.1)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -291,6 +291,13 @@ class Mondo:
             "aperta": {"chiusa"},
             "chiusa": {"aperta"},
         }
+        # [Livello 4] Alias/sinonimi degli oggetti: mappa nome-alternativo (già
+        # normalizzato) -> id canonico dell'oggetto. Dichiarati dall'autore con
+        # 'La torcia si chiama anche "lanterna".'. Servono a risolvere l'input
+        # del giocatore: un alias rimanda all'oggetto canonico in fase di parsing
+        # del comando (vedi gioco.risolvi_nome_oggetto). Non sono token-ENTITA,
+        # quindi non sono usabili nelle regole d'autore (lì vale il nome canonico).
+        self.alias: Dict[str, str] = {}
 
     def dichiara_variabile(self, nome: str):
         """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
@@ -304,6 +311,11 @@ class Mondo:
         """Registra che due proprietà sono opposte (relazione simmetrica)."""
         self.opposti.setdefault(prop_a, set()).add(prop_b)
         self.opposti.setdefault(prop_b, set()).add(prop_a)
+
+    def dichiara_alias(self, alias: str, id_canonico: str):
+        """[Livello 4] Registra un nome alternativo per un oggetto. Entrambi gli
+        argomenti sono già normalizzati. L'ultimo che vince in caso di collisione."""
+        self.alias[alias] = id_canonico
 
     def imposta_posizione_iniziale(self):
         """Imposta la posizione iniziale del giocatore.
@@ -343,7 +355,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.8.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.8.1):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"
