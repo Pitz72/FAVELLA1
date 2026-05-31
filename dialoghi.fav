@@ -1,0 +1,68 @@
+# dialoghi.fav — Modulo "NPC e dialoghi ramificati" [Livello 5b]
+# Demo «La Casa di Via Stradivari» — FAVELLA 1 v0.12.0
+# Incluso da storia.fav DOPO le stanze e DOPO oggetti.fav.
+
+# ----------------------------------------------------------------------------
+# IL NOTAIO — in salotto. Vuole la firma e basta. Sa delle lettere e tace.
+# ----------------------------------------------------------------------------
+Il notaio è un personaggio.
+Il notaio è in salotto.
+La descrizione del notaio è "Cinquant'anni, cravatta stretta, una cartelletta di pelle sulle ginocchia. Non si è alzato quando sei entrato.".
+
+Il dialogo del notaio comincia con "tavolo".
+
+Il notaio al nodo "tavolo" dice "Lei è il nipote. Bene. Le carte sono sul tavolo. Una firma e ho un altro appuntamento.".
+Al nodo "tavolo" l'opzione "Di cosa è morta?" conduce al nodo "salute".
+Al nodo "tavolo" l'opzione "Perché tanta fretta?" conduce al nodo "fretta".
+Al nodo "tavolo" l'opzione "So delle lettere." se il giocatore ha le lettere conduce al nodo "lettere" e adesso aumenta gli indizi.
+Al nodo "tavolo" l'opzione "Firmo subito." chiude il dialogo e adesso perdi.
+Al nodo "tavolo" l'opzione "Più tardi." chiude il dialogo.
+
+Il notaio al nodo "salute" dice "Cuore. A quell'età. Niente di irregolare, c'è il certificato.".
+Al nodo "salute" l'opzione "E la valigia pronta?" se gli indizi è almeno 2 conduce al nodo "valigia".
+Al nodo "salute" l'opzione "Torniamo alle carte." conduce al nodo "tavolo".
+
+Il notaio al nodo "fretta" dice "Gli eredi vogliono liquidare. Lei è un erede. Le conviene.".
+Al nodo "fretta" l'opzione "Torno a sedermi." conduce al nodo "tavolo".
+
+Il notaio al nodo "valigia" dice "Stava per fare una sciocchezza. L'ho dissuasa, a suo tempo. Aveva [indizi] motivi per non partire e nessuno per restare. Non ho chiesto quali.".
+Al nodo "valigia" l'opzione "Quali motivi?" conduce al nodo "fretta".
+Al nodo "valigia" l'opzione "Lascio stare." conduce al nodo "tavolo".
+
+Il notaio al nodo "lettere" dice "Quelle. Le avevo detto di bruciarle. Faccia come crede, non è affar mio. Lei firmi quando ha finito di curiosare.".
+Al nodo "lettere" l'opzione "Non firmo niente." conduce al nodo "tavolo".
+
+# ----------------------------------------------------------------------------
+# LA VICINA — in giardino. Le voleva bene, ti misura prima di parlare.
+# ----------------------------------------------------------------------------
+La vicina è un personaggio.
+La vicina è in giardino.
+La descrizione della vicina è "Settant'anni a essere gentili. Un grembiule di tela, le mani sporche di terriccio. Non sembra sorpresa di vederti.".
+
+Il dialogo della vicina comincia con "soglia".
+
+La vicina al nodo "soglia" dice "Lei chi è? ...Ah. Il nipote. Adele parlava di voi. Poco.".
+Al nodo "soglia" l'opzione "Le voleva bene?" conduce al nodo "bene" e adesso aumenta la fiducia.
+Al nodo "soglia" l'opzione "Cosa sa di lei?" conduce al nodo "sa".
+Al nodo "soglia" l'opzione "Dov'è la chiave dello studio?" se la fiducia è almeno 2 conduce al nodo "indica".
+Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verita non è ignota chiude il dialogo e adesso vinci.
+Al nodo "soglia" l'opzione "Devo andare." chiude il dialogo.
+
+La vicina al nodo "bene" dice "Le portavo il pane. Lei mi dava i gerani da tenere quando partiva per i suoi giri. Era sola, ma non vuota.".
+Al nodo "bene" l'opzione "Quali giri?" conduce al nodo "sa" e adesso aumenta la fiducia.
+Al nodo "bene" l'opzione "Torno alla soglia." conduce al nodo "soglia".
+
+La vicina al nodo "sa" dice "So che scriveva. Tutti i mesi. E che le tornavano indietro chiuse. Smise di aprirle anche lei, le impilava e basta.".
+Al nodo "sa" l'opzione "A chi scriveva?" se gli indizi è almeno 3 conduce al nodo "figlio" e adesso la verita è svelata.
+Al nodo "sa" l'opzione "Perché tornavano indietro?" conduce al nodo "indietro".
+Al nodo "sa" l'opzione "Torno alla soglia." conduce al nodo "soglia".
+
+La vicina al nodo "indietro" dice "Non lo so io. Forse non lo voleva sapere neanche lei.".
+Al nodo "indietro" l'opzione "Torno alla soglia." conduce al nodo "soglia".
+
+La vicina al nodo "figlio" dice "Un bambino che le hanno tolto da ragazza. La famiglia, i vostri. Non ha mai smesso di mandargli i soldi. Adesso lo sa anche lei.".
+Al nodo "figlio" l'opzione "Lo cercherò." conduce al nodo "soglia".
+Al nodo "figlio" l'opzione "Resto qui in giardino un altro minuto." chiude il dialogo.
+
+La vicina al nodo "indica" dice "Sotto il vaso dei gerani. Dove metteva tutto quello che non voleva perdere. Mi è scappato di vederlo, una volta.".
+Al nodo "indica" l'opzione "Grazie." conduce al nodo "soglia".

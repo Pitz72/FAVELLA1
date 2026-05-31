@@ -1,53 +1,170 @@
-# Storia Avanzata per FAVELLA 1 v0.1.2 - "La Fuga dal Laboratorio"
+# storia.fav — Orchestratore demo «La Casa di Via Stradivari»
+# FAVELLA 1 v0.12.0 — Vetrina dei costrutti del linguaggio (Livelli 1→6)
+#
+# Premessa: tua zia Adele è morta da tre giorni. Sei venuto per firmare e
+# chiudere. La casa non torna. Devi capire cos'è successo e decidere cosa farne.
+# Tre finali:  [vinci]  Custode — raccogli le lettere e parli con la vicina.
+#              [perdi]  La firma — firmi l'atto, te ne vai.
+#              [termina] Cenere — bruci le lettere con la torcia accesa.
 
-# --- DEFINIZIONE STANZE ---
+# ============================================================================
+# 1. STANZE
+# ============================================================================
+L'ingresso è una stanza.
+La descrizione dell'ingresso è "Anticamera stretta, parquet che scricchiola. Soprabito di Adele ancora al gancio. Una piantana spenta, un tavolino, una porta bassa sotto la scala.".
+La descrizione dell'ingresso se il temporale è scoppiato è "Anticamera stretta, parquet che scricchiola. La pioggia entra da sotto la porta a sgocciolare sul parquet. Il soprabito di Adele ondeggia appena al ventilare.".
 
-La cella di contenimento è una stanza.
-La descrizione della cella di contenimento è "Una stanza bianca, asettica. C'è una porta blindata a nord.".
+Il salotto è una stanza.
+La descrizione del salotto è "Tre poltrone, una credenza, un orologio a pendolo fermo. Sul tavolo, una cartelletta aperta. Il notaio aspetta seduto, non si è alzato quando sei entrato.".
+La descrizione del salotto se la verita è svelata è "Le stesse poltrone, la stessa credenza. Adesso lo vedi: tutto disposto come se qualcuno dovesse venire a riprenderla. Solo non è venuto nessuno.".
 
-Il corridoio è una stanza.
-La descrizione del corridoio è "Un lungo corridoio buio. Vedi l'uscita verso la libertà a est.".
-Il corridoio collega sud a la cella di contenimento.
+Lo studio è una stanza.
+La descrizione dello studio è "Una scrivania ordinata. Un cassetto chiuso a chiave. Sotto i piedi un kilim. Alle pareti, due foto di gruppo da cui qualcuno è stato ritagliato.".
 
-# Posizione di partenza esplicita (v0.5.0): il giocatore inizia nella cella.
-Il giocatore comincia in la cella di contenimento.
+La cucina è una stanza.
+La descrizione della cucina è "Pavimentazione di graniglia. Lo schienale della sedia è ancora sguarnito. Il bicchiere e il flacone sono dove li ha lasciati. L'hanno trovata seduta, hanno detto, non riversa.".
+La descrizione della cucina se la verita è svelata è "Pavimentazione di graniglia. Non ti torna l'idea che sia caduta qui dentro: il pavimento è troppo pulito per una caduta. Forse non è caduta proprio.".
 
-# --- DEFINIZIONE OGGETTI ---
+La camera è una stanza.
+La descrizione della camera è "Letto rifatto, lenzuola fresche. Sul comodino, un libro con il segnalibro al quinto capitolo. Sopra di te, la botola della soffitta.".
 
-Una porta blindata è una cosa.
-La porta blindata è in cella di contenimento.
-La porta blindata è chiusa.
-La descrizione della porta blindata è "È sigillata elettronicamente. Serve una keycard.".
+La soffitta è una stanza.
+La descrizione della soffitta se la torcia è spenta è "Buio fitto sotto la trave. Distingui solo l'angolo del lucernario, e non basta.".
+La descrizione della soffitta è "Travi a vista, polvere a centimetri. Una scatola di latta tra due vecchie valigie vuote. Adele saliva qui ancora, di rado.".
 
-Una keycard magnetica è una cosa.
-La keycard magnetica è prendibile.
-La keycard magnetica è in cella di contenimento.
-La descrizione della keycard magnetica è "Una tessera di plastica con un chip dorato.".
+La cantina è una stanza.
+La descrizione della cantina se la torcia è spenta è "Sotto la scala è cieco. Senti che il fondo non è lontano, ma non vedi dove poggiare il piede.".
+La descrizione della cantina è "Una stanzetta murata, niente finestre. Su un muretto, una cassetta di metallo. L'umido sale fino alle caviglie a chi resta troppo.".
+La descrizione della cantina se il temporale è scoppiato è "L'acqua filtra dal vespaio e bagna il pavimento. La cassetta sul muretto è ancora asciutta, per poco.".
 
-Una mela rossa è una cosa.
-La mela rossa è prendibile.
-La mela rossa è in cella di contenimento.
-La descrizione della mela rossa è "Sembra deliziosa.".
+Il giardino è una stanza.
+La descrizione del giardino è "Un fazzoletto di erba e ghiaia, due piante di alloro, un vaso di gerani. Dietro al vaso, una donna anziana finge di non averti visto entrare.".
 
-Un vecchio tappeto è una cosa.
-Il vecchio tappeto è in corridoio.
-La descrizione del vecchio tappeto è "Un tappeto logoro.".
+# ============================================================================
+# 2. DIREZIONI PERSONALIZZATE  [Livello 4 / L1]
+# ============================================================================
+# 'su' e 'giù' sono parole riservate: uso due coppie distinte di direzioni
+# verticali. 'alto/basso' per la coppia ingresso↔cantina; 'sopra/sotto' per
+# la coppia camera↔soffitta. Tenerle distinte permette di scrivere regole di
+# gating PER DIREZIONE — la porta sbarrata blocca solo 'basso', mai 'sotto'.
+Alto e basso sono direzioni opposte.
+Sopra e sotto sono direzioni opposte.
 
-Una botola segreta è una cosa.
-# Nota: La botola non è in nessuna stanza all'inizio (è nel nulla), o nascosta.
-# Per semplicità in questa versione, la mettiamo nel nulla e la facciamo apparire.
+# ============================================================================
+# 3. TOPOLOGIA — il ritorno è automatico per ogni 'collega'
+# ============================================================================
+L'ingresso collega nord a il salotto.
+L'ingresso collega ovest a lo studio.
+L'ingresso collega est a la cucina.
+L'ingresso collega basso a la cantina.
+Il salotto collega nord a la camera.
+La camera collega sopra a la soffitta.
+La cucina collega est a il giardino.
 
-# --- REGOLE DI GIOCO ---
+# ============================================================================
+# 4. POSIZIONE INIZIALE DEL GIOCATORE  [Livello 1 / GG1]
+# ============================================================================
+Il giocatore comincia in ingresso.
 
-# 1. Puzzle Principale: Aprire la porta
-# Se provo ad andare a nord e la porta è chiusa
-Invece di vai nord se la porta blindata è chiusa: dire "La porta blindata ti sbarra la strada.".
+# ============================================================================
+# 5. STATI E CONTATORI  [Livello 3]
+# ============================================================================
+La verita è uno stato.
+La verita è ignota.
 
-# Usare la card sulla porta (Cambio di Stato + Feedback)
-Invece di usa la keycard magnetica su la porta blindata: dire "Bip! La luce diventa verde e la porta scatta." e adesso la porta blindata è aperta.
+Il temporale è uno stato.
+Il temporale è lontano.
 
-# 2. Oggetto Consumabile (Rimozione oggetto)
-Invece di mangia la mela rossa: dire "Gnam! Era succosa." e adesso la mela rossa è nel nulla.
+Gli indizi è un contatore.
+La fiducia è un contatore.
 
-# 3. Oggetto che fa apparire altro oggetto (Spostamento)
-Invece di sposta il vecchio tappeto: dire "Sotto il tappeto trovi una botola segreta!" e adesso la botola segreta è in corridoio.
+# ============================================================================
+# 6. MODULI INCLUSI  [Livello 6 / 0.11.2]
+# ============================================================================
+# Il preprocessore di Passata 0 espande questi due file in un unico sorgente
+# PRIMA del parsing: l'invariante LALR(1) resta intatto.
+Includi "oggetti.fav".
+Includi "dialoghi.fav".
+
+# ============================================================================
+# 7. EVENTI A TURNI  [Livello 3]
+# ============================================================================
+Al turno 4: dire "Sui colli si sente un tuono basso. Vento alle imposte." e adesso il temporale è vicino.
+Al turno 8: dire "Comincia a piovere forte. La grondaia ha un buco da anni, si sente." e adesso il temporale è scoppiato.
+Ogni 5 turni: dire "L'orologio batte ma il pendolo no: si è fermato alle quattro e ventidue.".
+
+# ============================================================================
+# 8. REGOLE — GATING, PUZZLE, INDIZI, FINALI
+# ============================================================================
+
+# --- Gating delle stanze buie / sbarrate ------------------------------------
+# 'basso' esiste solo dall'ingresso → la porta sbarrata blocca un percorso
+# univoco. 'sopra' esiste solo dalla camera → idem per la botola della soffitta.
+Invece di vai basso se la porta della cantina è chiusa: dire "La porta sotto la scala è sbarrata. Serratura grossa, doppia mappa.".
+Invece di vai basso se la torcia è spenta: dire "Da quaggiù sale solo nero. Non ti fidi a scendere al buio.".
+Invece di vai sopra se la torcia è spenta: dire "La botola dà su un buio compatto. Senza luce non sali.".
+
+# --- Apertura della credenza (verbo standard 'apri') ------------------------
+Invece di apri la credenza se la credenza è chiusa: dire "L'anta cede con un cigolio. Dentro vedi una chiave e una lettera sciolta." e adesso la credenza è aperta.
+
+# --- Apertura della porta della cantina con la chiave (regola a 2 oggetti) --
+Invece di usa la chiave della cantina su la porta della cantina se la porta della cantina è chiusa: dire "La doppia mappa gira due volte, di scatto. La porta si apre verso il basso." e adesso la porta della cantina è aperta.
+
+# --- Apertura del cassetto: due strade --------------------------------------
+# (a) regola a 2 oggetti con la chiave dello studio
+Invece di usa la chiave dello studio su il cassetto se il cassetto è chiuso: dire "La chiave gira liscia. Il cassetto si apre senza forzature." e adesso il cassetto è aperto.
+
+# (b) verbo custom 'forza' con il portaombrelli come leva — esercita verbo
+#     custom + due oggetti + condizione composta (AND con possesso negato).
+Invece di forza il cassetto se il giocatore non ha il portaombrelli: dire "Senza una leva fai solo rumore. Lascia stare.".
+Invece di forza il cassetto con il portaombrelli se il cassetto è chiuso: dire "Il ferro del portaombrelli scivola sotto il piano. Una pressione asciutta, il legno cede. Hai aperto male, ma hai aperto." e adesso il cassetto è aperto.
+
+# --- Scava la terra smossa in giardino (verbo custom + condizionale AND) ----
+# La sentinella 'intatta'/'scavata' (opposte custom su terra smossa) impedisce
+# di trovare due volte la stessa chiave.
+Invece di scava la terra smossa se il giocatore ha il portaombrelli e la terra smossa è compatta: dire "Con il puntale del portaombrelli arrivi sotto. Tre colpi, e la chiave dello studio è lì." e adesso la chiave dello studio è in giardino e adesso la terra smossa è scavata.
+Invece di scava la terra smossa se la terra smossa è compatta: dire "A mani nude no. Servirebbe qualcosa con cui smuovere.".
+Invece di scava la terra smossa: dire "Hai già rivoltato la terra qui sotto. Non c'è altro.".
+
+# --- Alternativa più gentile: sposta il vaso (verbo standard 'sposta') ------
+Invece di sposta il vaso di gerani se la terra smossa è compatta: dire "Sposti il vaso a fatica. La terra sotto è rimossa di recente: a un centimetro di profondità, l'ottone di una chiave." e adesso la chiave dello studio è in giardino e adesso la terra smossa è scavata.
+Invece di sposta il vaso di gerani: dire "Sposti il vaso. Nulla di nuovo.".
+
+# --- Torcia: accendi / spegni (AND su possesso) -----------------------------
+Invece di accendi la torcia se la torcia è spenta e il giocatore ha la torcia: dire "Carichi la manovella per dieci secondi. Il fascio è giallo e tremante, ma tiene." e adesso la torcia è accesa.
+Invece di accendi la torcia se la torcia è spenta: dire "Devi averla in mano per caricarla.".
+Invece di spegni la torcia se la torcia è accesa: dire "Premi l'interruttore. Buio." e adesso la torcia è spenta.
+
+# --- Bevi la grappa (verbo custom, consumabile) -----------------------------
+Invece di bevi il bicchiere di grappa: dire "Ne resta poca. Ti riempie la bocca di legno bruciato." e adesso il bicchiere di grappa è nel nulla.
+
+# --- Esami con conseguenza: indizi + eventuale cambio di stato --------------
+# fotografia: gated da 'verita ignota' (si auto-disarma). CONSEGUENZE MULTIPLE.
+Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verita è sospetta.
+
+# medicine: sentinella d'oggetto 'notata' per impedire il farming.
+Invece di esamina il flacone di medicine se il flacone di medicine non è notata: dire "Cardioaspirina, scatola sigillata, prescrizione del mese scorso. Non ne ha presa una. Chi smette di prenderle è qualcuno che ha deciso di smettere." e adesso aumenta gli indizi e adesso il flacone di medicine è notata.
+
+# valigia: gated dal proprio stato (chiusa → aperta), conseguenze multiple
+Invece di apri la valigia se la valigia è chiusa: dire "Pelle morbida, perfettamente vuota fatta eccezione per un biglietto del treno. Mai timbrato. Voleva andare." e adesso la valigia è aperta e adesso aumenta gli indizi.
+
+# libretto: sentinella d'oggetto
+Invece di esamina il libretto bancario se il libretto bancario non è notato: dire "Trentadue anni di righe a inchiostro, sempre la stessa cifra il primo del mese, sempre allo stesso nome. Nessun buco, nemmeno l'anno della malattia di tuo padre." e adesso aumenta gli indizi e adesso il libretto bancario è notato.
+
+# lettere: sentinella d'oggetto, e poi diventano oggetto-perno dei finali
+Invece di esamina le lettere se le lettere non è notata: dire "Una ventina, tutte chiuse, tutte indirizzate allo stesso nome. Una sola riga su ognuna, dall'ufficio postale: 'destinatario sconosciuto, rispedita al mittente'." e adesso aumenta gli indizi e adesso le lettere è notata.
+
+# --- Tappeto: falsa pista onesta --------------------------------------------
+Invece di sposta il tappeto dello studio: dire "Sollevi un angolo. Parquet, polvere, niente. Adele non era una che nascondeva sotto i tappeti.".
+
+# --- FINALE B: 'firma l'atto' fuori dialogo (verbo custom) ------------------
+Invece di firma l'atto di vendita: dire "Una firma sulla riga in fondo, un'altra di fianco. Il notaio asciuga le carte con il tampone e se ne va prima di te. Esci anche tu, con un assegno e niente più." e adesso perdi.
+
+# --- FINALE C: 'brucia le lettere con la torcia' (regola a 2 oggetti) ------
+Invece di brucia le lettere se la torcia è spenta oppure il giocatore non ha le lettere: dire "Non così, non adesso.".
+Invece di brucia le lettere con la torcia se la torcia è accesa: dire "Le tieni sotto il fascio finché la carta non prende. Brucia in fretta, era già asciutta. Te ne torni con le mani sporche di cenere, e nessuno saprà mai." e adesso termina.
+
+# --- REGOLA GLOBALE SENZA BERSAGLIO  [Livello 5 / 0.9.2] --------------------
+# 'ricorda' è un verbo custom senza oggetto: la regola scatta sul solo verbo.
+Invece di ricorda se la verita è svelata: dire "Tua zia. Le lettere chiuse. Il bambino consegnato. Le mensilità mai cessate. Hai messo insieme [indizi] frammenti, e bastano.".
+Invece di ricorda: dire "Non hai abbastanza pezzi per cucirli insieme. Non ancora.".
