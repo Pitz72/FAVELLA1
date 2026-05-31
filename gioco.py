@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.8.2)
+# Interprete Interattivo per FAVELLA 1 (v0.8.3)
 
 import sys
 import traceback
@@ -7,13 +7,6 @@ from compilatore import analizza_file
 from strutture import Mondo
 from utils import normalizza_nome
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
-
-DIREZIONI_VALIDI = {
-    "nord": "nord", "n": "nord",
-    "sud": "sud", "s": "sud",
-    "est": "est", "e": "est",
-    "ovest": "ovest", "o": "ovest"
-}
 
 def mostra_stanza(mondo: Mondo):
     """Stampa la descrizione completa della stanza corrente del giocatore."""
@@ -46,14 +39,14 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
 
     oggetti_in_scope = list(stanza_corrente.oggetti.keys()) + list(mondo.inventario)
     
-    # Priorità 0: Direzioni (anche con "a " davanti)
+    # Priorità 0: Direzioni (anche con "a " davanti). [Livello 4 / L1] La mappa
+    # forma->canonica vive sul mondo (base + personalizzate).
     nome_pulito = nome_parziale.strip().lower()
     if nome_pulito.startswith("a ") and len(nome_pulito) > 2:
         nome_pulito = nome_pulito[2:].strip()
-        
-    if nome_pulito in ["nord", "sud", "est", "ovest", "n", "s", "e", "o"]:
-        mappa_direzioni = {"n": "nord", "s": "sud", "e": "est", "o": "ovest"}
-        return mappa_direzioni.get(nome_pulito, nome_pulito)
+
+    if nome_pulito in mondo.direzioni:
+        return mondo.direzioni[nome_pulito]
 
     # Normalizza l'input per trovare gli oggetti del gioco
     nome_normalizzato = normalizza_nome(nome_parziale)
@@ -185,7 +178,8 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             argomento_sx = " ".join(parole[1:])
 
         # --- Gestione Movimento ---
-        direzione_normalizzata = DIREZIONI_VALIDI.get(verbo_giocatore)
+        # [Livello 4 / L1] La mappa forma->canonica vive sul mondo (base + custom).
+        direzione_normalizzata = mondo.direzioni.get(verbo_giocatore)
         if direzione_normalizzata:
             # Check per regole "Invece di vai a [direzione]"
             # Simuliamo un'azione "vai" con oggetto "direzione"

@@ -1,6 +1,7 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.2)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.3)
 from typing import Callable, List, Dict, Set, Optional
+from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -303,6 +304,15 @@ class Mondo:
         # e usare nelle regole 'Invece di'; agiscono su un oggetto bersaglio come
         # gli altri verbi. carica_azioni() li instrada a un'azione generica.
         self.verbi_personalizzati: Set[str] = set()
+        # [Livello 4 / L1] Topologia data-driven. 'direzioni' mappa ogni FORMA
+        # accettata (canonica o abbreviazione) -> direzione canonica;
+        # 'opposte_direzioni' mappa canonica -> canonica opposta (per l'auto-
+        # ritorno delle connessioni). Precaricate con le direzioni di base; le
+        # direzioni personalizzate ('Alto e basso sono direzioni opposte.') si
+        # aggiungono sempre in coppia opposta.
+        self.direzioni: Dict[str, str] = {}
+        self.opposte_direzioni: Dict[str, str] = {}
+        self._inizializza_direzioni_base()
 
     def dichiara_variabile(self, nome: str):
         """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
@@ -325,6 +335,30 @@ class Mondo:
     def dichiara_verbo(self, verbo: str):
         """[Livello 4] Registra un verbo personalizzato (parola-comando)."""
         self.verbi_personalizzati.add(verbo)
+
+    def _inizializza_direzioni_base(self):
+        """[Livello 4 / L1] Precarica le direzioni di base (fonte unica in utils)."""
+        for canonica, forme in DIREZIONI_BASE.items():
+            for forma in forme:
+                self.direzioni[forma] = canonica
+        self.opposte_direzioni.update(DIREZIONI_OPPOSTE_BASE)
+
+    def dichiara_direzione_opposta(self, dir_a: str, dir_b: str):
+        """[Livello 4 / L1] Registra una coppia di direzioni personalizzate,
+        l'una opposta all'altra (relazione simmetrica). Ogni nome è anche la
+        propria forma d'input (le direzioni custom non hanno abbreviazioni)."""
+        self.direzioni[dir_a] = dir_a
+        self.direzioni[dir_b] = dir_b
+        self.opposte_direzioni[dir_a] = dir_b
+        self.opposte_direzioni[dir_b] = dir_a
+
+    def direzione_canonica(self, forma: str) -> Optional[str]:
+        """Forma d'input -> direzione canonica (None se non è una direzione)."""
+        return self.direzioni.get(forma)
+
+    def opposta_di(self, canonica: str) -> Optional[str]:
+        """Direzione canonica -> sua opposta (None se non registrata)."""
+        return self.opposte_direzioni.get(canonica)
 
     def imposta_posizione_iniziale(self):
         """Imposta la posizione iniziale del giocatore.
@@ -375,7 +409,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.8.1):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.8.3):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"

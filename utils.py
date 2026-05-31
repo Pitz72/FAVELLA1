@@ -8,6 +8,24 @@ import re
 # della Passata 2 (prefisso opzionale del terminale ENTITA).
 ARTICOLI = ["l'", "un'", "uno", "una", "il", "lo", "la", "i", "gli", "le", "un"]
 
+# [Livello 4 / L1] DIREZIONI DI BASE — fonte UNICA condivisa da compilatore e
+# runtime (prima erano cablate in 4 punti). Mappa: direzione canonica -> forme
+# accettate in input (la prima è la canonica, la seconda l'abbreviazione storica).
+# Nota quirk noto (G4): l'abbreviazione "e" di est coincide con la congiunzione
+# "e"; il lexer contestuale le distingue per posizione.
+DIREZIONI_BASE = {
+    "nord": ("nord", "n"),
+    "sud": ("sud", "s"),
+    "est": ("est", "e"),
+    "ovest": ("ovest", "o"),
+}
+
+# Coppie di direzioni opposte di base (per l'auto-ritorno delle connessioni).
+DIREZIONI_OPPOSTE_BASE = {
+    "nord": "sud", "sud": "nord",
+    "est": "ovest", "ovest": "est",
+}
+
 
 def normalizza_tipografia(testo: str) -> str:
     """

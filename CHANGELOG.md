@@ -4,6 +4,46 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.3] - 2026-05-31
+### Aggiunto / Modificato (Roadmap Livello 4 — verso 0.9.0)
+- **Direzioni estese, data-driven** (`[L1]`). Le direzioni del mondo (finora
+  cablate in 4 punti del codice) hanno ora un'**unica fonte di verità** e sono
+  **estendibili dall'autore**:
+  ```
+  Alto e basso sono direzioni opposte.
+  La torre collega basso a cantina.
+  ```
+  Le direzioni personalizzate si dichiarano sempre **in coppia opposta**, così
+  l'auto-ritorno della connessione è garantito (qui `cantina` torna a `torre` con
+  `alto`). Funzionano sia nelle connessioni sia come comando di movimento a
+  runtime. Il nome di una direzione non può coincidere con una parola riservata o
+  un'entità: è un **errore bloccante** con messaggio chiaro.
+- Miglioria collaterale: nelle regole il bersaglio-direzione è ora
+  **canonicalizzato** (`Invece di vai n` equivale a `vai nord`); le direzioni
+  sono riconosciute **case-insensitive**.
+- `utils.py`: `DIREZIONI_BASE` e `DIREZIONI_OPPOSTE_BASE` come **fonte unica**.
+- `strutture.py`: `Mondo.direzioni` (forma → canonica) e `opposte_direzioni`
+  (canonica → opposta), precaricate dalle basi; `dichiara_direzione_opposta()`,
+  `direzione_canonica()`, `opposta_di()`.
+- `compilatore.py`: scanner Passata 1 `_RE_DEF_DIREZIONI`
+  (`TabellaSimboli.coppie_direzioni`); regola `def_direzioni`; il terminale
+  **`DIREZIONE` è generato per-file** (base + custom) come regex con `\b` e
+  priorità `.2` — vince il longest-match contro le keyword di cui una direzione
+  custom condivide il prefisso (es. `alto` vs `al` di «Al turno»), senza intaccare
+  l'invariante `e`=est / congiunzione (il lexer contestuale non le mette mai nello
+  stesso stato). `def_connessione` e `def_regola` consultano le mappe del mondo
+  invece dei dict cablati. `valida_direzioni_dichiarate()` blocca i conflitti.
+  Parola riservata `direzioni`.
+- `gioco.py`: rimosso il dict cablato `DIREZIONI_VALIDI`; movimento e
+  `risolvi_nome_oggetto` usano `mondo.direzioni`.
+- `test_linguaggio.py`: cinque nuovi test (connessione+auto-ritorno custom,
+  movimento runtime, canonicalizzazione abbreviazione, conflitto bloccante,
+  scanner); corpus della guardia esteso con una `def_direzioni` e una connessione
+  che la usa; le chiamate della guardia passano ora le direzioni dichiarate. Suite
+  a **162 asserzioni** (era 151).
+
+---
+
 ## [0.8.2] - 2026-05-31
 ### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
 - **Verbi personalizzati** (`[M1]`): l'autore può introdurre nuove parole-comando

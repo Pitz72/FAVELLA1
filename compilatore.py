@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.8.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.8.3)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -15,7 +15,10 @@ from strutture import (
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
 )
 from libreria_azioni import LIBRERIA_AZIONI
-from utils import normalizza_nome, normalizza_tipografia, ARTICOLI
+from utils import (
+    normalizza_nome, normalizza_tipografia, ARTICOLI,
+    DIREZIONI_BASE,
+)
 import sys
 
 # Vocabolario chiuso dei verbi riconosciuti dal motore di gioco. Serve per
@@ -66,6 +69,8 @@ PAROLE_RISERVATE = frozenset({
     "si", "chiama", "anche",
     # verbi personalizzati (Livello 4 / M1)
     "comando",
+    # direzioni personalizzate (Livello 4 / L1)
+    "direzioni",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -85,6 +90,9 @@ class TabellaSimboli:
         self.stanze = set()      # id normalizzati delle stanze
         self.oggetti = set()     # id normalizzati degli oggetti
         self.variabili = set()   # [Livello 3] id normalizzati degli 'stati'
+        # [Livello 4 / L1] Coppie di direzioni personalizzate dichiarate
+        # ('Alto e basso sono direzioni opposte.'), come tuple (a, b) normalizzate.
+        self.coppie_direzioni = []
 
     @property
     def tutti(self):
@@ -109,6 +117,10 @@ _RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNO
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
+# 'A e B sono direzioni opposte' introduce una coppia di direzioni custom. [Livello 4]
+# Le due direzioni sono parole singole (un solo token-comando di movimento).
+_RE_DEF_DIREZIONI = re.compile(
+    r"^(?P<a>\S+)\s+e\s+(?P<b>\S+)\s+sono\s+direzioni\s+opposte$", re.IGNORECASE)
 # Stringhe quotate e commenti vanno rimossi prima di spezzare sui punti.
 _RE_QUOTATO = re.compile(r'"(\\.|[^"\\])*"')
 _RE_COMMENTO = re.compile(r"#[^\n]*")
@@ -159,6 +171,14 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         m = _RE_DEF_CONTATORE.match(frase)
         if m:
             tab.variabili.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_DIREZIONI.match(frase)
+        if m:
+            a = normalizza_nome(m.group("a"))
+            b = normalizza_nome(m.group("b"))
+            if a and b:
+                tab.coppie_direzioni.append((a, b))
             continue
 
         m = _RE_DEF_CONNESSIONE.match(frase)
@@ -212,6 +232,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_stato
                   | def_stato_valore
                   | def_contatore
+                  | def_direzioni
                   | def_evento
 
     // --- DEFINIZIONI BASE ---
@@ -248,6 +269,13 @@ _GRAMMAR_TEMPLATE = r"""
     // Contatori numerici: 'X è un contatore.' (valore iniziale 0). Distinto da
     // def_stato per il lookahead "un" vs "uno".
     def_contatore: VARIABILE "è" "un" "contatore" "."
+
+    // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
+    // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
+    // (sempre opposte, per garantire l'auto-ritorno). Entrambi gli operandi sono
+    // token DIREZIONE (generati per-file dallo scanner). Nessun'altra
+    // dichiarazione inizia con DIREZIONE: LALR la distingue al primo token.
+    def_direzioni: DIREZIONE "e" DIREZIONE "sono" "direzioni" "opposte" "."
 
     // --- EVENTI A TURNI (Livello 3) ---
     // 'Al turno N: ...' scatta una sola volta; 'Ogni N turni: ...' a ogni
@@ -311,7 +339,14 @@ _GRAMMAR_TEMPLATE = r"""
     // --- TERMINALI LESSICALI ---
     PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
     PREP_AZIONE: "su" | "con" | "contro" | "in"
-    DIREZIONE: "nord" | "sud" | "est" | "ovest" | "n" | "s" | "e" | "o"
+    // [Livello 4 / L1] DIREZIONE è generata per-file: le forme di base
+    // (utils.DIREZIONI_BASE) più le direzioni personalizzate dichiarate.
+    // È una regex con confine di parola (\b) e priorità ALTA (.2): serve a
+    // vincere il longest-match contro le keyword di cui una direzione custom
+    // potrebbe condividere il prefisso (es. 'alto' vs 'al' di "Al turno").
+    // Sicuro per l'invariante "e"=est vs congiunzione: il lexer contestuale non
+    // pone mai DIREZIONE e la congiunzione "e" come candidati nello stesso stato.
+    DIREZIONE.2: /(?:__DIREZIONE_ALT__)\b/i
 
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
@@ -375,20 +410,36 @@ def _costruisci_regex_entita(simboli) -> str:
     return _costruisci_regex_nomi(set(simboli) | set(SIMBOLI_SPECIALI))
 
 
-def costruisci_grammatica(simboli, variabili=()) -> str:
+def _costruisci_alt_direzioni(direzioni_extra=()) -> str:
+    """[Livello 4 / L1] Costruisce il corpo regex dell'alternanza del terminale
+    DIREZIONE: tutte le forme di base (utils.DIREZIONI_BASE) più i nomi delle
+    direzioni personalizzate dichiarate, ordinate per lunghezza decrescente per
+    garantire il longest-match (es. 'ovest' prima di 'o')."""
+    forme = []
+    for varianti in DIREZIONI_BASE.values():
+        forme.extend(varianti)
+    forme.extend(direzioni_extra)
+    ordinate = sorted(set(forme), key=len, reverse=True)
+    return "|".join(re.escape(f) for f in ordinate)
+
+
+def costruisci_grammatica(simboli, variabili=(), direzioni=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
-    ENTITA e VARIABILE risolti dai simboli noti (Passata 2). VARIABILE è la
-    classe degli 'stati' (Livello 3), disgiunta dalle entità."""
+    ENTITA, VARIABILE e DIREZIONE risolti dai simboli noti (Passata 2). VARIABILE
+    è la classe degli 'stati' (Livello 3); DIREZIONE include le direzioni
+    personalizzate dichiarate (Livello 4)."""
     grammatica = _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
+    grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     return grammatica
 
 
-def costruisci_parser(simboli, variabili=()) -> Lark:
+def costruisci_parser(simboli, variabili=(), direzioni=()) -> Lark:
     """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
     costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
     GrammarError a build-time, non come scelta silenziosa a runtime."""
-    return Lark(costruisci_grammatica(simboli, variabili), start="start", parser="lalr")
+    return Lark(costruisci_grammatica(simboli, variabili, direzioni),
+                start="start", parser="lalr")
 
 
 def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
@@ -447,12 +498,17 @@ class FavellaTransformer(Transformer):
     """
     Visita l'albero sintattico generato da Lark e popola l'oggetto Mondo.
     """
-    def __init__(self):
+    def __init__(self, coppie_direzioni=()):
         super().__init__()
         self.mondo = Mondo()
         self.errori = []        # Errori bloccanti: la compilazione fallisce
         self.warnings = []      # Avvisi non bloccanti: la compilazione prosegue
         self.start_dichiarato_raw = None  # Nome grezzo della stanza di partenza
+        # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
+        # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
+        # dall'ordine in cui compaiono dichiarazione e 'collega'.
+        for dir_a, dir_b in coppie_direzioni:
+            self.mondo.dichiara_direzione_opposta(dir_a, dir_b)
 
     # --- Nodi Entità e Testo ---
 
@@ -597,6 +653,11 @@ class FavellaTransformer(Transformer):
         self.mondo.dichiara_contatore(normalizza_nome(var_grezzo))
         return None
 
+    def def_direzioni(self, dir_a, dir_b):
+        # [Livello 4 / L1] La coppia è già stata raccolta in Passata 1 e applicata
+        # al mondo nel costruttore (vedi __init__): qui niente da fare.
+        return None
+
     def def_opposti(self, prop_a_grezzo, prop_b_grezzo):
         # [Livello 3 / M5] Registra una coppia di proprietà mutuamente esclusive.
         # I nomi delle proprietà sono monoparola; li normalizziamo come gli altri
@@ -646,23 +707,15 @@ class FavellaTransformer(Transformer):
         stanza1 = self.mondo.trova_stanza(id_sta1)
         stanza2 = self.mondo.trova_stanza(id_sta2)
 
-        # Normalizza la direzione al suo nome completo
-        DIREZIONI_MAP = {
-            "n": "nord", "nord": "nord",
-            "s": "sud", "sud": "sud",
-            "e": "est", "est": "est",
-            "o": "ovest", "ovest": "ovest"
-        }
-        direzione_norm = DIREZIONI_MAP.get(direzione, direzione)
-
+        # [Livello 4 / L1] Direzioni data-driven: canonicalizzazione e auto-ritorno
+        # consultano le mappe del mondo (base + personalizzate), non più dict cablati.
+        direzione_norm = self.mondo.direzione_canonica(direzione) or direzione
         stanza1.uscite[direzione_norm] = id_sta2
 
-        # Connessione automatica di ritorno
-        direzione_opposta = {
-            "nord": "sud", "sud": "nord",
-            "est": "ovest", "ovest": "est"
-        }[direzione_norm]
-        stanza2.uscite[direzione_opposta] = id_sta1
+        # Connessione automatica di ritorno, se la direzione ha un'opposta nota.
+        direzione_opposta = self.mondo.opposta_di(direzione_norm)
+        if direzione_opposta:
+            stanza2.uscite[direzione_opposta] = id_sta1
         return None
 
     def def_giocatore(self, *tokens):
@@ -831,8 +884,14 @@ class FavellaTransformer(Transformer):
         id_ogg1 = normalizza_nome(ogg1_grezzo)
         id_ogg2 = normalizza_nome(ogg2_grezzo) if ogg2_grezzo else None
 
+        # [Livello 4 / L1] Se il bersaglio è una direzione (anche abbreviata o
+        # personalizzata), canonicalizzalo: così 'Invece di vai n' e 'vai nord'
+        # sono la stessa regola e combaciano con il movimento a runtime.
+        if id_ogg1 in self.mondo.direzioni:
+            id_ogg1 = self.mondo.direzioni[id_ogg1]
+
         # Verifica entità principali della regola
-        if self.mondo.trova_oggetto(id_ogg1) or id_ogg1 in ["nord", "sud", "est", "ovest", "n", "s", "e", "o"]:
+        if self.mondo.trova_oggetto(id_ogg1) or id_ogg1 in self.mondo.opposte_direzioni:
             if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
                 self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
             else:
@@ -947,6 +1006,39 @@ class FavellaTransformer(Transformer):
 # 3. MOTORE PRINCIPALE DI COMPILAZIONE (due passate)
 # ==============================================================================
 
+def valida_direzioni_dichiarate(coppie, simboli):
+    """
+    [Livello 4 / L1] Valida le coppie di direzioni personalizzate raccolte in
+    Passata 1. Il nome di una direzione NON può coincidere con una parola
+    riservata né con un nome di entità/variabile: sarebbe un'ambiguità lessicale
+    (il terminale DIREZIONE, a priorità alta, oscurerebbe l'altro uso). Un tale
+    conflitto è un ERRORE bloccante. I nomi già di base sono accettati
+    silenziosamente (no-op). Restituisce (coppie_ok, nomi_extra, errori).
+    """
+    base_forme = {f for forme in DIREZIONI_BASE.values() for f in forme}
+    base_forme |= set(DIREZIONI_BASE.keys())
+    coppie_ok = []
+    nomi_extra = set()
+    errori = []
+    for dir_a, dir_b in coppie:
+        problemi = []
+        for d in (dir_a, dir_b):
+            if d in base_forme:
+                continue  # già una direzione di base: ok
+            if d in PAROLE_RISERVATE or d in simboli.tutti or d in simboli.variabili:
+                problemi.append(d)
+        if problemi:
+            errori.append(
+                f"Direzione personalizzata in conflitto con una parola riservata "
+                f"o un nome esistente: «{', '.join(problemi)}». Scegli un nome "
+                f"diverso per la direzione."
+            )
+            continue
+        coppie_ok.append((dir_a, dir_b))
+        nomi_extra |= ({dir_a, dir_b} - base_forme)
+    return coppie_ok, nomi_extra, errori
+
+
 def analizza_file(percorso_file: str) -> Mondo | None:
     """
     Legge un file .fav e lo compila in un Mondo popolato, con la pipeline a
@@ -971,13 +1063,24 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 1. PASSATA 1 — Symbol-table dei nomi dichiarati.
         simboli = costruisci_symbol_table(testo)
+        # [Livello 4 / L1] Direzioni personalizzate: valida le coppie raccolte e
+        # ricava i nomi da iniettare nel terminale DIREZIONE. Un conflitto con una
+        # parola riservata o un'entità è un errore bloccante: lo segnaliamo qui,
+        # con un messaggio chiaro, prima ancora di costruire il parser.
+        coppie_dir, nomi_dir, dir_errori = valida_direzioni_dichiarate(
+            simboli.coppie_direzioni, simboli)
+        if dir_errori:
+            print("\n[FAVELLA 1] Errore nelle direzioni personalizzate:")
+            for err in dir_errori:
+                print(f" - {err}")
+            return None
 
-        # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA e VARIABILE chiusi.
-        parser = costruisci_parser(simboli.tutti, simboli.variabili)
+        # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir)
         tree = parser.parse(testo)
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
-        transformer = FavellaTransformer()
+        transformer = FavellaTransformer(coppie_dir)
         transformer.transform(tree)
 
         # 4. VALIDAZIONE SEMANTICA GLOBALE

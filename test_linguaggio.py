@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.3)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -17,8 +17,15 @@ import contextlib
 
 from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
-    costruisci_parser, PAROLE_RISERVATE,
+    costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
 )
+
+
+def _nomi_direzioni(simboli):
+    """Nomi delle direzioni personalizzate valide raccolte in un corpus (per
+    passarle a costruisci_grammatica/parser nei test della guardia)."""
+    _, nomi, _ = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+    return nomi
 from lark import Lark
 from lark.exceptions import GrammarError
 
@@ -499,6 +506,88 @@ def test_verbo_personalizzato_multiparola_warning():
     _check("multiparola" in log.lower(), "il log avvisa che il comando multiparola è ignorato")
 
 
+# --- Test: direzioni personalizzate / data-driven [Livello 4 / L1] -----------
+
+def test_direzioni_personalizzate_connessione():
+    print("[direzioni custom: connessione + auto-ritorno con l'opposta]")
+    src = (
+        "La torre è una stanza.\n"
+        "La cantina è una stanza.\n"
+        "Alto e basso sono direzioni opposte.\n"
+        "La torre collega basso a cantina.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and mondo.stanze["torre"].uscite.get("basso") == "cantina",
+           "la connessione usa la direzione personalizzata 'basso'")
+    _check(mondo and mondo.stanze["cantina"].uscite.get("alto") == "torre",
+           "auto-ritorno con l'opposta 'alto'")
+
+
+def test_direzioni_personalizzate_runtime():
+    print("[direzioni custom: movimento a runtime]")
+    from gioco import elabora_comando
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La torre è una stanza.\n"
+        "La cantina è una stanza.\n"
+        "Il giocatore comincia in torre.\n"
+        "Alto e basso sono direzioni opposte.\n"
+        "La torre collega basso a cantina.\n"
+    )
+    mondo, _ = compila(src)
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        elabora_comando(mondo, "basso")
+    _check(mondo.posizione_giocatore == "cantina",
+           "digitare la direzione custom 'basso' muove il giocatore")
+    with contextlib.redirect_stdout(io.StringIO()):
+        elabora_comando(mondo, "alto")
+    _check(mondo.posizione_giocatore == "torre",
+           "l'opposta 'alto' riporta indietro")
+
+
+def test_direzione_regola_canonicalizza_abbreviazione():
+    print("[direzioni: 'Invece di vai n' combacia con il movimento a nord]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il corridoio è una stanza.\n"
+        "La cella collega nord a corridoio.\n"
+        'Invece di vai n: dire "Bloccato.".\n'  # abbreviazione 'n' nella regola
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and mondo.regole[0].id_oggetto_bersaglio == "nord",
+           "il bersaglio 'n' è canonicalizzato a 'nord'")
+
+
+def test_direzione_conflitto_parola_riservata_errore():
+    print("[direzioni: conflitto con parola riservata = errore bloccante]")
+    src = (
+        "La cella è una stanza.\n"
+        "Su e giù sono direzioni opposte.\n"  # 'su' è una preposizione riservata
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce (conflitto bloccante)")
+    _check("direzione" in log.lower() and "conflitto" in log.lower(),
+           "il log spiega il conflitto della direzione con una parola riservata")
+
+
+def test_scanner_raccoglie_direzioni():
+    print("[scanner: 'A e B sono direzioni opposte' popola le coppie]")
+    src = (
+        "La cella è una stanza.\n"
+        "Dentro e fuori sono direzioni opposte.\n"
+    )
+    tab = costruisci_symbol_table(src)
+    _check(("dentro", "fuori") in tab.coppie_direzioni,
+           "la coppia di direzioni è raccolta in Passata 1")
+    _check("dentro" not in tab.tutti and "fuori" not in tab.tutti,
+           "le direzioni NON sono entità")
+
+
 # --- Test: condizioni di fine partita [Livello 3] ----------------------------
 
 def test_fine_partita_vinci():
@@ -865,6 +954,8 @@ _CORPUS_GUARDIA = (
     "La cella è una stanza.\n"
     "Il corridoio è una stanza.\n"
     "La cella collega nord a corridoio.\n"
+    "Alto e basso sono direzioni opposte.\n"   # def_direzioni [Livello 4 / L1]
+    "La cella collega basso a corridoio.\n"     # connessione con direzione custom
     "Una porta di ferro è una cosa.\n"        # nome-entità multiparola
     "La porta di ferro è in cella.\n"          # def_posizione
     "La porta di ferro è chiusa.\n"            # def_proprieta
@@ -898,7 +989,7 @@ def test_guardia_lalr_si_costruisce_senza_conflitti():
     print("[guardia: LALR(1) si costruisce senza conflitti]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
     try:
-        costruisci_parser(simboli.tutti, simboli.variabili)
+        costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli))
         ok = True
         msg = ""
     except GrammarError as e:
@@ -910,7 +1001,7 @@ def test_guardia_lalr_si_costruisce_senza_conflitti():
 def test_guardia_zero_ambiguita():
     print("[guardia: il corpus produce UN SOLO albero (0 _ambig)]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
-    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili)
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli))
     # Stesso grammar, ma con Earley in modalità 'explicit' per CONTARE gli alberi.
     parser_amb = Lark(grammatica, start="start", parser="earley",
                       ambiguity="explicit")
@@ -1005,6 +1096,12 @@ def main():
         test_verbo_personalizzato_runtime,
         test_verbo_personalizzato_senza_regola,
         test_verbo_personalizzato_multiparola_warning,
+        # Livello 4 — direzioni personalizzate / data-driven (L1)
+        test_direzioni_personalizzate_connessione,
+        test_direzioni_personalizzate_runtime,
+        test_direzione_regola_canonicalizza_abbreviazione,
+        test_direzione_conflitto_parola_riservata_errore,
+        test_scanner_raccoglie_direzioni,
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
