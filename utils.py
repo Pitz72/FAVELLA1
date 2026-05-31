@@ -75,6 +75,77 @@ def rendi_testo(mondo, testo: str) -> str:
     return _RE_PLACEHOLDER.sub(_sostituisci, testo)
 
 
+# [Livello 5] CONCORDANZA GRAMMATICALE ITALIANA (genere/numero) — minima.
+# L'autore scrive già l'articolo nel nome ("La torcia", "Il tavolo"): da lì
+# inferiamo genere e numero, senza nuova sintassi, e generiamo articoli corretti
+# negli elenchi di output ("Puoi vedere qui: una torcia, un tavolo, delle chiavi").
+# Tabella articolo iniziale -> (genere, numero). 'l'' è ambiguo nel genere
+# (l'albero m / l'ape f): genere None, numero singolare.
+_ARTICOLO_GN = {
+    "il": ("m", "s"), "lo": ("m", "s"), "un": ("m", "s"), "uno": ("m", "s"),
+    "la": ("f", "s"), "una": ("f", "s"), "un'": ("f", "s"),
+    "i": ("m", "p"), "gli": ("m", "p"),
+    "le": ("f", "p"),
+    "l'": (None, "s"),
+}
+
+# Iniziali che richiedono 'uno'/'gli' (s impura, z, gn, pn, ps, x, y, i+vocale).
+_RE_S_IMPURA = re.compile(r"^(?:s[^aeiouàèéìòù]|z|gn|pn|ps|x|y|i[aeiouàèéìòù])", re.IGNORECASE)
+_VOCALI = "aeiouàèéìòùAEIOUÀÈÉÌÒÙ"
+
+
+def _scomponi_articolo(nome_visualizzato: str):
+    """Separa l'eventuale articolo iniziale dal resto del nome. Restituisce
+    (articolo_lower | None, nucleo). Gli articoli apostrofati ('l'', 'un'') sono
+    attaccati al nome; gli altri sono seguiti da uno spazio."""
+    nome = (nome_visualizzato or "").strip()
+    basso = nome.lower()
+    for art in ("l'", "un'"):
+        if basso.startswith(art):
+            return art, nome[len(art):].strip()
+    for art in ("uno", "una", "gli", "il", "lo", "la", "le", "un", "i"):
+        if basso.startswith(art + " "):
+            return art, nome[len(art) + 1:].strip()
+    return None, nome
+
+
+def genere_numero(nome_visualizzato: str):
+    """[Livello 5] Inferisce (genere, numero) dal nome visualizzato leggendo
+    l'articolo che l'autore ha scritto. genere ∈ {'m','f',None}; numero ∈
+    {'s','p',None}. Senza articolo riconoscibile: (None, None)."""
+    art, _ = _scomponi_articolo(nome_visualizzato)
+    if art is None:
+        return (None, None)
+    return _ARTICOLO_GN.get(art, (None, None))
+
+
+def frase_indeterminativa(nome_visualizzato: str) -> str:
+    """[Livello 5] Restituisce il nome introdotto dall'articolo INDETERMINATIVO
+    concordato ('una torcia', 'un tavolo', 'uno specchio', 'un'ascia') o, al
+    plurale, dal partitivo ('dei tavoli', 'delle chiavi', 'degli specchi').
+    Se il nome non porta un articolo riconoscibile (genere ignoto), lo si lascia
+    invariato: meglio nessun articolo che uno sbagliato."""
+    genere, numero = genere_numero(nome_visualizzato)
+    art, nucleo = _scomponi_articolo(nome_visualizzato)
+    if art is None or not nucleo:
+        return nome_visualizzato  # nessuna info affidabile: non inventare articoli
+
+    inizia_vocale = nucleo[0] in _VOCALI
+    s_impura = bool(_RE_S_IMPURA.match(nucleo))
+
+    if numero == "p":
+        if genere == "f":
+            return f"delle {nucleo}"
+        # maschile (o ignoto trattato come maschile): 'degli' davanti a vocale/s impura
+        return f"{'degli' if (inizia_vocale or s_impura) else 'dei'} {nucleo}"
+
+    # singolare (o numero ignoto)
+    if genere == "f":
+        return f"un'{nucleo}" if inizia_vocale else f"una {nucleo}"
+    # maschile, oppure genere ignoto ("l'..."): 'uno' davanti a s impura, 'un' altrove
+    return f"uno {nucleo}" if s_impura else f"un {nucleo}"
+
+
 def normalizza_tipografia(testo: str) -> str:
     """
     Normalizza apostrofi e virgolette "curve" (tipici di copia-incolla da

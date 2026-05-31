@@ -1,8 +1,8 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.3)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.4)
 
 from strutture import Mondo, Azione
-from utils import rendi_testo
+from utils import rendi_testo, frase_indeterminativa
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
@@ -122,7 +122,8 @@ def guarda_logica_default(mondo: Mondo):
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
-        nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]
+        # [Livello 5] Articolo indeterminativo concordato (vedi gioco.mostra_stanza).
+        nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
 
 def aiuto_logica_default(mondo: Mondo):

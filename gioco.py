@@ -1,11 +1,11 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.9.3)
+# Interprete Interattivo per FAVELLA 1 (v0.9.4)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
-from utils import normalizza_nome, rendi_testo
+from utils import normalizza_nome, rendi_testo, frase_indeterminativa
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -20,7 +20,9 @@ def mostra_stanza(mondo: Mondo):
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
-        nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]
+        # [Livello 5] Articolo indeterminativo concordato (genere/numero inferiti
+        # dal nome dichiarato): "Puoi vedere qui: una torcia, un tavolo.".
+        nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
 
     # Mostra le uscite disponibili

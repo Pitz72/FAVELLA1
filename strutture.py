@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.9.3)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.9.4)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -289,6 +289,12 @@ class Oggetto:
     def descrizione_attuale(self, mondo: 'Mondo') -> str:
         return _descrizione_attuale(self, mondo)
 
+    def concordanza(self):
+        """[Livello 5] (genere, numero) inferiti dall'articolo del nome dichiarato
+        (es. 'La torcia' -> ('f','s')). Vedi utils.genere_numero."""
+        from utils import genere_numero
+        return genere_numero(self.nome_visualizzato)
+
 class Mondo:
     """Contenitore per l'intero stato del mondo di gioco."""
     def __init__(self):
@@ -507,7 +513,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.9.3):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.9.4):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"

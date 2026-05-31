@@ -4,6 +4,28 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.9.4] - 2026-05-31
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+- **Concordanza grammaticale italiana (minima)** (`[Livello 5]`). Genere e numero
+  vengono **inferiti dall'articolo che l'autore già scrive** nel nome (`La torcia`
+  → femminile singolare, `Il tavolo` → maschile singolare, `Le chiavi` → femminile
+  plurale): nessuna nuova sintassi.
+  - L'elenco degli oggetti in una stanza usa ora l'**articolo indeterminativo
+    concordato** (o il partitivo al plurale): *«Puoi vedere qui: una torcia, un
+    tavolo, uno specchio, delle chiavi.»* — al posto del nome grezzo con l'articolo
+    determinativo maiuscolo.
+  - Gestiti i casi della fonologia italiana: `uno`/`gli` davanti a *s* impura, *z*,
+    *gn*, *ps*…; `un'` femminile davanti a vocale; partitivi `dei`/`degli`/`delle`.
+  - Nuovi helper `utils.genere_numero()` / `utils.frase_indeterminativa()` e
+    `Oggetto.concordanza()`. Un nome senza articolo riconoscibile resta invariato
+    (non si inventano articoli: meglio nessuno che uno sbagliato); `l'…` è ambiguo
+    nel genere e ripiega sul maschile.
+- **Grammatica invariata**: è tutta logica di *render* + inferenza dai metadati,
+  nessun impatto su parsing o ambiguità.
+- **Suite del linguaggio**: **247 asserzioni** (erano 225). Header core a **v0.9.4**.
+
+---
+
 ## [0.9.3] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
 - **Descrizioni condizionali** (`[Livello 5]`). La descrizione di una stanza o di

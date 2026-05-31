@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.3)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.4)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1505,6 +1505,77 @@ def test_descrizione_condizionale_con_interpolazione():
     _check("Brilla, hai 0 punti." in out, "la variante condizionale interpola il contatore")
 
 
+# --- Test: LIVELLO 5 — concordanza grammaticale italiana (0.9.4) --------------
+
+def test_concordanza_inferenza_genere_numero():
+    print("[concordanza: genere/numero inferiti dall'articolo del nome]")
+    from utils import genere_numero
+    casi = {
+        "La torcia": ("f", "s"),
+        "Il tavolo": ("m", "s"),
+        "Lo specchio": ("m", "s"),
+        "Le chiavi": ("f", "p"),
+        "I tavoli": ("m", "p"),
+        "Gli specchi": ("m", "p"),
+        "L'ascia": (None, "s"),     # 'l'' ambiguo nel genere
+        "chiave": (None, None),       # senza articolo: nessuna info
+    }
+    for nome, atteso in casi.items():
+        _check(genere_numero(nome) == atteso, f"{nome!r} -> {atteso}")
+
+
+def test_concordanza_frase_indeterminativa():
+    print("[concordanza: articolo indeterminativo/partitivo concordato]")
+    from utils import frase_indeterminativa as f
+    _check(f("La torcia") == "una torcia", "femminile + consonante -> 'una'")
+    _check(f("La ascia") == "un'ascia", "femminile + vocale -> \"un'\"")
+    _check(f("Il tavolo") == "un tavolo", "maschile + consonante -> 'un'")
+    _check(f("Lo specchio") == "uno specchio", "maschile + s impura -> 'uno'")
+    _check(f("Lo zaino") == "uno zaino", "maschile + z -> 'uno'")
+    _check(f("Le chiavi") == "delle chiavi", "femminile plurale -> 'delle'")
+    _check(f("I tavoli") == "dei tavoli", "maschile plurale + consonante -> 'dei'")
+    _check(f("Gli specchi") == "degli specchi", "maschile plurale + s impura -> 'degli'")
+    _check(f("chiave") == "chiave", "senza articolo: nome invariato (non inventa)")
+
+
+def test_concordanza_oggetto_metodo():
+    print("[concordanza: Oggetto.concordanza() legge il nome visualizzato]")
+    src = (
+        "La cella è una stanza.\n"
+        "La torcia è una cosa.\n"
+        "La torcia è in cella.\n"
+    )
+    mondo, _ = compila(src)
+    torcia = mondo.oggetti.get("torcia")
+    _check(torcia is not None and torcia.concordanza() == ("f", "s"),
+           "la torcia è inferita femminile singolare")
+
+
+def test_concordanza_elenco_stanza_singolari():
+    print("[concordanza: elenco oggetti con articoli concordati]")
+    src = (
+        "La cella è una stanza.\n"
+        "La torcia è una cosa.\nLa torcia è in cella.\n"
+        "Il tavolo è una cosa.\nIl tavolo è in cella.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("una torcia" in out, "la torcia è introdotta da 'una'")
+    _check("un tavolo" in out, "il tavolo è introdotto da 'un'")
+    _check("La torcia" not in out, "l'articolo determinativo grezzo non compare più nell'elenco")
+
+
+def test_concordanza_elenco_plurale():
+    print("[concordanza: oggetto plurale -> partitivo nell'elenco]")
+    src = (
+        "La cella è una stanza.\n"
+        "Le chiavi è una cosa.\nLe chiavi è in cella.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("delle chiavi" in out, "l'oggetto plurale usa il partitivo 'delle'")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1616,6 +1687,12 @@ def main():
         test_descrizione_condizionale_prima_vera_vince,
         test_descrizione_condizionale_su_stanza,
         test_descrizione_condizionale_con_interpolazione,
+        # Livello 5 — concordanza grammaticale italiana (0.9.4)
+        test_concordanza_inferenza_genere_numero,
+        test_concordanza_frase_indeterminativa,
+        test_concordanza_oggetto_metodo,
+        test_concordanza_elenco_stanza_singolari,
+        test_concordanza_elenco_plurale,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1623,7 +1700,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.3)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.4)")
     print("=" * 60)
     for t in tests:
         t()
