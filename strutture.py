@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v1.0.4)
+# Modulo per le strutture dati di base di FAVELLA 1 (v1.1.0)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -570,10 +570,12 @@ class Mondo:
                 contenitore.contenuto.discard(oggetto.nome)
 
     def __str__(self) -> str:
+        n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v1.0.4):\n"
+            f"[FAVELLA 1] Report di compilazione (v1.1.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
+            f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"
             f"  - Stati: {len(self.variabili)}\n"
             f"  - Regole: {len(self.regole)}\n"
             f"  - Eventi: {len(self.eventi)}\n"

@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.4)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.1.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -2018,7 +2018,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.4)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.1.0)")
     print("=" * 60)
     for t in tests:
         t()

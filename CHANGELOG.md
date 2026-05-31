@@ -4,6 +4,38 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.1.0] - 2026-05-31
+### Roadmap del Linguaggio — Livello 5b «NPC e dialoghi ramificati» COMPLETATO 🗣️
+Release minore che consolida le patch `1.0.1` → `1.0.4` e aggiunge al linguaggio
+un **sistema di dialogo completo da interactive fiction**. In sintesi (dettaglio
+per-patch sotto e nel documento tecnico `documentazione/1.1.0.md`):
+
+- **NPC** (`1.0.1`): `Il mercante è un personaggio.`, `parla con X`, conversazione
+  modale con battute e opzioni numerate (scelta per numero o testo).
+- **Ramificazione** (`1.0.2`): `l'opzione "…" conduce al nodo "…"` — alberi di
+  dialogo con cicli e ritorni.
+- **Conseguenze sulle scelte** (`1.0.3`): `… e adesso …` — una scelta dà oggetti,
+  muta stati/contatori, può vincere/perdere la partita.
+- **Opzioni condizionali** (`1.0.4`): `l'opzione "…" se [condizione] …` — scelte
+  che compaiono solo a requisiti soddisfatti.
+
+Le battute e le opzioni passano per l'interpolazione `[var]` (Livello 5); le
+interazioni di dialogo non consumano un turno di gioco.
+
+**Principio LALR-safe del livello**: etichette dei nodi e testi delle opzioni sono
+*sempre quotati* (vocabolario nuovo, come alias/verbi del Livello 4), quindi non
+entrano in contesa con i terminali chiusi; si sono evitati di proposito `porta` e
+`parla` come keyword (collidono con nomi-oggetto comuni). Vincoli mantenuti:
+grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero /
+0 conflitti) estesa a ogni costrutto di dialogo, superficie pubblica
+`analizza_file()` invariata. Suite del linguaggio: **287 asserzioni**, tutte verdi
+(erano 247 a inizio livello). Header core e `Mondo.__str__` a **v1.1.0**.
+
+> **Prossimo**: Livello 6 (Maturità linguaggio/toolchain) verso **v1.2.0** —
+> linter semantico, moduli/import multi-`.fav`, spec EBNF formale versionata.
+
+---
+
 ## [1.0.4] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
 - **Opzioni di dialogo condizionali** (`[Livello 5b]`). Una scelta può essere
