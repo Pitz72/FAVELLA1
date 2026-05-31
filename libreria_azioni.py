@@ -1,7 +1,8 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.1)
 
 from strutture import Mondo, Azione
+from utils import rendi_testo
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
@@ -20,7 +21,7 @@ def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione ESAMINARE."""
     oggetto = mondo.trova_oggetto(id_oggetto)
     if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
-        print(oggetto.descrizione)
+        print(rendi_testo(mondo, oggetto.descrizione))
         _elenca_contenuto(mondo, oggetto)
     else:
         print("Non vedi nulla del genere qui.")
@@ -117,8 +118,8 @@ def guarda_logica_default(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
-    print(stanza_corrente.descrizione)
-    
+    print(rendi_testo(mondo, stanza_corrente.descrizione))
+
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
         nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]

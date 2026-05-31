@@ -4,6 +4,30 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.9.1] - 2026-05-31
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+- **Interpolazione di testo dinamico** (`[Livello 5]`) — *prima patch del livello*.
+  Le stringhe d'autore possono ora contenere **segnaposto** `[nome]` che vengono
+  sostituiti, al momento della stampa, con il valore corrente del mondo:
+  - **Stati e contatori**: `dire "Hai [punteggio] punti."` → il numero corrente;
+    `"Il semaforo è [semaforo]."` → la parola-stato attuale (uno stato non ancora
+    impostato rende stringa vuota).
+  - **Oggetti**: `[chiave]` → il nome visualizzato dell'oggetto.
+  - Vale per **descrizioni** (di stanze e oggetti), **risposte delle regole** e
+    **messaggi degli eventi a turni**: ogni testo d'autore passa per
+    `utils.rendi_testo(mondo, testo)`.
+  - Un segnaposto che non corrisponde a nessuno stato/contatore/oggetto resta
+    **invariato** a runtime (letterale `[nome]`) e genera un **avviso non
+    bloccante** a compile-time (possibile refuso).
+- **Vincoli invariati**: l'interpolazione vive *dentro* le virgolette
+  (`TESTO_QUOTATO`), quindi è del tutto invisibile alla grammatica: **nessun
+  rischio di ambiguità**. Guardia LALR (1 albero / 0 conflitti) estesa con un
+  costrutto che usa segnaposto. Superficie pubblica `analizza_file()` invariata.
+- **Suite del linguaggio**: **204 asserzioni** (erano 192), tutte verdi. Header dei
+  moduli core allineati a **v0.9.1**.
+
+---
+
 ## [0.9.0] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 4 «Estendibilità vocabolario e topologia» COMPLETATO
 Release minore che consolida le patch 0.8.1 → 0.8.5. L'autore può ora **estendere

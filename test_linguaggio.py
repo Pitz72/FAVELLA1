@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1170,6 +1170,10 @@ _CORPUS_GUARDIA = (
     'e adesso la chiave è nel nulla e adesso l\'allarme è spento.\n'  # cons_variabile
     'Al turno 3: dire "Ticchettio." e adesso aumenta il punteggio.\n'  # evento_al [Livello 3]
     'Ogni 5 turni: dire "Rintocco.".\n'               # evento_ogni
+    # [Livello 5] Interpolazione [var]: vive DENTRO le virgolette, dunque non
+    # deve introdurre alcuna ambiguità grammaticale (segnaposto su contatore e
+    # oggetto, entrambi dichiarati sopra).
+    'Invece di esamina la scatola: dire "Hai [punteggio] punti vicino a [chiave].".\n'
 )
 
 
@@ -1253,6 +1257,89 @@ def test_errore_sintassi_resta_generico():
     _check(mondo is None, "la compilazione fallisce")
     _check("sconosciuta" not in log.lower() and "SINTASSI" in log,
            "resta un errore di sintassi, non una falsa 'entità sconosciuta'")
+
+
+# --- Test: LIVELLO 5 — interpolazione di testo dinamico [var] (0.9.1) ---------
+
+_SRC_INTERP = (
+    "La cella è una stanza.\n"
+    "La chiave è una cosa.\n"          # nome_visualizzato = 'La chiave'
+    "La chiave è in cella.\n"
+    "La chiave è prendibile.\n"
+    "Il punteggio è un contatore.\n"   # default 0
+    "Il semaforo è uno stato.\n"
+    "Il semaforo è rosso.\n"
+)
+
+
+def test_interpolazione_contatore():
+    print("[interpolazione: contatore nel testo, valore corrente]")
+    src = _SRC_INTERP + (
+        'Invece di esamina la chiave: dire "Punti: [punteggio]." '
+        'e adesso aumenta il punteggio di 5.\n'
+    )
+    mondo = runtime(src)
+    out1 = esegui(mondo, "esamina chiave")
+    _check("Punti: 0." in out1, "primo esame: contatore reso come 0 (prima della conseguenza)")
+    out2 = esegui(mondo, "esamina chiave")
+    _check("Punti: 5." in out2, "secondo esame: contatore reso come 5 (dopo la conseguenza)")
+
+
+def test_interpolazione_stato():
+    print("[interpolazione: valore di uno stato nel testo]")
+    src = _SRC_INTERP + 'Invece di esamina la chiave: dire "Colore: [semaforo].".\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina chiave")
+    _check("Colore: rosso." in out, "lo stato 'semaforo' è reso come 'rosso'")
+
+
+def test_interpolazione_nome_oggetto():
+    print("[interpolazione: nome visualizzato di un oggetto]")
+    src = _SRC_INTERP + 'Invece di esamina la chiave: dire "Vedo [chiave] qui.".\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina chiave")
+    _check("Vedo La chiave qui." in out, "l'oggetto è reso col suo nome visualizzato")
+
+
+def test_interpolazione_in_descrizione():
+    print("[interpolazione: segnaposto nella descrizione di un oggetto]")
+    src = _SRC_INTERP + 'La descrizione della chiave è "Lucida. Hai [punteggio] punti.".\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina chiave")
+    _check("Hai 0 punti." in out, "la descrizione interpola il contatore")
+
+
+def test_interpolazione_sconosciuto_resta_letterale_e_warning():
+    print("[interpolazione: segnaposto sconosciuto -> letterale + warning]")
+    src = _SRC_INTERP + 'Invece di esamina la chiave: dire "Valore [pippo].".\n'
+    mondo, log = compila(src)
+    _check(mondo is not None, "la compilazione riesce (warning non bloccante)")
+    _check("[pippo]" in log and "Segnaposto" in log,
+           "il log avvisa del segnaposto sconosciuto '[pippo]'")
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina chiave")
+    _check("Valore [pippo]." in out, "a runtime il segnaposto sconosciuto resta letterale")
+
+
+def test_interpolazione_stato_non_impostato_vuoto():
+    print("[interpolazione: stato dichiarato senza valore -> stringa vuota]")
+    from utils import rendi_testo
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\n"   # nessun valore iniziale -> None
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila")
+    _check(rendi_testo(mondo, "X[semaforo]Y") == "XY",
+           "uno stato a None rende stringa vuota")
+
+
+def test_interpolazione_nessun_warning_se_noto():
+    print("[interpolazione: nessun warning per segnaposto validi]")
+    src = _SRC_INTERP + 'Invece di esamina la chiave: dire "[punteggio] [semaforo] [chiave].".\n'
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("Segnaposto" not in log, "nessun avviso di segnaposto per nomi noti")
 
 
 # --- Runner ------------------------------------------------------------------
@@ -1344,6 +1431,14 @@ def main():
         test_guardia_lalr_si_costruisce_senza_conflitti,
         test_guardia_zero_ambiguita,
         test_guardia_nome_con_parola_chiave_disambiguato,
+        # Livello 5 — interpolazione di testo dinamico [var] (0.9.1)
+        test_interpolazione_contatore,
+        test_interpolazione_stato,
+        test_interpolazione_nome_oggetto,
+        test_interpolazione_in_descrizione,
+        test_interpolazione_sconosciuto_resta_letterale_e_warning,
+        test_interpolazione_stato_non_impostato_vuoto,
+        test_interpolazione_nessun_warning_se_noto,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1351,7 +1446,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.1)")
     print("=" * 60)
     for t in tests:
         t()

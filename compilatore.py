@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.9.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.9.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -17,7 +17,7 @@ from strutture import (
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
-    DIREZIONI_BASE,
+    DIREZIONI_BASE, estrai_placeholder,
 )
 import sys
 
@@ -1041,6 +1041,29 @@ class FavellaTransformer(Transformer):
                         f"è mai assegnata da nessuna parte: possibile refuso? La "
                         f"condizione resterà sempre falsa."
                     )
+
+        # 4. [Livello 5] Segnaposto di testo dinamico [nome] che non risolvono
+        #    nulla. L'interpolazione (utils.rendi_testo) sostituisce [nome] con uno
+        #    stato/contatore o col nome di un oggetto; un segnaposto che non
+        #    corrisponde a nessuno dei due resterà letterale a runtime: quasi
+        #    sempre un refuso. Lo segnaliamo qui, non bloccante. I nomi noti sono
+        #    gli 'stati'/contatori (m.variabili) e gli oggetti (m.oggetti); le
+        #    stanze NON sono interpolabili (non hanno un valore testuale da rendere).
+        nomi_interpolabili = set(m.variabili.keys()) | set(m.oggetti.keys())
+        testi_autore = [s.descrizione for s in m.stanze.values()]
+        testi_autore += [o.descrizione for o in m.oggetti.values()]
+        testi_autore += [r.risposta for r in m.regole]
+        testi_autore += [e.risposta for e in m.eventi]
+        segnaposto_sconosciuti = set()
+        for testo in testi_autore:
+            for ph in estrai_placeholder(testo):
+                if normalizza_nome(ph) not in nomi_interpolabili:
+                    segnaposto_sconosciuti.add(ph)
+        for ph in sorted(segnaposto_sconosciuti):
+            self.warnings.append(
+                f"Segnaposto '[{ph}]' non corrisponde ad alcuno stato, contatore "
+                f"od oggetto: resterà invariato nel testo (possibile refuso)."
+            )
 
     def _atomi_proprieta(self, condizione):
         """Estrae ricorsivamente tutti gli atomi CondizioneProprieta annidati in

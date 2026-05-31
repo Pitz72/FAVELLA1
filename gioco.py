@@ -1,11 +1,11 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.9.0)
+# Interprete Interattivo per FAVELLA 1 (v0.9.1)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
-from utils import normalizza_nome
+from utils import normalizza_nome, rendi_testo
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -16,8 +16,8 @@ def mostra_stanza(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
-    print(stanza_corrente.descrizione)
-    
+    print(rendi_testo(mondo, stanza_corrente.descrizione))
+
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
         nomi_oggetti = [ogg.nome_visualizzato for ogg in oggetti_nella_stanza]
@@ -107,7 +107,7 @@ def avanza_turno_e_processa(mondo: Mondo) -> bool:
     t = mondo.turno_corrente
     for evento in mondo.eventi:
         if evento.scatta_a(t):
-            print(evento.risposta)
+            print(rendi_testo(mondo, evento.risposta))
             evento.esegui_conseguenze(mondo)
             if partita_finita(mondo):
                 return True
@@ -191,7 +191,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             for regola in mondo.regole:
                 if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                     if regola.condizione and regola.condizione.valuta(mondo):
-                        print(regola.risposta)
+                        print(rendi_testo(mondo, regola.risposta))
                         regola.esegui_conseguenze(mondo)
                         regola_movimento_applicata = True
                         break
@@ -201,7 +201,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 for regola in mondo.regole:
                     if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                         if not regola.condizione:
-                            print(regola.risposta)
+                            print(rendi_testo(mondo, regola.risposta))
                             regola.esegui_conseguenze(mondo)
                             regola_movimento_applicata = True
                             break
@@ -260,7 +260,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola.preposizione == preposizione_trovata and
                         regola.id_oggetto_secondario == id_oggetto2):
                         
-                        print(regola.risposta)
+                        print(rendi_testo(mondo, regola.risposta))
                         regola_applicata = True
                         regola_da_eseguire = regola
                         break
@@ -272,7 +272,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             regola.id_oggetto_bersaglio == id_oggetto1 and
                             regola.id_oggetto_secondario == id_oggetto2):
                             
-                            print(regola.risposta)
+                            print(rendi_testo(mondo, regola.risposta))
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -285,7 +285,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola.id_oggetto_secondario is None): # Importante: solo regole a 1 oggetto
                         
                         if regola.condizione and regola.condizione.valuta(mondo):
-                            print(regola.risposta)
+                            print(rendi_testo(mondo, regola.risposta))
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -298,7 +298,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola.id_oggetto_secondario is None):
                         
                         if not regola.condizione:
-                            print(regola.risposta)
+                            print(rendi_testo(mondo, regola.risposta))
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
