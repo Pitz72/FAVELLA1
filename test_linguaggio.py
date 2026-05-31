@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.3)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1183,9 +1183,10 @@ _CORPUS_GUARDIA = (
     "Il mercante è un personaggio.\nIl mercante è in cella.\n"
     'Il dialogo del mercante comincia con "saluto".\n'
     'Il mercante al nodo "saluto" dice "Benvenuto, hai [punteggio] punti!".\n'
-    'Al nodo "saluto" l\'opzione "Chi sei?" conduce al nodo "chi".\n'   # ramificazione [1.0.2]
+    'Al nodo "saluto" l\'opzione "Chi sei?" conduce al nodo "chi" e adesso aumenta il punteggio.\n'  # rami [1.0.2] + conseguenza [1.0.3]
     'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
     'Il mercante al nodo "chi" dice "Un mercante.".\n'
+    'Al nodo "chi" l\'opzione "Vinci!" chiude il dialogo e adesso vinci.\n'   # conseguenza di fine partita [1.0.3]
     'Al nodo "chi" l\'opzione "Addio." chiude il dialogo.\n'
 )
 
@@ -1766,6 +1767,57 @@ def test_ramificazione_nodo_inesistente_warning():
            "il log avvisa della transizione verso un nodo inesistente")
 
 
+# --- Test: LIVELLO 5b — conseguenze sulle scelte di dialogo (1.0.3) -----------
+
+_SRC_CONSEG = (
+    "La piazza è una stanza.\n"
+    "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+    "La gemma è una cosa.\nLa gemma è in piazza.\n"
+    "L'oro è un contatore.\n"
+    'Il dialogo del mercante comincia con "saluto".\n'
+    'Il mercante al nodo "saluto" dice "Vuoi la gemma?".\n'
+    'Al nodo "saluto" l\'opzione "Sì!" conduce al nodo "fine" e adesso la gemma è in inventario e adesso aumenta l\'oro di 5.\n'
+    'Al nodo "saluto" l\'opzione "No." chiude il dialogo.\n'
+    'Il mercante al nodo "fine" dice "Hai [oro] monete.".\n'
+    'Al nodo "fine" l\'opzione "Addio." chiude il dialogo e adesso vinci.\n'
+)
+
+
+def test_conseguenza_scelta_struttura():
+    print("[conseguenze: l'opzione registra le conseguenze in coda]")
+    mondo, _ = compila(_SRC_CONSEG)
+    nodo = mondo.dialogo_nodi.get("saluto")
+    opz = next((o for o in nodo.opzioni if o.destinazione == "fine"), None)
+    _check(opz is not None and len(opz.conseguenze) == 2,
+           "l'opzione ha due conseguenze (spostamento + contatore)")
+
+
+def test_conseguenza_scelta_modifica_mondo():
+    print("[conseguenze: scegliere cambia lo stato del mondo]")
+    mondo = runtime(_SRC_CONSEG)
+    esegui(mondo, "parla con mercante")
+    out = esegui(mondo, "1")   # "Sì!" -> dà la gemma, +5 oro, va a "fine"
+    _check("gemma" in mondo.inventario, "la gemma è finita nell'inventario")
+    _check(mondo.variabili.get("oro") == 5, "il contatore 'oro' è aumentato a 5")
+    _check("Hai 5 monete." in out, "la battuta del nodo d'arrivo interpola il nuovo valore")
+
+
+def test_conseguenza_scelta_fine_partita():
+    print("[conseguenze: una scelta può terminare la partita]")
+    mondo = runtime(_SRC_CONSEG)
+    esegui(mondo, "parla con mercante")
+    esegui(mondo, "1")                     # -> nodo "fine"
+    from gioco import elabora_comando
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        continua = elabora_comando(mondo, "1")   # "Addio." chiude + vinci
+    out = buf.getvalue()
+    _check("HAI VINTO" in out, "la conseguenza di fine partita scatta dal dialogo")
+    _check(continua is False, "il gioco termina")
+    _check(not mondo.in_dialogo(), "la conversazione è chiusa")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1899,6 +1951,10 @@ def main():
         test_ramificazione_transizione_runtime,
         test_ramificazione_ritorno_e_chiusura,
         test_ramificazione_nodo_inesistente_warning,
+        # Livello 5b — conseguenze sulle scelte (1.0.3)
+        test_conseguenza_scelta_struttura,
+        test_conseguenza_scelta_modifica_mondo,
+        test_conseguenza_scelta_fine_partita,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1906,7 +1962,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.3)")
     print("=" * 60)
     for t in tests:
         t()

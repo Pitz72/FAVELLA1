@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.0.3)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -334,7 +334,9 @@ _GRAMMAR_TEMPLATE = r"""
     // [1.0.2] L'opzione ha un ESITO: 'conduce al nodo "X"' (ramificazione) oppure
     // 'chiude il dialogo'. Dopo il testo dell'opzione il lookahead "conduce" vs
     // "chiude" distingue le due alternative: LALR(1) 0-ambiguo.
-    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO opzione_esito "."
+    // [1.0.3] L'opzione può avere CONSEGUENZE in coda ('e adesso ...'), riusando
+    // la stessa coda di regole ed eventi: scegliere cambia lo stato del mondo.
+    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO opzione_esito ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
     opzione_esito: "conduce" "al" "nodo" TESTO_QUOTATO -> esito_conduce
                  | "chiude" "il" "dialogo"             -> esito_chiude
 
@@ -707,14 +709,19 @@ class FavellaTransformer(Transformer):
         # Esito 'chiude il dialogo': termina la conversazione.
         return ("chiude", None)
 
-    def def_opzione(self, etichetta, testo_opzione, esito):
+    def def_opzione(self, etichetta, testo_opzione, esito, *conseguenze):
         # 'Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "presentazione".'
-        # oppure '... chiude il dialogo.'. L'esito è prodotto da opzione_esito.
+        # oppure '... chiude il dialogo.', con eventuali conseguenze in coda
+        # ('e adesso ...'). L'esito è prodotto da opzione_esito; le conseguenze
+        # riusano la coda condivisa con regole ed eventi (validate come quelle).
         tipo, destinazione = esito
+        conseguenze = list(conseguenze)
+        self._valida_conseguenze(conseguenze)
         if tipo == "chiude":
-            opz = OpzioneDialogo(testo_opzione, chiude=True)
+            opz = OpzioneDialogo(testo_opzione, chiude=True, conseguenze=conseguenze)
         else:
-            opz = OpzioneDialogo(testo_opzione, destinazione=destinazione)
+            opz = OpzioneDialogo(testo_opzione, destinazione=destinazione,
+                                 conseguenze=conseguenze)
         self.mondo.nodo_dialogo_di(etichetta).opzioni.append(opz)
         return None
 

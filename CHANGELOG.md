@@ -4,6 +4,26 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.3] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+- **Conseguenze sulle scelte di dialogo** (`[Livello 5b]`). Un'opzione può ora
+  cambiare lo stato del mondo, con la clausola `e adesso …` riusata da regole ed
+  eventi (Livello 3):
+  - `Al nodo "saluto" l'opzione "Sì!" conduce al nodo "fine" e adesso la gemma è
+    in inventario e adesso aumenta l'oro di 5.`
+  - `Al nodo "fine" l'opzione "Addio." chiude il dialogo e adesso vinci.`
+  - Le conseguenze valgono sia con `conduce` sia con `chiude`; una scelta può dare
+    oggetti, mutare stati/contatori e perfino **vincere/perdere** la partita.
+    Vengono eseguite *prima* della transizione, così la battuta del nodo d'arrivo
+    riflette già il nuovo stato (interpolazione `[var]`).
+- **Grammatica**: coda `( "e" "adesso" conseguenza … )?` in `def_opzione`,
+  identica a quella di regole/eventi. Nessun nuovo terminale → **LALR(1)
+  0-ambiguo**. Le conseguenze sono validate a compile-time come le altre. Guardia
+  estesa con conseguenze su un'opzione (mutazione + fine partita).
+- **Suite del linguaggio**: **281 asserzioni** (erano 274). Header core a **v1.0.3**.
+
+---
+
 ## [1.0.2] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
 - **Ramificazione dei dialoghi** (`[Livello 5b]`). Un'opzione può ora **condurre a
