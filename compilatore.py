@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.9.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.9.3)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -261,7 +261,11 @@ _GRAMMAR_TEMPLATE = r"""
     // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
     // inizia con TESTO_QUOTATO: LALR la distingue subito.
     def_verbo: TESTO_QUOTATO "è" "un" "comando" "."
-    def_descrizione: "La" "descrizione" ( "di" | "del" | "della" | "dell'" | "degli" | "delle" ) ENTITA "è" TESTO_QUOTATO "."
+    // [Livello 5] La descrizione può essere CONDIZIONALE: con una clausola 'se',
+    // si applica solo quando la condizione è vera (più dichiarazioni = varianti
+    // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
+    // lookahead distingue nettamente "se" da "è": LALR(1) resta 0-ambiguo.
+    def_descrizione: "La" "descrizione" _PREP_DESCR ENTITA ( "se" condizione )? "è" TESTO_QUOTATO "."
     def_posizione: ENTITA "è" PREP_LUOGO ENTITA "."
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
@@ -365,6 +369,11 @@ _GRAMMAR_TEMPLATE = r"""
     // --- TERMINALI LESSICALI ---
     PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
     PREP_AZIONE: "su" | "con" | "contro" | "in"
+    // [Livello 5] Preposizioni articolate della descrizione come TERMINALE UNICO
+    // (maximal-munch: 'della' non si spezza più in 'del'+'la') e FILTRATO dal
+    // tree (prefisso '_'): elimina alla radice un'ambiguità preesistente di
+    // def_descrizione, com'è già per PREP_LUOGO. Il transformer resta invariato.
+    _PREP_DESCR: "di" | "del" | "della" | "dell'" | "degli" | "delle"
     // [Livello 4 / L1] DIREZIONE è generata per-file: le forme di base
     // (utils.DIREZIONI_BASE) più le direzioni personalizzate dichiarate.
     // È una regex con confine di parola (\b) e priorità ALTA (.2): serve a
@@ -645,24 +654,30 @@ class FavellaTransformer(Transformer):
         return None
 
     def def_descrizione(self, *tokens):
-        # I token attesi non ignorati: l'entità e il testo
+        # tokens (le preposizioni articolate sono filtrate da Lark): l'entità è
+        # sempre il primo, il testo l'ultimo; [Livello 5] una clausola 'se' inserisce
+        # in mezzo un oggetto Condizione. Entità e testo sono entrambi str, quindi
+        # li si individua per POSIZIONE (la condizione invece per tipo).
+        nome_grezzo = tokens[0]
         testo = tokens[-1]
-        nome_grezzo = tokens[0] 
-        if len(tokens) > 2:
-            nome_grezzo = tokens[-2] # In caso ci fosse un token preposizione catturato
+        condizione = None
+        for t in tokens[1:-1]:
+            if isinstance(t, Condizione):
+                condizione = t
+                break
 
         id_entita = normalizza_nome(nome_grezzo)
-        stanza = self.mondo.trova_stanza(id_entita)
-        if stanza:
-            stanza.descrizione = testo
+        bersaglio = self.mondo.trova_stanza(id_entita) or self.mondo.trova_oggetto(id_entita)
+        if bersaglio is None:
+            self.errori.append(f"Descrizione per entità inesistente: '{nome_grezzo}'")
             return None
 
-        oggetto = self.mondo.trova_oggetto(id_entita)
-        if oggetto:
-            oggetto.descrizione = testo
-            return None
-
-        self.errori.append(f"Descrizione per entità inesistente: '{nome_grezzo}'")
+        if condizione is None:
+            # Descrizione di base (fallback se nessuna condizionale è vera).
+            bersaglio.descrizione = testo
+        else:
+            # [Livello 5] Variante condizionale, valutata in ordine a runtime.
+            bersaglio.descrizioni_condizionali.append((condizione, testo))
         return None
 
     def def_posizione(self, ogg_grezzo, prep, luogo_grezzo):
@@ -1082,6 +1097,9 @@ class FavellaTransformer(Transformer):
         testi_autore += [o.descrizione for o in m.oggetti.values()]
         testi_autore += [r.risposta for r in m.regole]
         testi_autore += [e.risposta for e in m.eventi]
+        # [Livello 5] Anche i testi delle descrizioni condizionali.
+        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
+            testi_autore += [t for _, t in ent.descrizioni_condizionali]
         segnaposto_sconosciuti = set()
         for testo in testi_autore:
             for ph in estrai_placeholder(testo):

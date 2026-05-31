@@ -4,6 +4,37 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.9.3] - 2026-05-31
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+- **Descrizioni condizionali** (`[Livello 5]`). La descrizione di una stanza o di
+  un oggetto può ora variare in base allo stato del mondo, con una clausola `se`:
+  - `La descrizione della torcia è "Una torcia spenta.".` (base/fallback)
+  - `La descrizione della torcia se il semaforo è verde è "Una torcia che brilla.".`
+  - Più varianti per la stessa entità sono valutate **in ordine di dichiarazione**:
+    vince la prima la cui condizione è vera; se nessuna lo è, vale la descrizione
+    di base. Le condizioni sono quelle complete del linguaggio (stati, contatori,
+    proprietà, possesso, `e`/`oppure`/`non`).
+  - Si combinano con l'interpolazione `[var]` (0.9.1): una variante può contenere
+    segnaposto.
+- **Grammatica**: `def_descrizione` accetta una clausola `( "se" condizione )?`
+  opzionale tra l'entità e `"è"` (lookahead netto `se` vs `è` → LALR(1) 0-ambiguo).
+  Nuovi `Stanza.descrizione_attuale(mondo)` / `Oggetto.descrizione_attuale(mondo)`.
+
+### Corretto
+- **Ambiguità latente preesistente di `def_descrizione`** (`[Livello 5]`). Le
+  preposizioni articolate (`del`/`della`/…) erano terminali anonimi inline: il
+  lexer dinamico poteva spezzare `della` in `del` + `la` (con `la` assorbito
+  dall'articolo opzionale di `ENTITA`), rendendo `def_descrizione` formalmente
+  ambiguo (mascherato finora dal determinismo di LALR e mai esercitato dalla
+  guardia). Ora sono un **terminale unico filtrato** `_PREP_DESCR` (maximal-munch,
+  come già `PREP_LUOGO`): la grammatica delle descrizioni è **genuinamente
+  0-ambigua**. La guardia anti-ambiguità include ora una descrizione condizionale.
+
+### Note
+- **Suite del linguaggio**: **225 asserzioni** (erano 216). Header core a **v0.9.3**.
+
+---
+
 ## [0.9.2] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
 - **Regole globali senza oggetto** (`[Livello 5]`) — risolve il limite noto del

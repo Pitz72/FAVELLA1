@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.9.2)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.9.3)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -239,14 +239,29 @@ class Evento:
         for conseguenza in self.conseguenze:
             conseguenza.esegui(mondo)
 
+def _descrizione_attuale(entita, mondo: 'Mondo') -> str:
+    """[Livello 5] Sceglie la descrizione da mostrare: la prima descrizione
+    condizionale la cui condizione è vera (in ordine di dichiarazione), altrimenti
+    la descrizione di base (fallback). Condiviso da Stanza e Oggetto."""
+    for condizione, testo in entita.descrizioni_condizionali:
+        if condizione.valuta(mondo):
+            return testo
+    return entita.descrizione
+
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""
     def __init__(self, nome: str, descrizione: str = "Non vedi nulla di particolare."):
         self.nome = nome  # ID normalizzato (es. "cella di contenimento")
         self.nome_visualizzato = nome  # Nome originale visualizzabile (es. "La cella di contenimento")
         self.descrizione = descrizione
+        # [Livello 5] Descrizioni condizionali: lista di (Condizione, testo)
+        # valutate in ordine; la prima vera vince, altrimenti vale 'descrizione'.
+        self.descrizioni_condizionali: List = []
         self.oggetti: Dict[str, 'Oggetto'] = {}
         self.uscite: Dict[str, str] = {}
+
+    def descrizione_attuale(self, mondo: 'Mondo') -> str:
+        return _descrizione_attuale(self, mondo)
 
 class Oggetto:
     """Rappresenta un oggetto nel mondo di gioco."""
@@ -256,6 +271,8 @@ class Oggetto:
         self.posizione = posizione
         self.proprieta: Set[str] = set()
         self.descrizione: str = "È un oggetto come tanti."
+        # [Livello 5] Descrizioni condizionali (vedi Stanza).
+        self.descrizioni_condizionali: List = []
         self.prendibile: bool = False
         # [Livello 4 / M1] Contenitori e supporti. Un contenitore può contenere
         # altri oggetti *dentro* (visibili solo se aperto); un supporto li regge
@@ -268,6 +285,9 @@ class Oggetto:
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
         self.proprieta.add(prop)
+
+    def descrizione_attuale(self, mondo: 'Mondo') -> str:
+        return _descrizione_attuale(self, mondo)
 
 class Mondo:
     """Contenitore per l'intero stato del mondo di gioco."""
@@ -487,7 +507,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.9.2):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.9.3):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"

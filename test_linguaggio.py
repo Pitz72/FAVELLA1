@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.3)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1176,6 +1176,8 @@ _CORPUS_GUARDIA = (
     'Invece di esamina la scatola: dire "Hai [punteggio] punti vicino a [chiave].".\n'
     # [Livello 5] Regola GLOBALE senza bersaglio: scatta sul solo verbo + condizione.
     'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
+    # [Livello 5] Descrizione CONDIZIONALE: clausola 'se' tra ENTITA e "è".
+    'La descrizione della porta di ferro se l\'allarme è attivo è "Sigillata.".\n'
 )
 
 
@@ -1414,6 +1416,95 @@ def test_regola_globale_esegue_conseguenza():
     _check("HAI VINTO" in out, "la conseguenza di fine partita è eseguita")
 
 
+# --- Test: LIVELLO 5 — descrizioni condizionali (0.9.3) -----------------------
+
+_SRC_DESCCOND = (
+    "La cella è una stanza.\n"
+    "La torcia è una cosa.\n"
+    "La torcia è in cella.\n"
+    "La torcia è prendibile.\n"
+    "Il semaforo è uno stato.\n"
+    "Il semaforo è rosso.\n"
+    'La descrizione della torcia è "Una torcia spenta.".\n'
+    'La descrizione della torcia se il semaforo è verde è "Una torcia che brilla.".\n'
+    'Invece di usa la torcia: dire "Accendi." e adesso il semaforo è verde.\n'
+)
+
+
+def test_descrizione_condizionale_compila():
+    print("[descrizione condizionale: base + variante registrate]")
+    mondo, _ = compila(_SRC_DESCCOND)
+    _check(mondo is not None, "compila senza errori")
+    torcia = mondo.oggetti.get("torcia")
+    _check(torcia is not None and torcia.descrizione == "Una torcia spenta.",
+           "la descrizione di base è quella senza 'se'")
+    _check(torcia is not None and len(torcia.descrizioni_condizionali) == 1,
+           "una variante condizionale è registrata")
+
+
+def test_descrizione_condizionale_base_quando_falsa():
+    print("[descrizione condizionale: condizione falsa -> descrizione di base]")
+    mondo = runtime(_SRC_DESCCOND)
+    out = esegui(mondo, "esamina torcia")  # semaforo = rosso
+    _check("Una torcia spenta." in out, "mostra la base quando la condizione è falsa")
+    _check("brilla" not in out, "la variante condizionale non appare")
+
+
+def test_descrizione_condizionale_variante_quando_vera():
+    print("[descrizione condizionale: condizione vera -> variante]")
+    mondo = runtime(_SRC_DESCCOND)
+    esegui(mondo, "usa torcia")             # semaforo -> verde
+    out = esegui(mondo, "esamina torcia")
+    _check("Una torcia che brilla." in out, "mostra la variante quando la condizione è vera")
+
+
+def test_descrizione_condizionale_prima_vera_vince():
+    print("[descrizione condizionale: la prima variante vera (in ordine) vince]")
+    src = (
+        "La cella è una stanza.\n"
+        "La gemma è una cosa.\n"
+        "La gemma è in cella.\n"
+        "Il semaforo è uno stato.\n"
+        "Il semaforo è verde.\n"
+        'La descrizione della gemma se il semaforo è verde è "Prima.".\n'
+        'La descrizione della gemma se il semaforo è verde è "Seconda.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina gemma")
+    _check("Prima." in out and "Seconda." not in out,
+           "vince la prima variante dichiarata tra quelle vere")
+
+
+def test_descrizione_condizionale_su_stanza():
+    print("[descrizione condizionale: funziona anche per una stanza]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\n"
+        "Il semaforo è verde.\n"
+        'La descrizione della cella è "Buio.".\n'
+        'La descrizione della cella se il semaforo è verde è "La cella è illuminata.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("La cella è illuminata." in out, "la stanza usa la descrizione condizionale")
+
+
+def test_descrizione_condizionale_con_interpolazione():
+    print("[descrizione condizionale: interpolazione [var] nel testo]")
+    src = (
+        "La cella è una stanza.\n"
+        "La torcia è una cosa.\n"
+        "La torcia è in cella.\n"
+        "Il punteggio è un contatore.\n"
+        "Il semaforo è uno stato.\n"
+        "Il semaforo è verde.\n"
+        'La descrizione della torcia se il semaforo è verde è "Brilla, hai [punteggio] punti.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina torcia")
+    _check("Brilla, hai 0 punti." in out, "la variante condizionale interpola il contatore")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1518,6 +1609,13 @@ def main():
         test_regola_globale_senza_condizione_scatta_sempre,
         test_regola_specifica_precede_globale,
         test_regola_globale_esegue_conseguenza,
+        # Livello 5 — descrizioni condizionali (0.9.3)
+        test_descrizione_condizionale_compila,
+        test_descrizione_condizionale_base_quando_falsa,
+        test_descrizione_condizionale_variante_quando_vera,
+        test_descrizione_condizionale_prima_vera_vince,
+        test_descrizione_condizionale_su_stanza,
+        test_descrizione_condizionale_con_interpolazione,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1525,7 +1623,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.3)")
     print("=" * 60)
     for t in tests:
         t()

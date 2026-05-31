@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.9.2)
+# Interprete Interattivo per FAVELLA 1 (v0.9.3)
 
 import sys
 import traceback
@@ -16,7 +16,7 @@ def mostra_stanza(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
-    print(rendi_testo(mondo, stanza_corrente.descrizione))
+    print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:

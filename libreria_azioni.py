@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.2)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.9.3)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo
@@ -21,7 +21,7 @@ def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione ESAMINARE."""
     oggetto = mondo.trova_oggetto(id_oggetto)
     if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
-        print(rendi_testo(mondo, oggetto.descrizione))
+        print(rendi_testo(mondo, oggetto.descrizione_attuale(mondo)))
         _elenca_contenuto(mondo, oggetto)
     else:
         print("Non vedi nulla del genere qui.")
@@ -118,7 +118,7 @@ def guarda_logica_default(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
-    print(rendi_testo(mondo, stanza_corrente.descrizione))
+    print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
     if oggetti_nella_stanza:
