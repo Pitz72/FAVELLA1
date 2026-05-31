@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.5.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.6.0)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -24,10 +24,35 @@ class CondizioneProprieta(Condizione):
     def __init__(self, id_oggetto: str, proprieta: str):
         self.id_oggetto = id_oggetto
         self.proprieta = proprieta
-    
+
     def valuta(self, mondo: 'Mondo') -> bool:
         oggetto = mondo.trova_oggetto(self.id_oggetto)
         return oggetto is not None and self.proprieta in oggetto.proprieta
+
+# --- Condizioni composite (logica booleana, v0.6.0) ---
+class CondizioneNot(Condizione):
+    """Negazione: 'se il giocatore non ha X', 'se X non è Y'."""
+    def __init__(self, condizione: Condizione):
+        self.condizione = condizione
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return not self.condizione.valuta(mondo)
+
+class CondizioneAnd(Condizione):
+    """Congiunzione: vera solo se TUTTE le sotto-condizioni sono vere ('... e ...')."""
+    def __init__(self, condizioni: List[Condizione]):
+        self.condizioni = condizioni
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return all(c.valuta(mondo) for c in self.condizioni)
+
+class CondizioneOr(Condizione):
+    """Disgiunzione: vera se ALMENO UNA sotto-condizione è vera ('... oppure ...')."""
+    def __init__(self, condizioni: List[Condizione]):
+        self.condizioni = condizioni
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return any(c.valuta(mondo) for c in self.condizioni)
 
 class Conseguenza:
     """Classe base astratta per tutte le conseguenze."""
@@ -89,19 +114,26 @@ class Azione:
         self.richiede_oggetto = richiede_oggetto
 
 class Regola:
-    """Rappresenta una regola 'Invece di', ora con supporto per due oggetti e conseguenze compilarte."""
-    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str, 
+    """Rappresenta una regola 'Invece di', con supporto per due oggetti,
+    condizioni booleane composite e conseguenze multiple (v0.6.0)."""
+    def __init__(self, verbo: str, id_oggetto_bersaglio: str, risposta: str,
                  condizione: Optional[Condizione] = None,
                  preposizione: Optional[str] = None,
                  id_oggetto_secondario: Optional[str] = None,
-                 conseguenza: Optional[Conseguenza] = None):
+                 conseguenze: Optional[List[Conseguenza]] = None):
         self.verbo = verbo
         self.id_oggetto_bersaglio = id_oggetto_bersaglio
         self.risposta = risposta
         self.condizione = condizione
         self.preposizione = preposizione
         self.id_oggetto_secondario = id_oggetto_secondario
-        self.conseguenza = conseguenza
+        # Lista (eventualmente vuota) di conseguenze da eseguire in ordine.
+        self.conseguenze: List[Conseguenza] = conseguenze or []
+
+    def esegui_conseguenze(self, mondo: 'Mondo'):
+        """Esegue in ordine tutte le conseguenze associate alla regola."""
+        for conseguenza in self.conseguenze:
+            conseguenza.esegui(mondo)
 
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""

@@ -16,16 +16,19 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.5.0 - Linguaggio Robusto (Alpha)
+## 🚀 Stato Attuale: v0.6.0 - Logica Composita (Alpha)
 
-La v0.5.0 apre la **roadmap evolutiva del linguaggio** (un piano a 6 livelli) con il **Livello 1 — Consolidamento e Robustezza**. Obiettivo: impedire all'autore di scrivere una storia "rotta" senza alcun feedback. Le fondamenta introdotte nella v0.4.0 (parser formale EBNF con **Lark**/AST e **FAVELLA STUDIO**, l'IDE grafico premium) restano il cuore del progetto.
+Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.6.0 completa il **Livello 2 — Logica Composita**: le regole `Invece di` diventano vere espressioni logiche. Le fondamenta restano il parser formale EBNF con **Lark**/AST e **FAVELLA STUDIO**, l'IDE grafico premium.
 
-### Novità del Linguaggio (v0.5.0)
-- **Posizione iniziale esplicita:** nuova primitiva `Il giocatore comincia in [stanza].` — basta affidarsi all'ordine di scrittura per decidere dove parte il giocatore.
-- **Diagnostica d'autore:** avvisi non bloccanti per i **refusi nelle proprietà** (es. `chuisa`), per i **verbi sconosciuti** nelle regole, e per le condizioni sempre false.
-- **Grammatica disambiguata:** priorità di regola esplicite + **suite di test del linguaggio** (`python test_linguaggio.py`) come garanzia anti-regressione.
-- **Stringhe con escape:** ora puoi inserire virgolette dentro le battute (`dire "Disse \"ciao\".".`).
-- **Tolleranza tipografica:** apostrofi e virgolette "curve" da copia-incolla vengono normalizzate automaticamente.
+### Novità del Linguaggio (v0.6.0 — Livello 2)
+- **Condizioni AND / OR:** `se la porta è chiusa e il giocatore ha la chiave`, `se la cassa è chiusa oppure è sigillata`. Precedenza `OR < AND < atomo`, con parentesi per raggruppare. (Si usa `oppure`, non `o`, riservato a *ovest*.)
+- **Negazione:** `se il giocatore non ha la chiave`, `se la porta non è aperta`.
+- **Conseguenze multiple:** `... e adesso la porta è aperta e adesso la chiave è nel nulla`.
+
+### Già presenti dal Livello 1 (v0.5.0)
+- **Posizione iniziale esplicita:** `Il giocatore comincia in [stanza].`
+- **Diagnostica d'autore:** avvisi su refusi nelle proprietà, verbi sconosciuti, condizioni sempre false.
+- **Grammatica disambiguata** + **suite di test** (`python test_linguaggio.py`), **stringhe con escape**, **tolleranza tipografica**.
 
 ### Novità: FAVELLA STUDIO (IDE Premium v0.4.0)
 - **Design System Premium "Cyber-Scrittore":** Una splendida Dark Mode con stili coordinati per menu, toolbar, schede (tab) e finestre di dialogo, ottimizzando la leggibilità della prosa.

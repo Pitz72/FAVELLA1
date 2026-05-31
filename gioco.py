@@ -132,8 +132,7 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                     if regola.condizione and regola.condizione.valuta(mondo):
                         print(regola.risposta)
-                        if regola.conseguenza:
-                            regola.conseguenza.esegui(mondo)
+                        regola.esegui_conseguenze(mondo)
                         regola_movimento_applicata = True
                         break
             
@@ -143,8 +142,7 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                     if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                         if not regola.condizione:
                             print(regola.risposta)
-                            if regola.conseguenza:
-                                regola.conseguenza.esegui(mondo)
+                            regola.esegui_conseguenze(mondo)
                             regola_movimento_applicata = True
                             break
 
@@ -244,8 +242,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             break
         
         if regola_applicata:
-            if regola_da_eseguire and regola_da_eseguire.conseguenza:
-                regola_da_eseguire.conseguenza.esegui(mondo)
+            if regola_da_eseguire:
+                regola_da_eseguire.esegui_conseguenze(mondo)
             return True
 
         # 2. Esecuzione Logica di Default

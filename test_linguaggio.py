@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.5.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -225,6 +225,95 @@ def test_storia_esempio_compila():
     _check(mondo and len(mondo.stanze) >= 2, "ha almeno 2 stanze")
 
 
+# --- Test: logica composita [Livello 2 / G2, M3] -----------------------------
+
+# Mondo base riutilizzabile per i test sulle condizioni
+_BASE = (
+    "La cella è una stanza.\n"
+    "Una porta è una cosa.\nLa porta è in cella.\nLa porta è chiusa.\n"
+    "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
+)
+
+
+def test_condizione_and():
+    print("[condizione AND]")
+    src = _BASE + ('Invece di apri la porta se la porta è chiusa e il '
+                   'giocatore ha la chiave: dire "ok".\n')
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneAnd", "la condizione è un AND")
+    _check(cond.valuta(mondo) is False, "AND falso senza la chiave")
+    mondo.inventario.add("chiave")
+    _check(cond.valuta(mondo) is True, "AND vero con la chiave (porta già chiusa)")
+
+
+def test_condizione_or():
+    print("[condizione OR (oppure)]")
+    src = _BASE + ('Invece di apri la porta se il giocatore ha la chiave '
+                   'oppure la porta è chiusa: dire "ok".\n')
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneOr", "la condizione è un OR")
+    _check(cond.valuta(mondo) is True, "OR vero (porta chiusa) anche senza chiave")
+
+
+def test_negazione_possesso():
+    print("[negazione: il giocatore non ha X]")
+    src = _BASE + ('Invece di apri la porta se il giocatore non ha la '
+                   'chiave: dire "Ti manca qualcosa.".\n')
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneNot", "la condizione è una negazione")
+    _check(cond.valuta(mondo) is True, "vera quando il giocatore NON ha la chiave")
+    mondo.inventario.add("chiave")
+    _check(cond.valuta(mondo) is False, "falsa quando il giocatore ha la chiave")
+
+
+def test_negazione_proprieta():
+    print("[negazione: X non è Y]")
+    src = _BASE + ('Invece di esamina la porta se la porta non è aperta: '
+                   'dire "Ancora chiusa.".\n')
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneNot",
+           "la condizione è una negazione di proprietà")
+    _check(cond.valuta(mondo) is True,
+           "vera: la porta (chiusa) non è aperta")
+
+
+def test_conseguenze_multiple():
+    print("[conseguenze multiple concatenate]")
+    src = _BASE + ('Invece di usa la chiave su la porta: dire "Click." '
+                   'e adesso la porta è aperta e adesso la chiave è nel nulla.\n')
+    mondo, _ = compila(src)
+    regola = mondo.regole[0]
+    _check(len(regola.conseguenze) == 2, "due conseguenze registrate")
+    regola.esegui_conseguenze(mondo)
+    porta = mondo.trova_oggetto("porta")
+    chiave = mondo.trova_oggetto("chiave")
+    _check("aperta" in porta.proprieta, "1ª conseguenza: la porta è aperta")
+    _check(chiave.posizione is None, "2ª conseguenza: la chiave è nel nulla")
+
+
+def test_conseguenze_multiple_forma_breve():
+    print("[conseguenze multiple, forma breve 'e adesso X e Y']")
+    src = _BASE + ('Invece di usa la chiave su la porta: dire "Click." '
+                   'e adesso la porta è aperta e la chiave è nel nulla.\n')
+    mondo, _ = compila(src)
+    _check(len(mondo.regole[0].conseguenze) == 2,
+           "due conseguenze anche senza ripetere 'adesso'")
+
+
+def test_refuso_dentro_condizione_composita():
+    print("[il rilevamento refusi guarda dentro AND/OR/NOT]")
+    src = _BASE + ('Invece di apri la porta se il giocatore ha la chiave e '
+                   'la porta è chuisa: dire "x".\n')  # 'chuisa' = refuso
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check("chuisa" in log and "refuso" in log.lower(),
+           "il refuso 'chuisa' viene rilevato anche dentro un AND")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -240,10 +329,18 @@ def main():
         test_proprieta_da_conseguenza_non_e_refuso,
         test_escape_virgolette_nelle_stringhe,
         test_normalizzazione_apostrofo_tipografico,
+        # Livello 2 — logica composita
+        test_condizione_and,
+        test_condizione_or,
+        test_negazione_possesso,
+        test_negazione_proprieta,
+        test_conseguenze_multiple,
+        test_conseguenze_multiple_forma_breve,
+        test_refuso_dentro_condizione_composita,
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.5.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.0)")
     print("=" * 60)
     for t in tests:
         t()

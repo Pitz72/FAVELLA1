@@ -1,11 +1,16 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.5.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.6.0)
 # Usa Lark per generare un AST (Abstract Syntax Tree) senza regex.
 
 import re
 from lark import Lark, Transformer, v_args
 from lark.exceptions import UnexpectedInput
-from strutture import Mondo, Stanza, Oggetto, Regola, CondizionePossesso, CondizioneProprieta, ConseguenzaProprieta, ConseguenzaSpostamento
+from strutture import (
+    Mondo, Stanza, Oggetto, Regola,
+    Condizione, CondizionePossesso, CondizioneProprieta,
+    CondizioneAnd, CondizioneOr, CondizioneNot,
+    Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
+)
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import normalizza_nome
 import sys
@@ -69,13 +74,33 @@ FAVELLA_GRAMMAR = r"""
 
 
     // --- REGOLE (INVECE DI) ---
-    // Sintassi: Invece di [verbo] [ogg1] [prep_azione] [ogg2] se [condizione]: dire "[risposta]" e adesso [conseguenza].
-    
-    def_regola: "Invece" "di" VERBO entita (PREP_AZIONE entita)? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza )? "."
+    // Sintassi: Invece di [verbo] [ogg1] [prep_azione] [ogg2] se [condizione]: dire "[risposta]" e adesso [conseguenza] e adesso [conseguenza]...
+    // [v0.6.0] La condizione può essere booleana composita; le conseguenze possono essere multiple.
 
-    // --- CONDIZIONI ---
-    ?condizione: "il" "giocatore" "ha" entita  -> cond_possesso
-               | entita "è" entita             -> cond_proprieta
+    def_regola: "Invece" "di" VERBO entita (PREP_AZIONE entita)? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+
+    // --- CONDIZIONI (logica booleana, v0.6.0) ---
+    // Precedenza: OR (più bassa) < AND < atomo. Le parentesi forzano il raggruppamento.
+    // OR usa "oppure" (NON "o", che è l'abbreviazione di "ovest"). AND usa "e".
+    // La negazione è infissa, come in italiano: "non ha", "non è".
+    ?condizione: cond_or
+    ?cond_or: cond_and ( "oppure" cond_and )+        -> make_or
+            | cond_and
+    ?cond_and: cond_base ( "e" cond_base )+          -> make_and
+             | cond_base
+    ?cond_base: cond_possesso
+              | cond_possesso_neg
+              | cond_proprieta
+              | cond_proprieta_neg
+              | "(" cond_or ")"
+
+    // Le forme NEGATE hanno priorità più alta (.2): senza di essa il token "non"
+    // verrebbe assorbito dentro 'entita' (è una WORD valida) e vincerebbe la
+    // forma affermativa, invertendo la semantica della condizione.
+    cond_possesso:      "il" "giocatore" "ha" entita
+    cond_possesso_neg.2: "il" "giocatore" "non" "ha" entita
+    cond_proprieta:      entita "è" entita
+    cond_proprieta_neg.2: entita "non" "è" entita
 
     // --- CONSEGUENZE ---
     ?conseguenza: entita "è" PREP_LUOGO entita -> cons_spostamento // (in, nel...)
@@ -270,8 +295,20 @@ class FavellaTransformer(Transformer):
     def cond_possesso(self, ogg_grezzo):
         return CondizionePossesso(normalizza_nome(ogg_grezzo))
 
+    def cond_possesso_neg(self, ogg_grezzo):
+        return CondizioneNot(CondizionePossesso(normalizza_nome(ogg_grezzo)))
+
     def cond_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
+
+    def cond_proprieta_neg(self, ogg_grezzo, proprieta_grezzo):
+        return CondizioneNot(CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo)))
+
+    def make_and(self, *condizioni):
+        return CondizioneAnd(list(condizioni))
+
+    def make_or(self, *condizioni):
+        return CondizioneOr(list(condizioni))
 
     def cons_spostamento(self, ogg_grezzo, prep, dest_grezzo):
         id_oggetto = normalizza_nome(ogg_grezzo)
@@ -289,65 +326,70 @@ class FavellaTransformer(Transformer):
     # --- La Regola Complessa ---
     
     def def_regola(self, *args):
-        # args contiene figli nell'ordine: verbo, ogg1, [prep, ogg2], [condizione], risposta testuale, [conseguenza]
+        # args (ordine): verbo, ogg1, [prep, ogg2], [condizione], risposta, [conseguenza...]
+        # [v0.6.0] la condizione può essere composita (Condizione base/And/Or/Not)
+        # e le conseguenze possono essere più di una.
         args_puliti = [a for a in args if a is not None]
-        
+
         verbo = args_puliti[0]
         ogg1_grezzo = args_puliti[1]
-        
+
         # Inizializza opzionali
         prep_azione = None
         ogg2_grezzo = None
         condizione = None
         risposta = ""
-        conseguenza = None
-        
+        conseguenze = []
+
         idx = 2
-        
+
         # Check per preposizione + secondo oggetto
-        if idx < len(args_puliti) and args_puliti[idx] in ("su", "con", "contro", "in"):
+        if (idx + 1 < len(args_puliti)
+                and isinstance(args_puliti[idx], str)
+                and args_puliti[idx] in ("su", "con", "contro", "in")):
             prep_azione = args_puliti[idx]
-            ogg2_grezzo = args_puliti[idx+1]
+            ogg2_grezzo = args_puliti[idx + 1]
             idx += 2
-            
-        # Check per condizione
-        if idx < len(args_puliti) and isinstance(args_puliti[idx], (CondizionePossesso, CondizioneProprieta)):
+
+        # Check per condizione (qualsiasi sottotipo di Condizione, anche composito)
+        if idx < len(args_puliti) and isinstance(args_puliti[idx], Condizione):
             condizione = args_puliti[idx]
             idx += 1
-            
+
         # Stringa di risposta
         if idx < len(args_puliti) and isinstance(args_puliti[idx], str):
             risposta = args_puliti[idx]
             idx += 1
-            
-        # Check per conseguenza
-        if idx < len(args_puliti) and isinstance(args_puliti[idx], (ConseguenzaProprieta, ConseguenzaSpostamento)):
-            conseguenza = args_puliti[idx]
-            
+
+        # Conseguenze: zero o più, in coda
+        while idx < len(args_puliti) and isinstance(args_puliti[idx], Conseguenza):
+            conseguenze.append(args_puliti[idx])
+            idx += 1
+
         id_ogg1 = normalizza_nome(ogg1_grezzo)
         id_ogg2 = normalizza_nome(ogg2_grezzo) if ogg2_grezzo else None
-        
+
         # Verifica entità principali della regola
         if self.mondo.trova_oggetto(id_ogg1) or id_ogg1 in ["nord", "sud", "est", "ovest", "n", "s", "e", "o"]:
             if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
                 self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
             else:
-                # Valida conseguenza a compile-time
-                if conseguenza:
+                # Valida ogni conseguenza a compile-time
+                for conseguenza in conseguenze:
                     if not self.mondo.trova_oggetto(conseguenza.id_oggetto):
                         self.errori.append(f"Oggetto inesistente nella conseguenza: '{conseguenza.id_oggetto}'")
                     if isinstance(conseguenza, ConseguenzaSpostamento) and conseguenza.destinazione not in ["nulla", "inventario"]:
                         if not self.mondo.trova_stanza(conseguenza.destinazione):
                             self.errori.append(f"Luogo inesistente nella conseguenza: '{conseguenza.destinazione}'")
-                
+
                 nuova_regola = Regola(
-                    verbo=verbo, 
-                    id_oggetto_bersaglio=id_ogg1, 
-                    risposta=risposta, 
+                    verbo=verbo,
+                    id_oggetto_bersaglio=id_ogg1,
+                    risposta=risposta,
                     condizione=condizione,
                     preposizione=prep_azione,
                     id_oggetto_secondario=id_ogg2,
-                    conseguenza=conseguenza
+                    conseguenze=conseguenze
                 )
                 self.mondo.aggiungi_regola(nuova_regola)
         else:
@@ -387,18 +429,19 @@ class FavellaTransformer(Transformer):
         # 3. [GG2] Una condizione 'se [oggetto] è [proprietà]' che controlla una
         #    proprietà mai assegnata a quell'oggetto (né come stato iniziale né
         #    via conseguenza) è quasi sempre un refuso: resterebbe sempre falsa.
+        #    [v0.6.0] Le condizioni possono essere composite: estraiamo
+        #    ricorsivamente tutti gli atomi CondizioneProprieta.
         proprieta_assegnabili = set()  # insieme di tuple (id_oggetto, proprieta)
         for id_ogg, ogg in m.oggetti.items():
             for prop in ogg.proprieta:
                 proprieta_assegnabili.add((id_ogg, prop))
         for regola in m.regole:
-            cons = regola.conseguenza
-            if isinstance(cons, ConseguenzaProprieta):
-                proprieta_assegnabili.add((cons.id_oggetto, cons.proprieta))
+            for cons in regola.conseguenze:
+                if isinstance(cons, ConseguenzaProprieta):
+                    proprieta_assegnabili.add((cons.id_oggetto, cons.proprieta))
 
         for regola in m.regole:
-            cond = regola.condizione
-            if isinstance(cond, CondizioneProprieta):
+            for cond in self._atomi_proprieta(regola.condizione):
                 if not m.trova_oggetto(cond.id_oggetto):
                     self.warnings.append(
                         f"Condizione su oggetto inesistente: '{cond.id_oggetto}'."
@@ -409,6 +452,22 @@ class FavellaTransformer(Transformer):
                         f"è mai assegnata da nessuna parte: possibile refuso? La "
                         f"condizione resterà sempre falsa."
                     )
+
+    def _atomi_proprieta(self, condizione):
+        """Estrae ricorsivamente tutti gli atomi CondizioneProprieta annidati in
+        una condizione (anche dentro And/Or/Not). Restituisce una lista."""
+        if condizione is None:
+            return []
+        if isinstance(condizione, CondizioneProprieta):
+            return [condizione]
+        if isinstance(condizione, CondizioneNot):
+            return self._atomi_proprieta(condizione.condizione)
+        if isinstance(condizione, (CondizioneAnd, CondizioneOr)):
+            atomi = []
+            for sub in condizione.condizioni:
+                atomi.extend(self._atomi_proprieta(sub))
+            return atomi
+        return []
 
 # ==============================================================================
 # 3. MOTORE PRINCIPALE DI COMPILAZIONE
