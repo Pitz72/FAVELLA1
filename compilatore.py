@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.8.3)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.8.4)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -71,6 +71,8 @@ PAROLE_RISERVATE = frozenset({
     "comando",
     # direzioni personalizzate (Livello 4 / L1)
     "direzioni",
+    # contenitori e supporti (Livello 4 / M1)
+    "contenitore", "supporto",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -114,6 +116,9 @@ _RE_DEF_OGGETTO = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+cosa$", re.IGNORECASE
 _RE_DEF_FLAG = re.compile(r"^(?P<nome>.+?)\s+è\s+uno\s+stato$", re.IGNORECASE)
 # 'X è un contatore' introduce un contatore numerico. [Livello 3]
 _RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNORECASE)
+# 'X è un contenitore' / 'X è un supporto' introducono un OGGETTO. [Livello 4 / M1]
+_RE_DEF_CONTENITORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contenitore$", re.IGNORECASE)
+_RE_DEF_SUPPORTO = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+supporto$", re.IGNORECASE)
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
@@ -171,6 +176,12 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         m = _RE_DEF_CONTATORE.match(frase)
         if m:
             tab.variabili.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_CONTENITORE.match(frase) or _RE_DEF_SUPPORTO.match(frase)
+        if m:
+            # Un contenitore/supporto è a tutti gli effetti un OGGETTO.
+            tab.oggetti.add(normalizza_nome(m.group("nome")))
             continue
 
         m = _RE_DEF_DIREZIONI.match(frase)
@@ -232,12 +243,19 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_stato
                   | def_stato_valore
                   | def_contatore
+                  | def_contenitore
+                  | def_supporto
                   | def_direzioni
                   | def_evento
 
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
     def_oggetto: ENTITA "è" "una" "cosa" "."
+    // [Livello 4 / M1] Contenitore e supporto: oggetti speciali. Si distinguono
+    // da def_proprieta (ENTITA "è" PROPRIETA) sul token "un" (PROPRIETA, a
+    // priorità bassa, non può essere la keyword "un"): stesso schema di def_contatore.
+    def_contenitore: ENTITA "è" "un" "contenitore" "."
+    def_supporto: ENTITA "è" "un" "supporto" "."
     // [Livello 4 / M1] Verbo personalizzato. La parola-comando è quotata (come
     // gli alias: vocabolario nuovo, non ancora un token noto), così non collide
     // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
@@ -566,6 +584,28 @@ class FavellaTransformer(Transformer):
             self.mondo.aggiungi_oggetto(oggetto)
         return None
 
+    def _crea_o_trova_oggetto(self, nome_grezzo):
+        """Restituisce l'oggetto con quel nome, creandolo se non esiste ancora."""
+        id_oggetto = normalizza_nome(nome_grezzo)
+        oggetto = self.mondo.trova_oggetto(id_oggetto)
+        if not oggetto:
+            oggetto = Oggetto(id_oggetto)
+            oggetto.nome_visualizzato = nome_grezzo
+            self.mondo.aggiungi_oggetto(oggetto)
+        return oggetto
+
+    def def_contenitore(self, nome_grezzo):
+        # [Livello 4 / M1] 'X è un contenitore.': è un oggetto che può contenere
+        # altri oggetti al suo interno (visibili solo se aperto).
+        self._crea_o_trova_oggetto(nome_grezzo).is_contenitore = True
+        return None
+
+    def def_supporto(self, nome_grezzo):
+        # [Livello 4 / M1] 'X è un supporto.': un oggetto su cui se ne posano altri
+        # (sempre visibili, senza apertura).
+        self._crea_o_trova_oggetto(nome_grezzo).is_supporto = True
+        return None
+
     def def_verbo(self, testo_quotato):
         # [Livello 4 / M1] '"spingi" è un comando.'. La parola-comando deve essere
         # singola (il parser dei comandi a runtime tratta come verbo solo la prima
@@ -609,14 +649,26 @@ class FavellaTransformer(Transformer):
         id_luogo = normalizza_nome(luogo_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         stanza = self.mondo.trova_stanza(id_luogo)
+        contenitore = self.mondo.trova_oggetto(id_luogo)
 
-        if oggetto and stanza:
+        if not oggetto:
+            self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
+        elif stanza:
             oggetto.posizione = id_luogo
             stanza.oggetti[id_ogg] = oggetto
-        elif not stanza:
-            self.errori.append(f"Stanza inesistente '{luogo_grezzo}' per posizionare '{ogg_grezzo}'")
+        elif contenitore and (contenitore.is_contenitore or contenitore.is_supporto):
+            # [Livello 4 / M1] Collocazione iniziale dentro/su un contenitore o
+            # supporto: l'oggetto "vive" nel contenitore, che a sua volta è in una
+            # stanza. La visibilità a runtime risolve la catena (vedi 0.8.5).
+            oggetto.posizione = id_luogo
+            contenitore.contenuto.add(id_ogg)
+        elif contenitore:
+            self.errori.append(
+                f"'{luogo_grezzo}' non è un contenitore né un supporto: non puoi "
+                f"collocarci dentro '{ogg_grezzo}'."
+            )
         else:
-            self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
+            self.errori.append(f"Stanza inesistente '{luogo_grezzo}' per posizionare '{ogg_grezzo}'")
         return None
 
     def def_proprieta(self, ogg_grezzo, proprieta_grezzo):

@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.3)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.4)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -588,6 +588,83 @@ def test_scanner_raccoglie_direzioni():
            "le direzioni NON sono entità")
 
 
+# --- Test: contenitori e supporti — modello [Livello 4 / M1] -----------------
+
+def test_contenitore_dichiarazione():
+    print("[contenitore: dichiarazione = oggetto con flag is_contenitore]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una scatola è un contenitore.\nLa scatola è in cella.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    scatola = mondo.trova_oggetto("scatola") if mondo else None
+    _check(scatola is not None, "il contenitore è registrato come oggetto")
+    _check(scatola is not None and scatola.is_contenitore, "ha il flag is_contenitore")
+    _check(scatola is not None and scatola.posizione == "cella", "è collocato nella stanza")
+
+
+def test_supporto_dichiarazione():
+    print("[supporto: dichiarazione = oggetto con flag is_supporto]")
+    src = (
+        "La cella è una stanza.\n"
+        "Un tavolo è un supporto.\nIl tavolo è in cella.\n"
+    )
+    mondo, _ = compila(src)
+    tavolo = mondo.trova_oggetto("tavolo") if mondo else None
+    _check(tavolo is not None and tavolo.is_supporto, "ha il flag is_supporto")
+
+
+def test_collocazione_in_contenitore():
+    print("[collocazione: 'X è nella scatola' colloca X dentro il contenitore]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una scatola è un contenitore.\nLa scatola è in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è nella scatola.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    gemma = mondo.trova_oggetto("gemma") if mondo else None
+    scatola = mondo.trova_oggetto("scatola") if mondo else None
+    _check(gemma is not None and gemma.posizione == "scatola",
+           "la gemma 'vive' nel contenitore scatola")
+    _check(scatola is not None and "gemma" in scatola.contenuto,
+           "il contenitore conosce il proprio contenuto")
+
+
+def test_collocazione_su_supporto():
+    print("[collocazione: 'X è sul tavolo' colloca X sul supporto]")
+    src = (
+        "La cella è una stanza.\n"
+        "Un tavolo è un supporto.\nIl tavolo è in cella.\n"
+        "Una tazza è una cosa.\nLa tazza è sul tavolo.\n"
+    )
+    mondo, _ = compila(src)
+    tavolo = mondo.trova_oggetto("tavolo") if mondo else None
+    _check(tavolo is not None and "tazza" in tavolo.contenuto,
+           "la tazza è sul supporto tavolo")
+
+
+def test_collocazione_su_non_contenitore_errore():
+    print("[collocazione: dentro un oggetto non-contenitore = errore bloccante]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una pietra è una cosa.\nLa pietra è in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è nella pietra.\n"  # pietra non è contenitore
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("contenitore" in log.lower() or "supporto" in log.lower(),
+           "il log spiega che la pietra non è un contenitore/supporto")
+
+
+def test_scanner_raccoglie_contenitori():
+    print("[scanner: 'X è un contenitore' popola gli oggetti]")
+    src = "La cella è una stanza.\nUno scrigno è un contenitore.\n"
+    tab = costruisci_symbol_table(src)
+    _check("scrigno" in tab.oggetti, "il contenitore è tra gli oggetti")
+
+
 # --- Test: condizioni di fine partita [Livello 3] ----------------------------
 
 def test_fine_partita_vinci():
@@ -963,6 +1040,9 @@ _CORPUS_GUARDIA = (
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
     'La chiave si chiama anche "chiavetta".\n'         # def_alias [Livello 4]
+    "Una scatola è un contenitore.\nLa scatola è in cella.\n"   # def_contenitore [Livello 4 / M1]
+    "Un anello è una cosa.\nL'anello è nella scatola.\n"         # collocazione in contenitore
+    "Un tavolo è un supporto.\nIl tavolo è in cella.\n"          # def_supporto
     '"frusta" è un comando.\n'                          # def_verbo [Livello 4 / M1]
     'Invece di frusta la chiave: dire "Schiocco.".\n'  # regola con verbo custom
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
@@ -1102,6 +1182,13 @@ def main():
         test_direzione_regola_canonicalizza_abbreviazione,
         test_direzione_conflitto_parola_riservata_errore,
         test_scanner_raccoglie_direzioni,
+        # Livello 4 — contenitori e supporti, modello (M1)
+        test_contenitore_dichiarazione,
+        test_supporto_dichiarazione,
+        test_collocazione_in_contenitore,
+        test_collocazione_su_supporto,
+        test_collocazione_su_non_contenitore_errore,
+        test_scanner_raccoglie_contenitori,
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
@@ -1145,7 +1232,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.4)")
     print("=" * 60)
     for t in tests:
         t()

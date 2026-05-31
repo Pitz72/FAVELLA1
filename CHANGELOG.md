@@ -4,6 +4,39 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.4] - 2026-05-31
+### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
+- **Contenitori e supporti** (`[M1]`) — *modello e grammatica* (il runtime arriva
+  in 0.8.5). Si dichiarano oggetti capaci di contenere o reggere altri oggetti, e
+  si possono collocare oggetti al loro interno/sopra fin dalla definizione:
+  ```
+  Una scatola è un contenitore.
+  La scatola è in cella.
+  Una gemma è una cosa.
+  La gemma è nella scatola.
+
+  Un tavolo è un supporto.
+  La tazza è sul tavolo.
+  ```
+  Un contenitore tiene gli oggetti *dentro* (visibili solo se aperto, semantica a
+  runtime in 0.8.5); un supporto li regge *sopra* (sempre visibili). Collocare un
+  oggetto dentro qualcosa che non è né contenitore né supporto è un **errore
+  bloccante** chiaro.
+- `strutture.py`: `Oggetto.is_contenitore`, `Oggetto.is_supporto`,
+  `Oggetto.contenuto: Set[str]`. L'oggetto collocato ha `posizione` = id del
+  contenitore/supporto (la catena fino alla stanza sarà risolta dal runtime).
+- `compilatore.py`: scanner `_RE_DEF_CONTENITORE`/`_RE_DEF_SUPPORTO` (un
+  contenitore/supporto è a tutti gli effetti un oggetto); regole `def_contenitore`
+  e `def_supporto` (distinte da `def_proprieta` sul token `un`, come
+  `def_contatore`); `def_posizione` accetta come luogo anche un contenitore/
+  supporto; parole riservate `contenitore`, `supporto`.
+- `test_linguaggio.py`: sei nuovi test (dichiarazione contenitore/supporto,
+  collocazione dentro/sopra, errore su non-contenitore, scanner); corpus della
+  guardia esteso con contenitore, supporto e una collocazione. Suite a **174
+  asserzioni** (era 162).
+
+---
+
 ## [0.8.3] - 2026-05-31
 ### Aggiunto / Modificato (Roadmap Livello 4 — verso 0.9.0)
 - **Direzioni estese, data-driven** (`[L1]`). Le direzioni del mondo (finora

@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.3)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.4)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -255,6 +255,13 @@ class Oggetto:
         self.proprieta: Set[str] = set()
         self.descrizione: str = "È un oggetto come tanti."
         self.prendibile: bool = False
+        # [Livello 4 / M1] Contenitori e supporti. Un contenitore può contenere
+        # altri oggetti *dentro* (visibili solo se aperto); un supporto li regge
+        # *sopra* (sempre visibili). 'contenuto' raccoglie gli id degli oggetti
+        # collocati in/su questo oggetto. Il loro 'posizione' punta a questo id.
+        self.is_contenitore: bool = False
+        self.is_supporto: bool = False
+        self.contenuto: Set[str] = set()
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -409,7 +416,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.8.3):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.8.4):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"
