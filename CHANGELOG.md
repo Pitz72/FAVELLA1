@@ -4,6 +4,29 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.7.3] - 2026-05-31
+### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
+- **Stato astratto del mondo** (criticità `[G3]`): gli **stati**, variabili globali
+  con nome non legate ad alcun oggetto. Uno stato contiene una *parola-stato*
+  (modello enum-like, più potente di un booleano):
+  - dichiarazione: `Il semaforo è uno stato.`
+  - valore iniziale: `Il semaforo è rosso.`
+  - condizione: `... se il semaforo è verde` (e negazione `... non è verde`)
+  - conseguenza: `... e adesso il semaforo è verde.`
+- Architettura: gli stati sono una **terza classe di simboli chiusi** (terminale
+  `VARIABILE`), raccolta in Passata 1 e **disgiunta** da `ENTITA`/`PROPRIETA`.
+  LALR distingue i costrutti su stato da quelli su oggetto al primo token →
+  **zero ambiguità** anche con parole-stato omonime a proprietà di oggetti.
+- `strutture.py`: `CondizioneVariabile`, `ConseguenzaVariabile`, `Mondo.variabili`
+  + `dichiara_variabile()`. `compilatore.py`: scanner `è uno stato`, terminale
+  `VARIABILE` iniettato per-file, regole `def_stato`/`def_stato_valore`/
+  `cond_variabile(_neg)`/`cons_variabile`; parola riservata `stato`. Corretto un
+  bug latente: il terminale "vuoto" ora è `[^\s\S]` (larghezza 1) invece di `(?!)`
+  (zero-width, rifiutato da Lark). Suite a **102 asserzioni** (era 84), guardia
+  anti-ambiguità estesa agli stati.
+
+---
+
 ## [0.7.2] - 2026-05-31
 ### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
 - **Condizioni di fine partita**: nuove conseguenze `vinci` / `perdi` / `termina`,

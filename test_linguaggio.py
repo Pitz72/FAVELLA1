@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.3)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -419,6 +419,95 @@ def test_runtime_partita_finita_helper():
     _check(partita_finita(m) is True, "stato 'vinta': la partita si ferma")
 
 
+# --- Test: stato astratto / variabili 'stato' [Livello 3 / G3] ---------------
+
+def test_stato_dichiarazione_e_valore_iniziale():
+    print("[stato: dichiarazione e valore iniziale]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\n"
+        "Il semaforo è rosso.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and "semaforo" in mondo.variabili, "lo stato 'semaforo' è dichiarato")
+    _check(mondo and mondo.variabili["semaforo"] == "rosso", "valore iniziale = rosso")
+
+
+def test_stato_dichiarazione_senza_valore_e_none():
+    print("[stato: dichiarato ma non valorizzato vale None]")
+    src = "La cella è una stanza.\nL'allarme è uno stato.\n"
+    mondo, _ = compila(src)
+    _check(mondo and mondo.variabili.get("allarme", "MANCANTE") is None,
+           "uno stato dichiarato e non impostato vale None")
+
+
+def test_stato_condizione_e_conseguenza():
+    print("[stato: condizione 'è' e conseguenza che lo cambia]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\nIl semaforo è rosso.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        'Invece di usa la leva: dire "Scatta." e adesso il semaforo è verde.\n'
+        'Invece di esamina la leva se il semaforo è verde: dire "Verde.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    cond = mondo.regole[1].condizione if mondo else None
+    _check(type(cond).__name__ == "CondizioneVariabile", "condizione su variabile")
+    _check(cond is not None and cond.valuta(mondo) is False, "falsa: il semaforo è ancora rosso")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check(mondo.variabili["semaforo"] == "verde", "la conseguenza imposta il semaforo a verde")
+    _check(cond.valuta(mondo) is True, "vera: ora il semaforo è verde")
+
+
+def test_stato_condizione_negata():
+    print("[stato: negazione 'non è']")
+    src = (
+        "La cella è una stanza.\n"
+        "Il semaforo è uno stato.\nIl semaforo è rosso.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        'Invece di esamina la leva se il semaforo non è verde: dire "Non verde.".\n'
+    )
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione if mondo else None
+    _check(type(cond).__name__ == "CondizioneNot", "la condizione è una negazione")
+    _check(cond is not None and cond.valuta(mondo) is True,
+           "vera: il semaforo (rosso) non è verde")
+
+
+def test_stato_disgiunto_da_proprieta_oggetto():
+    print("[stato: variabile e proprietà-oggetto omonime non collidono]")
+    # 'porta' è un oggetto con proprietà 'chiusa'; 'fase' è uno stato con valore
+    # 'chiusa'. I due costrutti convivono senza ambiguità grazie ai token distinti.
+    src = (
+        "La cella è una stanza.\n"
+        "Una porta è una cosa.\nLa porta è in cella.\nLa porta è chiusa.\n"
+        "La fase è uno stato.\nLa fase è chiusa.\n"
+        'Invece di esamina la porta se la porta è chiusa e la fase è chiusa: dire "Doppio.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila: oggetto e stato con stessa parola-stato")
+    _check(mondo and "chiusa" in mondo.trova_oggetto("porta").proprieta,
+           "la proprietà 'chiusa' dell'oggetto è registrata")
+    _check(mondo and mondo.variabili.get("fase") == "chiusa",
+           "lo stato 'fase' vale 'chiusa'")
+    _check(mondo and mondo.regole[0].condizione.valuta(mondo) is True,
+           "l'AND oggetto-proprietà + stato-variabile valuta correttamente")
+
+
+def test_scanner_raccoglie_variabili():
+    print("[scanner: 'X è uno stato' popola le variabili, non le entità]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è uno stato.\n"
+    )
+    tab = costruisci_symbol_table(src)
+    _check("punteggio" in tab.variabili, "lo stato 'punteggio' è tra le variabili")
+    _check("punteggio" not in tab.tutti, "lo stato NON è tra le entità (tutti)")
+    _check("cella" in tab.stanze, "la stanza resta tra le entità")
+
+
 # --- Test: Passata 1, scanner della symbol-table [Livello 2.5 / G1] ----------
 
 def test_scanner_raccoglie_stanze_e_oggetti():
@@ -494,12 +583,14 @@ _CORPUS_GUARDIA = (
     "La porta di ferro è prendibile.\n"        # def_prendibile
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
+    "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
+    'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
     'Invece di apri la porta di ferro se la porta di ferro è chiusa e il '
     'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta '
     'e adesso vinci.\n'   # cons_vinci nel corpus della guardia [Livello 3]
     'Invece di usa la chiave su la porta di ferro se il giocatore non ha la '
     'chiave oppure la porta di ferro non è aperta: dire "No." '
-    'e adesso la chiave è nel nulla.\n'
+    'e adesso la chiave è nel nulla e adesso l\'allarme è spento.\n'  # cons_variabile
 )
 
 
@@ -511,7 +602,7 @@ def test_guardia_lalr_si_costruisce_senza_conflitti():
     print("[guardia: LALR(1) si costruisce senza conflitti]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
     try:
-        costruisci_parser(simboli.tutti)
+        costruisci_parser(simboli.tutti, simboli.variabili)
         ok = True
         msg = ""
     except GrammarError as e:
@@ -523,7 +614,7 @@ def test_guardia_lalr_si_costruisce_senza_conflitti():
 def test_guardia_zero_ambiguita():
     print("[guardia: il corpus produce UN SOLO albero (0 _ambig)]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA)
-    grammatica = costruisci_grammatica(simboli.tutti)
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili)
     # Stesso grammar, ma con Earley in modalità 'explicit' per CONTARE gli alberi.
     parser_amb = Lark(grammatica, start="start", parser="earley",
                       ambiguity="explicit")
@@ -541,7 +632,7 @@ def test_guardia_nome_con_parola_chiave_disambiguato():
         "La cosa preziosa è in via est.\n"
     )
     simboli = costruisci_symbol_table(src)
-    grammatica = costruisci_grammatica(simboli.tutti)
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili)
     parser_amb = Lark(grammatica, start="start", parser="earley",
                       ambiguity="explicit")
     tree = parser_amb.parse(src)
@@ -616,6 +707,13 @@ def main():
         test_fine_partita_perdi_termina,
         test_fine_partita_con_altre_conseguenze,
         test_runtime_partita_finita_helper,
+        # Livello 3 — stato astratto / variabili 'stato' (G3)
+        test_stato_dichiarazione_e_valore_iniziale,
+        test_stato_dichiarazione_senza_valore_e_none,
+        test_stato_condizione_e_conseguenza,
+        test_stato_condizione_negata,
+        test_stato_disgiunto_da_proprieta_oggetto,
+        test_scanner_raccoglie_variabili,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,
@@ -633,7 +731,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.3)")
     print("=" * 60)
     for t in tests:
         t()

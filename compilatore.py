@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.7.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.3)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -9,9 +9,9 @@ from lark.exceptions import UnexpectedInput
 from strutture import (
     Mondo, Stanza, Oggetto, Regola,
     Condizione, CondizionePossesso, CondizioneProprieta,
-    CondizioneAnd, CondizioneOr, CondizioneNot,
+    CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
-    ConseguenzaFinePartita,
+    ConseguenzaFinePartita, ConseguenzaVariabile,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import normalizza_nome, normalizza_tipografia, ARTICOLI
@@ -42,6 +42,8 @@ VERBI_VALIDI = {verbo for azione in LIBRERIA_AZIONI.values() for verbo in azione
 PAROLE_RISERVATE = frozenset({
     # copula e definizioni base
     "è", "una", "un", "uno", "stanza", "cosa", "prendibile",
+    # stato astratto (Livello 3 / G3): 'X è uno stato.'
+    "stato",
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
@@ -70,16 +72,19 @@ class TabellaSimboli:
     sorgente, già normalizzati (lowercase, senza articolo iniziale)."""
 
     def __init__(self):
-        self.stanze = set()    # id normalizzati delle stanze
-        self.oggetti = set()   # id normalizzati degli oggetti
+        self.stanze = set()      # id normalizzati delle stanze
+        self.oggetti = set()     # id normalizzati degli oggetti
+        self.variabili = set()   # [Livello 3] id normalizzati degli 'stati'
 
     @property
     def tutti(self):
-        """Tutti i nomi referenziabili (stanze ∪ oggetti)."""
+        """Nomi-ENTITÀ referenziabili (stanze ∪ oggetti). Gli 'stati' sono una
+        classe di simboli SEPARATA (terminale VARIABILE) e non rientrano qui."""
         return self.stanze | self.oggetti
 
     def __repr__(self):
-        return f"TabellaSimboli(stanze={sorted(self.stanze)}, oggetti={sorted(self.oggetti)})"
+        return (f"TabellaSimboli(stanze={sorted(self.stanze)}, "
+                f"oggetti={sorted(self.oggetti)}, variabili={sorted(self.variabili)})")
 
 
 # Pattern delle SOLE forme dichiarative che introducono un nome-entità.
@@ -87,6 +92,8 @@ class TabellaSimboli:
 # *referenziare* entità già dichiarate e quindi non popola la symbol table.
 _RE_DEF_STANZA = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+stanza$", re.IGNORECASE)
 _RE_DEF_OGGETTO = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+cosa$", re.IGNORECASE)
+# 'X è uno stato' introduce uno 'stato' (variabile globale del mondo). [Livello 3]
+_RE_DEF_FLAG = re.compile(r"^(?P<nome>.+?)\s+è\s+uno\s+stato$", re.IGNORECASE)
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
@@ -130,6 +137,11 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         m = _RE_DEF_OGGETTO.match(frase)
         if m:
             tab.oggetti.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_FLAG.match(frase)
+        if m:
+            tab.variabili.add(normalizza_nome(m.group("nome")))
             continue
 
         m = _RE_DEF_CONNESSIONE.match(frase)
@@ -178,6 +190,8 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_connessione
                   | def_regola
                   | def_giocatore
+                  | def_stato
+                  | def_stato_valore
 
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
@@ -193,6 +207,13 @@ _GRAMMAR_TEMPLATE = r"""
     def_opposti: PROPRIETA "e" PROPRIETA "sono" "opposte" "."
     def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA "."
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
+
+    // --- STATO ASTRATTO (Livello 3 / G3) ---
+    // 'X è uno stato.' dichiara una variabile globale (uno 'stato'); 'X è valore.'
+    // ne imposta il valore iniziale. VARIABILE è un terminale CHIUSO disgiunto da
+    // ENTITA: LALR distingue questi costrutti da quelli su oggetti al PRIMO token.
+    def_stato: VARIABILE "è" "uno" "stato" "."
+    def_stato_valore: VARIABILE "è" PROPRIETA "."
 
     // --- REGOLE (INVECE DI) ---
     // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai nord").
@@ -212,17 +233,24 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_possesso_neg
               | cond_proprieta
               | cond_proprieta_neg
+              | cond_variabile
+              | cond_variabile_neg
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
     cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
     cond_proprieta: ENTITA "è" PROPRIETA
     cond_proprieta_neg: ENTITA "non" "è" PROPRIETA
+    // 'se [stato] è [valore]' — il terminale VARIABILE distingue dallo stato di
+    // un oggetto (cond_proprieta), senza ambiguità.
+    cond_variabile: VARIABILE "è" PROPRIETA
+    cond_variabile_neg: VARIABILE "non" "è" PROPRIETA
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
     // gli pseudo-simboli "inventario"/"nulla" iniettati nella regex.
     ?conseguenza: ENTITA "è" PREP_LUOGO ENTITA -> cons_spostamento
                 | ENTITA "è" PROPRIETA          -> cons_proprieta
+                | VARIABILE "è" PROPRIETA        -> cons_variabile
                 | "vinci"                        -> cons_vinci
                 | "perdi"                        -> cons_perdi
                 | "termina"                      -> cons_termina
@@ -238,6 +266,10 @@ _GRAMMAR_TEMPLATE = r"""
     // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
     // costruisci_grammatica(). Il flag /i la rende case-insensitive.
     ENTITA: /__ENTITA__/i
+
+    // VARIABILE: alternanza CHIUSA degli 'stati' dichiarati (Livello 3), anch'essa
+    // generata per-file e disgiunta da ENTITA. Vuota -> regex che non matcha mai.
+    VARIABILE: /__VARIABILE__/i
 
     // PROPRIETA: aggettivo di stato coniato. UNA sola parola, priorità BASSA
     // (-1): i keyword strutturali vincono sempre la contesa lessicale.
@@ -259,16 +291,17 @@ def _pattern_nome(nome: str) -> str:
     return r"\s+".join(re.escape(parola) for parola in nome.split())
 
 
-def _costruisci_regex_entita(simboli) -> str:
-    """Costruisce la regex del terminale ENTITA come alternanza CHIUSA dei nomi
-    noti (+ pseudo-simboli speciali), ordinata per lunghezza decrescente per
-    garantire il LONGEST-MATCH (re usa leftmost-first, non longest), con
-    articolo iniziale opzionale e confine di parola finale."""
-    nomi = set(simboli) | set(SIMBOLI_SPECIALI)
+def _costruisci_regex_nomi(nomi) -> str:
+    """Costruisce una regex di alternanza CHIUSA dei nomi dati, ordinata per
+    lunghezza decrescente per garantire il LONGEST-MATCH (re usa leftmost-first,
+    non longest), con articolo iniziale opzionale e confine di parola finale.
+    Se l'insieme è vuoto, restituisce una regex che non matcha mai."""
+    nomi = set(nomi)
     if not nomi:
-        # Nessun nome dichiarato: una regex che non matcha mai (qualunque
-        # riferimento a entità produrrà un errore di parsing intercettabile).
-        return r"(?!)"
+        # Nessun nome: una regex che non matcha MAI ma di larghezza 1 (Lark
+        # rifiuta i terminali a larghezza zero come '(?!)'). Qualunque
+        # riferimento produrrà un errore di parsing intercettabile.
+        return r"[^\s\S]"
     alternanza = "|".join(sorted((_pattern_nome(n) for n in nomi),
                                   key=len, reverse=True))
     art_con_spazio = [a for a in ARTICOLI if not a.endswith("'")]
@@ -279,17 +312,26 @@ def _costruisci_regex_entita(simboli) -> str:
     return rf"{prefisso_articolo}(?:{alternanza})\b"
 
 
-def costruisci_grammatica(simboli) -> str:
-    """Restituisce la grammatica concreta per questo file, con il terminale
-    ENTITA risolto dai simboli noti (Passata 2)."""
-    return _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
+def _costruisci_regex_entita(simboli) -> str:
+    """Regex del terminale ENTITA: i nomi dichiarati + gli pseudo-simboli
+    speciali (inventario/nulla)."""
+    return _costruisci_regex_nomi(set(simboli) | set(SIMBOLI_SPECIALI))
 
 
-def costruisci_parser(simboli) -> Lark:
+def costruisci_grammatica(simboli, variabili=()) -> str:
+    """Restituisce la grammatica concreta per questo file, con i terminali
+    ENTITA e VARIABILE risolti dai simboli noti (Passata 2). VARIABILE è la
+    classe degli 'stati' (Livello 3), disgiunta dalle entità."""
+    grammatica = _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
+    grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
+    return grammatica
+
+
+def costruisci_parser(simboli, variabili=()) -> Lark:
     """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
     costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
     GrammarError a build-time, non come scelta silenziosa a runtime."""
-    return Lark(costruisci_grammatica(simboli), start="start", parser="lalr")
+    return Lark(costruisci_grammatica(simboli, variabili), start="start", parser="lalr")
 
 
 def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
@@ -366,6 +408,11 @@ class FavellaTransformer(Transformer):
 
     def PROPRIETA(self, token):
         # Aggettivo di stato coniato (monoparola).
+        return token.value
+
+    def VARIABILE(self, token):
+        # Nome di uno 'stato' globale (Livello 3); preserva il grezzo, la
+        # normalizzazione a ID avviene nei metodi di regola.
         return token.value
 
     def TESTO_QUOTATO(self, token):
@@ -455,6 +502,18 @@ class FavellaTransformer(Transformer):
             oggetto.aggiungi_proprieta(proprieta)
         return None
 
+    def def_stato(self, var_grezzo):
+        # [Livello 3] Dichiarazione di uno 'stato' globale (valore iniziale None).
+        self.mondo.dichiara_variabile(normalizza_nome(var_grezzo))
+        return None
+
+    def def_stato_valore(self, var_grezzo, valore_grezzo):
+        # [Livello 3] Valore iniziale di uno 'stato' a livello di dichiarazione.
+        nome = normalizza_nome(var_grezzo)
+        self.mondo.dichiara_variabile(nome)  # idempotente, per sicurezza
+        self.mondo.variabili[nome] = normalizza_nome(valore_grezzo)
+        return None
+
     def def_opposti(self, prop_a_grezzo, prop_b_grezzo):
         # [Livello 3 / M5] Registra una coppia di proprietà mutuamente esclusive.
         # I nomi delle proprietà sono monoparola; li normalizziamo come gli altri
@@ -528,6 +587,12 @@ class FavellaTransformer(Transformer):
     def cond_proprieta_neg(self, ogg_grezzo, proprieta_grezzo):
         return CondizioneNot(CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo)))
 
+    def cond_variabile(self, var_grezzo, valore_grezzo):
+        return CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
+
+    def cond_variabile_neg(self, var_grezzo, valore_grezzo):
+        return CondizioneNot(CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo)))
+
     def make_and(self, *condizioni):
         return CondizioneAnd(list(condizioni))
 
@@ -545,6 +610,9 @@ class FavellaTransformer(Transformer):
 
     def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
+
+    def cons_variabile(self, var_grezzo, valore_grezzo):
+        return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
 
     # Conseguenze di fine partita: nessun figlio (keyword nuda dopo 'e adesso').
     def cons_vinci(self):
@@ -734,8 +802,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # 1. PASSATA 1 — Symbol-table dei nomi dichiarati.
         simboli = costruisci_symbol_table(testo)
 
-        # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA chiuso (Testo -> AST).
-        parser = costruisci_parser(simboli.tutti)
+        # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA e VARIABILE chiusi.
+        parser = costruisci_parser(simboli.tutti, simboli.variabili)
         tree = parser.parse(testo)
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)

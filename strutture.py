@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.2)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.3)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -28,6 +28,18 @@ class CondizioneProprieta(Condizione):
     def valuta(self, mondo: 'Mondo') -> bool:
         oggetto = mondo.trova_oggetto(self.id_oggetto)
         return oggetto is not None and self.proprieta in oggetto.proprieta
+
+class CondizioneVariabile(Condizione):
+    """[Livello 3] 'se [stato] è [valore]'. Uno 'stato' è una variabile globale
+    del mondo che contiene una parola-stato (enum-like); la condizione è vera se
+    il valore corrente coincide con quello atteso. Una variabile mai impostata
+    vale None e quindi non coincide con nessun valore."""
+    def __init__(self, nome: str, valore: str):
+        self.nome = nome
+        self.valore = valore
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return mondo.variabili.get(self.nome) == self.valore
 
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
@@ -75,6 +87,16 @@ class ConseguenzaProprieta(Conseguenza):
             # come default. Assegnare una proprietà rimuove tutte le sue opposte.
             for opposta in mondo.opposti.get(self.proprieta, ()):
                 oggetto.proprieta.discard(opposta)
+
+class ConseguenzaVariabile(Conseguenza):
+    """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
+    semaforo è verde')."""
+    def __init__(self, nome: str, valore: str):
+        self.nome = nome
+        self.valore = valore
+
+    def esegui(self, mondo: 'Mondo'):
+        mondo.variabili[self.nome] = self.valore
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -189,6 +211,10 @@ class Mondo:
         # fine partita non lo porta a "vinta"/"persa"/"terminata". Il loop di
         # gioco lo controlla dopo ogni comando per fermarsi.
         self.stato_partita: str = "in_corso"
+        # [Livello 3 / G3] Stato astratto del mondo: variabili con nome ('stati')
+        # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
+        # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
+        self.variabili: Dict[str, Optional[str]] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. La coppia
         # aperta↔chiusa è precaricata come default storico; l'autore può
@@ -197,6 +223,10 @@ class Mondo:
             "aperta": {"chiusa"},
             "chiusa": {"aperta"},
         }
+
+    def dichiara_variabile(self, nome: str):
+        """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
+        self.variabili.setdefault(nome, None)
 
     def dichiara_opposte(self, prop_a: str, prop_b: str):
         """Registra che due proprietà sono opposte (relazione simmetrica)."""
@@ -238,9 +268,10 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.7.2):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.7.3):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
+            f"  - Stati: {len(self.variabili)}\n"
             f"  - Regole: {len(self.regole)}\n"
         )
         if self.posizione_giocatore:
