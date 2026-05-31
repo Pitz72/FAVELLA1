@@ -4,6 +4,33 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.9.0] - 2026-05-31
+### Roadmap del Linguaggio — Livello 4 «Estendibilità vocabolario e topologia» COMPLETATO
+Release minore che consolida le patch 0.8.1 → 0.8.5. L'autore può ora **estendere
+il vocabolario e la topologia** del mondo, finora in parte cablati nel motore. In
+sintesi (dettaglio per-patch sotto e in `documentazione/0.9.0.md`):
+- **Alias/sinonimi di oggetti** (`0.8.1`): `La torcia si chiama anche "lanterna".`
+- **Verbi personalizzati** (`M1`, `0.8.2`): `"spingi" è un comando.`
+- **Direzioni estese data-driven** (`L1`, `0.8.3`): `Alto e basso sono direzioni
+  opposte.` con fonte unica per le direzioni (prima cablate in 4 punti).
+- **Contenitori e supporti** (`M1`, `0.8.4`–`0.8.5`): `La scatola è un
+  contenitore.`, `La gemma è nella scatola.`, verbo `metti`, visibilità a catena.
+
+Vincoli mantenuti per tutto il livello: grammatica **LALR(1) non ambigua per
+costruzione** (guardia permanente: 1 albero / 0 conflitti, estesa a ogni nuovo
+costrutto) e superficie pubblica `analizza_file()` invariata. Header dei moduli
+core allineati a **v0.9.0** (`compilatore`, `strutture`, `gioco`,
+`libreria_azioni`, suite). Suite del linguaggio: **192 asserzioni**, tutte verdi
+(erano 133 a inizio livello).
+
+> Nota di design: il *vocabolario nuovo* (alias e verbi) si introduce **tra
+> virgolette**, perché non è ancora un token noto e così non intacca l'invariante
+> dei nomi come simboli chiusi (Livello 2.5). Le direzioni custom usano invece un
+> terminale `DIREZIONE` generato per-file (regex con `\b`, priorità alta) per
+> vincere il prefix-clash con le keyword, senza toccare la disambiguazione `e`=est.
+
+---
+
 ## [0.8.5] - 2026-05-31
 ### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
 - **Contenitori e supporti** (`[M1]`) — *runtime*. La meccanica di gioco completa

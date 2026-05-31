@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.5)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.9.0)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -487,7 +487,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.8.4):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.9.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"
