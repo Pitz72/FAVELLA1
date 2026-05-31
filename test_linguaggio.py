@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.2)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -449,6 +449,40 @@ def test_guardia_nome_con_parola_chiave_disambiguato():
            "l'oggetto 'cosa preziosa' è risolto correttamente")
 
 
+# --- Test: errori d'autore migliori [Livello 2.5, beneficio collaterale] -----
+
+def test_errore_entita_sconosciuta():
+    print("[errore chiaro per entità mai dichiarata]")
+    src = "La cella è una stanza.\nLa porta è in cella.\n"  # 'porta' non dichiarata
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("sconosciuta" in log.lower() and "porta" in log,
+           "il log nomina l'entità sconosciuta 'porta'")
+    _check("SINTASSI" not in log, "non è il parse error criptico generico")
+
+
+def test_errore_entita_suggerimento():
+    print("[suggerimento sul refuso di un nome noto]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una chiave è una cosa.\nLa chiave è in cella.\n"
+        'Invece di prendi la chave: dire "x".\n'  # 'chave' = refuso di 'chiave'
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("chiave" in log and "intendevi" in log.lower(),
+           "il log suggerisce 'chiave' come correzione di 'chave'")
+
+
+def test_errore_sintassi_resta_generico():
+    print("[un vero errore di sintassi non viene scambiato per entità sconosciuta]")
+    src = "La cella è una stanza\n"  # manca il punto finale
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("sconosciuta" not in log.lower() and "SINTASSI" in log,
+           "resta un errore di sintassi, non una falsa 'entità sconosciuta'")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -482,10 +516,14 @@ def main():
         test_guardia_lalr_si_costruisce_senza_conflitti,
         test_guardia_zero_ambiguita,
         test_guardia_nome_con_parola_chiave_disambiguato,
+        # Livello 2.5 — errori d'autore migliori
+        test_errore_entita_sconosciuta,
+        test_errore_entita_suggerimento,
+        test_errore_sintassi_resta_generico,
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.0)")
     print("=" * 60)
     for t in tests:
         t()

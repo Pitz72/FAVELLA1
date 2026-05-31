@@ -1,8 +1,9 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.6.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
+import difflib
 from lark import Lark, Transformer, v_args
 from lark.exceptions import UnexpectedInput
 from strutture import (
@@ -31,8 +32,7 @@ VERBI_VALIDI = {verbo for azione in LIBRERIA_AZIONI.values() for verbo in azione
 #       per longest-match contro i simboli noti, eliminando alla radice l'ambiguità
 #       del vecchio `entita: WORD+` aperto.
 #
-# Questo blocco implementa la Passata 1 ed è, in v0.6.1, ISOLATO e unit-testato
-# ma NON ancora cablato nel parsing (che avverrà in v0.6.2).
+# Questo blocco implementa la Passata 1; la Passata 2 è cablata in analizza_file.
 
 # Vocabolario STRUTTURALE del linguaggio: parole che la grammatica interpreta
 # come keyword e che pertanto NON possono costituire da sole un nome-entità.
@@ -277,6 +277,54 @@ def costruisci_parser(simboli) -> Lark:
     costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
     GrammarError a build-time, non come scelta silenziosa a runtime."""
     return Lark(costruisci_grammatica(simboli), start="start", parser="lalr")
+
+
+def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
+    """
+    [Livello 2.5] Beneficio collaterale dei nomi come token chiusi: quando il
+    parsing fallisce perché l'autore riferisce un'entità MAI dichiarata, possiamo
+    dare un errore chiaro ("entità sconosciuta 'X'") invece di un parse error
+    criptico. Esamina la parola alla posizione d'errore; se assomiglia a un nome
+    (non è riservata) ma non è nella symbol-table, propone una diagnosi mirata.
+    Restituisce il messaggio, oppure None se l'errore è di altra natura.
+    """
+    linea = getattr(errore, "line", None)
+    colonna = getattr(errore, "column", None)
+    if not linea or not colonna:
+        return None
+    righe = testo.split("\n")
+    if linea - 1 >= len(righe):
+        return None
+    frammento = righe[linea - 1][colonna - 1:]
+    # Isola la frase fino alla prossima punteggiatura forte, poi raccogli le
+    # parole candidate al nome: salta un eventuale articolo iniziale e fermati al
+    # primo keyword strutturale (es. "è", "di", ":").
+    testa = re.match(r"[A-Za-zÀ-ÿ0-9' ]+", frammento)
+    if not testa:
+        return None
+    parole = testa.group(0).split()
+    if parole and parole[0].lower() in ARTICOLI:
+        parole = parole[1:]
+    candidate = []
+    for p in parole:
+        if p.lower() in PAROLE_RISERVATE:
+            break
+        candidate.append(p)
+    if not candidate:
+        return None  # qui c'è una keyword fuori posto: messaggio generico
+    parola = " ".join(candidate)
+    norm = normalizza_nome(parola)
+    if not norm or norm in simboli.tutti:
+        return None  # entità nota: l'errore è altrove (es. punto mancante)
+
+    suggerimenti = difflib.get_close_matches(norm, sorted(simboli.tutti), n=3, cutoff=0.6)
+    msg = f"Entità sconosciuta: «{parola}» non è mai stata dichiarata."
+    if suggerimenti:
+        msg += f" Forse intendevi: {', '.join(suggerimenti)}?"
+    else:
+        msg += (f" Dichiarala prima dell'uso, ad es. «{parola} è una cosa.» "
+                f"oppure «{parola} è una stanza.».")
+    return msg
 
 # ==============================================================================
 # 2. IL TRANSFORMER DELL'AST
@@ -675,21 +723,30 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         return transformer.mondo
 
     except UnexpectedInput as e:
+        # [Livello 2.5] Prima del messaggio generico, prova la diagnosi mirata:
+        # spesso l'errore è semplicemente un'entità mai dichiarata.
+        diagnosi = diagnostica_entita_sconosciuta(testo, e, simboli)
+        if diagnosi:
+            print("\n[FAVELLA 1] Errore: entità non dichiarata")
+            print(f"Riga {e.line}, Colonna {e.column}")
+            print(f" - {diagnosi}")
+            return None
+
         # Errore sintattico formale sollevato da Lark (Es: manca punto, ortografia)
         print("\n[ERRORE DI SINTASSI FAVELLA]")
         print(f"Riga {e.line}, Colonna {e.column}")
-        
+
         # Mostra il frammento di codice errato
         contesto = e.get_context(testo, span=40)
         print("-" * 40)
         print(contesto.strip())
         print("-" * 40)
-        
+
         # Prova a suggerire cosa si aspettava il parser
         attesi = e.expected if hasattr(e, 'expected') else None
         if attesi:
             print(f"Mi aspettavo: {', '.join(attesi)}")
-            
+
         return None
         
     except FileNotFoundError:

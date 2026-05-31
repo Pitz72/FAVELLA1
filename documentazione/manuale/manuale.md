@@ -9,11 +9,47 @@ Ecco il documento. Puoi salvarlo come `MANUALE.md` nella directory principale de
 ---
 
 ```markdown
-# Manuale di Riferimento per FAVELLA 1 (v0.2.0 / Grammatica v0.3.0)
+# Manuale di Riferimento per FAVELLA 1 (v0.7.0 / Grammatica LALR(1))
 
-Benvenuto in FAVELLA 1, il linguaggio di programmazione per creare narrativa interattiva in italiano. Questa guida ti mostrerà come usare la grammatica attuale (v0.3.0) per costruire il tuo primo mondo di gioco.
+Benvenuto in FAVELLA 1, il linguaggio di programmazione per creare narrativa interattiva in italiano. Questa guida ti mostrerà come usare la grammatica attuale per costruire il tuo primo mondo di gioco.
 
 La filosofia di FAVELLA è semplice: **il tuo codice è una storia**. Scriverai frasi in italiano per descrivere luoghi, oggetti e regole, e il compilatore si occuperà di trasformare le tue parole in un mondo giocabile.
+
+---
+
+## 0. Regole lessicali e parole riservate (v0.7.0)
+
+Da FAVELLA v0.7.0 il compilatore lavora in **due passate**: prima legge *quali
+nomi esistono* (le tue stanze e i tuoi oggetti), poi interpreta le frasi. Questo
+rende la grammatica **non ambigua** e ti dà errori molto più chiari.
+
+Due regole pratiche da ricordare:
+
+1. **Dichiara prima di usare.** Ogni entità va dichiarata (`… è una stanza.` /
+   `… è una cosa.`) prima di riferirla in posizioni, descrizioni o regole. Se
+   riferisci un nome mai dichiarato, FAVELLA te lo dice chiaramente — e se è solo
+   un refuso, ti suggerisce il nome giusto:
+   > `Entità sconosciuta: «chave» non è mai stata dichiarata. Forse intendevi: chiave?`
+
+2. **I nomi possono avere più parole, le proprietà no.** `la cella di
+   contenimento`, `la keycard magnetica` vanno benissimo come **nomi**. Le
+   **proprietà** di stato sono invece di **una sola parola** (`è chiusa`,
+   `è accesa` — non `è molto arrugginita`).
+
+### Parole riservate
+Queste parole hanno un significato per la grammatica e **non possono costituire
+da sole il nome** di una stanza o di un oggetto (possono però comparire *dentro*
+un nome più lungo, es. `via est`):
+
+`è`, `una`, `un`, `uno`, `stanza`, `cosa`, `prendibile`, gli articoli
+(`il`, `lo`, `la`, `i`, `gli`, `le`, `l'`, `un'`), `descrizione` e le preposizioni
+(`di`, `del`, `della`, `in`, `nel`, `nella`, `su`, `sul`, `con`, `contro`, `a`…),
+`collega`, `giocatore`, `comincia`/`inizia`/`parte`, `Invece`, `se`, `dire`,
+`e`, `adesso`, `oppure`, `non`, `ha`, le direzioni
+(`nord`/`sud`/`est`/`ovest` e `n`/`s`/`e`/`o`) e `nulla`.
+
+> Nota: `e` e `o` sono sia congiunzioni sia abbreviazioni di direzione (est/ovest).
+> Per l'OR logico usa sempre `oppure`, non `o`.
 
 ---
 

@@ -16,11 +16,17 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.6.0 - Logica Composita (Alpha)
+## 🚀 Stato Attuale: v0.7.0 - Disambiguazione Strutturale (Alpha)
 
-Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.6.0 completa il **Livello 2 — Logica Composita**: le regole `Invece di` diventano vere espressioni logiche. Le fondamenta restano il parser formale EBNF con **Lark**/AST e **FAVELLA STUDIO**, l'IDE grafico premium.
+Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.7.0 completa il **Livello 2.5 — Disambiguazione strutturale**: la grammatica di FAVELLA è ora **non ambigua per costruzione**. Il compilatore è stato riscritto in **due passate** (symbol-table → parsing **LALR(1)** con i nomi come token chiusi), eliminando alla radice l'ambiguità formale `[G1]` che prima era solo *mitigata* da priorità di regola.
 
-### Novità del Linguaggio (v0.6.0 — Livello 2)
+### Novità del Linguaggio (v0.7.0 — Livello 2.5)
+- **Grammatica non ambigua per costruzione:** parser **LALR(1)** + entità risolte da una symbol-table (longest-match). Un corpus che prima generava fino a 7 alberi per frase ora ne produce **uno solo** (guardia anti-ambiguità permanente nei test).
+- **Errori d'autore chiari:** un'entità mai dichiarata dà *«Entità sconosciuta: "porta" non è mai stata dichiarata…»* (con suggerimento del nome corretto in caso di refuso), non più un parse error criptico.
+- **Nomi con parole-chiave finalmente usabili:** `via est`, `cosa preziosa`, `porta di ferro`.
+- **Nota:** le **proprietà** di stato sono ora **monoparola** (`è chiusa`); i **nomi multiparola** restano supportati per le **entità** (`cella di contenimento`).
+
+### Dal Livello 2 (v0.6.0 — Logica Composita)
 - **Condizioni AND / OR:** `se la porta è chiusa e il giocatore ha la chiave`, `se la cassa è chiusa oppure è sigillata`. Precedenza `OR < AND < atomo`, con parentesi per raggruppare. (Si usa `oppure`, non `o`, riservato a *ovest*.)
 - **Negazione:** `se il giocatore non ha la chiave`, `se la porta non è aperta`.
 - **Conseguenze multiple:** `... e adesso la porta è aperta e adesso la chiave è nel nulla`.
