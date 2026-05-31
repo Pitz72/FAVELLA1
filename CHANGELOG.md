@@ -4,6 +4,39 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.0] - 2026-05-31
+### Roadmap del Linguaggio — Livello 5 «Espressività narrativa» COMPLETATO 🎉
+**Prima release maggiore.** Consolida le patch `0.9.1` → `0.9.4` e porta a
+compimento la promessa di copertina del progetto — *«il codice è prosa»* — sul
+versante della resa narrativa. In sintesi (dettaglio per-patch sotto e nel
+documento tecnico `documentazione/1.0.0.md`):
+
+- **Interpolazione di testo dinamico** (`0.9.1`): segnaposto `[punteggio]`,
+  `[semaforo]`, `[chiave]` nelle stringhe d'autore, risolti a render-time.
+- **Regole globali senza oggetto** (`0.9.2`): `Invece di guarda se il punteggio è
+  almeno 3: …` — risolve il limite noto del Livello 3, sbloccando verifiche
+  globali su stati e contatori.
+- **Descrizioni condizionali** (`0.9.3`): `La descrizione della torcia se il
+  semaforo è verde è "…".`, con varianti in ordine e fallback alla base.
+- **Concordanza grammaticale italiana minima** (`0.9.4`): genere/numero inferiti
+  dall'articolo del nome; articoli concordati negli elenchi di output.
+
+Vincoli mantenuti per tutto il livello: grammatica **LALR(1) non ambigua per
+costruzione** (guardia permanente 1 albero / 0 conflitti, estesa a ogni nuovo
+costrutto) e superficie pubblica `analizza_file()` invariata. La 0.9.3 ha inoltre
+**corretto un'ambiguità latente preesistente** di `def_descrizione` (terminale
+unico filtrato `_PREP_DESCR`), rendendo le descrizioni *genuinamente* 0-ambigue.
+Suite del linguaggio: **247 asserzioni**, tutte verdi (erano 192 a inizio livello).
+Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
+
+> **Ambito della release**: NPC e dialoghi ramificati — la seconda metà del
+> Livello 5 — sono volutamente rinviati a una **v1.1.0** dedicata (Livello 5b),
+> dove l'alta complessità della macchina a stati dei dialoghi potrà essere
+> affrontata con il margine per rinviare i costrutti che non superano puliti il
+> gate anti-ambiguità.
+
+---
+
 ## [0.9.4] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
 - **Concordanza grammaticale italiana (minima)** (`[Livello 5]`). Genere e numero
