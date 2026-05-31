@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.1.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.11.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -76,7 +76,7 @@ PAROLE_RISERVATE = frozenset({
     "contenitore", "supporto",
     # NPC e dialoghi (Livello 5b). NB: si evitano di proposito 'porta' e 'parla'
     # come keyword (collidono con nomi-oggetto comuni: "la porta"); la transizione
-    # tra nodi usa 'conduce' (vedi 1.0.2).
+    # tra nodi usa 'conduce' (vedi 0.10.2).
     "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude", "conduce",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
@@ -331,12 +331,12 @@ _GRAMMAR_TEMPLATE = r"""
     //     Inizia con "Al": lookahead "nodo" vs "turno" (eventi).
     def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
     def_battuta: ENTITA "al" "nodo" TESTO_QUOTATO "dice" TESTO_QUOTATO "."
-    // [1.0.2] L'opzione ha un ESITO: 'conduce al nodo "X"' (ramificazione) oppure
+    // [0.10.2] L'opzione ha un ESITO: 'conduce al nodo "X"' (ramificazione) oppure
     // 'chiude il dialogo'. Dopo il testo dell'opzione il lookahead "conduce" vs
     // "chiude" distingue le due alternative: LALR(1) 0-ambiguo.
-    // [1.0.3] L'opzione può avere CONSEGUENZE in coda ('e adesso ...'), riusando
+    // [0.10.3] L'opzione può avere CONSEGUENZE in coda ('e adesso ...'), riusando
     // la stessa coda di regole ed eventi: scegliere cambia lo stato del mondo.
-    // [1.0.4] L'opzione può essere CONDIZIONALE ('se ...'): mostrata solo se la
+    // [0.10.4] L'opzione può essere CONDIZIONALE ('se ...'): mostrata solo se la
     // condizione è vera (porte chiuse, requisiti). Dopo il testo dell'opzione il
     // lookahead "se" la distingue dall'esito ("conduce"/"chiude"): LALR(1) 0-ambiguo.
     def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO ( "se" condizione )? opzione_esito ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
@@ -705,7 +705,7 @@ class FavellaTransformer(Transformer):
         return None
 
     def esito_conduce(self, dest_etichetta):
-        # [1.0.2] Esito 'conduce al nodo "X"': transizione a un altro nodo.
+        # [0.10.2] Esito 'conduce al nodo "X"': transizione a un altro nodo.
         return ("conduce", dest_etichetta)
 
     def esito_chiude(self):
@@ -714,8 +714,8 @@ class FavellaTransformer(Transformer):
 
     def def_opzione(self, etichetta, testo_opzione, *resto):
         # 'Al nodo "saluto" l'opzione "Chi sei?" [se CONDIZIONE] ESITO [e adesso ...].'
-        # Gli argomenti opzionali si distinguono per TIPO: una Condizione [1.0.4],
-        # l'esito (tupla prodotta da opzione_esito) e le Conseguenze in coda [1.0.3].
+        # Gli argomenti opzionali si distinguono per TIPO: una Condizione [0.10.4],
+        # l'esito (tupla prodotta da opzione_esito) e le Conseguenze in coda [0.10.3].
         condizione = None
         esito = None
         conseguenze = []
@@ -1247,7 +1247,7 @@ class FavellaTransformer(Transformer):
                     f"d'ingresso con 'Il dialogo di {id_ogg} comincia con \"...\".'."
                 )
 
-        # [1.0.2] Ogni opzione che 'conduce a' un nodo deve puntare a un nodo
+        # [0.10.2] Ogni opzione che 'conduce a' un nodo deve puntare a un nodo
         # esistente, altrimenti la ramificazione è morta (vicolo cieco a runtime).
         for etichetta, nodo in m.dialogo_nodi.items():
             for opz in nodo.opzioni:

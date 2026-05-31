@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.1.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.11.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1183,10 +1183,10 @@ _CORPUS_GUARDIA = (
     "Il mercante è un personaggio.\nIl mercante è in cella.\n"
     'Il dialogo del mercante comincia con "saluto".\n'
     'Il mercante al nodo "saluto" dice "Benvenuto, hai [punteggio] punti!".\n'
-    'Al nodo "saluto" l\'opzione "Chi sei?" se il giocatore ha la chiave conduce al nodo "chi" e adesso aumenta il punteggio.\n'  # condizione [1.0.4] + rami [1.0.2] + conseguenza [1.0.3]
+    'Al nodo "saluto" l\'opzione "Chi sei?" se il giocatore ha la chiave conduce al nodo "chi" e adesso aumenta il punteggio.\n'  # condizione [0.10.4] + rami [0.10.2] + conseguenza [0.10.3]
     'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
     'Il mercante al nodo "chi" dice "Un mercante.".\n'
-    'Al nodo "chi" l\'opzione "Vinci!" chiude il dialogo e adesso vinci.\n'   # conseguenza di fine partita [1.0.3]
+    'Al nodo "chi" l\'opzione "Vinci!" chiude il dialogo e adesso vinci.\n'   # conseguenza di fine partita [0.10.3]
     'Al nodo "chi" l\'opzione "Addio." chiude il dialogo.\n'
 )
 
@@ -1586,7 +1586,7 @@ def test_concordanza_elenco_plurale():
     _check("delle chiavi" in out, "l'oggetto plurale usa il partitivo 'delle'")
 
 
-# --- Test: LIVELLO 5b — NPC e dialoghi, fondazione (1.0.1) --------------------
+# --- Test: LIVELLO 5b — NPC e dialoghi, fondazione (0.10.1) --------------------
 
 _SRC_NPC = (
     "La piazza è una stanza.\n"
@@ -1707,7 +1707,7 @@ def test_dialogo_su_non_personaggio_errore():
     _check("personaggio" in log.lower(), "il log spiega che serve un personaggio")
 
 
-# --- Test: LIVELLO 5b — ramificazione dei dialoghi (1.0.2) --------------------
+# --- Test: LIVELLO 5b — ramificazione dei dialoghi (0.10.2) --------------------
 
 _SRC_RAMI = (
     "La piazza è una stanza.\n"
@@ -1767,7 +1767,7 @@ def test_ramificazione_nodo_inesistente_warning():
            "il log avvisa della transizione verso un nodo inesistente")
 
 
-# --- Test: LIVELLO 5b — conseguenze sulle scelte di dialogo (1.0.3) -----------
+# --- Test: LIVELLO 5b — conseguenze sulle scelte di dialogo (0.10.3) -----------
 
 _SRC_CONSEG = (
     "La piazza è una stanza.\n"
@@ -1818,7 +1818,7 @@ def test_conseguenza_scelta_fine_partita():
     _check(not mondo.in_dialogo(), "la conversazione è chiusa")
 
 
-# --- Test: LIVELLO 5b — opzioni condizionali (1.0.4) --------------------------
+# --- Test: LIVELLO 5b — opzioni condizionali (0.10.4) --------------------------
 
 _SRC_OPZCOND = (
     "La piazza è una stanza.\n"
@@ -1986,7 +1986,7 @@ def main():
         test_concordanza_oggetto_metodo,
         test_concordanza_elenco_stanza_singolari,
         test_concordanza_elenco_plurale,
-        # Livello 5b — NPC e dialoghi, fondazione (1.0.1)
+        # Livello 5b — NPC e dialoghi, fondazione (0.10.1)
         test_npc_dichiarazione,
         test_dialogo_struttura,
         test_dialogo_avvio_runtime,
@@ -1997,16 +1997,16 @@ def main():
         test_dialogo_battuta_interpolata,
         test_personaggio_senza_dialogo_warning,
         test_dialogo_su_non_personaggio_errore,
-        # Livello 5b — ramificazione dei dialoghi (1.0.2)
+        # Livello 5b — ramificazione dei dialoghi (0.10.2)
         test_ramificazione_struttura,
         test_ramificazione_transizione_runtime,
         test_ramificazione_ritorno_e_chiusura,
         test_ramificazione_nodo_inesistente_warning,
-        # Livello 5b — conseguenze sulle scelte (1.0.3)
+        # Livello 5b — conseguenze sulle scelte (0.10.3)
         test_conseguenza_scelta_struttura,
         test_conseguenza_scelta_modifica_mondo,
         test_conseguenza_scelta_fine_partita,
-        # Livello 5b — opzioni condizionali (1.0.4)
+        # Livello 5b — opzioni condizionali (0.10.4)
         test_opzione_condizionale_struttura,
         test_opzione_condizionale_nascosta_se_falsa,
         test_opzione_condizionale_visibile_se_vera,
@@ -2018,7 +2018,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.1.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.11.0)")
     print("=" * 60)
     for t in tests:
         t()

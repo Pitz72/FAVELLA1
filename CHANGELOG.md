@@ -4,19 +4,19 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
-## [1.1.0] - 2026-05-31
+## [0.11.0] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 5b «NPC e dialoghi ramificati» COMPLETATO 🗣️
-Release minore che consolida le patch `1.0.1` → `1.0.4` e aggiunge al linguaggio
+Release minore che consolida le patch `0.10.1` → `0.10.4` e aggiunge al linguaggio
 un **sistema di dialogo completo da interactive fiction**. In sintesi (dettaglio
-per-patch sotto e nel documento tecnico `documentazione/1.1.0.md`):
+per-patch sotto e nel documento tecnico `documentazione/0.11.0.md`):
 
-- **NPC** (`1.0.1`): `Il mercante è un personaggio.`, `parla con X`, conversazione
+- **NPC** (`0.10.1`): `Il mercante è un personaggio.`, `parla con X`, conversazione
   modale con battute e opzioni numerate (scelta per numero o testo).
-- **Ramificazione** (`1.0.2`): `l'opzione "…" conduce al nodo "…"` — alberi di
+- **Ramificazione** (`0.10.2`): `l'opzione "…" conduce al nodo "…"` — alberi di
   dialogo con cicli e ritorni.
-- **Conseguenze sulle scelte** (`1.0.3`): `… e adesso …` — una scelta dà oggetti,
+- **Conseguenze sulle scelte** (`0.10.3`): `… e adesso …` — una scelta dà oggetti,
   muta stati/contatori, può vincere/perdere la partita.
-- **Opzioni condizionali** (`1.0.4`): `l'opzione "…" se [condizione] …` — scelte
+- **Opzioni condizionali** (`0.10.4`): `l'opzione "…" se [condizione] …` — scelte
   che compaiono solo a requisiti soddisfatti.
 
 Le battute e le opzioni passano per l'interpolazione `[var]` (Livello 5); le
@@ -29,15 +29,15 @@ entrano in contesa con i terminali chiusi; si sono evitati di proposito `porta` 
 grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero /
 0 conflitti) estesa a ogni costrutto di dialogo, superficie pubblica
 `analizza_file()` invariata. Suite del linguaggio: **287 asserzioni**, tutte verdi
-(erano 247 a inizio livello). Header core e `Mondo.__str__` a **v1.1.0**.
+(erano 247 a inizio livello). Header core e `Mondo.__str__` a **v0.11.0**.
 
-> **Prossimo**: Livello 6 (Maturità linguaggio/toolchain) verso **v1.2.0** —
+> **Prossimo**: Livello 6 (Maturità linguaggio/toolchain) verso **v0.12.0** —
 > linter semantico, moduli/import multi-`.fav`, spec EBNF formale versionata.
 
 ---
 
-## [1.0.4] - 2026-05-31
-### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+## [0.10.4] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 0.11.0)
 - **Opzioni di dialogo condizionali** (`[Livello 5b]`). Una scelta può essere
   subordinata a una condizione e comparire **solo se è vera**:
   - `Al nodo "saluto" l'opzione "Ecco la chiave!" se il giocatore ha la chiave
@@ -51,14 +51,14 @@ grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero
   condizione, esito e conseguenze (tutti opzionali e in qualsiasi combinazione).
   Guardia anti-ambiguità estesa con un'opzione che combina `se` + `conduce` +
   conseguenza nello stesso costrutto.
-- **Suite del linguaggio**: **287 asserzioni** (erano 281). Header core a **v1.0.4**.
+- **Suite del linguaggio**: **287 asserzioni** (erano 281). Header core a **v0.10.4**.
 - Con questa patch il sistema di dialogo è **completo** (ramificazione +
-  conseguenze + condizioni): pronto per la release **v1.1.0**.
+  conseguenze + condizioni): pronto per la release **v0.11.0**.
 
 ---
 
-## [1.0.3] - 2026-05-31
-### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+## [0.10.3] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 0.11.0)
 - **Conseguenze sulle scelte di dialogo** (`[Livello 5b]`). Un'opzione può ora
   cambiare lo stato del mondo, con la clausola `e adesso …` riusata da regole ed
   eventi (Livello 3):
@@ -73,12 +73,12 @@ grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero
   identica a quella di regole/eventi. Nessun nuovo terminale → **LALR(1)
   0-ambiguo**. Le conseguenze sono validate a compile-time come le altre. Guardia
   estesa con conseguenze su un'opzione (mutazione + fine partita).
-- **Suite del linguaggio**: **281 asserzioni** (erano 274). Header core a **v1.0.3**.
+- **Suite del linguaggio**: **281 asserzioni** (erano 274). Header core a **v0.10.3**.
 
 ---
 
-## [1.0.2] - 2026-05-31
-### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+## [0.10.2] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 0.11.0)
 - **Ramificazione dei dialoghi** (`[Livello 5b]`). Un'opzione può ora **condurre a
   un altro nodo**, non solo chiudere la conversazione:
   - `Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "presentazione".`
@@ -92,12 +92,12 @@ grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero
 - **Validazione**: un'opzione che conduce a un nodo **inesistente** genera un
   avviso non bloccante (ramificazione morta). Guardia anti-ambiguità estesa con
   un dialogo a più nodi e una transizione.
-- **Suite del linguaggio**: **274 asserzioni** (erano 267). Header core a **v1.0.2**.
+- **Suite del linguaggio**: **274 asserzioni** (erano 267). Header core a **v0.10.2**.
 
 ---
 
-## [1.0.1] - 2026-05-31
-### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+## [0.10.1] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 0.11.0)
 - **NPC e dialoghi, fondazione** (`[Livello 5b]`). Prima patch del sistema di
   dialogo: personaggi e conversazione modale minima.
   - **Personaggi**: `Il mercante è un personaggio.` introduce un NPC (un oggetto
@@ -115,16 +115,16 @@ grammatica **LALR(1) non ambigua per costruzione**, guardia permanente (1 albero
   contesa con i terminali chiusi. Si evitano di proposito `porta`/`parla` come
   keyword di grammatica (collidono con nomi-oggetto comuni: «la porta»). Guardia
   anti-ambiguità estesa con un NPC e un dialogo completo: **1 albero / 0 conflitti**.
-- **Suite del linguaggio**: **267 asserzioni** (erano 247). Header core a **v1.0.1**.
+- **Suite del linguaggio**: **267 asserzioni** (erano 247). Header core a **v0.10.1**.
 
 ---
 
-## [1.0.0] - 2026-05-31
-### Roadmap del Linguaggio — Livello 5 «Espressività narrativa» COMPLETATO 🎉
-**Prima release maggiore.** Consolida le patch `0.9.1` → `0.9.4` e porta a
-compimento la promessa di copertina del progetto — *«il codice è prosa»* — sul
-versante della resa narrativa. In sintesi (dettaglio per-patch sotto e nel
-documento tecnico `documentazione/1.0.0.md`):
+## [0.10.0] - 2026-05-31
+### Roadmap del Linguaggio — Livello 5 «Espressività narrativa» COMPLETATO
+Release minore che consolida le patch `0.9.1` → `0.9.4` e porta a compimento la
+promessa di copertina del progetto — *«il codice è prosa»* — sul versante della
+resa narrativa. In sintesi (dettaglio per-patch sotto e nel documento tecnico
+`documentazione/0.10.0.md`):
 
 - **Interpolazione di testo dinamico** (`0.9.1`): segnaposto `[punteggio]`,
   `[semaforo]`, `[chiave]` nelle stringhe d'autore, risolti a render-time.
@@ -142,10 +142,10 @@ costrutto) e superficie pubblica `analizza_file()` invariata. La 0.9.3 ha inoltr
 **corretto un'ambiguità latente preesistente** di `def_descrizione` (terminale
 unico filtrato `_PREP_DESCR`), rendendo le descrizioni *genuinamente* 0-ambigue.
 Suite del linguaggio: **247 asserzioni**, tutte verdi (erano 192 a inizio livello).
-Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
+Header dei moduli core e `Mondo.__str__` allineati a **v0.10.0**.
 
 > **Ambito della release**: NPC e dialoghi ramificati — la seconda metà del
-> Livello 5 — sono volutamente rinviati a una **v1.1.0** dedicata (Livello 5b),
+> Livello 5 — sono volutamente rinviati a una **v0.11.0** dedicata (Livello 5b),
 > dove l'alta complessità della macchina a stati dei dialoghi potrà essere
 > affrontata con il margine per rinviare i costrutti che non superano puliti il
 > gate anti-ambiguità.
@@ -153,7 +153,7 @@ Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
 ---
 
 ## [0.9.4] - 2026-05-31
-### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 0.10.0)
 - **Concordanza grammaticale italiana (minima)** (`[Livello 5]`). Genere e numero
   vengono **inferiti dall'articolo che l'autore già scrive** nel nome (`La torcia`
   → femminile singolare, `Il tavolo` → maschile singolare, `Le chiavi` → femminile
@@ -175,7 +175,7 @@ Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
 ---
 
 ## [0.9.3] - 2026-05-31
-### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 0.10.0)
 - **Descrizioni condizionali** (`[Livello 5]`). La descrizione di una stanza o di
   un oggetto può ora variare in base allo stato del mondo, con una clausola `se`:
   - `La descrizione della torcia è "Una torcia spenta.".` (base/fallback)
@@ -206,7 +206,7 @@ Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
 ---
 
 ## [0.9.2] - 2026-05-31
-### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 0.10.0)
 - **Regole globali senza oggetto** (`[Livello 5]`) — risolve il limite noto del
   Livello 3. Una regola `Invece di` può ora **omettere il bersaglio** e scattare
   sul solo verbo, valutando la sua condizione:
@@ -231,7 +231,7 @@ Header dei moduli core e `Mondo.__str__` allineati a **v1.0.0**.
 ---
 
 ## [0.9.1] - 2026-05-31
-### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 0.10.0)
 - **Interpolazione di testo dinamico** (`[Livello 5]`) — *prima patch del livello*.
   Le stringhe d'autore possono ora contenere **segnaposto** `[nome]` che vengono
   sostituiti, al momento della stampa, con il valore corrente del mondo:
