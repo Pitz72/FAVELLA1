@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.7.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -51,6 +51,8 @@ PAROLE_RISERVATE = frozenset({
     "collega", "a", "giocatore", "comincia", "inizia", "parte",
     # regole, condizioni, conseguenze
     "invece", "se", "dire", "e", "adesso", "oppure", "non", "ha",
+    # proprietà opposte (Livello 3 / M5)
+    "sono", "opposte",
     # preposizioni d'azione
     "su", "con", "contro",
     # direzioni (estese e abbreviate)
@@ -169,6 +171,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_descrizione
                   | def_posizione
                   | def_proprieta
+                  | def_opposti
                   | def_connessione
                   | def_regola
                   | def_giocatore
@@ -181,6 +184,10 @@ _GRAMMAR_TEMPLATE = r"""
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
     def_proprieta: ENTITA "è" PROPRIETA "."
+    // [Livello 3 / M5] Dichiarazione di proprietà opposte (mutuamente esclusive).
+    // Inizia con PROPRIETA (priorità bassa): nessun'altra dichiarazione parte con
+    // PROPRIETA, quindi LALR distingue questo costrutto al primo token.
+    def_opposti: PROPRIETA "e" PROPRIETA "sono" "opposte" "."
     def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA "."
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
 
@@ -440,6 +447,20 @@ class FavellaTransformer(Transformer):
             oggetto.prendibile = True
         else:
             oggetto.aggiungi_proprieta(proprieta)
+        return None
+
+    def def_opposti(self, prop_a_grezzo, prop_b_grezzo):
+        # [Livello 3 / M5] Registra una coppia di proprietà mutuamente esclusive.
+        # I nomi delle proprietà sono monoparola; li normalizziamo come gli altri
+        # aggettivi di stato per coerenza (lowercase).
+        prop_a = normalizza_nome(prop_a_grezzo)
+        prop_b = normalizza_nome(prop_b_grezzo)
+        if prop_a == prop_b:
+            self.warnings.append(
+                f"Proprietà dichiarata opposta a se stessa: '{prop_a}'. Ignorata."
+            )
+            return None
+        self.mondo.dichiara_opposte(prop_a, prop_b)
         return None
 
     def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo):

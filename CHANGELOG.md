@@ -4,6 +4,22 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.7.1] - 2026-05-31
+### Aggiunto (Roadmap Livello 3 — Stato di gioco e meccaniche, in lavorazione verso 0.8.0)
+- **Proprietà opposte dichiarabili** (generalizza la criticità `[M5]`): l'autore può
+  dichiarare coppie di proprietà mutuamente esclusive con la frase
+  `Accesa e spenta sono opposte.`. Assegnare una proprietà a un oggetto rimuove
+  automaticamente tutte le sue opposte. La coppia `aperta`↔`chiusa`, prima
+  cablata in `ConseguenzaProprieta.esegui`, è ora una semplice **coppia
+  precaricata di default** (retro-compatibilità totale con le storie esistenti).
+- Nuova regola di grammatica `def_opposti` (`PROPRIETA "e" PROPRIETA "sono" "opposte" "."`),
+  nuove parole riservate `sono`/`opposte`. La guardia anti-ambiguità (1 albero / 0
+  conflitti LALR) copre il nuovo costrutto. Suite a **72 asserzioni** (era 65).
+
+Dettaglio tecnico cumulativo del livello: `documentazione/0.8.0.md`.
+
+---
+
 ## [0.2.1] - 2026-05-21
 ### Risolto (Criticità Gravissime)
 - **Normalizzazione dell'input dell'utente:** Risolto il bug gravissimo che impediva la risoluzione degli oggetti in scope quando digitati con articoli (es. `prendi la keycard` falliva mentre `prendi keycard` funzionava). Ora l'input dell'utente viene normalizzato tramite `normalizza_nome` prima del confronto in `risolvi_nome_oggetto`.

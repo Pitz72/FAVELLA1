@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -319,6 +319,45 @@ def test_refuso_dentro_condizione_composita():
            "il refuso 'chuisa' viene rilevato anche dentro un AND")
 
 
+# --- Test: proprietà opposte dichiarabili [Livello 3 / M5] -------------------
+
+def test_opposti_dichiarati():
+    print("[proprietà opposte dichiarate dall'autore]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una lampada è una cosa.\nLa lampada è in cella.\n"
+        "Accesa e spenta sono opposte.\n"
+        "La lampada è spenta.\n"
+        'Invece di usa la lampada: dire "Click." e adesso la lampada è accesa.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and "spenta" in mondo.opposti.get("accesa", set()),
+           "la coppia è registrata simmetricamente")
+    _check(mondo and "accesa" in mondo.opposti.get("spenta", set()),
+           "la relazione è simmetrica anche al contrario")
+    ogg = mondo.trova_oggetto("lampada") if mondo else None
+    _check(ogg is not None and "spenta" in ogg.proprieta, "stato iniziale: spenta")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check("accesa" in ogg.proprieta and "spenta" not in ogg.proprieta,
+           "accendere rimuove 'spenta' (le opposte si escludono)")
+
+
+def test_opposti_default_aperta_chiusa():
+    print("[retro-compat: aperta/chiusa opposte di default, senza dichiararle]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una porta è una cosa.\nLa porta è in cella.\nLa porta è chiusa.\n"
+        'Invece di apri la porta: dire "Click." e adesso la porta è aperta.\n'
+    )
+    mondo, _ = compila(src)
+    porta = mondo.trova_oggetto("porta") if mondo else None
+    _check(porta is not None and "chiusa" in porta.proprieta, "porta inizialmente chiusa")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check("aperta" in porta.proprieta and "chiusa" not in porta.proprieta,
+           "aprire rimuove 'chiusa' anche senza dichiarazione esplicita")
+
+
 # --- Test: Passata 1, scanner della symbol-table [Livello 2.5 / G1] ----------
 
 def test_scanner_raccoglie_stanze_e_oggetti():
@@ -392,6 +431,7 @@ _CORPUS_GUARDIA = (
     "La porta di ferro è in cella.\n"          # def_posizione
     "La porta di ferro è chiusa.\n"            # def_proprieta
     "La porta di ferro è prendibile.\n"        # def_prendibile
+    "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
     'Invece di apri la porta di ferro se la porta di ferro è chiusa e il '
     'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta.\n'
@@ -506,6 +546,9 @@ def main():
         test_conseguenze_multiple,
         test_conseguenze_multiple_forma_breve,
         test_refuso_dentro_condizione_composita,
+        # Livello 3 — proprietà opposte dichiarabili (M5)
+        test_opposti_dichiarati,
+        test_opposti_default_aperta_chiusa,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,
@@ -523,7 +566,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.1)")
     print("=" * 60)
     for t in tests:
         t()

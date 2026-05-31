@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.1)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -69,10 +69,12 @@ class ConseguenzaProprieta(Conseguenza):
         oggetto = mondo.trova_oggetto(self.id_oggetto)
         if oggetto:
             oggetto.aggiungi_proprieta(self.proprieta)
-            if self.proprieta == "aperta" and "chiusa" in oggetto.proprieta:
-                oggetto.proprieta.remove("chiusa")
-            elif self.proprieta == "chiusa" and "aperta" in oggetto.proprieta:
-                oggetto.proprieta.remove("aperta")
+            # [Livello 3 / M5] Le proprietà opposte si escludono a vicenda.
+            # Le coppie sono dichiarabili dall'autore ('Aperta e chiusa sono
+            # opposte.') e raccolte in mondo.opposti; aperta↔chiusa è precaricata
+            # come default. Assegnare una proprietà rimuove tutte le sue opposte.
+            for opposta in mondo.opposti.get(self.proprieta, ()):
+                oggetto.proprieta.discard(opposta)
 
 class ConseguenzaSpostamento(Conseguenza):
     """Rappresenta uno spostamento di un oggetto (es. verso l'inventario, una stanza o il nulla)."""
@@ -171,6 +173,19 @@ class Mondo:
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
         self.posizione_iniziale: str | None = None
         self.inventario: Set[str] = set()
+        # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
+        # Mappa simmetrica proprietà -> insieme delle sue opposte. La coppia
+        # aperta↔chiusa è precaricata come default storico; l'autore può
+        # aggiungerne altre con 'X e Y sono opposte.'.
+        self.opposti: Dict[str, Set[str]] = {
+            "aperta": {"chiusa"},
+            "chiusa": {"aperta"},
+        }
+
+    def dichiara_opposte(self, prop_a: str, prop_b: str):
+        """Registra che due proprietà sono opposte (relazione simmetrica)."""
+        self.opposti.setdefault(prop_a, set()).add(prop_b)
+        self.opposti.setdefault(prop_b, set()).add(prop_a)
 
     def imposta_posizione_iniziale(self):
         """Imposta la posizione iniziale del giocatore.
@@ -207,7 +222,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.7.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.7.1):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Regole: {len(self.regole)}\n"
