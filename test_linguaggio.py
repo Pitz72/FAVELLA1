@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.9.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1174,6 +1174,8 @@ _CORPUS_GUARDIA = (
     # deve introdurre alcuna ambiguità grammaticale (segnaposto su contatore e
     # oggetto, entrambi dichiarati sopra).
     'Invece di esamina la scatola: dire "Hai [punteggio] punti vicino a [chiave].".\n'
+    # [Livello 5] Regola GLOBALE senza bersaglio: scatta sul solo verbo + condizione.
+    'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
 )
 
 
@@ -1342,6 +1344,76 @@ def test_interpolazione_nessun_warning_se_noto():
     _check("Segnaposto" not in log, "nessun avviso di segnaposto per nomi noti")
 
 
+# --- Test: LIVELLO 5 — regole globali senza oggetto (0.9.2) -------------------
+
+_SRC_GLOBALE = (
+    "La cella è una stanza.\n"
+    "La chiave è una cosa.\n"
+    "La chiave è in cella.\n"
+    "La chiave è prendibile.\n"
+    "Il punteggio è un contatore.\n"
+    'Invece di prendi la chiave: dire "Presa." e adesso aumenta il punteggio di 5.\n'
+)
+
+
+def test_regola_globale_compila_senza_bersaglio():
+    print("[regola globale: compila con bersaglio nullo]")
+    src = _SRC_GLOBALE + 'Invece di guarda se il punteggio è almeno 3: dire "Luce.".\n'
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    globali = [r for r in mondo.regole if r.id_oggetto_bersaglio is None]
+    _check(len(globali) == 1, "esiste una regola con id_oggetto_bersaglio = None")
+    _check(globali and globali[0].verbo == "guarda", "la regola globale è sul verbo 'guarda'")
+
+
+def test_regola_globale_condizione_falsa_non_scatta():
+    print("[regola globale: condizione falsa -> non scatta, default attivo]")
+    src = _SRC_GLOBALE + 'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")  # punteggio = 0, condizione falsa
+    _check("Una luce pulsa." not in out, "la regola globale NON scatta")
+    _check("cella" in out.lower(), "viene mostrata la descrizione di default della stanza")
+
+
+def test_regola_globale_condizione_vera_scatta():
+    print("[regola globale: condizione vera -> scatta e sostituisce il default]")
+    src = _SRC_GLOBALE + 'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
+    mondo = runtime(src)
+    esegui(mondo, "prendi chiave")        # punteggio -> 5
+    out = esegui(mondo, "guarda")          # ora 5 >= 3
+    _check("Una luce pulsa." in out, "la regola globale scatta quando la condizione è vera")
+
+
+def test_regola_globale_senza_condizione_scatta_sempre():
+    print("[regola globale: senza condizione scatta sempre]")
+    src = _SRC_GLOBALE + 'Invece di aiuto: dire "Nessun aiuto qui.".\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "aiuto")
+    _check("Nessun aiuto qui." in out, "la regola globale incondizionata scatta")
+    _check("--- AIUTO ---" not in out, "il testo di aiuto di default è sostituito")
+
+
+def test_regola_specifica_precede_globale():
+    print("[regola globale: una regola specifica ha la precedenza]")
+    src = _SRC_GLOBALE + (
+        'Invece di esamina la chiave: dire "Specifica.".\n'
+        'Invece di esamina se il punteggio è almeno 0: dire "Globale.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina chiave")
+    _check("Specifica." in out, "scatta la regola specifica sull'oggetto")
+    _check("Globale." not in out, "la regola globale non scavalca quella specifica")
+
+
+def test_regola_globale_esegue_conseguenza():
+    print("[regola globale: esegue la conseguenza (fine partita)]")
+    src = _SRC_GLOBALE + 'Invece di guarda se il punteggio è meno di 1: dire "Fine." e adesso vinci.\n'
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")  # punteggio 0 < 1
+    _check("Fine." in out, "la regola globale stampa la risposta")
+    _check("HAI VINTO" in out, "la conseguenza di fine partita è eseguita")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1439,6 +1511,13 @@ def main():
         test_interpolazione_sconosciuto_resta_letterale_e_warning,
         test_interpolazione_stato_non_impostato_vuoto,
         test_interpolazione_nessun_warning_se_noto,
+        # Livello 5 — regole globali senza oggetto (0.9.2)
+        test_regola_globale_compila_senza_bersaglio,
+        test_regola_globale_condizione_falsa_non_scatta,
+        test_regola_globale_condizione_vera_scatta,
+        test_regola_globale_senza_condizione_scatta_sempre,
+        test_regola_specifica_precede_globale,
+        test_regola_globale_esegue_conseguenza,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1446,7 +1525,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.9.2)")
     print("=" * 60)
     for t in tests:
         t()

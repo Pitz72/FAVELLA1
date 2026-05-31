@@ -4,6 +4,31 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.9.2] - 2026-05-31
+### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
+- **Regole globali senza oggetto** (`[Livello 5]`) — risolve il limite noto del
+  Livello 3. Una regola `Invece di` può ora **omettere il bersaglio** e scattare
+  sul solo verbo, valutando la sua condizione:
+  - `Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".`
+  - Sblocca le **verifiche globali su stati e contatori**, finora agganciabili
+    solo a regole su oggetto o agli eventi a turni.
+  - **Precedenza**: una regola specifica (con bersaglio) vince sempre su una
+    globale; le globali scattano solo se nessuna specifica si è attivata, e
+    valgono anche per le azioni senza oggetto (`guarda`, `aiuto`, `inventario`).
+  - Una globale senza condizione scatta sempre (sostituisce il comportamento di
+    default del verbo).
+- **Grammatica**: il bersaglio di `def_regola` è ora opzionale, incapsulato nella
+  sottoregola `regola_target`. Questo mantiene la grammatica **LALR(1) 0-ambigua**
+  (dopo `VERBO` il lookahead distingue nettamente `ENTITA`/`DIREZIONE` dal `se`/`:`)
+  e permette al transformer di non confondere il bersaglio con la risposta quando
+  il primo manca. Guardia anti-ambiguità estesa con una regola globale.
+- **Limite residuo** (minore): per un verbo che richiede un oggetto, una regola
+  globale non scatta se il giocatore digita il verbo *senza* oggetto (l'azione
+  chiede prima l'oggetto). Le globali danno il meglio con verbi senza oggetto.
+- **Suite del linguaggio**: **216 asserzioni** (erano 204). Header core a **v0.9.2**.
+
+---
+
 ## [0.9.1] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5 «Espressività narrativa» — verso 1.0.0)
 - **Interpolazione di testo dinamico** (`[Livello 5]`) — *prima patch del livello*.

@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.9.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.9.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -302,8 +302,16 @@ _GRAMMAR_TEMPLATE = r"""
               | "Ogni" NUMERO ( "turno" | "turni" ) ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_ogni
 
     // --- REGOLE (INVECE DI) ---
-    // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai nord").
-    def_regola: "Invece" "di" VERBO ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+    // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai
+    // nord"), con un eventuale secondo oggetto. [Livello 5] Il bersaglio è ora
+    // OPZIONALE: una regola senza bersaglio è GLOBALE, scatta sul solo verbo (con
+    // la sua condizione) — utile per verifiche su stati/contatori non legate a un
+    // oggetto (es. "Invece di guarda se il punteggio è almeno 3: ..."). Il
+    // bersaglio è incapsulato in 'regola_target' così, quando manca, l'unica
+    // stringa nuda residua è la risposta (il transformer non confonde i due str).
+    // Dopo VERBO il lookahead distingue nettamente ENTITA/DIREZIONE dal "se" o ":".
+    def_regola: "Invece" "di" VERBO regola_target? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+    regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
 
     // --- CONDIZIONI (logica booleana) ---
     // Precedenza: OR (più bassa) < AND < atomo. Parentesi per raggruppare.
@@ -510,6 +518,19 @@ def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
 # ==============================================================================
 # 2. IL TRANSFORMER DELL'AST
 # ==============================================================================
+
+class RegolaTarget:
+    """[Livello 5] Bersaglio di una regola 'Invece di', prodotto dalla sottoregola
+    'regola_target'. Incapsula l'oggetto bersaglio (grezzo) e l'eventuale secondo
+    oggetto con la sua preposizione. Esiste per distinguere — nel transformer di
+    def_regola — il bersaglio (ora opzionale) dalla stringa di risposta: senza
+    questo wrapper, con bersaglio assente, le due stringhe sarebbero confondibili."""
+    __slots__ = ("bersaglio", "preposizione", "secondario")
+
+    def __init__(self, bersaglio, preposizione=None, secondario=None):
+        self.bersaglio = bersaglio
+        self.preposizione = preposizione
+        self.secondario = secondario
 
 @v_args(inline=True) # Passa i figli dei nodi come argomenti singoli ai metodi
 class FavellaTransformer(Transformer):
@@ -896,46 +917,53 @@ class FavellaTransformer(Transformer):
 
     # --- La Regola Complessa ---
 
+    def regola_target(self, bersaglio, *resto):
+        # [Livello 5] Bersaglio della regola: (ENTITA|DIREZIONE) [PREP_AZIONE ENTITA].
+        # 'resto' contiene 0 o 2 elementi (preposizione + secondo oggetto).
+        prep = resto[0] if len(resto) >= 2 else None
+        secondario = resto[1] if len(resto) >= 2 else None
+        return RegolaTarget(bersaglio, prep, secondario)
+
     def def_regola(self, *args):
-        # args (ordine): verbo, ogg1, [prep, ogg2], [condizione], risposta, [conseguenza...]
-        # [v0.6.0] la condizione può essere composita (Condizione base/And/Or/Not)
-        # e le conseguenze possono essere più di una.
+        # args (ordine): verbo, [RegolaTarget], [condizione], risposta, [conseguenza...]
+        # [Livello 5] il bersaglio è opzionale (incapsulato in RegolaTarget): se
+        # assente, la regola è GLOBALE (scatta sul solo verbo). [v0.6.0] la
+        # condizione può essere composita e le conseguenze possono essere più di una.
         args_puliti = [a for a in args if a is not None]
 
         verbo = args_puliti[0]
-        ogg1_grezzo = args_puliti[1]
 
-        # Inizializza opzionali
-        prep_azione = None
-        ogg2_grezzo = None
+        # Estrai i componenti per tipo (l'ordine grammaticale è garantito).
+        target = None
         condizione = None
         risposta = ""
         conseguenze = []
+        for a in args_puliti[1:]:
+            if isinstance(a, RegolaTarget):
+                target = a
+            elif isinstance(a, Condizione):
+                condizione = a
+            elif isinstance(a, Conseguenza):
+                conseguenze.append(a)
+            elif isinstance(a, str):
+                risposta = a   # unica stringa nuda residua: la risposta
 
-        idx = 2
+        # --- Regola GLOBALE (senza bersaglio) ---
+        if target is None:
+            self._valida_conseguenze(conseguenze)
+            self.mondo.aggiungi_regola(Regola(
+                verbo=verbo,
+                id_oggetto_bersaglio=None,
+                risposta=risposta,
+                condizione=condizione,
+                conseguenze=conseguenze,
+            ))
+            return None
 
-        # Check per preposizione + secondo oggetto
-        if (idx + 1 < len(args_puliti)
-                and isinstance(args_puliti[idx], str)
-                and args_puliti[idx] in ("su", "con", "contro", "in")):
-            prep_azione = args_puliti[idx]
-            ogg2_grezzo = args_puliti[idx + 1]
-            idx += 2
-
-        # Check per condizione (qualsiasi sottotipo di Condizione, anche composito)
-        if idx < len(args_puliti) and isinstance(args_puliti[idx], Condizione):
-            condizione = args_puliti[idx]
-            idx += 1
-
-        # Stringa di risposta
-        if idx < len(args_puliti) and isinstance(args_puliti[idx], str):
-            risposta = args_puliti[idx]
-            idx += 1
-
-        # Conseguenze: zero o più, in coda
-        while idx < len(args_puliti) and isinstance(args_puliti[idx], Conseguenza):
-            conseguenze.append(args_puliti[idx])
-            idx += 1
+        # --- Regola con bersaglio (comportamento storico) ---
+        ogg1_grezzo = target.bersaglio
+        ogg2_grezzo = target.secondario
+        prep_azione = target.preposizione
 
         id_ogg1 = normalizza_nome(ogg1_grezzo)
         id_ogg2 = normalizza_nome(ogg2_grezzo) if ogg2_grezzo else None

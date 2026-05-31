@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.9.1)
+# Interprete Interattivo per FAVELLA 1 (v0.9.2)
 
 import sys
 import traceback
@@ -302,7 +302,24 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
-        
+
+        # FASE GLOBALE: Regole senza oggetto bersaglio (Livello 5). Scattano sul
+        # solo verbo, se la loro condizione è soddisfatta, quando nessuna regola
+        # specifica si è attivata. Valgono anche per le azioni che NON richiedono
+        # un oggetto (es. 'Invece di guarda se il punteggio è almeno 3: ...'), per
+        # cui le fasi 0–2 sopra non vengono nemmeno eseguite. Una regola specifica
+        # ha sempre la precedenza su una globale (questa fase viene dopo).
+        if not regola_applicata:
+            verbi_da_controllare = {verbo_giocatore, nome_azione}
+            for regola in mondo.regole:
+                if (regola.id_oggetto_bersaglio is None
+                        and regola.verbo in verbi_da_controllare):
+                    if regola.condizione is None or regola.condizione.valuta(mondo):
+                        print(rendi_testo(mondo, regola.risposta))
+                        regola_applicata = True
+                        regola_da_eseguire = regola
+                        break
+
         if regola_applicata:
             if regola_da_eseguire:
                 regola_da_eseguire.esegui_conseguenze(mondo)
