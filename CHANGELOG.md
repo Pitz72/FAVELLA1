@@ -4,6 +4,27 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.4] - 2026-05-31
+### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
+- **Opzioni di dialogo condizionali** (`[Livello 5b]`). Una scelta può essere
+  subordinata a una condizione e comparire **solo se è vera**:
+  - `Al nodo "saluto" l'opzione "Ecco la chiave!" se il giocatore ha la chiave
+    conduce al nodo "grazie".`
+  - Le condizioni sono quelle complete del linguaggio (possesso, proprietà, stati,
+    contatori, `e`/`oppure`/`non`). Una scelta non disponibile non viene mostrata
+    né numerata; la numerazione segue sempre le sole opzioni disponibili.
+- **Grammatica**: clausola `( "se" condizione )?` tra il testo dell'opzione e
+  l'esito in `def_opzione`. Dopo il testo, il lookahead `se` la distingue da
+  `conduce`/`chiude` → **LALR(1) 0-ambiguo**. Il transformer estrae per-tipo
+  condizione, esito e conseguenze (tutti opzionali e in qualsiasi combinazione).
+  Guardia anti-ambiguità estesa con un'opzione che combina `se` + `conduce` +
+  conseguenza nello stesso costrutto.
+- **Suite del linguaggio**: **287 asserzioni** (erano 281). Header core a **v1.0.4**.
+- Con questa patch il sistema di dialogo è **completo** (ramificazione +
+  conseguenze + condizioni): pronto per la release **v1.1.0**.
+
+---
+
 ## [1.0.3] - 2026-05-31
 ### Aggiunto (Roadmap Livello 5b «NPC e dialoghi ramificati» — verso 1.1.0)
 - **Conseguenze sulle scelte di dialogo** (`[Livello 5b]`). Un'opzione può ora

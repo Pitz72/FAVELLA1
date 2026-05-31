@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.3)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.4)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1183,7 +1183,7 @@ _CORPUS_GUARDIA = (
     "Il mercante è un personaggio.\nIl mercante è in cella.\n"
     'Il dialogo del mercante comincia con "saluto".\n'
     'Il mercante al nodo "saluto" dice "Benvenuto, hai [punteggio] punti!".\n'
-    'Al nodo "saluto" l\'opzione "Chi sei?" conduce al nodo "chi" e adesso aumenta il punteggio.\n'  # rami [1.0.2] + conseguenza [1.0.3]
+    'Al nodo "saluto" l\'opzione "Chi sei?" se il giocatore ha la chiave conduce al nodo "chi" e adesso aumenta il punteggio.\n'  # condizione [1.0.4] + rami [1.0.2] + conseguenza [1.0.3]
     'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
     'Il mercante al nodo "chi" dice "Un mercante.".\n'
     'Al nodo "chi" l\'opzione "Vinci!" chiude il dialogo e adesso vinci.\n'   # conseguenza di fine partita [1.0.3]
@@ -1818,6 +1818,57 @@ def test_conseguenza_scelta_fine_partita():
     _check(not mondo.in_dialogo(), "la conversazione è chiusa")
 
 
+# --- Test: LIVELLO 5b — opzioni condizionali (1.0.4) --------------------------
+
+_SRC_OPZCOND = (
+    "La piazza è una stanza.\n"
+    "Il mercante è un personaggio.\nIl mercante è in piazza.\n"
+    "La chiave è una cosa.\nLa chiave è in piazza.\nLa chiave è prendibile.\n"
+    'Il dialogo del mercante comincia con "saluto".\n'
+    'Il mercante al nodo "saluto" dice "Hai la chiave?".\n'
+    'Al nodo "saluto" l\'opzione "Ecco la chiave!" se il giocatore ha la chiave conduce al nodo "grazie".\n'
+    'Al nodo "saluto" l\'opzione "Non ancora." chiude il dialogo.\n'
+    'Il mercante al nodo "grazie" dice "Grazie!".\n'
+    'Al nodo "grazie" l\'opzione "Prego." chiude il dialogo.\n'
+)
+
+
+def test_opzione_condizionale_struttura():
+    print("[opzione condizionale: la condizione è registrata sull'opzione]")
+    mondo, _ = compila(_SRC_OPZCOND)
+    nodo = mondo.dialogo_nodi.get("saluto")
+    opz = next((o for o in nodo.opzioni if "Ecco" in o.testo), None)
+    _check(opz is not None and opz.condizione is not None,
+           "l'opzione 'Ecco la chiave!' ha una condizione")
+
+
+def test_opzione_condizionale_nascosta_se_falsa():
+    print("[opzione condizionale: nascosta finché la condizione è falsa]")
+    mondo = runtime(_SRC_OPZCOND)
+    out = esegui(mondo, "parla con mercante")   # senza chiave
+    _check("Ecco la chiave!" not in out, "l'opzione condizionata non appare")
+    _check("Non ancora." in out, "l'opzione incondizionata appare")
+
+
+def test_opzione_condizionale_visibile_se_vera():
+    print("[opzione condizionale: appare quando la condizione è vera]")
+    mondo = runtime(_SRC_OPZCOND)
+    esegui(mondo, "prendi chiave")
+    out = esegui(mondo, "parla con mercante")
+    _check("Ecco la chiave!" in out, "con la chiave l'opzione condizionata appare")
+    _check("1. Ecco la chiave!" in out, "ed è la prima opzione numerata")
+
+
+def test_opzione_condizionale_selezione_per_numero_coerente():
+    print("[opzione condizionale: la numerazione segue le opzioni disponibili]")
+    mondo = runtime(_SRC_OPZCOND)
+    esegui(mondo, "prendi chiave")
+    esegui(mondo, "parla con mercante")
+    out = esegui(mondo, "1")   # con chiave, 1 = "Ecco la chiave!" -> nodo "grazie"
+    _check("Grazie!" in out and mondo.nodo_dialogo == "grazie",
+           "scegliere 1 segue l'opzione condizionata disponibile")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -1955,6 +2006,11 @@ def main():
         test_conseguenza_scelta_struttura,
         test_conseguenza_scelta_modifica_mondo,
         test_conseguenza_scelta_fine_partita,
+        # Livello 5b — opzioni condizionali (1.0.4)
+        test_opzione_condizionale_struttura,
+        test_opzione_condizionale_nascosta_se_falsa,
+        test_opzione_condizionale_visibile_se_vera,
+        test_opzione_condizionale_selezione_per_numero_coerente,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -1962,7 +2018,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.3)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.4)")
     print("=" * 60)
     for t in tests:
         t()

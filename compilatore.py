@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.3)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.0.4)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -336,7 +336,10 @@ _GRAMMAR_TEMPLATE = r"""
     // "chiude" distingue le due alternative: LALR(1) 0-ambiguo.
     // [1.0.3] L'opzione può avere CONSEGUENZE in coda ('e adesso ...'), riusando
     // la stessa coda di regole ed eventi: scegliere cambia lo stato del mondo.
-    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO opzione_esito ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+    // [1.0.4] L'opzione può essere CONDIZIONALE ('se ...'): mostrata solo se la
+    // condizione è vera (porte chiuse, requisiti). Dopo il testo dell'opzione il
+    // lookahead "se" la distingue dall'esito ("conduce"/"chiude"): LALR(1) 0-ambiguo.
+    def_opzione: "Al" "nodo" TESTO_QUOTATO "l'" "opzione" TESTO_QUOTATO ( "se" condizione )? opzione_esito ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
     opzione_esito: "conduce" "al" "nodo" TESTO_QUOTATO -> esito_conduce
                  | "chiude" "il" "dialogo"             -> esito_chiude
 
@@ -709,19 +712,28 @@ class FavellaTransformer(Transformer):
         # Esito 'chiude il dialogo': termina la conversazione.
         return ("chiude", None)
 
-    def def_opzione(self, etichetta, testo_opzione, esito, *conseguenze):
-        # 'Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "presentazione".'
-        # oppure '... chiude il dialogo.', con eventuali conseguenze in coda
-        # ('e adesso ...'). L'esito è prodotto da opzione_esito; le conseguenze
-        # riusano la coda condivisa con regole ed eventi (validate come quelle).
-        tipo, destinazione = esito
-        conseguenze = list(conseguenze)
+    def def_opzione(self, etichetta, testo_opzione, *resto):
+        # 'Al nodo "saluto" l'opzione "Chi sei?" [se CONDIZIONE] ESITO [e adesso ...].'
+        # Gli argomenti opzionali si distinguono per TIPO: una Condizione [1.0.4],
+        # l'esito (tupla prodotta da opzione_esito) e le Conseguenze in coda [1.0.3].
+        condizione = None
+        esito = None
+        conseguenze = []
+        for a in resto:
+            if isinstance(a, Condizione):
+                condizione = a
+            elif isinstance(a, tuple):
+                esito = a              # ("conduce"|"chiude", destinazione)
+            elif isinstance(a, Conseguenza):
+                conseguenze.append(a)
         self._valida_conseguenze(conseguenze)
+        tipo, destinazione = esito
         if tipo == "chiude":
-            opz = OpzioneDialogo(testo_opzione, chiude=True, conseguenze=conseguenze)
+            opz = OpzioneDialogo(testo_opzione, chiude=True,
+                                 conseguenze=conseguenze, condizione=condizione)
         else:
             opz = OpzioneDialogo(testo_opzione, destinazione=destinazione,
-                                 conseguenze=conseguenze)
+                                 conseguenze=conseguenze, condizione=condizione)
         self.mondo.nodo_dialogo_di(etichetta).opzioni.append(opz)
         return None
 
