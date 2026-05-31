@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.7.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -11,6 +11,7 @@ from strutture import (
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
+    ConseguenzaFinePartita,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import normalizza_nome, normalizza_tipografia, ARTICOLI
@@ -53,6 +54,8 @@ PAROLE_RISERVATE = frozenset({
     "invece", "se", "dire", "e", "adesso", "oppure", "non", "ha",
     # proprietà opposte (Livello 3 / M5)
     "sono", "opposte",
+    # fine partita (Livello 3)
+    "vinci", "perdi", "termina",
     # preposizioni d'azione
     "su", "con", "contro",
     # direzioni (estese e abbreviate)
@@ -220,6 +223,9 @@ _GRAMMAR_TEMPLATE = r"""
     // gli pseudo-simboli "inventario"/"nulla" iniettati nella regex.
     ?conseguenza: ENTITA "è" PREP_LUOGO ENTITA -> cons_spostamento
                 | ENTITA "è" PROPRIETA          -> cons_proprieta
+                | "vinci"                        -> cons_vinci
+                | "perdi"                        -> cons_perdi
+                | "termina"                      -> cons_termina
 
     // --- TERMINALI LESSICALI ---
     PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
@@ -540,6 +546,16 @@ class FavellaTransformer(Transformer):
     def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
 
+    # Conseguenze di fine partita: nessun figlio (keyword nuda dopo 'e adesso').
+    def cons_vinci(self):
+        return ConseguenzaFinePartita("vinta")
+
+    def cons_perdi(self):
+        return ConseguenzaFinePartita("persa")
+
+    def cons_termina(self):
+        return ConseguenzaFinePartita("terminata")
+
     # --- La Regola Complessa ---
     
     def def_regola(self, *args):
@@ -591,10 +607,13 @@ class FavellaTransformer(Transformer):
             if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
                 self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
             else:
-                # Valida ogni conseguenza a compile-time
+                # Valida ogni conseguenza a compile-time. Non tutte agiscono su
+                # un oggetto (es. ConseguenzaFinePartita): validiamo l'oggetto
+                # solo per quelle che lo dichiarano.
                 for conseguenza in conseguenze:
-                    if not self.mondo.trova_oggetto(conseguenza.id_oggetto):
-                        self.errori.append(f"Oggetto inesistente nella conseguenza: '{conseguenza.id_oggetto}'")
+                    id_cons = getattr(conseguenza, "id_oggetto", None)
+                    if id_cons is not None and not self.mondo.trova_oggetto(id_cons):
+                        self.errori.append(f"Oggetto inesistente nella conseguenza: '{id_cons}'")
                     if isinstance(conseguenza, ConseguenzaSpostamento) and conseguenza.destinazione not in ["nulla", "inventario"]:
                         if not self.mondo.trova_stanza(conseguenza.destinazione):
                             self.errori.append(f"Luogo inesistente nella conseguenza: '{conseguenza.destinazione}'")

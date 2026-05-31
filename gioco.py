@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.5.0)
+# Interprete Interattivo per FAVELLA 1 (v0.7.2)
 
 import sys
 import traceback
@@ -76,6 +76,22 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
 
 PREPOSIZIONI = ["su", "con", "contro", "in"]
 
+
+def partita_finita(mondo: Mondo) -> bool:
+    """[Livello 3] Controlla lo stato della partita dopo l'esecuzione delle
+    conseguenze. Se una conseguenza di fine partita l'ha terminata, stampa
+    l'esito e restituisce True (il loop di gioco deve fermarsi)."""
+    stato = getattr(mondo, "stato_partita", "in_corso")
+    if stato == "in_corso":
+        return False
+    if stato == "vinta":
+        print("\n*** HAI VINTO! ***")
+    elif stato == "persa":
+        print("\n*** HAI PERSO. ***")
+    else:
+        print("\n*** La partita è terminata. ***")
+    return True
+
 def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     """
     Esegue un singolo comando di gioco.
@@ -147,6 +163,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             break
 
             if regola_movimento_applicata:
+                if partita_finita(mondo):
+                    return False
                 return True
 
             vecchia_posizione = mondo.posizione_giocatore
@@ -244,6 +262,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if regola_applicata:
             if regola_da_eseguire:
                 regola_da_eseguire.esegui_conseguenze(mondo)
+                if partita_finita(mondo):
+                    return False
             return True
 
         # 2. Esecuzione Logica di Default

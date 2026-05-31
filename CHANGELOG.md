@@ -4,6 +4,24 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.7.2] - 2026-05-31
+### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
+- **Condizioni di fine partita**: nuove conseguenze `vinci` / `perdi` / `termina`,
+  usabili in coda a una regola (`... dire "..." e adesso vinci.`). Impostano lo
+  stato globale della partita; il messaggio narrativo è quello della clausola
+  `dire`. Combinabili con altre conseguenze nella stessa regola
+  (es. `... e adesso la porta è aperta e adesso vinci.`).
+- `strutture.py`: nuova `ConseguenzaFinePartita` (esiti `vinta`/`persa`/`terminata`)
+  e `Mondo.stato_partita` (default `in_corso`).
+- `gioco.py`: il loop interattivo controlla `partita_finita(mondo)` dopo ogni
+  conseguenza e termina con il banner di esito. Header allineato a v0.7.2.
+- Grammatica: tre nuove alternative di `conseguenza`, parole riservate
+  `vinci`/`perdi`/`termina`. Validazione conseguenze resa robusta alle
+  conseguenze prive di oggetto. Guardia anti-ambiguità estesa (corpus con
+  `vinci`). Suite a **84 asserzioni** (era 72).
+
+---
+
 ## [0.7.1] - 2026-05-31
 ### Aggiunto (Roadmap Livello 3 — Stato di gioco e meccaniche, in lavorazione verso 0.8.0)
 - **Proprietà opposte dichiarabili** (generalizza la criticità `[M5]`): l'autore può

@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -358,6 +358,67 @@ def test_opposti_default_aperta_chiusa():
            "aprire rimuove 'chiusa' anche senza dichiarazione esplicita")
 
 
+# --- Test: condizioni di fine partita [Livello 3] ----------------------------
+
+def test_fine_partita_vinci():
+    print("[conseguenza di fine partita: vinci]")
+    src = (
+        "La cella è una stanza.\n"
+        "Un bottone è una cosa.\nIl bottone è in cella.\n"
+        'Invece di usa il bottone: dire "Si apre il portale!" e adesso vinci.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    cons = mondo.regole[0].conseguenze[0] if mondo and mondo.regole else None
+    _check(type(cons).__name__ == "ConseguenzaFinePartita", "la conseguenza è di fine partita")
+    _check(cons is not None and cons.esito == "vinta", "esito = vinta")
+    _check(mondo.stato_partita == "in_corso", "stato iniziale: in_corso")
+    cons.esegui(mondo)
+    _check(mondo.stato_partita == "vinta", "esegui imposta lo stato a 'vinta'")
+
+
+def test_fine_partita_perdi_termina():
+    print("[conseguenze di fine partita: perdi / termina]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una trappola è una cosa.\nLa trappola è in cella.\n"
+        'Invece di usa la trappola: dire "Scatta!" e adesso perdi.\n'
+        'Invece di esamina la trappola: dire "Basta così." e adesso termina.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    esiti = [r.conseguenze[0].esito for r in mondo.regole] if mondo else []
+    _check("persa" in esiti and "terminata" in esiti,
+           "gli esiti 'persa' e 'terminata' sono entrambi presenti")
+
+
+def test_fine_partita_con_altre_conseguenze():
+    print("[fine partita combinata con altre conseguenze nella stessa regola]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        "Una porta è una cosa.\nLa porta è in cella.\nLa porta è chiusa.\n"
+        'Invece di usa la leva su la porta: dire "Clack." '
+        'e adesso la porta è aperta e adesso vinci.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and len(mondo.regole[0].conseguenze) == 2,
+           "due conseguenze: cambio proprietà + vittoria")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check("aperta" in mondo.trova_oggetto("porta").proprieta, "la porta si è aperta")
+    _check(mondo.stato_partita == "vinta", "e la partita risulta vinta")
+
+
+def test_runtime_partita_finita_helper():
+    print("[runtime: il loop riconosce gli stati terminali]")
+    from gioco import partita_finita
+    from strutture import Mondo
+    m = Mondo()
+    _check(partita_finita(m) is False, "stato 'in_corso': la partita continua")
+    m.stato_partita = "vinta"
+    _check(partita_finita(m) is True, "stato 'vinta': la partita si ferma")
+
+
 # --- Test: Passata 1, scanner della symbol-table [Livello 2.5 / G1] ----------
 
 def test_scanner_raccoglie_stanze_e_oggetti():
@@ -434,7 +495,8 @@ _CORPUS_GUARDIA = (
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
     'Invece di apri la porta di ferro se la porta di ferro è chiusa e il '
-    'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta.\n'
+    'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta '
+    'e adesso vinci.\n'   # cons_vinci nel corpus della guardia [Livello 3]
     'Invece di usa la chiave su la porta di ferro se il giocatore non ha la '
     'chiave oppure la porta di ferro non è aperta: dire "No." '
     'e adesso la chiave è nel nulla.\n'
@@ -549,6 +611,11 @@ def main():
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
+        # Livello 3 — condizioni di fine partita
+        test_fine_partita_vinci,
+        test_fine_partita_perdi_termina,
+        test_fine_partita_con_altre_conseguenze,
+        test_runtime_partita_finita_helper,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,
@@ -566,7 +633,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.2)")
     print("=" * 60)
     for t in tests:
         t()

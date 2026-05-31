@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.1)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.2)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -75,6 +75,18 @@ class ConseguenzaProprieta(Conseguenza):
             # come default. Assegnare una proprietà rimuove tutte le sue opposte.
             for opposta in mondo.opposti.get(self.proprieta, ()):
                 oggetto.proprieta.discard(opposta)
+
+class ConseguenzaFinePartita(Conseguenza):
+    """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
+    'terminata'). Non agisce su un oggetto: si limita a impostare lo stato
+    globale del mondo, che il loop di gioco controlla dopo ogni comando."""
+    ESITI = ("vinta", "persa", "terminata")
+
+    def __init__(self, esito: str):
+        self.esito = esito
+
+    def esegui(self, mondo: 'Mondo'):
+        mondo.stato_partita = self.esito
 
 class ConseguenzaSpostamento(Conseguenza):
     """Rappresenta uno spostamento di un oggetto (es. verso l'inventario, una stanza o il nulla)."""
@@ -173,6 +185,10 @@ class Mondo:
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
         self.posizione_iniziale: str | None = None
         self.inventario: Set[str] = set()
+        # [Livello 3] Stato della partita: "in_corso" finché una conseguenza di
+        # fine partita non lo porta a "vinta"/"persa"/"terminata". Il loop di
+        # gioco lo controlla dopo ogni comando per fermarsi.
+        self.stato_partita: str = "in_corso"
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. La coppia
         # aperta↔chiusa è precaricata come default storico; l'autore può
@@ -222,7 +238,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.7.1):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.7.2):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Regole: {len(self.regole)}\n"
