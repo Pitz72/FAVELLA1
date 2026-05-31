@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.6.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -15,7 +15,9 @@ import os
 import tempfile
 import contextlib
 
-from compilatore import analizza_file
+from compilatore import (
+    analizza_file, costruisci_symbol_table, PAROLE_RISERVATE,
+)
 
 # --- Mini-framework minimale (niente pytest richiesto) -----------------------
 
@@ -314,6 +316,63 @@ def test_refuso_dentro_condizione_composita():
            "il refuso 'chuisa' viene rilevato anche dentro un AND")
 
 
+# --- Test: Passata 1, scanner della symbol-table [Livello 2.5 / G1] ----------
+
+def test_scanner_raccoglie_stanze_e_oggetti():
+    print("[scanner: raccoglie stanze e oggetti dichiarati]")
+    src = (
+        "La cella è una stanza.\n"
+        "Una chiave è una cosa.\n"
+        "La chiave è in cella.\n"        # posizione: NON introduce simboli
+        "La chiave è lucente.\n"         # proprietà: NON introduce simboli
+    )
+    tab = costruisci_symbol_table(src)
+    _check("cella" in tab.stanze, "la stanza 'cella' è nella symbol-table")
+    _check("chiave" in tab.oggetti, "l'oggetto 'chiave' è nella symbol-table")
+    _check("lucente" not in tab.tutti, "la proprietà 'lucente' NON è un simbolo")
+    _check(tab.tutti == {"cella", "chiave"}, "nessun simbolo spurio")
+
+
+def test_scanner_nomi_multiparola():
+    print("[scanner: nomi-entità multiparola]")
+    src = (
+        "La cella di contenimento è una stanza.\n"
+        "Una keycard magnetica è una cosa.\n"
+    )
+    tab = costruisci_symbol_table(src)
+    _check("cella di contenimento" in tab.stanze, "stanza multiparola raccolta intera")
+    _check("keycard magnetica" in tab.oggetti, "oggetto multiparola raccolto intero")
+
+
+def test_scanner_connessione_introduce_stanze():
+    print("[scanner: 'collega ... a ...' introduce entrambe le stanze]")
+    src = "Il corridoio collega sud a la cella di contenimento.\n"
+    tab = costruisci_symbol_table(src)
+    _check("corridoio" in tab.stanze, "stanza sorgente raccolta")
+    _check("cella di contenimento" in tab.stanze,
+           "stanza destinazione (con articolo) raccolta e normalizzata")
+
+
+def test_scanner_ignora_punti_nelle_stringhe():
+    print("[scanner: i punti dentro le stringhe non spezzano le frasi]")
+    src = (
+        "La cella è una stanza.\n"
+        'La descrizione della cella è "Bianca. Asettica. Fredda.".\n'
+        "Una porta è una cosa.\n"
+    )
+    tab = costruisci_symbol_table(src)
+    _check(tab.tutti == {"cella", "porta"},
+           "le frasi dentro le virgolette non generano falsi simboli")
+
+
+def test_parole_riservate_coprono_le_keyword():
+    print("[parole riservate: copertura delle keyword strutturali]")
+    attese = {"è", "una", "stanza", "cosa", "prendibile", "collega",
+              "invece", "se", "dire", "adesso", "oppure", "non", "ha"}
+    mancanti = attese - PAROLE_RISERVATE
+    _check(not mancanti, f"tutte le keyword chiave sono riservate (mancano: {mancanti})")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -337,10 +396,16 @@ def main():
         test_conseguenze_multiple,
         test_conseguenze_multiple_forma_breve,
         test_refuso_dentro_condizione_composita,
+        # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
+        test_scanner_raccoglie_stanze_e_oggetti,
+        test_scanner_nomi_multiparola,
+        test_scanner_connessione_introduce_stanze,
+        test_scanner_ignora_punti_nelle_stringhe,
+        test_parole_riservate_coprono_le_keyword,
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.6.1)")
     print("=" * 60)
     for t in tests:
         t()

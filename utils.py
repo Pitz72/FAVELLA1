@@ -3,6 +3,23 @@
 
 import re
 
+# Articoli italiani riconosciuti come prefisso opzionale dei nomi-entità.
+# Fonte unica: usata sia da normalizza_nome (rimozione) sia dalla grammatica
+# della Passata 2 (prefisso opzionale del terminale ENTITA).
+ARTICOLI = ["l'", "un'", "uno", "una", "il", "lo", "la", "i", "gli", "le", "un"]
+
+
+def normalizza_tipografia(testo: str) -> str:
+    """
+    Normalizza apostrofi e virgolette "curve" (tipici di copia-incolla da
+    editor di testo) nelle versioni dritte attese dalla grammatica [L2].
+    Idempotente: applicarla più volte non cambia il risultato.
+    """
+    return (testo
+            .replace('’', "'").replace('‘', "'")
+            .replace('“', '"').replace('”', '"'))
+
+
 def normalizza_nome(nome: str) -> str:
     """
     Prende una stringa grezza (es. "La Mela Rossa") e la normalizza in un ID
@@ -22,19 +39,14 @@ def normalizza_nome(nome: str) -> str:
     # 1. Converti in minuscolo
     nome_processato = nome.lower()
 
-    # 2. Rimuovi articoli
-    # Lista di articoli da rimuovere, inclusi quelli con apostrofo.
-    # L'ordine è importante per gestire "l'" prima di "il", "la", etc.
-    articoli = [
-        "l'", "un'", "uno ", "una ", "il ", "lo ", "la ",
-        "i ", "gli ", "le ", "un "
-    ]
-    
-    for articolo in articoli:
-        if nome_processato.startswith(articolo):
-            # Rimuove l'articolo e il relativo spazio/apostrofo
-            nome_processato = nome_processato[len(articolo):]
-            break # Trovato e rimosso l'articolo, esci dal ciclo
+    # 2. Rimuovi l'articolo iniziale. Gli articoli con apostrofo ("l'", "un'")
+    #    sono attaccati al nome; gli altri richiedono lo spazio separatore.
+    #    L'ordine di ARTICOLI gestisce "l'"/"un'" prima di "il"/"un".
+    for articolo in ARTICOLI:
+        prefisso = articolo if articolo.endswith("'") else articolo + " "
+        if nome_processato.startswith(prefisso):
+            nome_processato = nome_processato[len(prefisso):]
+            break  # Trovato e rimosso l'articolo, esci dal ciclo
 
     # 3. Rimuovi spazi bianchi extra ai lati
     nome_processato = nome_processato.strip()

@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.6.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.6.1)
 # Usa Lark per generare un AST (Abstract Syntax Tree) senza regex.
 
 import re
@@ -12,13 +12,129 @@ from strutture import (
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
 )
 from libreria_azioni import LIBRERIA_AZIONI
-from utils import normalizza_nome
+from utils import normalizza_nome, normalizza_tipografia, ARTICOLI
 import sys
 
 # Vocabolario chiuso dei verbi riconosciuti dal motore di gioco. Serve per
 # validare a compile-time i verbi delle regole "Invece di" (un verbo non in
 # questo insieme genera una regola morta che non si attiverà mai a runtime).
 VERBI_VALIDI = {verbo for azione in LIBRERIA_AZIONI.values() for verbo in azione.nomi}
+
+# ==============================================================================
+# 0. PAROLE RISERVATE E SCANNER DELLE DICHIARAZIONI (Passata 1) — Livello 2.5
+# ==============================================================================
+#
+# La disambiguazione strutturale (G1) si fonda su una compilazione a DUE PASSATE:
+#   Passata 1 (questo blocco): scansiona il sorgente e costruisce la SYMBOL TABLE
+#       di tutti i nomi-entità dichiarati (stanze e oggetti).
+#   Passata 2 (grammatica + transformer): le entità diventano token CHIUSI risolti
+#       per longest-match contro i simboli noti, eliminando alla radice l'ambiguità
+#       del vecchio `entita: WORD+` aperto.
+#
+# Questo blocco implementa la Passata 1 ed è, in v0.6.1, ISOLATO e unit-testato
+# ma NON ancora cablato nel parsing (che avverrà in v0.6.2).
+
+# Vocabolario STRUTTURALE del linguaggio: parole che la grammatica interpreta
+# come keyword e che pertanto NON possono costituire da sole un nome-entità.
+# (Documentato nel manuale autore; 'e'/'o' restano sia congiunzioni sia
+# abbreviazioni di direzione — quirk noto, vedi roadmap G4.)
+PAROLE_RISERVATE = frozenset({
+    # copula e definizioni base
+    "è", "una", "un", "uno", "stanza", "cosa", "prendibile",
+    # descrizione e relative preposizioni articolate
+    "la", "il", "lo", "i", "gli", "le", "l'", "un'",
+    "descrizione", "di", "del", "della", "dell'", "degli", "delle",
+    # preposizioni di luogo
+    "in", "nel", "nella", "negli", "nelle", "nell'",
+    "sul", "sulla", "sullo", "sui", "sugli", "sulle",
+    # connessioni e posizione iniziale del giocatore
+    "collega", "a", "giocatore", "comincia", "inizia", "parte",
+    # regole, condizioni, conseguenze
+    "invece", "se", "dire", "e", "adesso", "oppure", "non", "ha",
+    # preposizioni d'azione
+    "su", "con", "contro",
+    # direzioni (estese e abbreviate)
+    "nord", "sud", "est", "ovest", "n", "s", "o",
+    # destinazione speciale
+    "nulla",
+})
+
+
+class TabellaSimboli:
+    """Symbol table prodotta dalla Passata 1: i nomi-entità dichiarati nel
+    sorgente, già normalizzati (lowercase, senza articolo iniziale)."""
+
+    def __init__(self):
+        self.stanze = set()    # id normalizzati delle stanze
+        self.oggetti = set()   # id normalizzati degli oggetti
+
+    @property
+    def tutti(self):
+        """Tutti i nomi referenziabili (stanze ∪ oggetti)."""
+        return self.stanze | self.oggetti
+
+    def __repr__(self):
+        return f"TabellaSimboli(stanze={sorted(self.stanze)}, oggetti={sorted(self.oggetti)})"
+
+
+# Pattern delle SOLE forme dichiarative che introducono un nome-entità.
+# Tutto il resto (proprietà, posizione, descrizione, regole) si limita a
+# *referenziare* entità già dichiarate e quindi non popola la symbol table.
+_RE_DEF_STANZA = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+stanza$", re.IGNORECASE)
+_RE_DEF_OGGETTO = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+cosa$", re.IGNORECASE)
+# 'X collega <direzione> a Y' introduce (o conferma) due stanze.
+_RE_DEF_CONNESSIONE = re.compile(
+    r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
+# Stringhe quotate e commenti vanno rimossi prima di spezzare sui punti.
+_RE_QUOTATO = re.compile(r'"(\\.|[^"\\])*"')
+_RE_COMMENTO = re.compile(r"#[^\n]*")
+
+
+def costruisci_symbol_table(testo: str) -> TabellaSimboli:
+    """
+    PASSATA 1 — Scanner delle dichiarazioni.
+
+    Estrae dal sorgente .fav i nomi di tutte le stanze e gli oggetti DICHIARATI,
+    senza eseguire il parsing completo. È deliberatamente robusto e tollerante:
+    ignora il contenuto delle stringhe quotate e dei commenti, e considera solo
+    le tre forme che *introducono* un nome (`è una stanza`, `è una cosa`,
+    `collega ... a ...`).
+
+    Restituisce una TabellaSimboli con i nomi già normalizzati.
+    """
+    tab = TabellaSimboli()
+    if not testo:
+        return tab
+
+    # Normalizzazione tipografica + rimozione di stringhe e commenti, così i
+    # punti (".") interni a descrizioni o note non spezzino erroneamente le frasi.
+    pulito = normalizza_tipografia(testo)
+    pulito = _RE_QUOTATO.sub('""', pulito)
+    pulito = _RE_COMMENTO.sub("", pulito)
+
+    for frase in pulito.split("."):
+        frase = frase.strip()
+        if not frase:
+            continue
+
+        m = _RE_DEF_STANZA.match(frase)
+        if m:
+            tab.stanze.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_OGGETTO.match(frase)
+        if m:
+            tab.oggetti.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_CONNESSIONE.match(frase)
+        if m:
+            tab.stanze.add(normalizza_nome(m.group("x")))
+            tab.stanze.add(normalizza_nome(m.group("y")))
+            continue
+
+    return tab
+
 
 # ==============================================================================
 # 1. LA GRAMMATICA EBNF DI FAVELLA 1 (La Costituzione)
@@ -493,9 +609,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # 0. NORMALIZZAZIONE TIPOGRAFICA [L2]
         # Sostituisce apostrofi e virgolette "curve" (tipici di copia-incolla da
         # editor di testo) con le versioni dritte attese dalla grammatica.
-        testo = (testo
-                 .replace('’', "'").replace('‘', "'")
-                 .replace('“', '"').replace('”', '"'))
+        testo = normalizza_tipografia(testo)
 
         # 1. PARSING FORMALE (Testo -> AST)
         tree = parser.parse(testo)
