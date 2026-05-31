@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.1)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.8.2)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -426,6 +426,79 @@ def test_alias_su_non_oggetto_warning():
            "il log avvisa che l'alias non punta a un oggetto")
 
 
+# --- Test: verbi personalizzati [Livello 4 / M1] -----------------------------
+
+def test_verbo_personalizzato_dichiarazione():
+    print("[verbo personalizzato: dichiarazione e niente warning 'regola morta']")
+    src = (
+        "La cella è una stanza.\n"
+        "Una pietra è una cosa.\nLa pietra è in cella.\n"
+        '"spingi" è un comando.\n'
+        'Invece di spingi la pietra: dire "La pietra rotola via.".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and "spingi" in mondo.verbi_personalizzati,
+           "il verbo 'spingi' è registrato tra i verbi personalizzati")
+    _check("non si attiverà" not in log.lower(),
+           "una regola con verbo dichiarato NON è segnalata come morta")
+
+
+def test_verbo_personalizzato_runtime():
+    print("[verbo personalizzato: a runtime attiva la regola]")
+    from gioco import elabora_comando
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una pietra è una cosa.\nLa pietra è in cella.\n"
+        '"spingi" è un comando.\n'
+        'Invece di spingi la pietra: dire "La pietra rotola via.".\n'
+    )
+    mondo, _ = compila(src)
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    _check(mondo.mappa_verbi_giocatore.get("spingi") == "_personalizzata",
+           "il verbo custom è instradato all'azione generica")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        elabora_comando(mondo, "spingi pietra")
+    _check("rotola via" in buf.getvalue(),
+           "il comando custom attiva la regola e ne stampa la risposta")
+
+
+def test_verbo_personalizzato_senza_regola():
+    print("[verbo personalizzato: senza regola applicabile = messaggio neutro]")
+    from gioco import elabora_comando
+    from libreria_azioni import LIBRERIA_AZIONI
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Una pietra è una cosa.\nLa pietra è in cella.\n"
+        '"spingi" è un comando.\n'  # nessuna regola 'Invece di spingi ...'
+    )
+    mondo, _ = compila(src)
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        elabora_comando(mondo, "spingi pietra")
+    _check("Non succede nulla" in buf.getvalue(),
+           "un verbo custom senza regola stampa un messaggio neutro, non 'non capisco'")
+
+
+def test_verbo_personalizzato_multiparola_warning():
+    print("[verbo personalizzato: multiparola = warning, ignorato]")
+    src = (
+        "La cella è una stanza.\n"
+        '"dai un calcio" è un comando.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila comunque (warning non bloccante)")
+    _check(mondo and not mondo.verbi_personalizzati, "il comando multiparola non è registrato")
+    _check("multiparola" in log.lower(), "il log avvisa che il comando multiparola è ignorato")
+
+
 # --- Test: condizioni di fine partita [Livello 3] ----------------------------
 
 def test_fine_partita_vinci():
@@ -799,6 +872,8 @@ _CORPUS_GUARDIA = (
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
     'La chiave si chiama anche "chiavetta".\n'         # def_alias [Livello 4]
+    '"frusta" è un comando.\n'                          # def_verbo [Livello 4 / M1]
+    'Invece di frusta la chiave: dire "Schiocco.".\n'  # regola con verbo custom
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
     "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
@@ -925,6 +1000,11 @@ def main():
         test_alias_multiparola_quotato,
         test_alias_parziale,
         test_alias_su_non_oggetto_warning,
+        # Livello 4 — verbi personalizzati (M1)
+        test_verbo_personalizzato_dichiarazione,
+        test_verbo_personalizzato_runtime,
+        test_verbo_personalizzato_senza_regola,
+        test_verbo_personalizzato_multiparola_warning,
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
@@ -968,7 +1048,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.8.2)")
     print("=" * 60)
     for t in tests:
         t()

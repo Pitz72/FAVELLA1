@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.1)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.8.2)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -298,6 +298,11 @@ class Mondo:
         # del comando (vedi gioco.risolvi_nome_oggetto). Non sono token-ENTITA,
         # quindi non sono usabili nelle regole d'autore (lì vale il nome canonico).
         self.alias: Dict[str, str] = {}
+        # [Livello 4] Verbi personalizzati dichiarati dall'autore ('"spingi" è un
+        # comando.'). Sono parole-comando aggiuntive che il giocatore può digitare
+        # e usare nelle regole 'Invece di'; agiscono su un oggetto bersaglio come
+        # gli altri verbi. carica_azioni() li instrada a un'azione generica.
+        self.verbi_personalizzati: Set[str] = set()
 
     def dichiara_variabile(self, nome: str):
         """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
@@ -317,6 +322,10 @@ class Mondo:
         argomenti sono già normalizzati. L'ultimo che vince in caso di collisione."""
         self.alias[alias] = id_canonico
 
+    def dichiara_verbo(self, verbo: str):
+        """[Livello 4] Registra un verbo personalizzato (parola-comando)."""
+        self.verbi_personalizzati.add(verbo)
+
     def imposta_posizione_iniziale(self):
         """Imposta la posizione iniziale del giocatore.
 
@@ -334,6 +343,17 @@ class Mondo:
         for nome_azione, azione_obj in libreria.items():
             for verbo in azione_obj.nomi:
                 self.mappa_verbi_giocatore[verbo] = nome_azione
+
+        # [Livello 4] Instrada i verbi personalizzati a un'azione generica priva
+        # di logica di default (logica=None): il runtime, se nessuna regola
+        # 'Invece di' si attiva, stampa un messaggio neutro. setdefault: un verbo
+        # custom non scavalca mai un verbo della libreria standard.
+        if self.verbi_personalizzati:
+            self.azioni["_personalizzata"] = Azione(
+                nomi=sorted(self.verbi_personalizzati),
+                logica=None, richiede_oggetto=True)
+            for verbo in self.verbi_personalizzati:
+                self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata")
 
     def aggiungi_regola(self, regola: Regola):
         self.regole.append(regola)

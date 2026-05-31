@@ -4,6 +4,35 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.8.2] - 2026-05-31
+### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
+- **Verbi personalizzati** (`[M1]`): l'autore può introdurre nuove parole-comando
+  che il giocatore potrà digitare e usare nelle regole `Invece di`.
+  ```
+  "spingi" è un comando.
+  Invece di spingi la pietra: dire "La pietra rotola via.".
+  ```
+  Il verbo è una **stringa quotata** monoparola (coerente con gli alias: il
+  vocabolario nuovo si introduce tra virgolette). Una regola che usa un verbo
+  dichiarato non è più segnalata come "morta". A runtime il comando attiva la
+  regola corrispondente; se nessuna regola si applica, il motore risponde con un
+  messaggio neutro (`Non succede nulla di particolare.`) anziché "Non capisco
+  questo verbo.". Come gli altri verbi, un comando custom agisce su un oggetto.
+- `strutture.py`: `Mondo.verbi_personalizzati: Set[str]` + `dichiara_verbo()`;
+  `carica_azioni()` instrada i verbi custom a un'azione generica `_personalizzata`
+  (priva di logica di default; `setdefault` → non scavalca i verbi di libreria).
+- `compilatore.py`: regola `def_verbo` (`TESTO_QUOTATO "è" "un" "comando" "."`),
+  unica dichiarazione che inizia con `TESTO_QUOTATO` → 0 conflitti LALR; parola
+  riservata `comando`; un comando multiparola genera un *warning* ed è ignorato;
+  il check dei verbi delle regole ora accetta anche i verbi personalizzati.
+- `gioco.py`: un'azione con `logica_di_default is None` (verbo custom senza regola)
+  stampa il messaggio neutro; `_personalizzata` escluso dalla ristampa stanza.
+- `test_linguaggio.py`: quattro nuovi test (dichiarazione+niente warning, runtime
+  con regola, runtime senza regola, multiparola); corpus della guardia esteso con
+  un `def_verbo` e una regola che lo usa. Suite a **151 asserzioni** (era 142).
+
+---
+
 ## [0.8.1] - 2026-05-31
 ### Aggiunto (Roadmap Livello 4 — verso 0.9.0)
 - **Alias/sinonimi di oggetti**: l'autore può dare a un oggetto un nome

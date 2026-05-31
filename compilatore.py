@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.8.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.8.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -64,6 +64,8 @@ PAROLE_RISERVATE = frozenset({
     "sono", "opposte",
     # alias/sinonimi di oggetti (Livello 4)
     "si", "chiama", "anche",
+    # verbi personalizzati (Livello 4 / M1)
+    "comando",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # preposizioni d'azione
@@ -198,6 +200,7 @@ _GRAMMAR_TEMPLATE = r"""
 
     ?dichiarazione: def_stanza
                   | def_oggetto
+                  | def_verbo
                   | def_descrizione
                   | def_posizione
                   | def_proprieta
@@ -214,6 +217,11 @@ _GRAMMAR_TEMPLATE = r"""
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
     def_oggetto: ENTITA "è" "una" "cosa" "."
+    // [Livello 4 / M1] Verbo personalizzato. La parola-comando è quotata (come
+    // gli alias: vocabolario nuovo, non ancora un token noto), così non collide
+    // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
+    // inizia con TESTO_QUOTATO: LALR la distingue subito.
+    def_verbo: TESTO_QUOTATO "è" "un" "comando" "."
     def_descrizione: "La" "descrizione" ( "di" | "del" | "della" | "dell'" | "degli" | "delle" ) ENTITA "è" TESTO_QUOTATO "."
     def_posizione: ENTITA "è" PREP_LUOGO ENTITA "."
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
@@ -500,6 +508,23 @@ class FavellaTransformer(Transformer):
             oggetto = Oggetto(id_oggetto)
             oggetto.nome_visualizzato = nome_grezzo
             self.mondo.aggiungi_oggetto(oggetto)
+        return None
+
+    def def_verbo(self, testo_quotato):
+        # [Livello 4 / M1] '"spingi" è un comando.'. La parola-comando deve essere
+        # singola (il parser dei comandi a runtime tratta come verbo solo la prima
+        # parola digitata): un comando multiparola non sarebbe mai riconosciuto.
+        verbo = testo_quotato.strip().lower()
+        if not verbo:
+            self.warnings.append("Comando vuoto ignorato.")
+            return None
+        if " " in verbo:
+            self.warnings.append(
+                f"Comando personalizzato '{verbo}' multiparola ignorato: usa una "
+                f"sola parola (il giocatore digita un solo verbo)."
+            )
+            return None
+        self.mondo.dichiara_verbo(verbo)
         return None
 
     def def_descrizione(self, *tokens):
@@ -867,11 +892,12 @@ class FavellaTransformer(Transformer):
         # 2. [GG3] Il verbo di ogni regola deve appartenere al vocabolario noto,
         #    altrimenti la regola è "morta" (non si attiverà mai a runtime).
         for regola in m.regole:
-            if regola.verbo not in VERBI_VALIDI:
+            if regola.verbo not in VERBI_VALIDI and regola.verbo not in m.verbi_personalizzati:
                 self.warnings.append(
                     f"Verbo '{regola.verbo}' non riconosciuto in una regola "
                     f"'Invece di': la regola non si attiverà mai. Usa un verbo noto "
-                    f"al motore (es. usa, apri, prendi, esamina, mangia, sposta, vai)."
+                    f"al motore (es. usa, apri, prendi, esamina, mangia, sposta, vai) "
+                    f"oppure dichiaralo con '\"{regola.verbo}\" è un comando.'."
                 )
 
         # 3. [GG2] Una condizione 'se [oggetto] è [proprietà]' che controlla una

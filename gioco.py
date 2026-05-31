@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.8.1)
+# Interprete Interattivo per FAVELLA 1 (v0.8.2)
 
 import sys
 import traceback
@@ -315,7 +315,11 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             return True
 
         # 2. Esecuzione Logica di Default
-        if azione.richiede_oggetto:
+        if azione.logica_di_default is None:
+            # [Livello 4] Verbo personalizzato senza alcuna regola applicabile:
+            # non esiste una logica di default, quindi un messaggio neutro.
+            print("Non succede nulla di particolare.")
+        elif azione.richiede_oggetto:
             # Passiamo anche il secondo oggetto se presente (la logica dell'azione deve supportarlo)
             try:
                 azione.logica_di_default(mondo, id_oggetto1, id_oggetto2)
@@ -327,7 +331,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         
         # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario"]:
+        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata"]:
             mostra_stanza(mondo)
         
         return True
