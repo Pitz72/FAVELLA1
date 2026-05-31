@@ -4,6 +4,33 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.7.4] - 2026-05-31
+### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
+- **Contatori numerici** (completano `[G3]`), sulla stessa classe di simboli
+  degli stati (`VARIABILE`):
+  - dichiarazione: `Il punteggio è un contatore.` (valore iniziale 0)
+  - mutazioni: `e adesso aumenta il punteggio` (+1), `... aumenta il punteggio di 5`,
+    `... diminuisci il punteggio (di N)`, `... il punteggio diventa 10`
+  - confronti: `se il punteggio è almeno 3` (≥), `... è più di 2` (>),
+    `... è meno di 5` (<), `... è 0` (=)
+- `strutture.py`: `CondizioneContatore` (operatori `==`/`>=`/`>`/`<`),
+  `ConseguenzaContatore` (modi `aumenta`/`diminuisci`/`diventa`),
+  `Mondo.dichiara_contatore()`. `compilatore.py`: scanner `è un contatore`,
+  terminale `NUMERO` (priorità alta su `PROPRIETA`, che include le cifre),
+  regole `def_contatore`, `cond_contatore_*`, `cons_aumenta`/`cons_diminuisci`/
+  `cons_contatore_set`; parole riservate `contatore`/`almeno`/`più`/`meno`/
+  `aumenta`/`diminuisci`/`diventa`. I confronti dopo `VARIABILE è` si
+  distinguono dal valore-stato per il lookahead (NUMERO/`almeno`/`più`/`meno`
+  vs PROPRIETA) → nessuna ambiguità. Suite a **119 asserzioni** (era 102).
+
+> **Limite noto** (non risolto in questo livello): una regola `Invece di [verbo] …`
+> richiede sempre un **oggetto bersaglio**; non esistono ancora regole senza
+> oggetto del tipo `Invece di guarda se il punteggio è almeno 3: …`. Le verifiche
+> globali su contatori/stati vanno per ora agganciate a una regola su oggetto
+> (o agli eventi a turni, 0.7.5).
+
+---
+
 ## [0.7.3] - 2026-05-31
 ### Aggiunto (Roadmap Livello 3 — verso 0.8.0)
 - **Stato astratto del mondo** (criticità `[G3]`): gli **stati**, variabili globali

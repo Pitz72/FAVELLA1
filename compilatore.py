@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.7.3)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.7.4)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -10,8 +10,9 @@ from strutture import (
     Mondo, Stanza, Oggetto, Regola,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
+    CondizioneContatore,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
-    ConseguenzaFinePartita, ConseguenzaVariabile,
+    ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import normalizza_nome, normalizza_tipografia, ARTICOLI
@@ -44,6 +45,9 @@ PAROLE_RISERVATE = frozenset({
     "è", "una", "un", "uno", "stanza", "cosa", "prendibile",
     # stato astratto (Livello 3 / G3): 'X è uno stato.'
     "stato",
+    # contatori numerici (Livello 3 / G3): dichiarazione, confronti, mutazioni
+    "contatore", "almeno", "più", "meno",
+    "aumenta", "diminuisci", "diventa",
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
@@ -94,6 +98,8 @@ _RE_DEF_STANZA = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+stanza$", re.IGNORECAS
 _RE_DEF_OGGETTO = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+cosa$", re.IGNORECASE)
 # 'X è uno stato' introduce uno 'stato' (variabile globale del mondo). [Livello 3]
 _RE_DEF_FLAG = re.compile(r"^(?P<nome>.+?)\s+è\s+uno\s+stato$", re.IGNORECASE)
+# 'X è un contatore' introduce un contatore numerico. [Livello 3]
+_RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNORECASE)
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
@@ -140,6 +146,11 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
             continue
 
         m = _RE_DEF_FLAG.match(frase)
+        if m:
+            tab.variabili.add(normalizza_nome(m.group("nome")))
+            continue
+
+        m = _RE_DEF_CONTATORE.match(frase)
         if m:
             tab.variabili.add(normalizza_nome(m.group("nome")))
             continue
@@ -192,6 +203,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_giocatore
                   | def_stato
                   | def_stato_valore
+                  | def_contatore
 
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
@@ -214,6 +226,9 @@ _GRAMMAR_TEMPLATE = r"""
     // ENTITA: LALR distingue questi costrutti da quelli su oggetti al PRIMO token.
     def_stato: VARIABILE "è" "uno" "stato" "."
     def_stato_valore: VARIABILE "è" PROPRIETA "."
+    // Contatori numerici: 'X è un contatore.' (valore iniziale 0). Distinto da
+    // def_stato per il lookahead "un" vs "uno".
+    def_contatore: VARIABILE "è" "un" "contatore" "."
 
     // --- REGOLE (INVECE DI) ---
     // Il bersaglio del verbo può essere un'entità OPPURE una direzione (es. "vai nord").
@@ -235,6 +250,10 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_proprieta_neg
               | cond_variabile
               | cond_variabile_neg
+              | cond_contatore_eq
+              | cond_contatore_gte
+              | cond_contatore_gt
+              | cond_contatore_lt
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
     cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
@@ -244,6 +263,12 @@ _GRAMMAR_TEMPLATE = r"""
     // un oggetto (cond_proprieta), senza ambiguità.
     cond_variabile: VARIABILE "è" PROPRIETA
     cond_variabile_neg: VARIABILE "non" "è" PROPRIETA
+    // Confronti su contatore. Dopo 'VARIABILE è' il lookahead distingue:
+    // PROPRIETA (stato) | NUMERO (==) | "almeno"/"più"/"meno" (>=, >, <).
+    cond_contatore_eq: VARIABILE "è" NUMERO
+    cond_contatore_gte: VARIABILE "è" "almeno" NUMERO
+    cond_contatore_gt: VARIABILE "è" "più" "di" NUMERO
+    cond_contatore_lt: VARIABILE "è" "meno" "di" NUMERO
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
@@ -251,6 +276,9 @@ _GRAMMAR_TEMPLATE = r"""
     ?conseguenza: ENTITA "è" PREP_LUOGO ENTITA -> cons_spostamento
                 | ENTITA "è" PROPRIETA          -> cons_proprieta
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
+                | "aumenta" VARIABILE ( "di" NUMERO )?    -> cons_aumenta
+                | "diminuisci" VARIABILE ( "di" NUMERO )? -> cons_diminuisci
+                | VARIABILE "diventa" NUMERO     -> cons_contatore_set
                 | "vinci"                        -> cons_vinci
                 | "perdi"                        -> cons_perdi
                 | "termina"                      -> cons_termina
@@ -262,6 +290,10 @@ _GRAMMAR_TEMPLATE = r"""
 
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
+
+    // NUMERO: intero non negativo. Priorità ALTA: PROPRIETA include le cifre, ma
+    // un token tutto-cifre deve risolversi a NUMERO (per i contatori).
+    NUMERO.2: /[0-9]+/
 
     // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
     // costruisci_grammatica(). Il flag /i la rende case-insensitive.
@@ -415,6 +447,10 @@ class FavellaTransformer(Transformer):
         # normalizzazione a ID avviene nei metodi di regola.
         return token.value
 
+    def NUMERO(self, token):
+        # Intero dei contatori (Livello 3).
+        return int(token.value)
+
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
         contenuto = token.value[1:-1]
@@ -514,6 +550,11 @@ class FavellaTransformer(Transformer):
         self.mondo.variabili[nome] = normalizza_nome(valore_grezzo)
         return None
 
+    def def_contatore(self, var_grezzo):
+        # [Livello 3] Dichiarazione di un contatore numerico (valore iniziale 0).
+        self.mondo.dichiara_contatore(normalizza_nome(var_grezzo))
+        return None
+
     def def_opposti(self, prop_a_grezzo, prop_b_grezzo):
         # [Livello 3 / M5] Registra una coppia di proprietà mutuamente esclusive.
         # I nomi delle proprietà sono monoparola; li normalizziamo come gli altri
@@ -593,6 +634,18 @@ class FavellaTransformer(Transformer):
     def cond_variabile_neg(self, var_grezzo, valore_grezzo):
         return CondizioneNot(CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo)))
 
+    def cond_contatore_eq(self, var_grezzo, numero):
+        return CondizioneContatore(normalizza_nome(var_grezzo), "==", numero)
+
+    def cond_contatore_gte(self, var_grezzo, numero):
+        return CondizioneContatore(normalizza_nome(var_grezzo), ">=", numero)
+
+    def cond_contatore_gt(self, var_grezzo, numero):
+        return CondizioneContatore(normalizza_nome(var_grezzo), ">", numero)
+
+    def cond_contatore_lt(self, var_grezzo, numero):
+        return CondizioneContatore(normalizza_nome(var_grezzo), "<", numero)
+
     def make_and(self, *condizioni):
         return CondizioneAnd(list(condizioni))
 
@@ -613,6 +666,18 @@ class FavellaTransformer(Transformer):
 
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
+
+    def cons_aumenta(self, var_grezzo, *resto):
+        # resto: (NUMERO,) se è presente 'di N', altrimenti vuoto (delta = 1).
+        valore = resto[0] if resto else 1
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "aumenta", valore)
+
+    def cons_diminuisci(self, var_grezzo, *resto):
+        valore = resto[0] if resto else 1
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diminuisci", valore)
+
+    def cons_contatore_set(self, var_grezzo, numero):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diventa", numero)
 
     # Conseguenze di fine partita: nessun figlio (keyword nuda dopo 'e adesso').
     def cons_vinci(self):

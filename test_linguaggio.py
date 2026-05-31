@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.3)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.7.4)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -496,6 +496,81 @@ def test_stato_disgiunto_da_proprieta_oggetto():
            "l'AND oggetto-proprietà + stato-variabile valuta correttamente")
 
 
+def test_contatore_dichiarazione_default_zero():
+    print("[contatore: dichiarazione, default 0]")
+    src = "La cella è una stanza.\nIl punteggio è un contatore.\n"
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and mondo.variabili.get("punteggio") == 0, "il contatore parte da 0")
+
+
+def test_contatore_aumenta_diminuisci():
+    print("[contatore: aumenta/diminuisci, default 1 e 'di N']")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è un contatore.\n"
+        "Una moneta è una cosa.\nLa moneta è in cella.\n"
+        'Invece di prendi la moneta: dire "+1" e adesso aumenta il punteggio.\n'
+        'Invece di esamina la moneta: dire "+5" e adesso aumenta il punteggio di 5.\n'
+        'Invece di lascia la moneta: dire "-2" e adesso diminuisci il punteggio di 2.\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check(mondo.variabili["punteggio"] == 1, "aumenta senza 'di' = +1")
+    mondo.regole[1].esegui_conseguenze(mondo)
+    _check(mondo.variabili["punteggio"] == 6, "aumenta di 5 = +5 (totale 6)")
+    mondo.regole[2].esegui_conseguenze(mondo)
+    _check(mondo.variabili["punteggio"] == 4, "diminuisci di 2 = -2 (totale 4)")
+
+
+def test_contatore_diventa():
+    print("[contatore: 'diventa N' imposta il valore]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è un contatore.\n"
+        "Una leva è una cosa.\nLa leva è in cella.\n"
+        'Invece di usa la leva: dire "Reset." e adesso il punteggio diventa 10.\n'
+    )
+    mondo, _ = compila(src)
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check(mondo.variabili["punteggio"] == 10, "il contatore diventa 10")
+
+
+def test_contatore_confronti():
+    print("[contatore: confronti almeno / più di / meno di / uguaglianza]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il punteggio è un contatore.\n"
+        "Una guida è una cosa.\nLa guida è in cella.\n"
+        'Invece di esamina la guida se il punteggio è almeno 3: dire "ge3".\n'
+        'Invece di usa la guida se il punteggio è più di 2: dire "gt2".\n'
+        'Invece di apri la guida se il punteggio è meno di 5: dire "lt5".\n'
+        'Invece di prendi la guida se il punteggio è 0: dire "eq0".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila senza errori")
+    r_ge3, r_gt2, r_lt5, r_eq0 = (mondo.regole[0].condizione, mondo.regole[1].condizione,
+                                   mondo.regole[2].condizione, mondo.regole[3].condizione)
+    _check(type(r_ge3).__name__ == "CondizioneContatore", "condizione = CondizioneContatore")
+    # punteggio = 0
+    _check(r_ge3.valuta(mondo) is False, "almeno 3: falso a 0")
+    _check(r_lt5.valuta(mondo) is True, "meno di 5: vero a 0")
+    _check(r_eq0.valuta(mondo) is True, "uguale a 0: vero a 0")
+    mondo.variabili["punteggio"] = 3
+    _check(r_ge3.valuta(mondo) is True, "almeno 3: vero a 3")
+    _check(r_gt2.valuta(mondo) is True, "più di 2: vero a 3")
+    _check(r_eq0.valuta(mondo) is False, "uguale a 0: falso a 3")
+
+
+def test_scanner_raccoglie_contatori():
+    print("[scanner: 'X è un contatore' popola le variabili]")
+    src = "La cella è una stanza.\nIl bottino è un contatore.\n"
+    tab = costruisci_symbol_table(src)
+    _check("bottino" in tab.variabili, "il contatore 'bottino' è tra le variabili")
+    _check("bottino" not in tab.tutti, "il contatore NON è tra le entità")
+
+
 def test_scanner_raccoglie_variabili():
     print("[scanner: 'X è uno stato' popola le variabili, non le entità]")
     src = (
@@ -584,7 +659,10 @@ _CORPUS_GUARDIA = (
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
+    "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
+    'Invece di prendi la chiave se il punteggio è almeno 2: dire "Punti." '
+    'e adesso aumenta il punteggio di 3.\n'            # cond_contatore_gte + cons_aumenta
     'Invece di apri la porta di ferro se la porta di ferro è chiusa e il '
     'giocatore ha la chiave: dire "Click." e adesso la porta di ferro è aperta '
     'e adesso vinci.\n'   # cons_vinci nel corpus della guardia [Livello 3]
@@ -714,6 +792,12 @@ def main():
         test_stato_condizione_negata,
         test_stato_disgiunto_da_proprieta_oggetto,
         test_scanner_raccoglie_variabili,
+        # Livello 3 — contatori numerici
+        test_contatore_dichiarazione_default_zero,
+        test_contatore_aumenta_diminuisci,
+        test_contatore_diventa,
+        test_contatore_confronti,
+        test_scanner_raccoglie_contatori,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,
@@ -731,7 +815,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.3)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.7.4)")
     print("=" * 60)
     for t in tests:
         t()

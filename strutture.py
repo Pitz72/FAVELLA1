@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.3)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.7.4)
 from typing import Callable, List, Dict, Set, Optional
 
 class Mondo: # Forward declaration per i type hint
@@ -40,6 +40,29 @@ class CondizioneVariabile(Condizione):
 
     def valuta(self, mondo: 'Mondo') -> bool:
         return mondo.variabili.get(self.nome) == self.valore
+
+class CondizioneContatore(Condizione):
+    """[Livello 3] Confronto numerico su un contatore: 'se [contatore] è almeno
+    N', '... è più di N', '... è meno di N', '... è N' (uguaglianza).
+    Un contatore vale 0 di default; un valore non numerico è trattato come 0."""
+    def __init__(self, nome: str, operatore: str, valore: int):
+        self.nome = nome
+        self.operatore = operatore   # uno di: '==', '>=', '>', '<'
+        self.valore = valore
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        v = mondo.variabili.get(self.nome)
+        if not isinstance(v, int):
+            v = 0
+        if self.operatore == "==":
+            return v == self.valore
+        if self.operatore == ">=":
+            return v >= self.valore
+        if self.operatore == ">":
+            return v > self.valore
+        if self.operatore == "<":
+            return v < self.valore
+        return False
 
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
@@ -97,6 +120,25 @@ class ConseguenzaVariabile(Conseguenza):
 
     def esegui(self, mondo: 'Mondo'):
         mondo.variabili[self.nome] = self.valore
+
+class ConseguenzaContatore(Conseguenza):
+    """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
+    (di N)', 'X diventa N'. Il delta predefinito di aumenta/diminuisci è 1."""
+    def __init__(self, nome: str, modo: str, valore: int = 1):
+        self.nome = nome
+        self.modo = modo   # uno di: 'aumenta', 'diminuisci', 'diventa'
+        self.valore = valore
+
+    def esegui(self, mondo: 'Mondo'):
+        attuale = mondo.variabili.get(self.nome)
+        if not isinstance(attuale, int):
+            attuale = 0
+        if self.modo == "aumenta":
+            mondo.variabili[self.nome] = attuale + self.valore
+        elif self.modo == "diminuisci":
+            mondo.variabili[self.nome] = attuale - self.valore
+        else:  # diventa
+            mondo.variabili[self.nome] = self.valore
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -228,6 +270,10 @@ class Mondo:
         """Dichiara uno 'stato' globale (valore iniziale None se non già presente)."""
         self.variabili.setdefault(nome, None)
 
+    def dichiara_contatore(self, nome: str):
+        """Dichiara un contatore numerico (valore iniziale 0 se non già presente)."""
+        self.variabili.setdefault(nome, 0)
+
     def dichiara_opposte(self, prop_a: str, prop_b: str):
         """Registra che due proprietà sono opposte (relazione simmetrica)."""
         self.opposti.setdefault(prop_a, set()).add(prop_b)
@@ -268,7 +314,7 @@ class Mondo:
 
     def __str__(self) -> str:
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.7.3):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.7.4):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Stati: {len(self.variabili)}\n"
