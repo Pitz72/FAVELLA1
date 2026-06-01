@@ -4,6 +4,7 @@ import { useStudio } from './store'
 import Explorer from './components/Explorer'
 import TabBar from './components/TabBar'
 import EditorPane from './components/EditorPane'
+import ProblemsPanel from './components/ProblemsPanel'
 import StatusBar from './components/StatusBar'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
@@ -18,6 +19,12 @@ export default function App(): JSX.Element {
   const saveActive = useStudio((s) => s.saveActive)
   const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
+  const compileActive = useStudio((s) => s.compileActive)
+  const activePath = useStudio((s) => s.activePath)
+  const activeContent = useStudio((s) =>
+    s.openFiles.find((f) => f.path === s.activePath)?.content
+  )
+  const sidecarStatus = useStudio((s) => s.sidecarStatus)
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const pushToast = useCallback((text: string) => {
@@ -56,6 +63,16 @@ export default function App(): JSX.Element {
     return unsub
   }, [loadLexicon, pushToast, setSidecarStatus])
 
+  // Auto-compile (Fase 2): compila il buffer attivo all'apertura, a ogni modifica
+  // (debounced) e quando il motore diventa pronto. Diagnostica sempre fresca senza
+  // bisogno di salvare; gli Includi sono risolti dal disco.
+  useEffect(() => {
+    if (!activePath || !activePath.toLowerCase().endsWith('.fav')) return
+    if (sidecarStatus !== 'ready') return
+    const t = setTimeout(() => void compileActive(), 600)
+    return () => clearTimeout(t)
+  }, [activePath, activeContent, sidecarStatus, compileActive])
+
   // Scorciatoie globali: Ctrl+S salva il file attivo, Ctrl+Shift+S salva tutto.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -77,7 +94,7 @@ export default function App(): JSX.Element {
     <div className="app">
       <header className="titlebar">
         <span className="logo">✦ Favella Studio</span>
-        <span className="titlebar-hint">Fase 1 · Editor</span>
+        <span className="titlebar-hint">Fase 2 · Compile &amp; diagnostica</span>
       </header>
 
       <div className="workbench">
@@ -87,6 +104,7 @@ export default function App(): JSX.Element {
           <div className="editor-host">
             <EditorPane />
           </div>
+          <ProblemsPanel />
         </main>
       </div>
 

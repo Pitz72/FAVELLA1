@@ -1696,6 +1696,230 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         print(f"[ERRORE INTERNO] Crash durante la compilazione: {ex}")
         return None
 
+
+# ==============================================================================
+# COMPILAZIONE STRUTTURATA PER L'IDE (Favella Studio — Fase 2)
+# ------------------------------------------------------------------------------
+# Tutto ciò che segue è ADDITIVO: non tocca analizza_file (che resta byte-stabile
+# per il motore, la CLI e i 321 test). Rispecchia la stessa pipeline ma RACCOGLIE
+# le diagnostiche in una struttura dati con posizioni (file, riga, colonna) invece
+# di stamparle, così l'IDE può popolare il pannello Problemi e i marker di Monaco.
+# ==============================================================================
+
+def _espandi_inclusioni_seedable(percorso_radice, sorgente_radice=None):
+    """[Favella Studio / Fase 2] Variante di espandi_inclusioni che può partire da
+    un sorgente IN MEMORIA per il file radice (così l'IDE compila il buffer non
+    ancora salvato), risolvendo gli 'Includi' dal disco. È una COPIA DELIBERATA e
+    parallela di espandi_inclusioni: l'originale resta byte-stabile per il motore e
+    i test, questa vive solo nel percorso additivo dell'IDE. Stessa firma di
+    ritorno: (testo_espanso, mappa_righe, errori). Se sorgente_radice è None il
+    comportamento coincide con espandi_inclusioni."""
+    righe_out = []
+    mappa = []
+    errori = []
+    gia_inclusi = set()
+
+    def _espandi(percorso, catena, is_root, seed=None):
+        real = os.path.realpath(percorso)
+        if real in catena:
+            nomi = " -> ".join(os.path.basename(p) for p in catena + [real])
+            errori.append(f"Ciclo di inclusione rilevato: {nomi}.")
+            return
+        if real in gia_inclusi:
+            return
+        if seed is not None:
+            testo = normalizza_tipografia(seed)
+        else:
+            try:
+                with open(percorso, "r", encoding="utf-8") as f:
+                    testo = normalizza_tipografia(f.read())
+            except FileNotFoundError:
+                if is_root:
+                    raise
+                errori.append(f"File incluso non trovato: '{percorso}'.")
+                return
+        gia_inclusi.add(real)
+        base = os.path.dirname(os.path.abspath(percorso))
+        dentro_stringa = False
+        for n, linea in enumerate(testo.split("\n"), 1):
+            if not dentro_stringa:
+                m = _RE_INCLUDI.match(linea)
+                if m:
+                    _espandi(os.path.join(base, m.group(1)), catena + [real], False)
+                    continue
+            righe_out.append(linea)
+            mappa.append((percorso, n))
+            dentro_stringa = _aggiorna_stato_stringa(linea, dentro_stringa)
+
+    _espandi(percorso_radice, [], True, seed=sorgente_radice)
+    return "\n".join(righe_out), mappa, errori
+
+
+def _riassunto_mondo(mondo):
+    """Riassunto leggero e read-only del Mondo compilato, per l'IDE. In Fase 2
+    servono solo conteggi e nomi (la mappa/inspector completi arrivano in Fase 4).
+    Tutto via getattr difensivo: non deve mai sollevare."""
+    def _nomi(dizio):
+        return [getattr(v, "nome_visualizzato", k) for k, v in dizio.items()]
+    return {
+        "rooms": _nomi(getattr(mondo, "stanze", {})),
+        "objects": _nomi(getattr(mondo, "oggetti", {})),
+        "rulesCount": len(getattr(mondo, "regole", [])),
+        "eventsCount": len(getattr(mondo, "eventi", [])),
+        "variables": sorted(getattr(mondo, "variabili", {}).keys()),
+        "dialogueNodes": len(getattr(mondo, "dialogo_nodi", {})),
+        "start": getattr(mondo, "posizione_iniziale", None),
+    }
+
+
+def analizza_file_strutturato(percorso_file, sorgente=None):
+    """[Favella Studio / Fase 2] Compila come analizza_file ma RACCOGLIE le
+    diagnostiche in una struttura dati invece di stamparle, per l'IDE. Additiva:
+    analizza_file resta intatta. Se 'sorgente' è dato, compila quel testo come
+    radice (buffer live non salvato), risolvendo gli 'Includi' dal disco.
+
+    Ritorna un dict serializzabile in JSON:
+        {ok: bool, errors: [diag...], warnings: [diag...], worldSummary: dict|None}
+    dove diag = {message, file, line, col, severity, code, imprecise}.
+
+    Posizioni sintattiche: PRECISE — la riga del sorgente espanso è rimappata al
+    (file, riga) originale tramite la source map dell'espansione degli Includi.
+    Posizioni semantiche: BEST-EFFORT — gli errori del transformer sono stringhe
+    senza riga; si cerca il nome citato (tra apici/«») nel sorgente e si mappa la
+    prima occorrenza. Se non si trova, posizione `imprecise` sul file radice.
+    """
+    errors = []
+    warnings = []
+    testo = ""
+    mappa_righe = []
+    simboli = None
+
+    def _diag(message, *, file=None, line=None, col=None,
+              severity="error", code="", imprecise=False):
+        return {
+            "message": message,
+            "file": file if file is not None else percorso_file,
+            "line": line,
+            "col": col,
+            "severity": severity,
+            "code": code,
+            "imprecise": imprecise,
+        }
+
+    def _posizione_da_linea_espansa(linea_espansa):
+        """(file, riga originale) dalla source map; fallback al file radice."""
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            f_o, r_o = mappa_righe[linea_espansa - 1]
+            return f_o, r_o
+        return percorso_file, linea_espansa
+
+    def _risolvi_semantica(messaggio):
+        """Best-effort: estrai i nomi citati nel messaggio, cercali nel sorgente
+        espanso, mappa la prima occorrenza a (file, riga, imprecise=False). Se
+        nulla combacia: (file radice, 1, imprecise=True)."""
+        citati = re.findall(r"'([^']+)'|«([^»]+)»|\"([^\"]+)\"", messaggio)
+        nomi = [n for tup in citati for n in tup if n]
+        righe = testo.split("\n")
+        for nome in nomi:
+            ago = nome.lower()
+            for i, linea in enumerate(righe, 1):
+                if ago in linea.lower():
+                    f_o, r_o = _posizione_da_linea_espansa(i)
+                    return f_o, r_o, False
+        return percorso_file, 1, True
+
+    try:
+        # PASSATA 0 — espansione Includi (da disco o da buffer in memoria).
+        if sorgente is not None:
+            testo, mappa_righe, inc_errori = _espandi_inclusioni_seedable(
+                percorso_file, sorgente)
+        else:
+            testo, mappa_righe, inc_errori = espandi_inclusioni(percorso_file)
+        if inc_errori:
+            for err in inc_errori:
+                errors.append(_diag(err, line=1, col=1, code="includi", imprecise=True))
+            return {"ok": False, "errors": errors, "warnings": warnings,
+                    "worldSummary": None}
+
+        if not testo.strip():
+            return {"ok": True, "errors": [], "warnings": [],
+                    "worldSummary": _riassunto_mondo(Mondo())}
+
+        # PASSATA 1 — symbol-table + validazione direzioni.
+        simboli = costruisci_symbol_table(testo)
+        coppie_dir, nomi_dir, dir_errori = valida_direzioni_dichiarate(
+            simboli.coppie_direzioni, simboli)
+        if dir_errori:
+            for err in dir_errori:
+                f_o, r_o, imp = _risolvi_semantica(err)
+                errors.append(_diag(err, file=f_o, line=r_o, col=1,
+                                    code="direzioni", imprecise=imp))
+            return {"ok": False, "errors": errors, "warnings": warnings,
+                    "worldSummary": None}
+
+        # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir)
+        tree = parser.parse(testo)
+        transformer = FavellaTransformer(coppie_dir)
+        transformer.transform(tree)
+        transformer.valida_post()  # include il linter (analisi_statica)
+
+        for msg in transformer.errori:
+            f_o, r_o, imp = _risolvi_semantica(msg)
+            errors.append(_diag(msg, file=f_o, line=r_o, col=1,
+                                severity="error", code="semantica", imprecise=imp))
+        for msg in transformer.warnings:
+            f_o, r_o, imp = _risolvi_semantica(msg)
+            warnings.append(_diag(msg, file=f_o, line=r_o, col=1,
+                                  severity="warning", code="lint", imprecise=imp))
+
+        ok = not errors
+        return {
+            "ok": ok,
+            "errors": errors,
+            "warnings": warnings,
+            "worldSummary": _riassunto_mondo(transformer.mondo) if ok else None,
+        }
+
+    except UnexpectedInput as e:
+        # Errore sintattico: posizione PRECISA via source map. Prima prova la
+        # diagnosi mirata "entità sconosciuta" (come fa analizza_file).
+        diagnosi = diagnostica_entita_sconosciuta(testo, e, simboli) if simboli else None
+        f_o, r_o = _posizione_da_linea_espansa(getattr(e, "line", None))
+        col = getattr(e, "column", 1) or 1
+        if diagnosi:
+            errors.append(_diag(diagnosi, file=f_o, line=r_o, col=col,
+                                code="entita-sconosciuta"))
+        else:
+            contesto = ""
+            try:
+                contesto = e.get_context(testo, span=40).strip()
+            except Exception:
+                pass
+            attesi = getattr(e, "expected", None)
+            msg = "Errore di sintassi."
+            if attesi:
+                msg += f" Mi aspettavo: {', '.join(sorted(str(a) for a in attesi))}."
+            if contesto:
+                msg += f"\n{contesto}"
+            errors.append(_diag(msg, file=f_o, line=r_o, col=col, code="sintassi"))
+        return {"ok": False, "errors": errors, "warnings": warnings,
+                "worldSummary": None}
+
+    except FileNotFoundError:
+        errors.append(_diag(f"File non trovato: '{percorso_file}'.",
+                            line=1, col=1, code="file-mancante", imprecise=True))
+        return {"ok": False, "errors": errors, "warnings": warnings,
+                "worldSummary": None}
+
+    except Exception as ex:
+        errors.append(_diag(f"Errore interno del compilatore: {type(ex).__name__}: {ex}",
+                            line=1, col=1, code="interno", imprecise=True))
+        return {"ok": False, "errors": errors, "warnings": warnings,
+                "worldSummary": None}
+
+
 def main():
     print("FAVELLA 1 COMPILER TEST")
     if len(sys.argv) > 1:

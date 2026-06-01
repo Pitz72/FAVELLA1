@@ -3,7 +3,8 @@ import type {
   EngineEvent,
   SidecarStatus,
   FileNode,
-  OpenedProject
+  OpenedProject,
+  CompileResult
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -20,6 +21,14 @@ const api = {
   /** Forza un riavvio del sidecar. */
   restartSidecar(): Promise<void> {
     return ipcRenderer.invoke('sidecar:restart')
+  },
+  /**
+   * Compila un file .fav e restituisce diagnostiche strutturate (Fase 2).
+   * Se `source` è dato, compila il buffer live invece del contenuto su disco
+   * (gli Includi sono comunque risolti dal disco rispetto alla cartella di `path`).
+   */
+  compile(path: string, source?: string): Promise<CompileResult> {
+    return ipcRenderer.invoke('rpc', 'compile', { path, source })
   },
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */
   onEngineEvent(callback: (event: EngineEvent) => void): () => void {

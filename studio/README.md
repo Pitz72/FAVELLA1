@@ -51,7 +51,9 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       `engine.version`, `engine.lexicon`; supervisione e riavvio del sidecar.
 - [x] **Fase 1 — Editor**: Monaco (offline) con lingua `favella` (Monarch da `engine.lexicon`),
       Project Explorer, schede file con dirty-state e salvataggio (Ctrl+S), barra di stato.
-- [ ] Fase 2 — Compile & diagnostica inline
+- [x] **Fase 2 — Compile & diagnostica**: RPC `compile` + `analizza_file_strutturato`
+      (additiva), pannello Problemi con salto a riga, marker inline in Monaco,
+      auto-compile del buffer live (debounce) e `Ctrl+B`.
 - [ ] Fase 3 — Console di gioco
 - [ ] Fase 4 — Mappa del mondo + inspector di stato
 - [ ] Fase 5 — Debugger passo-passo

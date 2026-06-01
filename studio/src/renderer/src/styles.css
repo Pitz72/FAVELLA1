@@ -277,6 +277,127 @@ body {
   opacity: 0.5;
 }
 
+/* --- Pannello Problemi (Fase 2) --- */
+.problems {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 190px;
+  max-height: 45%;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  min-height: 0;
+}
+
+.problems .panel-header {
+  justify-content: space-between;
+}
+
+.problems-file {
+  color: var(--fav);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.problems-counts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.problems-compiling {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.count-err {
+  color: #f07178;
+}
+
+.count-warn {
+  color: var(--fav);
+}
+
+.count-zero {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.problems-list {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.problems-empty {
+  padding: 18px;
+  color: var(--text-dim);
+  text-align: center;
+  font-style: italic;
+}
+
+.problem-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 12px;
+  border-bottom: 1px solid #2a2a31;
+  white-space: nowrap;
+}
+
+.problem-row.clickable {
+  cursor: pointer;
+}
+
+.problem-row.clickable:hover {
+  background: var(--bg-elev2);
+}
+
+.problem-row.imprecise {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.problem-icon {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.problem-icon.error {
+  color: #f07178;
+}
+
+.problem-icon.warning {
+  color: var(--fav);
+}
+
+.problem-msg {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.problem-loc {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.problem-code {
+  flex: 0 0 auto;
+  background: var(--bg-elev2);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 /* --- Status bar --- */
 .statusbar {
   flex: 0 0 auto;

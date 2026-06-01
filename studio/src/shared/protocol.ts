@@ -56,6 +56,38 @@ export type EngineEvent =
 
 export type SidecarStatus = 'starting' | 'ready' | 'crashed' | 'restarting' | 'stopped'
 
+// --- Compile & diagnostica (Fase 2) ---
+
+export type Severity = 'error' | 'warning'
+
+export interface Diagnostic {
+  message: string
+  file: string
+  line: number | null
+  col: number | null
+  severity: Severity
+  code: string
+  // Posizione best-effort (semantica senza riga certa): niente salto preciso.
+  imprecise: boolean
+}
+
+export interface WorldSummary {
+  rooms: string[]
+  objects: string[]
+  rulesCount: number
+  eventsCount: number
+  variables: string[]
+  dialogueNodes: number
+  start: string | null
+}
+
+export interface CompileResult {
+  ok: boolean
+  errors: Diagnostic[]
+  warnings: Diagnostic[]
+  worldSummary: WorldSummary | null
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

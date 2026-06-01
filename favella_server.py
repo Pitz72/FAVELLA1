@@ -35,7 +35,8 @@ except Exception:
 # comunque al protocollo con un errore diagnostico invece di morire muto.
 _ENGINE_IMPORT_ERROR = None
 try:
-    from compilatore import analizza_file, VERBI_VALIDI, PAROLE_RISERVATE
+    from compilatore import (analizza_file, analizza_file_strutturato,
+                             VERBI_VALIDI, PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
@@ -45,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.12.1"
-VERSIONE_SIDECAR = "0.1.0"  # Favella Studio — Fase 0
+VERSIONE_SIDECAR = "0.3.0"  # Favella Studio — Fase 2 (compile & diagnostica)
 
 
 # ==============================================================================
@@ -89,11 +90,25 @@ def rpc_engine_lexicon(_params):
     }
 
 
-# Tabella di dispatch. Le fasi successive aggiungono qui compile/session.*/world.*
+def rpc_compile(params):
+    """[Fase 2] Compila un file .fav e restituisce diagnostiche strutturate per
+    l'IDE. 'path' è il file radice; 'source' (opzionale) è il buffer live non
+    ancora salvato — se presente, si compila quel testo e gli 'Includi' sono
+    risolti dal disco relativamente alla cartella di 'path'. La cattura di stdout
+    del dispatcher protegge comunque il canale di protocollo."""
+    percorso = params.get("path")
+    if not percorso:
+        raise ValueError("Parametro 'path' mancante per 'compile'.")
+    sorgente = params.get("source")  # None ⇒ legge da disco
+    return analizza_file_strutturato(percorso, sorgente=sorgente)
+
+
+# Tabella di dispatch. Le fasi successive aggiungono qui session.*/world.*
 _METODI = {
     "ping": rpc_ping,
     "engine.version": rpc_engine_version,
     "engine.lexicon": rpc_engine_lexicon,
+    "compile": rpc_compile,
 }
 
 

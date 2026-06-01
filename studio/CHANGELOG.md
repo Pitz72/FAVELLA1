@@ -4,6 +4,32 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.3.0] — 2026-06-01 — Fase 2: Compile & diagnostica
+
+### Aggiunto
+- **Compilazione strutturata** del motore esposta all'IDE: nuova funzione additiva
+  `analizza_file_strutturato(percorso, sorgente=None)` in `compilatore.py` che
+  rispecchia la pipeline di `analizza_file` (espansione `Includi` → symbol table →
+  parser LALR → transformer → validazione + linter) ma **raccoglie** le diagnostiche
+  invece di stamparle. `analizza_file` resta byte-stabile (321 test invariati).
+- **RPC `compile`** nel sidecar (`favella_server.py`): compila un `.fav` e restituisce
+  `{ok, errors, warnings, worldSummary}`. Accetta `source` opzionale per compilare il
+  **buffer live** non ancora salvato (gli `Includi` sono risolti dal disco).
+- **Pannello Problemi**: elenco di errori e avvisi con conteggi, file, riga:colonna e
+  codice; click su una voce → **salto alla posizione** nell'editor.
+- **Marker inline in Monaco** (`setModelMarkers`): sottolineatura rossa/gialla nel punto
+  esatto, con il messaggio del compilatore al passaggio del mouse.
+- **Auto-compile**: a ogni modifica (debounce 600 ms), all'apertura di un file e quando
+  il motore diventa pronto — diagnostica sempre fresca senza dover salvare.
+  `Ctrl+B` forza una compilazione.
+
+### Note
+- Posizioni **sintattiche precise** via source map dell'espansione `Includi`
+  (l'errore è attribuito al file e alla riga originali anche con i moduli multi-file).
+- Posizioni **semantiche best-effort**: gli errori del transformer non portano una
+  riga; si individua il nome citato nel sorgente. Quando non è localizzabile, la voce è
+  marcata *approssimata* (`~`) e non produce un salto preciso.
+
 ## [0.2.1] — 2026-06-01 — Fix Explorer
 
 ### Corretto

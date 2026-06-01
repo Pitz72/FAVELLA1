@@ -1,6 +1,27 @@
 import { create } from 'zustand'
-import type { FileNode, EngineLexicon, SidecarStatus } from '../../shared/protocol'
+import type {
+  FileNode,
+  EngineLexicon,
+  SidecarStatus,
+  Diagnostic,
+  WorldSummary
+} from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
+
+/** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
+export function stessoPercorso(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false
+  const norm = (p: string): string => p.toLowerCase().replace(/\\/g, '/')
+  return norm(a) === norm(b)
+}
+
+/** Richiesta di portare il cursore a una posizione (dal pannello Problemi). */
+export interface RevealRequest {
+  path: string
+  line: number
+  col: number
+  nonce: number
+}
 
 export interface OpenFile {
   path: string
@@ -22,6 +43,12 @@ interface StudioState {
   sidecarStatus: SidecarStatus
   // Cursore (per la status bar)
   cursor: { line: number; column: number }
+  // Compilazione & diagnostica (Fase 2)
+  problems: Diagnostic[]
+  problemsFile: string | null
+  worldSummary: WorldSummary | null
+  compiling: boolean
+  reveal: RevealRequest | null
 
   // Azioni
   openProject: () => Promise<void>
@@ -36,6 +63,9 @@ interface StudioState {
   setLexicon: (lex: EngineLexicon) => void
   setSidecarStatus: (s: SidecarStatus) => void
   setCursor: (line: number, column: number) => void
+  compileFile: (path: string, source?: string) => Promise<void>
+  compileActive: () => Promise<void>
+  requestReveal: (path: string, line: number, col: number) => void
 }
 
 function linguaDa(name: string): string {
@@ -50,6 +80,11 @@ export const useStudio = create<StudioState>((set, get) => ({
   lexicon: null,
   sidecarStatus: 'starting',
   cursor: { line: 1, column: 1 },
+  problems: [],
+  problemsFile: null,
+  worldSummary: null,
+  compiling: false,
+  reveal: null,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -123,5 +158,48 @@ export const useStudio = create<StudioState>((set, get) => ({
 
   setLexicon: (lex) => set({ lexicon: lex }),
   setSidecarStatus: (s) => set({ sidecarStatus: s }),
-  setCursor: (line, column) => set({ cursor: { line, column } })
+  setCursor: (line, column) => set({ cursor: { line, column } }),
+
+  compileFile: async (path, source) => {
+    if (!path.toLowerCase().endsWith('.fav')) return
+    set({ compiling: true })
+    try {
+      const res = await window.favella.compile(path, source)
+      set({
+        problems: [...res.errors, ...res.warnings],
+        problemsFile: path,
+        worldSummary: res.worldSummary,
+        compiling: false
+      })
+    } catch (e) {
+      // Sidecar non pronto / in crash: mostra un problema sintetico, non azzera.
+      set({
+        compiling: false,
+        problemsFile: path,
+        problems: [
+          {
+            message: 'Compilazione non riuscita: ' + (e instanceof Error ? e.message : String(e)),
+            file: path,
+            line: null,
+            col: null,
+            severity: 'error',
+            code: 'sidecar',
+            imprecise: true
+          }
+        ]
+      })
+    }
+  },
+
+  compileActive: async () => {
+    const { activePath, openFiles } = get()
+    if (!activePath) return
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file || !activePath.toLowerCase().endsWith('.fav')) return
+    // Compila il BUFFER live (anche non salvato): diagnostica sempre aggiornata.
+    await get().compileFile(activePath, file.content)
+  },
+
+  requestReveal: (path, line, col) =>
+    set((s) => ({ reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 } }))
 }))
