@@ -3,7 +3,10 @@ import type { FileNode } from '../../../shared/protocol'
 import { useStudio } from '../store'
 
 function TreeNode({ node, depth }: { node: FileNode; depth: number }): JSX.Element {
-  const [aperto, setAperto] = useState(depth < 1)
+  // Cartelle chiuse di default (stile VS Code): così i file di root — inclusi i
+  // .fav — restano visibili in cima, senza essere spinti sotto la piega dal
+  // contenuto riversato delle sottocartelle auto-espanse.
+  const [aperto, setAperto] = useState(false)
   const openFile = useStudio((s) => s.openFile)
   const activePath = useStudio((s) => s.activePath)
   const isFav = node.name.toLowerCase().endsWith('.fav')

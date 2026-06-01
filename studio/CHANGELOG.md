@@ -4,6 +4,14 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.2.1] — 2026-06-01 — Fix Explorer
+
+### Corretto
+- **File di root non visibili** nel Project Explorer: le cartelle di primo livello
+  erano auto-espanse e il loro contenuto spingeva i file della root (inclusi i
+  `.fav`) sotto la piega. Ora le cartelle sono **chiuse di default** (stile VS Code),
+  così i file della root restano subito visibili in cima.
+
 ## [0.2.0] — 2026-06-01 — Fase 1: Editor
 
 ### Aggiunto
