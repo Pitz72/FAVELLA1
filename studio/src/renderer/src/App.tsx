@@ -1,0 +1,104 @@
+import { useEffect, useState, useCallback } from 'react'
+import './monaco/setup' // side-effect: configura worker + loader Monaco (offline)
+import { useStudio } from './store'
+import Explorer from './components/Explorer'
+import TabBar from './components/TabBar'
+import EditorPane from './components/EditorPane'
+import StatusBar from './components/StatusBar'
+import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
+
+interface Toast {
+  id: number
+  text: string
+}
+
+export default function App(): JSX.Element {
+  const setLexicon = useStudio((s) => s.setLexicon)
+  const setSidecarStatus = useStudio((s) => s.setSidecarStatus)
+  const saveActive = useStudio((s) => s.saveActive)
+  const saveAll = useStudio((s) => s.saveAll)
+  const openProject = useStudio((s) => s.openProject)
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const pushToast = useCallback((text: string) => {
+    const id = Date.now() + Math.floor(performance.now())
+    setToasts((t) => [...t, { id, text }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
+  }, [])
+
+  const loadLexicon = useCallback(async () => {
+    try {
+      const lex = await window.favella.rpc<EngineLexicon>('engine.lexicon')
+      setLexicon(lex)
+    } catch {
+      /* il motore potrebbe non essere ancora pronto: riprova all'evento ready */
+    }
+  }, [setLexicon])
+
+  useEffect(() => {
+    const unsub = window.favella.onEngineEvent((event: EngineEvent) => {
+      if (event.kind === 'status') {
+        setSidecarStatus(event.status)
+        if (event.status === 'restarting') pushToast('Il motore si è chiuso: riavvio in corso…')
+        if (event.status === 'crashed') pushToast('Il motore FAVELLA è andato in errore.')
+      } else if (event.kind === 'ready') {
+        setSidecarStatus('ready')
+        if (event.data.engineLoaded) {
+          pushToast('Motore FAVELLA connesso.')
+          void loadLexicon()
+        } else {
+          pushToast('Motore non caricato: ' + (event.data.engineError ?? '?'))
+        }
+      }
+    })
+    window.favella.sidecarStatus().then(setSidecarStatus)
+    void loadLexicon()
+    return unsub
+  }, [loadLexicon, pushToast, setSidecarStatus])
+
+  // Scorciatoie globali: Ctrl+S salva il file attivo, Ctrl+Shift+S salva tutto.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (e.shiftKey) void saveAll()
+        else void saveActive()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault()
+        void openProject()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [saveActive, saveAll, openProject])
+
+  return (
+    <div className="app">
+      <header className="titlebar">
+        <span className="logo">✦ Favella Studio</span>
+        <span className="titlebar-hint">Fase 1 · Editor</span>
+      </header>
+
+      <div className="workbench">
+        <Explorer />
+        <main className="editor-area">
+          <TabBar />
+          <div className="editor-host">
+            <EditorPane />
+          </div>
+        </main>
+      </div>
+
+      <StatusBar />
+
+      <div className="toasts">
+        {toasts.map((t) => (
+          <div key={t.id} className="toast">
+            {t.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

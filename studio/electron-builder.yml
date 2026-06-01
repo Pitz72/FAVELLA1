@@ -1,0 +1,40 @@
+# Configurazione electron-builder per Favella Studio.
+# Usata nelle fasi di packaging: produce un installer NSIS firmabile per Windows.
+# Il motore Python (bundle PyInstaller onedir) va incluso come extraResource.
+appId: it.favella.studio
+productName: Favella Studio
+copyright: © 2026 Simone (Pitz72)
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - '!**/*.map'
+
+# Il motore FAVELLA congelato (PyInstaller onedir) va in resources/engine.
+# Decommentare quando dist-engine/ sarà prodotto dalla pipeline di packaging.
+# extraResources:
+#   - from: ../dist-engine/engine
+#     to: engine
+#   - from: ../storia.fav
+#     to: templates/storia.fav
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # icon: build/icon.ico
+  # Hook di firma predisposti (certificato fornito da Simone in fase di rilascio).
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Favella Studio

@@ -1,0 +1,61 @@
+# Favella Studio
+
+IDE desktop ufficiale per il linguaggio **FAVELLA** — Electron + React + Vite + TypeScript,
+con il motore FAVELLA (Python) eseguito come *sidecar* via JSON-RPC su NDJSON.
+
+> Sostituisce il vecchio `favella_studio.py` (PySide6). Il motore (compilatore Lark, runtime,
+> linter, moduli, dialoghi) resta **interamente in Python**, riusato senza riscritture.
+
+## Architettura
+
+```
+React/Electron (renderer)  ──IPC contextBridge──▶  Electron main  ──NDJSON su stdio──▶  ../favella_server.py
+   UI dell'IDE                                       spawn + supervisione                  importa il motore FAVELLA
+```
+
+- **`../favella_server.py`** — sidecar Python: loop NDJSON, importa il motore con import piatti.
+  Disciplina stdout rigorosa: i `print()` del motore non toccano mai il canale di protocollo.
+- **`src/main/`** — processo principale Electron: finestra, spawn/supervisione del sidecar
+  (`sidecar.ts`: timeout per-metodo, riavvio con backoff, kill pulito), canale IPC `rpc`.
+- **`src/preload/`** — `contextBridge` espone `window.favella` (rpc, eventi, stato sidecar).
+- **`src/renderer/`** — UI React.
+- **`src/shared/protocol.ts`** — tipi JSON-RPC condivisi (allineati a `favella_server.py`).
+
+## Prerequisiti
+
+- Node.js 20+ e npm
+- Il repo FAVELLA nella cartella padre, con `.venv` Python funzionante (`../.venv`) e `lark` installato.
+
+## Sviluppo
+
+```bash
+npm install        # una volta
+npm run dev        # avvia Vite (HMR) + Electron; fa spawn del sidecar dalla .venv
+```
+
+In dev il sidecar è lanciato da `../.venv/Scripts/python.exe ../favella_server.py`.
+
+## Build & packaging
+
+```bash
+npm run build      # builda main/preload/renderer in out/
+npm run dist       # build + electron-builder → installer NSIS in release/
+```
+
+Per il packaging completo il motore Python va congelato con PyInstaller (`onedir`) e incluso come
+`extraResources/engine` (vedi `electron-builder.yml`, sezione commentata).
+
+## Stato (roadmap a fasi)
+
+- [x] **Fase 0 — Scaffold**: spina dorsale Electron ↔ React ↔ sidecar Python; `ping`,
+      `engine.version`, `engine.lexicon`; supervisione e riavvio del sidecar.
+- [x] **Fase 1 — Editor**: Monaco (offline) con lingua `favella` (Monarch da `engine.lexicon`),
+      Project Explorer, schede file con dirty-state e salvataggio (Ctrl+S), barra di stato.
+- [ ] Fase 2 — Compile & diagnostica inline
+- [ ] Fase 3 — Console di gioco
+- [ ] Fase 4 — Mappa del mondo + inspector di stato
+- [ ] Fase 5 — Debugger passo-passo
+- [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
+- [ ] Fase 7 — Packaging del gioco
+
+Piano completo: `../../.claude/plans/starry-wandering-key.md` (radice utente).

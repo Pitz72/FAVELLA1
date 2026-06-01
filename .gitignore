@@ -131,6 +131,11 @@ dmypy.json
 # Esclusioni Progetto
 landingpage/
 
+# Favella Studio (IDE Electron) — artefatti di build
+studio/out/
+studio/release/
+dist-engine/
+
 # Node.js
 node_modules/
 npm-debug.log
