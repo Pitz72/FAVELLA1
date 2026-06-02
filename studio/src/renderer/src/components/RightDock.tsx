@@ -21,6 +21,10 @@ export default function RightDock(): JSX.Element | null {
   const loadDebug = useStudio((s) => s.loadDebugHistory)
   const dockWidth = useStudio((s) => s.dockWidth)
   const setDockWidth = useStudio((s) => s.setDockWidth)
+  const loadOutline = useStudio((s) => s.loadOutline)
+  const editMode = useStudio((s) => s.mapEditMode)
+  const gameRunning = useStudio((s) => s.gameRunning)
+  const activeContent = useStudio((s) => s.openFiles.find((f) => f.path === s.activePath)?.content)
 
   // All'apertura di ogni scheda aggiorna i dati: Mappa → topologia, Stato →
   // snapshot live, Debug → history dei turni (la partita può girare nella finestra
@@ -30,6 +34,18 @@ export default function RightDock(): JSX.Element | null {
     if (tab === 'stato') void loadSnapshot()
     if (tab === 'debug') void loadDebug()
   }, [tab, loadGraph, loadSnapshot, loadDebug])
+
+  // Auto-refresh della Mappa MENTRE SI DIGITA (debounce, come l'auto-compile):
+  // la topologia segue il testo senza dover riaprire la scheda. Solo in anteprima
+  // (nessuna partita in corso): durante il gioco la mappa riflette il mondo giocato.
+  useEffect(() => {
+    if (tab !== 'mappa' || gameRunning) return
+    const t = setTimeout(() => {
+      void loadGraph()
+      if (editMode) void loadOutline()
+    }, 500)
+    return () => clearTimeout(t)
+  }, [tab, activeContent, gameRunning, editMode, loadGraph, loadOutline])
 
   // Ridimensionamento: trascinando la maniglia sul bordo sinistro. Il dock è a
   // destra, quindi la larghezza è (larghezza finestra − x del puntatore).

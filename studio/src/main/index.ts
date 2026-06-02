@@ -125,6 +125,14 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('game:launchPayload', () => gameLaunch)
 
+  // La finestra di gioco segnala un avanzamento: inoltralo all'IDE perché
+  // ricarichi i pannelli live (Stato/Debug/Mappa) dal sidecar condiviso.
+  ipcMain.on('game:advanced', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('game-advanced')
+    }
+  })
+
   // Salvataggio partite su file .favsave (dialoghi nativi + I/O sul main).
   ipcMain.handle('game:writeSave', async (_e, save: unknown) => {
     const win = gameWindow ?? mainWindow ?? undefined

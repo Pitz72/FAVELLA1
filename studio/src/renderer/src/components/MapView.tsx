@@ -13,9 +13,10 @@ import 'reactflow/dist/style.css'
 import { useStudio } from '../store'
 import type { WorldGraph } from '../../../shared/protocol'
 
-// Direzioni offerte dal selettore quando si traccia una connessione. FAVELLA crea
-// da sé il ritorno opposto, quindi se ne sceglie una sola.
-const DIREZIONI_COMUNI = ['nord', 'sud', 'est', 'ovest', 'alto', 'basso']
+// Direzioni native di FAVELLA (le sole valide senza dichiarazione).
+const DIREZIONI_NATIVE = ['nord', 'sud', 'est', 'ovest']
+// Verticali comuni: se scelte e non ancora dichiarate, l'IDE le auto-dichiara.
+const VERTICALI = ['alto', 'basso']
 
 const GAP_X = 200
 const GAP_Y = 130
@@ -148,17 +149,21 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const editMode = useStudio((s) => s.mapEditMode)
   const setEditMode = useStudio((s) => s.setMapEditMode)
   const loadOutline = useStudio((s) => s.loadOutline)
+  const outline = useStudio((s) => s.outline)
   const addConnection = useStudio((s) => s.mapAddConnection)
   const deleteConnection = useStudio((s) => s.mapDeleteConnection)
   const addRoom = useStudio((s) => s.mapAddRoom)
 
   // Selettore di direzione per una nuova connessione (drag fra due stanze).
   const [picker, setPicker] = useState<{ from: string; to: string } | null>(null)
-  const [dirLibera, setDirLibera] = useState('')
   // Connessione selezionata per l'eliminazione (click su un arco in modifica).
   const [archoSel, setArcoSel] = useState<{ a: string; b: string; label?: string } | null>(null)
   // Modale «nuova stanza»: nome digitato dall'autore.
   const [nuovaStanza, setNuovaStanza] = useState<string | null>(null)
+  // Sotto-form «nuova direzione» (dentro il selettore di connessione): nome + opposta.
+  const [nuovaDir, setNuovaDir] = useState(false)
+  const [ndNome, setNdNome] = useState('')
+  const [ndOpp, setNdOpp] = useState('')
 
   const attivo = editable && editMode
 
@@ -212,6 +217,12 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const nomeStanza = (id: string): string =>
     graph.rooms.find((r) => r.id === id)?.name ?? id
 
+  // Direzioni offerte: quelle VALIDE nel file (native + personalizzate dichiarate)
+  // più le verticali comuni (auto-dichiarate dallo store se mancano), senza doppioni.
+  const direzioniOfferte = Array.from(
+    new Set([...(outline?.directions ?? DIREZIONI_NATIVE), ...VERTICALI])
+  )
+
   const onConnect = (c: Connection): void => {
     if (!attivo || !c.source || !c.target || c.source === c.target) return
     setPicker({ from: c.source, to: c.target })
@@ -224,13 +235,28 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
       label: typeof edge.label === 'string' ? edge.label : undefined
     })
   }
+  const chiudiPicker = (): void => {
+    setPicker(null)
+    setNuovaDir(false)
+    setNdNome('')
+    setNdOpp('')
+  }
   const confermaDirezione = async (dir: string): Promise<void> => {
     const d = dir.trim().toLowerCase()
     if (!picker || !d) return
     const p = picker
-    setPicker(null)
-    setDirLibera('')
+    chiudiPicker()
     await addConnection(p.from, d, p.to)
+  }
+  // Nuova direzione custom: nome + opposta (coppia obbligatoria nel motore).
+  const ndN = ndNome.trim().toLowerCase()
+  const ndO = ndOpp.trim().toLowerCase()
+  const ndValido = !!ndN && !!ndO && !ndN.includes(' ') && !ndO.includes(' ') && ndN !== ndO
+  const confermaNuovaDir = async (): Promise<void> => {
+    if (!picker || !ndValido) return
+    const p = picker
+    chiudiPicker()
+    await addConnection(p.from, ndN, p.to, ndO)
   }
   const confermaElimina = async (): Promise<void> => {
     if (!archoSel) return
@@ -296,45 +322,83 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
       </ReactFlow>
 
       {picker && (
-        <div className="modal-backdrop" onClick={() => setPicker(null)}>
+        <div className="modal-backdrop" onClick={chiudiPicker}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">Nuova connessione</h2>
             <p className="modal-body">
-              In che direzione va <b>{nomeStanza(picker.from)}</b> →{' '}
-              <b>{nomeStanza(picker.to)}</b>?
+              <b>{nomeStanza(picker.from)}</b> → <b>{nomeStanza(picker.to)}</b>
               <br />
               <span className="modal-hint">Il ritorno opposto è creato automaticamente.</span>
             </p>
-            <div className="dir-grid">
-              {DIREZIONI_COMUNI.map((d) => (
-                <button key={d} className="dir-btn" onClick={() => void confermaDirezione(d)}>
-                  {d}
-                </button>
-              ))}
-            </div>
-            <div className="dir-libera">
-              <input
-                type="text"
-                placeholder="direzione personalizzata…"
-                value={dirLibera}
-                onChange={(e) => setDirLibera(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void confermaDirezione(dirLibera)
-                }}
-              />
-              <button
-                className="modal-btn primary"
-                disabled={!dirLibera.trim()}
-                onClick={() => void confermaDirezione(dirLibera)}
-              >
-                Collega
-              </button>
-            </div>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={() => setPicker(null)}>
-                Annulla
-              </button>
-            </div>
+
+            {!nuovaDir ? (
+              <>
+                <div className="dir-grid">
+                  {direzioniOfferte.map((d) => (
+                    <button
+                      key={d}
+                      className="dir-btn"
+                      title={
+                        VERTICALI.includes(d) && !(outline?.directions ?? []).includes(d)
+                          ? 'Verrà dichiarata automaticamente'
+                          : undefined
+                      }
+                      onClick={() => void confermaDirezione(d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button className="modal-btn ghost" onClick={chiudiPicker}>
+                    Annulla
+                  </button>
+                  <button className="modal-btn primary" onClick={() => setNuovaDir(true)}>
+                    ➕ Nuova direzione
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="modal-body" style={{ marginTop: 4 }}>
+                  Direzione personalizzata (una parola) e la sua <b>opposta</b>: il motore le
+                  usa in coppia per creare il ritorno.
+                  <br />
+                  <span className="modal-hint">Es. «botola» ↔ «scala», «fessura» ↔ «pertugio».</span>
+                </p>
+                <div className="nd-row">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="direzione (es. botola)"
+                    value={ndNome}
+                    onChange={(e) => setNdNome(e.target.value)}
+                  />
+                  <span className="nd-sep">↔</span>
+                  <input
+                    type="text"
+                    placeholder="opposta (es. scala)"
+                    value={ndOpp}
+                    onChange={(e) => setNdOpp(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && ndValido) void confermaNuovaDir()
+                    }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button className="modal-btn ghost" onClick={() => setNuovaDir(false)}>
+                    ← Indietro
+                  </button>
+                  <button
+                    className="modal-btn primary"
+                    disabled={!ndValido}
+                    onClick={() => void confermaNuovaDir()}
+                  >
+                    Crea e collega
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

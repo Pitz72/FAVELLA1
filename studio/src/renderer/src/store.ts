@@ -162,13 +162,31 @@ interface StudioState {
   loadOutline: () => Promise<void>
   setMapEditMode: (on: boolean) => void
   setDockWidth: (px: number) => void
-  mapAddConnection: (fromId: string, direction: string, toId: string) => Promise<void>
+  mapAddConnection: (
+    fromId: string,
+    direction: string,
+    toId: string,
+    opposite?: string
+  ) => Promise<void>
   mapDeleteConnection: (aId: string, bId: string) => Promise<void>
   mapAddRoom: (name: string) => Promise<void>
 }
 
 function linguaDa(name: string): string {
   return name.toLowerCase().endsWith('.fav') ? FAVELLA_LANG_ID : 'plaintext'
+}
+
+/**
+ * Direzioni verticali comuni NON native di FAVELLA (le native sono solo
+ * nord/sud/est/ovest). Se l'autore ne sceglie una dalla mappa e non è ancora
+ * dichiarata, l'IDE la auto-dichiara con la sua opposta ("Alto e basso sono
+ * direzioni opposte."). Per ogni altra direzione non dichiarata si avvisa.
+ */
+const OPPOSTE_VERTICALI: Record<string, string> = {
+  alto: 'basso',
+  basso: 'alto',
+  sopra: 'sotto',
+  sotto: 'sopra'
 }
 
 /**
@@ -384,6 +402,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       })
       void get().loadWorldGraph()
       void get().loadWorldSnapshot()
+      window.favella.notifyGameAdvanced() // avvisa l'IDE (pannelli live)
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
@@ -433,6 +452,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       }))
       // Aggiorna lo stato live (inspector + evidenziazione stanza sulla mappa).
       void get().loadWorldSnapshot()
+      window.favella.notifyGameAdvanced() // avvisa l'IDE (pannelli live)
     } catch (e) {
       set((s) => ({
         gameBusy: false,
@@ -463,6 +483,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       })
       void get().loadWorldGraph()
       void get().loadWorldSnapshot()
+      window.favella.notifyGameAdvanced() // avvisa l'IDE (pannelli live)
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
@@ -511,6 +532,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       })
       void get().loadWorldGraph()
       void get().loadWorldSnapshot()
+      window.favella.notifyGameAdvanced() // avvisa l'IDE (pannelli live)
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
@@ -543,14 +565,14 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 
   loadWorldSnapshot: async () => {
-    if (!get().gameRunning && !get().gameState) {
-      set({ worldSnapshot: null })
-      return
-    }
+    // Legge SEMPRE dal sidecar condiviso: la partita può girare nella finestra di
+    // gioco dedicata (store separato), quindi non ci si può basare sullo stato di
+    // gioco LOCALE di questa finestra. Se il sidecar non ha una sessione, l'RPC
+    // solleva → snapshot null (i pannelli mostrano «avvia una partita»).
     try {
       set({ worldSnapshot: await window.favella.worldSnapshot() })
     } catch {
-      /* nessuna partita attiva: lascia l'ultimo snapshot */
+      set({ worldSnapshot: null })
     }
   },
 
@@ -605,16 +627,44 @@ export const useStudio = create<StudioState>((set, get) => ({
   // aggiornano subito il contenuto nello store (così mappa/outline si ricaricano
   // sul testo nuovo) e segnalano a EditorPane di rispecchiarlo in Monaco (undo
   // nativo) via `pendingEdit`. Poi ricaricano outline + grafo.
-  mapAddConnection: async (fromId, direction, toId) => {
+  mapAddConnection: async (fromId, direction, toId, opposite) => {
     const { outline, activePath, openFiles } = get()
     if (!outline || !activePath) return
     const from = outline.rooms.find((r) => r.id === fromId)
     const to = outline.rooms.find((r) => r.id === toId)
     if (!from || !to) return
+    const dir = direction.trim().toLowerCase()
+
+    // Direzione valida nel mondo? Le native sono nord/sud/est/ovest; le altre
+    // vanno dichiarate IN COPPIA OPPOSTA. L'opposta è quella indicata dall'autore
+    // («Nuova direzione») oppure, per le verticali comuni, una di default. Se non
+    // c'è opposta e la direzione non è valida, avviso e non scrivo nulla.
+    let dichiarazione = ''
+    if (!outline.directions.includes(dir)) {
+      const opposta = (opposite ?? '').trim().toLowerCase() || OPPOSTE_VERTICALI[dir]
+      if (!opposta) {
+        set({
+          gameNotice:
+            `«${dir}» non è una direzione valida. Usa «➕ Nuova direzione» per ` +
+            `dichiararla con la sua opposta.`
+        })
+        return
+      }
+      try {
+        const d = await window.favella.serializeStatement({
+          op: 'direction_decl', a: dir, b: opposta
+        })
+        if (d.ok && d.text) dichiarazione = d.text + '\n'
+      } catch (e) {
+        set({ gameNotice: 'Errore di serializzazione: ' + messaggioErrore(e) })
+        return
+      }
+    }
+
     let res
     try {
       res = await window.favella.serializeStatement({
-        op: 'connection', from: from.name, direction, to: to.name
+        op: 'connection', from: from.name, direction: dir, to: to.name
       })
     } catch (e) {
       set({ gameNotice: 'Errore di serializzazione: ' + messaggioErrore(e) })
@@ -624,10 +674,11 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ gameNotice: res.error ?? 'Impossibile generare la connessione.' })
       return
     }
-    // Applica al buffer attivo (append) — store + Monaco — poi ricarica.
+    // Applica al buffer attivo (append) — store + Monaco — poi ricarica. Se serve,
+    // la dichiarazione della direzione precede la connessione (stesso append).
     const file = openFiles.find((f) => f.path === activePath)
     if (!file) return
-    const edit: BufferEdit = { kind: 'append', text: res.text }
+    const edit: BufferEdit = { kind: 'append', text: dichiarazione + res.text }
     const nuovo = applicaBufferEdit(file.content, edit)
     set((s) => ({
       openFiles: s.openFiles.map((f) =>

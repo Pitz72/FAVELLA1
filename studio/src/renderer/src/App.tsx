@@ -103,6 +103,18 @@ export default function App(): JSX.Element {
     return unsub
   }, [])
 
+  // Sincronizzazione live: quando la finestra di gioco avanza (turno/avvio/reset),
+  // ricarica i pannelli aperti leggendo dal sidecar condiviso. Così Stato/Debug/
+  // Mappa dell'IDE riflettono la partita giocata nella finestra dedicata.
+  useEffect(() => {
+    const unsub = window.favella.onGameAdvanced(() => {
+      const s = useStudio.getState()
+      void s.loadWorldSnapshot()
+      if (s.rightTab === 'debug') void s.loadDebugHistory()
+    })
+    return unsub
+  }, [])
+
   // Scorciatoie globali: Ctrl+S salva il file attivo, Ctrl+Shift+S salva tutto.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

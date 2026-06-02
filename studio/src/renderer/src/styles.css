@@ -1071,6 +1071,32 @@ button:hover {
   border-color: var(--accent);
 }
 
+/* Form «nuova direzione»: nome ↔ opposta. */
+.nd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.nd-row input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 13px;
+}
+.nd-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.nd-sep {
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
 /* In modifica, rendi BEN VISIBILI i pallini di aggancio (per trascinare le
    connessioni): di default react-flow li tiene minuscoli e poco scopribili. */
 .map-host.editing .react-flow__handle {

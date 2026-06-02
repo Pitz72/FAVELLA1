@@ -47,7 +47,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.8.1"  # Fase 6a: world.outline + outline.serialize (editor visuali)
+VERSIONE_SIDECAR = "0.8.2"  # Fase 6a: outline.directions + serialize direction_decl
 
 
 # ==============================================================================

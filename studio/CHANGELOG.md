@@ -4,6 +4,30 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.1] — 2026-06-02 — Pannelli live + direzioni custom dalla mappa
+
+### Aggiunto
+- **Pannelli che si aggiornano da soli durante il gioco**: la finestra di gioco
+  dedicata avvisa l'IDE a ogni turno (IPC `game:advanced` → `game-advanced`); l'IDE
+  ricarica Stato/Debug/Mappa leggendo dal **sidecar condiviso**. `loadWorldSnapshot`
+  non dipende più dallo stato di gioco *locale* della finestra IDE (interroga sempre
+  il sidecar), così riflette la partita giocata nella finestra dedicata.
+- **Mappa che segue il testo**: con la Mappa aperta, modificando il `.fav`
+  nell'editor la topologia si ridisegna da sola (debounce ~500ms, come l'auto-compile),
+  senza riaprire la scheda. Solo in anteprima (nessuna partita in corso).
+- **➕ Nuova direzione** dal selettore di connessione: l'autore indica una direzione
+  custom e la sua **opposta** (es. «botola» ↔ «scala»); l'IDE scrive
+  `Botola e scala sono direzioni opposte.` e crea la connessione. Le direzioni offerte
+  ora sono solo quelle **valide nel file** (`world.outline` espone `directions`) più le
+  verticali comuni (alto/basso), auto-dichiarate se mancanti. Op `direction_decl` nel
+  serializzatore. Sidecar `0.8.2`.
+
+### Corretto
+- **Direzioni non native rompevano la mappa**: scegliendo «alto» (non dichiarata)
+  veniva scritta una frase non valida e la mappa andava in errore. Ora le direzioni
+  non native sono auto-dichiarate (verticali) o gestite via ➕ Nuova direzione; quelle
+  non dichiarabili vengono **rifiutate con avviso, senza toccare il file**.
+
 ## [0.9.0] — 2026-06-02 — Fase 6 (parte 1): mappa editabile + migliorie IDE
 
 Primo pezzo VISIBILE degli editor visuali: la mappa diventa modificabile e le

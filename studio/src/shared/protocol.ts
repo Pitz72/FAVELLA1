@@ -253,6 +253,8 @@ export interface Outline {
   ok: boolean
   rooms: OutlineRoom[]
   objects: OutlineObject[]
+  // Direzioni canoniche valide in questo mondo (base + personalizzate dichiarate).
+  directions: string[]
   errors: Diagnostic[]
 }
 
@@ -268,6 +270,7 @@ export type SerializeSpec =
   | { op: 'prendibile'; name: string }
   | { op: 'alias'; name: string; alias: string }
   | { op: 'start'; name: string }
+  | { op: 'direction_decl'; a: string; b: string }
 
 export interface SerializeResult {
   ok: boolean

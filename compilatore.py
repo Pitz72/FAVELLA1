@@ -2057,11 +2057,11 @@ def analizza_outline(percorso_file, sorgente=None):
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     if not diag.get("ok"):
         return {"ok": False, "rooms": [], "objects": [],
-                "errors": diag.get("errors", [])}
+                "directions": [], "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
         return {"ok": False, "rooms": [], "objects": [],
-                "errors": diag.get("errors", [])}
+                "directions": [], "errors": diag.get("errors", [])}
 
     # 2. Posizioni: secondo parse con propagate_positions, mappa riga→(file, riga).
     try:
@@ -2246,7 +2246,13 @@ def analizza_outline(percorso_file, sorgente=None):
             "aliases": aliases,
         })
 
-    return {"ok": True, "rooms": rooms, "objects": objects, "errors": []}
+    # Direzioni canoniche VALIDE in questo mondo (base nord/sud/est/ovest + quelle
+    # personalizzate dichiarate dall'autore): l'IDE offre solo queste nel selettore
+    # di connessione, così non genera frasi con direzioni non dichiarate.
+    directions = sorted(set(getattr(mondo, "direzioni", {}).values()))
+
+    return {"ok": True, "rooms": rooms, "objects": objects,
+            "directions": directions, "errors": []}
 
 
 def _ha_descr_condizionale(frasi, id_entita) -> bool:
@@ -2376,6 +2382,11 @@ def serializza_frase(spec):
                     "text": f"{spec['name']} si chiama anche {_quota(spec['alias'])}."}
         if op == "start":
             return {"ok": True, "text": f"Il giocatore comincia in {spec['name']}."}
+        if op == "direction_decl":
+            a = str(spec["a"]).strip()
+            b = str(spec["b"]).strip()
+            a = a[:1].upper() + a[1:]  # prima lettera maiuscola (stile d'autore)
+            return {"ok": True, "text": f"{a} e {b} sono direzioni opposte."}
         return {"ok": False, "error": f"Operazione di serializzazione sconosciuta: {op!r}."}
     except KeyError as e:
         return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}

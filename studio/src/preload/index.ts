@@ -133,6 +133,18 @@ const api = {
     return () => ipcRenderer.removeListener('app:request-close', handler)
   },
 
+  // --- Sincronizzazione fra finestra di gioco e IDE (Fase 6a) ---
+  /** [finestra di gioco] Notifica l'IDE che la partita è avanzata (turno/avvio/reset). */
+  notifyGameAdvanced(): void {
+    ipcRenderer.send('game:advanced')
+  },
+  /** [IDE] Sottoscrive l'avanzamento della partita (per aggiornare i pannelli live). */
+  onGameAdvanced(callback: () => void): () => void {
+    const handler = (): void => callback()
+    ipcRenderer.on('game-advanced', handler)
+    return () => ipcRenderer.removeListener('game-advanced', handler)
+  },
+
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */
   onEngineEvent(callback: (event: EngineEvent) => void): () => void {
     const handler = (_e: unknown, event: EngineEvent): void => callback(event)
