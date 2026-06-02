@@ -1,0 +1,29 @@
+# storia-con-errore.fav
+# ============================================================================
+# Esempio DELIBERATAMENTE rotto, per provare la diagnostica di Favella Studio.
+#
+# L'errore: l'ultima riga assegna una proprietà a un oggetto ("pera") che non è
+# mai stato dichiarato. Poiché i nomi sono "token chiusi" (solo le entità
+# dichiarate sono riconosciute), il compilatore non riconosce «pera».
+#
+# ATTESO nell'IDE:
+#   - il pannello Problemi segnala un errore tipo «Entità sconosciuta: pera»;
+#   - premendo ▶ Gioca, la partita NON parte e mostra lo stesso errore.
+#
+# COME CORREGGERLO (per confrontare con la storia "buona"):
+#   - aggiungere prima dell'ultima riga:  «Una pera è una cosa.»
+#     e poi, volendo, «La pera è in cucina.».
+# ============================================================================
+
+La cucina è una stanza.
+Il giocatore comincia in cucina.
+
+La descrizione della cucina è "Un cucinino stretto: un tavolo, una finestra appannata, l'odore di caffè di stamattina.".
+
+Una mela è una cosa.
+La mela è in cucina.
+La mela è prendibile.
+La descrizione della mela è "Rossa, un po' ammaccata su un fianco.".
+
+# >>> ERRORE QUI: «pera» non è mai stata dichiarata come oggetto. <<<
+La pera è prendibile.

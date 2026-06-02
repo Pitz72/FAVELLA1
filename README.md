@@ -73,9 +73,11 @@ diagnostica in tempo reale e console di gioco integrata. Vive in `studio/`.
     ```
 
 3.  **Divertiti:**
-    - Apri la cartella del progetto e seleziona un file `.fav` (es. `storia.fav`).
+    - Apri la cartella del progetto e seleziona un file `.fav`. Esempi pronti in
+      [`esempi/`](esempi/): la demo completa in `esempi/demo/storia.fav` e una
+      storia con un errore voluto in `esempi/test debug/storia-con-errore.fav`.
     - La **diagnostica** è continua: errori e avvisi nel pannello Problemi.
-    - Premi **▶ Gioca** (o **F5**) per testare la tua avventura nella console integrata.
+    - Premi **▶ Gioca** (o **F5**) per testare la tua avventura.
 
 > Dettagli, build e packaging: [`studio/README.md`](studio/README.md).
 
@@ -114,7 +116,7 @@ Per i puristi del terminale, l'interprete classico è sempre disponibile:
 3.  **Esegui il Gioco:**
     Lancia il gioco dal terminale, passandogli il nome del tuo file di storia:
     ```sh
-    python gioco.py storia.fav
+    python gioco.py esempi/demo/storia.fav
     ```
 
     Apparirà il mondo che hai creato. Inserisci comandi come:
