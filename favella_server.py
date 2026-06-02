@@ -47,7 +47,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.9.1"  # Fase 6c.2: serialize rule/event (creazione regole)
+VERSIONE_SIDECAR = "0.9.2"  # Fase 6c.3: serialize move (spostamento) nelle conseguenze
 
 
 # ==============================================================================

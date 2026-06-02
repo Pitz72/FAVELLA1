@@ -2649,7 +2649,29 @@ def _serializza_conseguenza(c):
             raise ValueError(f"Esito di fine partita sconosciuto: {c['outcome']!r}.")
         return esiti[c["outcome"]]
     if op == "move":
-        raise ValueError("La conseguenza di spostamento non è ancora supportata in scrittura.")
+        # [Fase 6c.3] Spostamento: «<oggetto> è <prep_luogo> <dest>» (stessa forma
+        # di una posizione, senza il punto: lo aggiunge _serializza_regola/_evento).
+        # La UI calcola già la preposizione concordata e la passa in prep/place
+        # (come per l'op 'position'): inventario→«in inventario», nulla→«nel nulla»,
+        # stanza→«in <nucleo>», contenitore/supporto→«nella/sul <nucleo>».
+        nome = c["name"]
+        prep = c.get("prep")
+        place = c.get("place")
+        if prep is not None and place is not None:
+            frase = _frase_posizione(nome, prep, place)
+            return frase[:-1] if frase.endswith(".") else frase
+        # Ripiego (spec senza prep/place, es. round-trip da lettura): deduco dal
+        # dest grezzo. Stanza/contenitore/supporto → prep nuda «in» + nucleo (sempre
+        # parsabile come ENTITA, anche se perde lo stile articolato).
+        dest = (c.get("dest") or "").strip()
+        if dest == "inventario":
+            return f"{nome} è in inventario"
+        if dest == "nulla":
+            return f"{nome} è nel nulla"
+        if not dest:
+            raise ValueError("Spostamento senza destinazione.")
+        _art, nucleo = _scomponi_articolo(c.get("destName") or dest)
+        return f"{nome} è in {nucleo or dest}"
     raise ValueError(f"Conseguenza non serializzabile: {op!r}.")
 
 

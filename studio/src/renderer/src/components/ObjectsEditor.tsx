@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
 import type { ObjectKind, OutlineObject, OutlineLocation } from '../../../shared/protocol'
+import { specPosizione } from '../utils/posizione'
 
 const KIND_LABEL: Record<ObjectKind, string> = {
   oggetto: 'Oggetto',
@@ -15,50 +16,6 @@ const KIND_ICON: Record<ObjectKind, string> = {
   personaggio: '☻'
 }
 const KINDS: ObjectKind[] = ['oggetto', 'contenitore', 'supporto', 'personaggio']
-
-/** Toglie l'articolo iniziale dal nome (per «è in <stanza>» senza doppio articolo). */
-function nucleo(nome: string): string {
-  return nome.replace(/^\s*(l'|un'|uno\s+|una\s+|gli\s+|il\s+|lo\s+|la\s+|le\s+|un\s+|i\s+)/i, '').trim()
-}
-
-/** Articolo iniziale del nome (normalizzato), o null se assente. */
-function articoloDi(nome: string): string | null {
-  const m = nome.match(/^\s*(l'|un'|uno|una|gli|il|lo|la|le|un|i)\b/i)
-  if (!m) return null
-  return m[1].toLowerCase()
-}
-
-// Articolo → preposizione articolata «in»/«su». Il serializzatore (prep articolata)
-// assorbe già l'articolo del luogo → «nella scatola», «sul tavolo».
-const PREP_IN: Record<string, string> = {
-  "l'": "nell'", "un'": "nell'", il: 'nel', lo: 'nello', uno: 'nello',
-  la: 'nella', una: 'nella', le: 'nelle', i: 'nei', gli: 'negli', un: 'nel'
-}
-const PREP_SU: Record<string, string> = {
-  "l'": "sull'", "un'": "sull'", il: 'sul', lo: 'sullo', uno: 'sullo',
-  la: 'sulla', una: 'sulla', le: 'sulle', i: 'sui', gli: 'sugli', un: 'sul'
-}
-
-/** Spec della frase di posizione di `objName` verso un bersaglio (stanza, contenitore
- * o supporto), con la preposizione concordata: «in <stanza>», «nella scatola»
- * (contenitore), «sul tavolo» (supporto). Fallback a prep nuda + nucleo se l'articolo
- * non è riconosciuto. */
-function specPosizione(
-  objName: string,
-  target: { name: string; kind: 'stanza' | ObjectKind }
-): { op: 'position'; name: string; prep: string; place: string } {
-  if (target.kind === 'stanza') {
-    return { op: 'position', name: objName, prep: 'in', place: nucleo(target.name) }
-  }
-  const base = target.kind === 'supporto' ? PREP_SU : PREP_IN
-  const art = articoloDi(target.name)
-  if (art && base[art]) {
-    // place = nome completo: la prep articolata gli toglie l'articolo lato sidecar.
-    return { op: 'position', name: objName, prep: base[art], place: target.name }
-  }
-  const nuda = target.kind === 'supporto' ? 'su' : 'in'
-  return { op: 'position', name: objName, prep: nuda, place: nucleo(target.name) }
-}
 
 export default function ObjectsEditor(): JSX.Element {
   const outline = useStudio((s) => s.outline)

@@ -4,6 +4,36 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.7] — 2026-06-02 — Fase 6c.3: Condizioni annidate, modifica regole, spostamento
+
+### Aggiunto
+- **Costruttore di CONDIZIONI booleane annidate** nella stessa modale di RuleForm
+  (sezione **«Solo se…»**): gruppi `e` («tutte vere») / `oppure` («almeno una») con
+  **parentesi a piacere** (sotto-gruppi annotabili senza limiti di profondità). Ogni
+  atomo è di quattro tipi — **il giocatore ha** un oggetto · **un oggetto è** una
+  proprietà · **uno stato è** un valore · **un contatore** confronta un numero
+  (`è / è almeno / è più di / è meno di`). **Negazione infissa** (casella «non») offerta
+  **solo** su possesso/proprietà/stato, mai sui contatori né sui gruppi — esattamente i
+  vincoli della grammatica. Un gruppo annidato con un solo termine si collassa da sé.
+- **Modifica delle regole esistenti**: pulsante **✎** sulla scheda di ogni regola
+  **rappresentabile** → riapre la modale **precompilata** (verbo, bersaglio, condizione,
+  risposta, conseguenze) e **sostituisce** la frase via lo span (undo nativo). Le regole
+  troppo complesse per l'editor mostrano **«✎ testo»**, che salta alla riga nel sorgente
+  (come già per le descrizioni condizionali).
+- **Conseguenza di SPOSTAMENTO** (`move`) nel builder: «sposta un oggetto → **nel nulla**
+  (sparisce) / **in inventario** / una **stanza** / dentro un **contenitore** / sopra un
+  **supporto**», con la **preposizione concordata** (`nel nulla`, `in inventario`,
+  `in cucina`, `nella scatola`, `sul tavolo`). È la conseguenza che fa «buttare/perdere»
+  un oggetto. Forme verificate in round-trip (compila e gira).
+- Sidecar **0.9.2**: completato `_serializza_conseguenza` per `move` (prima sollevava
+  `ValueError`); riusa `_frase_posizione` con prep/place calcolati dalla UI, con ripiego
+  da `dest`/`destName` per il round-trip da lettura. Motore byte-stabile, **334 test verdi**.
+
+### Cambiato
+- Logica di preposizione concordata estratta in `renderer/src/utils/posizione.ts`
+  (`nucleo`/`articoloDi`/`prepPlace`/`specPosizione`), condivisa fra ObjectsEditor e
+  RuleForm (comportamento invariato).
+
 ## [0.9.6] — 2026-06-02 — Fase 6c.2: Creazione di regole (builder in modale ampia)
 
 ### Aggiunto

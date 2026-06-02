@@ -317,7 +317,10 @@ export type RuleConsequence =
   | { op: 'prop'; id: string; name: string; prop: string }
   | { op: 'var'; name: string; value: string; kind: 'stato' | 'contatore' }
   | { op: 'count'; name: string; mode: 'aumenta' | 'diminuisci' | 'diventa'; value: number }
-  | { op: 'move'; id: string; name: string; dest: string; destName: string }
+  // In scrittura (6c.3) il builder calcola la preposizione concordata e passa
+  // prep/place (come l'op 'position'); in lettura restano assenti (il sidecar
+  // ripiega su dest/destName). dest: id stanza/oggetto, o 'inventario'/'nulla'.
+  | { op: 'move'; id: string; name: string; dest: string; destName: string; prep?: string; place?: string }
   | { op: 'end'; outcome: 'vinci' | 'perdi' | 'termina' }
   | { op: 'unknown' }
 

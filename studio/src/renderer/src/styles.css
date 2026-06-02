@@ -865,6 +865,87 @@ button:hover {
   color: #ffbcbc;
 }
 
+/* Pulsante «modifica regola» (6c.3) accanto a × elimina. */
+.rule-edit {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+.rule-edit:hover {
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+
+/* --- Costruttore di condizioni annidate (6c.3) --- */
+.cond-group {
+  border: 1px solid var(--border);
+  border-left: 3px solid #6b7da8;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(107, 125, 168, 0.06);
+}
+.cond-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cond-conn {
+  flex: 0 0 auto;
+}
+.cond-conn button {
+  font-size: 11.5px;
+  padding: 3px 8px;
+}
+.cond-group-head .cons-del {
+  margin-left: auto;
+}
+.cond-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 6px;
+}
+.cond-atom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.cond-atom select,
+.cond-atom input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: var(--text);
+  font-size: 12.5px;
+  min-width: 0;
+}
+.cond-atom input[type='text'] {
+  flex: 1 1 60px;
+}
+.cond-atom input[type='number'] {
+  width: 64px;
+}
+.cond-non {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #d8a0a0;
+  white-space: nowrap;
+}
+.cond-add {
+  gap: 8px;
+}
+
 /* --- Modal «modifiche non salvate» (stile IDE) --- */
 .modal-backdrop {
   position: fixed;

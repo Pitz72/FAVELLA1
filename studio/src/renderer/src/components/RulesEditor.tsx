@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStudio } from '../store'
-import type { RuleCondition, RuleConsequence } from '../../../shared/protocol'
+import type { Rule, RuleCondition, RuleConsequence, OutlineSpan } from '../../../shared/protocol'
 import RuleForm from './RuleForm'
 
 // --- Riassunti leggibili (sola lettura, 6c.1) ---
@@ -43,6 +43,31 @@ function condText(c: RuleCondition): string {
   }
 }
 
+// --- Rappresentabilità: una regola si riapre nella modale solo se l'editor sa
+// ricostruirla. Altrimenti → «modifica nel testo» (come le descrizioni condizionali). ---
+
+function condRepresentable(c: RuleCondition | null): boolean {
+  if (!c) return true
+  switch (c.op) {
+    case 'has':
+    case 'prop':
+    case 'var':
+    case 'count':
+      return true
+    case 'not':
+      return ['has', 'prop', 'var'].includes(c.term.op)
+    case 'and':
+    case 'or':
+      return c.terms.every(condRepresentable)
+    default:
+      return false // 'unknown'
+  }
+}
+
+function ruleRepresentable(r: Rule): boolean {
+  return condRepresentable(r.condition) && r.consequences.every((c) => c.op !== 'unknown')
+}
+
 function conseqText(c: RuleConsequence): string {
   switch (c.op) {
     case 'prop':
@@ -67,8 +92,10 @@ export default function RulesEditor(): JSX.Element {
   const loading = useStudio((s) => s.rulesLoading)
   const loadRules = useStudio((s) => s.loadRules)
   const deleteStatement = useStudio((s) => s.deleteStatement)
+  const requestReveal = useStudio((s) => s.requestReveal)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
-  const [creando, setCreando] = useState(false)
+  // null = modale chiusa; {rule:null} = creazione; {rule} = modifica.
+  const [editing, setEditing] = useState<{ rule: Rule | null; span: OutlineSpan | null } | null>(null)
 
   if (!isFav) {
     return <div className="insp-empty">Apri un file .fav per vedere le regole e gli eventi.</div>
@@ -109,7 +136,7 @@ export default function RulesEditor(): JSX.Element {
           <button
             className="icon-btn"
             title="Nuova regola"
-            onClick={() => setCreando((v) => !v)}
+            onClick={() => setEditing((v) => (v ? null : { rule: null, span: null }))}
           >
             ➕
           </button>
@@ -119,7 +146,14 @@ export default function RulesEditor(): JSX.Element {
         </div>
       </div>
 
-      {creando && <RuleForm menu={rules.menu} onDone={() => setCreando(false)} />}
+      {editing && (
+        <RuleForm
+          menu={rules.menu}
+          rule={editing.rule}
+          span={editing.span}
+          onDone={() => setEditing(null)}
+        />
+      )}
 
       <div className="ruled-body">
         {regole.length === 0 && events.length === 0 && (
@@ -142,6 +176,24 @@ export default function RulesEditor(): JSX.Element {
               ) : (
                 <span className="rule-global">(globale)</span>
               )}
+              {r.span &&
+                (ruleRepresentable(r) ? (
+                  <button
+                    className="rule-edit"
+                    title="Modifica questa regola"
+                    onClick={() => setEditing({ rule: r, span: r.span })}
+                  >
+                    ✎
+                  </button>
+                ) : (
+                  <button
+                    className="rule-edit"
+                    title="Troppo complessa per l’editor: modificala nel testo"
+                    onClick={() => requestReveal(r.span!.file, r.span!.line, 1)}
+                  >
+                    ✎ testo
+                  </button>
+                ))}
               {r.span && (
                 <button
                   className="rule-del"
