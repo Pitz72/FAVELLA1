@@ -18,7 +18,7 @@ from strutture import (
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
-    DIREZIONI_BASE, estrai_placeholder,
+    DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo,
 )
 import os
 import sys
@@ -2042,16 +2042,17 @@ def analizza_outline(percorso_file, sorgente=None):
 
     Ritorna un dict serializzabile in JSON:
       {ok, rooms[], objects[], errors[]}
-    room   = {id, name, isStart, defLine, descLine, descConditional,
-              exits[{direction, to, toName, line, implicit}]}
-    object = {id, name, kind, prendibile, defLine, descLine, descConditional,
-              location{id,name,prep,line}|None, properties[{name,line}],
-              aliases[{name,line}]}
-    Le righe sono nel sorgente ORIGINALE (rimappate dagli Includi); None se il
-    campo non ha una frase propria (es. l'auto-ritorno di una connessione, che si
-    edita sulla frase 'collega' di origine → implicit=True, line=quella d'origine).
-    Difensiva: in caso di errore di compilazione restituisce ok=False + errors;
-    non solleva mai verso il protocollo."""
+    room   = {id, name, isStart, defSpan, descSpan, descConditional, description,
+              exits[{direction, to, toName, span, implicit}]}
+    object = {id, name, kind, prendibile, defSpan, descSpan, descConditional,
+              description, location{id,name,prep,span}|None,
+              properties[{name,span}], aliases[{name,span}]}
+    Ogni 'span' = {file, line, endLine} nel sorgente ORIGINALE (rimappato dagli
+    Includi: file E riga, perché in multi-file un solo numero non basta); None se
+    il campo non ha una frase propria (es. l'auto-ritorno di una connessione, che
+    si edita sulla frase 'collega' di origine → implicit=True, span=quello
+    d'origine). Difensiva: su errore di compilazione restituisce ok=False +
+    errors; non solleva mai verso il protocollo."""
     # 1. Verità semantica: il Mondo compilato. Se non compila, niente outline.
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     if not diag.get("ok"):
@@ -2079,15 +2080,29 @@ def analizza_outline(percorso_file, sorgente=None):
         tree, mappa_righe = None, []
 
     def _riga_orig(linea_espansa):
+        """(file, riga) originali dalla source map: una frase espansa può vivere in
+        un file Incluso diverso dal radice. Per editare la frase giusta lo splicer
+        ha bisogno SIA del file SIA della riga (un solo numero non basta in
+        multi-file). Fallback al file radice se la mappa non copre la riga."""
         if (mappa_righe and isinstance(linea_espansa, int)
                 and 1 <= linea_espansa <= len(mappa_righe)):
-            return mappa_righe[linea_espansa - 1][1]
-        return linea_espansa
+            f_o, r_o = mappa_righe[linea_espansa - 1]
+            return f_o, r_o
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp):
+        """Ancora sorgente {file, line, endLine} di una frase (None se ignota).
+        line ed endLine sono nello stesso file (una frase non attraversa Includi)."""
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
 
     # 3. Indicizza le frasi sorgente per (tipo, entità) → span e dettagli.
     #    Una stessa entità può avere più frasi (più proprietà, più connessioni):
     #    raccogliamo liste, non singoli valori.
-    frasi = []  # {data, line, endLine, tokens(per tipo)}
+    frasi = []  # {data, span:{file,line,endLine}, tokens(per tipo)}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -2097,20 +2112,19 @@ def analizza_outline(percorso_file, sorgente=None):
             end = getattr(meta, "end_line", line) if meta else None
             frasi.append({
                 "data": nodo.data,
-                "line": _riga_orig(line),
-                "endLine": _riga_orig(end),
+                "span": _span(line, end),
                 "tok": _tokens_per_tipo(nodo),
             })
 
     def _prima(data, id_entita, indice_entita=0):
-        """Riga della prima frase di tipo 'data' la cui ENTITA all'indice dato
+        """Span della prima frase di tipo 'data' la cui ENTITA all'indice dato
         corrisponde a id_entita (None se assente)."""
         for f in frasi:
             if f["data"] != data:
                 continue
             ents = f["tok"].get("ENTITA", [])
             if len(ents) > indice_entita and _norm_token(ents[indice_entita]) == id_entita:
-                return f["line"]
+                return f["span"]
         return None
 
     # 4. STANZE.
@@ -2123,7 +2137,7 @@ def analizza_outline(percorso_file, sorgente=None):
         # frase propria → implicit, ancorata alla connessione d'origine.
         exits = []
         for direzione, dest in getattr(st, "uscite", {}).items():
-            line, implicit = None, True
+            span, implicit = None, True
             for f in frasi:
                 if f["data"] != "def_connessione":
                     continue
@@ -2133,9 +2147,9 @@ def analizza_outline(percorso_file, sorgente=None):
                     forma = str(dirs[0]).lower()
                     if mondo.direzione_canonica(forma) == direzione \
                             and _norm_token(ents[1]) == dest:
-                        line, implicit = f["line"], False
+                        span, implicit = f["span"], False
                         break
-            if line is None:
+            if span is None:
                 # Origine dell'auto-ritorno: la connessione inversa (dest→rid).
                 for f in frasi:
                     if f["data"] != "def_connessione":
@@ -2143,21 +2157,21 @@ def analizza_outline(percorso_file, sorgente=None):
                     ents = f["tok"].get("ENTITA", [])
                     if len(ents) >= 2 and _norm_token(ents[0]) == dest \
                             and _norm_token(ents[1]) == rid:
-                        line = f["line"]
+                        span = f["span"]
                         break
             exits.append({
                 "direction": direzione,
                 "to": dest,
                 "toName": mondo.stanze[dest].nome_visualizzato if dest in mondo.stanze else dest,
-                "line": line,
+                "span": span,
                 "implicit": implicit,
             })
         rooms.append({
             "id": rid,
             "name": st.nome_visualizzato,
             "isStart": rid == start,
-            "defLine": _prima("def_stanza", rid),
-            "descLine": _prima("def_descrizione", rid),
+            "defSpan": _prima("def_stanza", rid),
+            "descSpan": _prima("def_descrizione", rid),
             "descConditional": _ha_descr_condizionale(frasi, rid),
             "description": st.descrizione,
             "exits": exits,
@@ -2181,7 +2195,7 @@ def analizza_outline(percorso_file, sorgente=None):
     objects = []
     for oid, o in mondo.oggetti.items():
         kind = _kind(o)
-        # Proprietà: ogni 'X è PROPRIETA.' (incl. 'prendibile') con la sua riga.
+        # Proprietà: ogni 'X è PROPRIETA.' (incl. 'prendibile') con il suo span.
         properties = []
         for f in frasi:
             if f["data"] != "def_proprieta":
@@ -2189,7 +2203,7 @@ def analizza_outline(percorso_file, sorgente=None):
             ents = f["tok"].get("ENTITA", [])
             props = f["tok"].get("PROPRIETA", [])
             if ents and props and _norm_token(ents[0]) == oid:
-                properties.append({"name": str(props[0]), "line": f["line"]})
+                properties.append({"name": str(props[0]), "span": f["span"]})
         # Alias dichiarati per questo oggetto.
         aliases = []
         for f in frasi:
@@ -2198,33 +2212,33 @@ def analizza_outline(percorso_file, sorgente=None):
             ents = f["tok"].get("ENTITA", [])
             quotati = f["tok"].get("TESTO_QUOTATO", [])
             if ents and quotati and _norm_token(ents[0]) == oid:
-                aliases.append({"name": _spoglia_quotato(str(quotati[0])), "line": f["line"]})
+                aliases.append({"name": _spoglia_quotato(str(quotati[0])), "span": f["span"]})
         # Posizione: 'X è PREP_LUOGO Y.' (ENTITA[0]=oggetto, ENTITA[1]=luogo).
         location = None
         pos = getattr(o, "posizione", None)
         if pos and pos not in (None, "inventario"):
-            line = None
+            span = None
             prep = None
             for f in frasi:
                 if f["data"] != "def_posizione":
                     continue
                 ents = f["tok"].get("ENTITA", [])
                 if len(ents) >= 2 and _norm_token(ents[0]) == oid:
-                    line = f["line"]
+                    span = f["span"]
                     preps = f["tok"].get("PREP_LUOGO", [])
                     prep = str(preps[0]) if preps else None
                     break
             nome_luogo = (mondo.stanze[pos].nome_visualizzato if pos in mondo.stanze
                           else mondo.oggetti[pos].nome_visualizzato if pos in mondo.oggetti
                           else pos)
-            location = {"id": pos, "name": nome_luogo, "prep": prep, "line": line}
+            location = {"id": pos, "name": nome_luogo, "prep": prep, "span": span}
         objects.append({
             "id": oid,
             "name": o.nome_visualizzato,
             "kind": kind,
             "prendibile": getattr(o, "prendibile", False),
-            "defLine": _prima(_DEF_PER_KIND[kind], oid),
-            "descLine": _prima("def_descrizione", oid),
+            "defSpan": _prima(_DEF_PER_KIND[kind], oid),
+            "descSpan": _prima("def_descrizione", oid),
             "descConditional": _ha_descr_condizionale(frasi, oid),
             "description": o.descrizione,
             "location": location,
@@ -2257,6 +2271,114 @@ def _spoglia_quotato(s: str) -> str:
     if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
         s = s[1:-1]
     return s.replace('\\"', '"').replace("\\\\", "\\")
+
+
+# ==============================================================================
+# SERIALIZZATORE CANONICO PER-FRASE (Favella Studio — Fase 6a, scrittura)
+# ------------------------------------------------------------------------------
+# serializza_frase è la metà in SCRITTURA del round-trip: data una specifica
+# strutturata (op + campi) restituisce LA frase .fav canonica. L'IDE la compone
+# dalle modifiche delle form e la inserisce/sostituisce nel buffer usando lo span
+# di analizza_outline (editing chirurgico per-frase). I nomi sono passati come
+# nome_visualizzato (con articolo), così le frasi rispecchiano lo stile d'autore
+# (es. «L'ingresso collega nord a il salotto.»). Fonte di verità unica delle forme
+# canoniche, in Python. ADDITIVA: non tocca motore/test.
+# ==============================================================================
+
+def _quota(testo: str) -> str:
+    """Avvolge il testo tra virgolette doppie con escape canonico (\\\" e \\\\)."""
+    interno = (testo or "").replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{interno}"'
+
+
+# Articolo iniziale del nome -> preposizione 'di' articolata + se è attaccata
+# (apostrofo) al nucleo. Gli indeterminativi sono mappati alla forma determinativa
+# corrispondente (una->della, un'->dell', uno->dello, un->del best-effort).
+_PREP_DI = {
+    "l'": ("dell'", True), "un'": ("dell'", True),
+    "il": ("del", False), "lo": ("dello", False), "uno": ("dello", False),
+    "la": ("della", False), "una": ("della", False),
+    "le": ("delle", False), "i": ("dei", False), "gli": ("degli", False),
+    "un": ("del", False),
+}
+
+
+def _frase_descrizione(nome_visualizzato: str, testo: str) -> str:
+    """«La descrizione <di articolata><nome> è "<testo>".» con la preposizione
+    concordata sull'articolo del nome (dell'ingresso, della cucina, del salotto).
+    Se l'articolo è ignoto ripiega su «di <nome completo>» (sempre parsabile)."""
+    art, nucleo = _scomponi_articolo(nome_visualizzato)
+    info = _PREP_DI.get(art) if art else None
+    if info and nucleo:
+        prep, attaccata = info
+        testa = f"{prep}{nucleo}" if attaccata else f"{prep} {nucleo}"
+    else:
+        testa = f"di {nome_visualizzato}"
+    return f"La descrizione {testa} è {_quota(testo)}."
+
+
+def _frase_posizione(nome: str, prep: str, luogo: str) -> str:
+    """«<nome> è <prep> <luogo>.» evitando il doppio articolo: le preposizioni
+    articolate (nel/nella/sul/…, e le apostrofate nell'/sull') ASSORBONO già
+    l'articolo, quindi dal nome del luogo lo si toglie (sul «il tavolo» → «sul
+    tavolo»; nell' «l'ingresso» → «nell'ingresso»). Le preposizioni nude (in/su/a)
+    conservano l'articolo del luogo, con uno spazio."""
+    p = (prep or "").strip()
+    nuda = p.lower() in ("in", "su", "a", "con", "per", "tra", "fra", "di", "da")
+    if not nuda:
+        _art, nucleo = _scomponi_articolo(luogo)
+        luogo = nucleo or luogo
+    sep = "" if p.endswith("'") else " "
+    return f"{nome} è {p}{sep}{luogo}."
+
+
+_DEF_KIND_TESTO = {
+    "oggetto": "una cosa", "contenitore": "un contenitore",
+    "supporto": "un supporto", "personaggio": "un personaggio",
+}
+
+
+def serializza_frase(spec):
+    """[Favella Studio / Fase 6a] Genera la frase .fav canonica da una specifica
+    strutturata. Ritorna {ok, text} oppure {ok:False, error}. Le op supportate:
+      room_def    {name}
+      object_def  {name, kind:oggetto|contenitore|supporto|personaggio}
+      description {name, text}
+      connection  {from, direction, to}
+      position    {name, prep, place}
+      property    {name, property}
+      prendibile  {name}
+      alias       {name, alias}
+      start       {name}
+    'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo)."""
+    try:
+        op = (spec or {}).get("op")
+        if op == "room_def":
+            return {"ok": True, "text": f"{spec['name']} è una stanza."}
+        if op == "object_def":
+            kind = spec.get("kind", "oggetto")
+            coda = _DEF_KIND_TESTO.get(kind, "una cosa")
+            return {"ok": True, "text": f"{spec['name']} è {coda}."}
+        if op == "description":
+            return {"ok": True, "text": _frase_descrizione(spec["name"], spec.get("text", ""))}
+        if op == "connection":
+            return {"ok": True,
+                    "text": f"{spec['from']} collega {spec['direction']} a {spec['to']}."}
+        if op == "position":
+            return {"ok": True, "text": _frase_posizione(
+                spec["name"], spec["prep"], spec["place"])}
+        if op == "property":
+            return {"ok": True, "text": f"{spec['name']} è {spec['property']}."}
+        if op == "prendibile":
+            return {"ok": True, "text": f"{spec['name']} è prendibile."}
+        if op == "alias":
+            return {"ok": True,
+                    "text": f"{spec['name']} si chiama anche {_quota(spec['alias'])}."}
+        if op == "start":
+            return {"ok": True, "text": f"Il giocatore comincia in {spec['name']}."}
+        return {"ok": False, "error": f"Operazione di serializzazione sconosciuta: {op!r}."}
+    except KeyError as e:
+        return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}
 
 
 def main():

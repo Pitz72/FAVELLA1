@@ -36,7 +36,7 @@ except Exception:
 _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
-                             compila_mondo, analizza_outline,
+                             compila_mondo, analizza_outline, serializza_frase,
                              VERBI_VALIDI, PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
@@ -47,7 +47,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.8.0"  # Fase 6a: world.outline (editor visuali, lettura)
+VERSIONE_SIDECAR = "0.8.1"  # Fase 6a: world.outline + outline.serialize (editor visuali)
 
 
 # ==============================================================================
@@ -412,6 +412,14 @@ def rpc_world_outline(params):
     return analizza_outline(percorso, sorgente)
 
 
+def rpc_outline_serialize(params):
+    """[Fase 6a] Genera la frase .fav canonica da una specifica strutturata
+    (op + campi), per il round-trip in SCRITTURA degli editor visuali. L'IDE
+    inserisce/sostituisce il testo restituito nel buffer usando gli span di
+    world.outline. Vedi serializza_frase per le op supportate."""
+    return serializza_frase(params)
+
+
 def rpc_session_history(_params):
     """[Fase 5] History della partita attiva per il debugger passo-passo: uno
     snapshot per turno con il comando che l'ha prodotto. L'IDE calcola i diff fra
@@ -433,6 +441,7 @@ _METODI = {
     "world.graph": rpc_world_graph,
     "world.snapshot": rpc_world_snapshot,
     "world.outline": rpc_world_outline,
+    "outline.serialize": rpc_outline_serialize,
     "session.history": rpc_session_history,
     "session.save": rpc_session_save,
     "session.load": rpc_session_load,

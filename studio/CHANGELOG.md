@@ -4,6 +4,27 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [Fase 6a.2] — 2026-06-02 — Serializzatore canonico (round-trip, scrittura)
+
+*Sidecar `0.8.1`; versione IDE invariata a `0.8.1` (nessuna UI ancora: è la base motore).*
+
+### Aggiunto
+- **`serializza_frase` + RPC `outline.serialize`**: data una specifica strutturata
+  (op + campi) genera **la frase `.fav` canonica** nello stile d'autore (es.
+  `L'ingresso collega nord a il salotto.`, `La descrizione della cucina è "…".`).
+  È la metà in **scrittura** del round-trip: l'IDE comporrà le frasi dalle modifiche
+  delle form e le inserirà/sostituirà nel buffer usando gli span di `world.outline`.
+  Op: room/object def, description (con preposizione articolata concordata),
+  connection, position (niente doppio articolo: `sul tavolo`, `nell'astuccio`),
+  property, prendibile, alias, start.
+
+### Corretto
+- **`world.outline` multi-file**: ogni ancora è ora uno **span `{file, line, endLine}`**
+  (prima solo la riga). In progetti con `Includi`, una frase può vivere in un file
+  diverso dal radice: senza il `file` lo splicer avrebbe editato il file sbagliato.
+  Verificato: `tavolino` risolto a `oggetti.fav:25`, non più `storia.fav:25`.
+  (Rinominati i campi: `defLine`/`descLine`/`line` → `defSpan`/`descSpan`/`span`.)
+
 ## [0.8.1] — 2026-06-02 — Guardia «modifiche non salvate» + fondazione editor visuali
 
 ### Aggiunto
