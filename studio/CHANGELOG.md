@@ -4,6 +4,30 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.3] — 2026-06-02 — Proprietà come coppie opposte / condizioni a due stati
+
+### Aggiunto
+- **Inspector oggetti — sezione «Stati (proprietà a due valori)»**: le proprietà che
+  formano una **coppia opposta** non sono più tag liberi, ma **selettori segmentati**
+  a tre vie `[lato A] [lato B] [—]`, col valore attivo evidenziato.
+  - Le coppie offerte sono **aperta↔chiusa** (default del motore, governa il contenuto
+    visibile dei contenitori) più tutte quelle **dichiarate dall'autore**.
+  - Clic su un lato: se l'altro era attivo ne **sostituisce** la frase (così il sorgente
+    non resta contraddittorio con entrambe le proprietà); se nessuno era attivo,
+    **aggiunge** `Oggetto è <lato>.`; **—** rimuove lo stato.
+  - **+ coppia opposta**: due campi (es. `accesa` / `spenta`) → scrive
+    `accesa e spenta sono opposte.` in fondo al file; subito dopo la coppia è disponibile
+    come selettore per **tutti** gli oggetti.
+  - I membri delle coppie non compaiono più tra i tag liberi di «Proprietà» (niente doppione).
+- Sidecar **0.8.3**: `world.outline` espone `opposites[{a,b}]` (coppie note nel mondo,
+  default + dichiarate, dedotte da `mondo.opposti` con dedup canonico); nuova op del
+  serializzatore **`opposite_decl {a,b}`** → `a e b sono opposte.`. Additive: motore byte-stabile.
+
+### Note
+- Questo è il primo dei tre livelli di «proprietà» individuati: (1) condizioni a due stati
+  note al motore, (2) coppie opposte custom, (3) **comportamento = regole** (prossimo grande
+  passo: editor visuale di regole/eventi). Vedi roadmap.
+
 ## [0.9.2] — 2026-06-02 — Fase 6a.4: Inspector oggetti (crea + modifica)
 
 ### Aggiunto

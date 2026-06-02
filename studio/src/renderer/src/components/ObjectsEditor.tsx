@@ -36,6 +36,9 @@ export default function ObjectsEditor(): JSX.Element {
   const [descBozza, setDescBozza] = useState('')
   const [propNew, setPropNew] = useState('')
   const [aliasNew, setAliasNew] = useState('')
+  const [oppA, setOppA] = useState('')
+  const [oppB, setOppB] = useState('')
+  const [dichiarando, setDichiarando] = useState(false)
 
   const sel = outline?.objects.find((o) => o.id === selId) ?? null
 
@@ -84,7 +87,18 @@ export default function ObjectsEditor(): JSX.Element {
     await applyStatement({ op: 'object_def', name: nome, kind: nuovoKind })
   }
 
-  const proprietaVisibili = sel ? sel.properties.filter((p) => p.name !== 'prendibile') : []
+  // Coppie di proprietà opposte note nel mondo (aperta/chiusa di default + quelle
+  // dichiarate). I loro membri NON compaiono tra i tag liberi: si editano come
+  // selettori a due stati qui sotto.
+  const opposites = outline.opposites ?? []
+  const membriOpposti = new Set<string>()
+  opposites.forEach((p) => {
+    membriOpposti.add(p.a)
+    membriOpposti.add(p.b)
+  })
+  const proprietaVisibili = sel
+    ? sel.properties.filter((p) => p.name !== 'prendibile' && !membriOpposti.has(p.name))
+    : []
   const prendibileProp = sel?.properties.find((p) => p.name === 'prendibile') ?? null
 
   const cambiaTipo = async (k: ObjectKind): Promise<void> => {
@@ -130,6 +144,42 @@ export default function ObjectsEditor(): JSX.Element {
     if (!a) return
     setAliasNew('')
     await applyStatement({ op: 'alias', name: sel.name, alias: a })
+  }
+
+  // Imposta (o azzera) il lato attivo di una coppia opposta sull'oggetto.
+  // lato = il nome della proprietà da attivare, oppure null per «nessuno».
+  // Le opposte si escludono: se l'altro lato era attivo, ne SOSTITUISCO la frase
+  // (così il sorgente non resta contraddittorio con entrambe le proprietà).
+  const impostaStato = async (pair: { a: string; b: string }, lato: string | null): Promise<void> => {
+    if (!sel) return
+    const propA = sel.properties.find((p) => p.name === pair.a) ?? null
+    const propB = sel.properties.find((p) => p.name === pair.b) ?? null
+    const attiva = propA ?? propB
+    if (lato === null) {
+      if (attiva?.span) await deleteStatement(attiva.span)
+      return
+    }
+    const corrente = sel.properties.find((p) => p.name === lato) ?? null
+    if (corrente) return // già attivo: niente da fare
+    const altro = lato === pair.a ? propB : propA
+    if (altro?.span) {
+      await applyStatement({ op: 'property', name: sel.name, property: lato }, altro.span)
+    } else {
+      await applyStatement({ op: 'property', name: sel.name, property: lato })
+    }
+  }
+
+  // Dichiara una nuova coppia di proprietà opposte (vale per TUTTI gli oggetti):
+  // «X e Y sono opposte.» in fondo al file attivo.
+  const dichiaraCoppia = async (): Promise<void> => {
+    const a = oppA.trim().toLowerCase()
+    const b = oppB.trim().toLowerCase()
+    if (!a || !b || a === b) return
+    if (opposites.some((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a))) return
+    setOppA('')
+    setOppB('')
+    setDichiarando(false)
+    await applyStatement({ op: 'opposite_decl', a, b })
   }
 
   return (
@@ -249,6 +299,75 @@ export default function ObjectsEditor(): JSX.Element {
             </div>
 
             <div className="objed-field">
+              <label>Stati (proprietà a due valori)</label>
+              {opposites.length === 0 && <span className="insp-none">nessuna coppia opposta</span>}
+              {opposites.map((pair) => {
+                const attivoA = !!sel.properties.find((p) => p.name === pair.a)
+                const attivoB = !!sel.properties.find((p) => p.name === pair.b)
+                const nessuno = !attivoA && !attivoB
+                return (
+                  <div key={pair.a + '|' + pair.b} className="objed-seg-row">
+                    <div className="objed-seg">
+                      <button
+                        className={attivoA ? 'on' : ''}
+                        onClick={() => void impostaStato(pair, pair.a)}
+                      >
+                        {pair.a}
+                      </button>
+                      <button
+                        className={attivoB ? 'on' : ''}
+                        onClick={() => void impostaStato(pair, pair.b)}
+                      >
+                        {pair.b}
+                      </button>
+                      <button
+                        className={'off-btn' + (nessuno ? ' on' : '')}
+                        title="Nessuno dei due"
+                        onClick={() => void impostaStato(pair, null)}
+                      >
+                        —
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {dichiarando ? (
+                <div className="objed-add">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="es. accesa"
+                    value={oppA}
+                    onChange={(e) => setOppA(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void dichiaraCoppia()
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="es. spenta"
+                    value={oppB}
+                    onChange={(e) => setOppB(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void dichiaraCoppia()
+                    }}
+                  />
+                  <button
+                    className="modal-btn ghost"
+                    disabled={!oppA.trim() || !oppB.trim() || oppA.trim() === oppB.trim()}
+                    onClick={() => void dichiaraCoppia()}
+                  >
+                    Dichiara
+                  </button>
+                </div>
+              ) : (
+                <button className="modal-btn ghost objed-save" onClick={() => setDichiarando(true)}>
+                  + coppia opposta
+                </button>
+              )}
+            </div>
+
+            <div className="objed-field">
               <label>Proprietà</label>
               <div className="objed-chips">
                 {proprietaVisibili.length === 0 && <span className="insp-none">nessuna</span>}
@@ -266,7 +385,7 @@ export default function ObjectsEditor(): JSX.Element {
               <div className="objed-add">
                 <input
                   type="text"
-                  placeholder="es. chiusa, rotta…"
+                  placeholder="es. rotta, bagnata…"
                   value={propNew}
                   onChange={(e) => setPropNew(e.target.value)}
                   onKeyDown={(e) => {

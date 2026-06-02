@@ -2057,11 +2057,11 @@ def analizza_outline(percorso_file, sorgente=None):
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     if not diag.get("ok"):
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "errors": diag.get("errors", [])}
+                "directions": [], "opposites": [], "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "errors": diag.get("errors", [])}
+                "directions": [], "opposites": [], "errors": diag.get("errors", [])}
 
     # 2. Posizioni: secondo parse con propagate_positions, mappa riga→(file, riga).
     try:
@@ -2251,8 +2251,24 @@ def analizza_outline(percorso_file, sorgente=None):
     # di connessione, così non genera frasi con direzioni non dichiarate.
     directions = sorted(set(getattr(mondo, "direzioni", {}).values()))
 
+    # Coppie di proprietà OPPOSTE (mutuamente esclusive): aperta↔chiusa (default
+    # del motore, controlla il contenuto visibile dei contenitori) + quelle
+    # dichiarate dall'autore con 'X e Y sono opposte.'. L'IDE le offre come
+    # selettori a due stati nell'inspector oggetti (non come tag liberi). La mappa
+    # mondo.opposti è simmetrica (a→{b}, b→{a}): dedup in coppie canoniche ordinate.
+    opposites = []
+    _visti_opp = set()
+    for prop_a, controparti in getattr(mondo, "opposti", {}).items():
+        for prop_b in controparti:
+            chiave = tuple(sorted((str(prop_a), str(prop_b))))
+            if chiave in _visti_opp or chiave[0] == chiave[1]:
+                continue
+            _visti_opp.add(chiave)
+            opposites.append({"a": chiave[0], "b": chiave[1]})
+    opposites.sort(key=lambda p: (p["a"], p["b"]))
+
     return {"ok": True, "rooms": rooms, "objects": objects,
-            "directions": directions, "errors": []}
+            "directions": directions, "opposites": opposites, "errors": []}
 
 
 def _ha_descr_condizionale(frasi, id_entita) -> bool:
@@ -2356,6 +2372,8 @@ def serializza_frase(spec):
       prendibile  {name}
       alias       {name, alias}
       start       {name}
+      direction_decl {a, b}   →  'A e B sono direzioni opposte.'
+      opposite_decl  {a, b}   →  'a e b sono opposte.' (coppia di proprietà)
     'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo)."""
     try:
         op = (spec or {}).get("op")
@@ -2387,6 +2405,12 @@ def serializza_frase(spec):
             b = str(spec["b"]).strip()
             a = a[:1].upper() + a[1:]  # prima lettera maiuscola (stile d'autore)
             return {"ok": True, "text": f"{a} e {b} sono direzioni opposte."}
+        if op == "opposite_decl":
+            # Coppia di proprietà opposte: 'aperta e chiusa sono opposte.'. Sono
+            # PROPRIETA (aggettivi minuscoli), niente maiuscola iniziale.
+            a = str(spec["a"]).strip()
+            b = str(spec["b"]).strip()
+            return {"ok": True, "text": f"{a} e {b} sono opposte."}
         return {"ok": False, "error": f"Operazione di serializzazione sconosciuta: {op!r}."}
     except KeyError as e:
         return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}

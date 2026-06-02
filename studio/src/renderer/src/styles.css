@@ -685,6 +685,45 @@ button:hover {
   font-size: 13px;
 }
 
+/* Selettori a due stati (proprietà opposte: aperta/chiusa, accesa/spenta…). */
+.objed-seg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.objed-seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.objed-seg button {
+  background: var(--bg);
+  color: var(--text-dim);
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 4px 11px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.objed-seg button:last-child {
+  border-right: none;
+}
+.objed-seg button.on {
+  background: var(--accent);
+  color: #0e1116;
+  font-weight: 600;
+}
+.objed-seg button.off-btn {
+  color: var(--text-dim);
+}
+.objed-seg button:hover:not(.on) {
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+
 /* --- Modal «modifiche non salvate» (stile IDE) --- */
 .modal-backdrop {
   position: fixed;

@@ -249,12 +249,22 @@ export interface OutlineObject {
   aliases: OutlineProperty[]
 }
 
+// Coppia di proprietà OPPOSTE (mutuamente esclusive): aperta↔chiusa (default del
+// motore) + quelle dichiarate con 'X e Y sono opposte.'. L'IDE le offre come
+// selettori a due stati nell'inspector oggetti.
+export interface OutlinePair {
+  a: string
+  b: string
+}
+
 export interface Outline {
   ok: boolean
   rooms: OutlineRoom[]
   objects: OutlineObject[]
   // Direzioni canoniche valide in questo mondo (base + personalizzate dichiarate).
   directions: string[]
+  // Coppie di proprietà opposte note nel mondo (default + dichiarate dall'autore).
+  opposites: OutlinePair[]
   errors: Diagnostic[]
 }
 
@@ -271,6 +281,7 @@ export type SerializeSpec =
   | { op: 'alias'; name: string; alias: string }
   | { op: 'start'; name: string }
   | { op: 'direction_decl'; a: string; b: string }
+  | { op: 'opposite_decl'; a: string; b: string }
 
 export interface SerializeResult {
   ok: boolean
