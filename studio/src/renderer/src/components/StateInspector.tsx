@@ -74,7 +74,10 @@ export default function StateInspector(): JSX.Element {
         </section>
 
         <section className="insp-section">
-          <h4>Inventario ({snap.inventory.length})</h4>
+          <h4>
+            Inventario ({snap.inventory.length}
+            {snap.carryMax !== null ? `/${snap.carryMax}` : ''})
+          </h4>
           {snap.inventory.length === 0 ? (
             <p className="insp-none">vuoto</p>
           ) : (

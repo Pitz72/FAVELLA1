@@ -45,8 +45,8 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
-VERSIONE_MOTORE = "0.12.1"
-VERSIONE_SIDECAR = "0.5.0"  # Favella Studio — Fase 4 (Mappa + State Inspector)
+VERSIONE_MOTORE = "0.13.0"
+VERSIONE_SIDECAR = "0.5.1"  # Fase 4 + capacità di trasporto nello snapshot (Livello 7)
 
 
 # ==============================================================================
@@ -286,6 +286,8 @@ def _snapshot_mondo(mondo):
             "kind": _tipo(ogg),
         })
 
+    # [Livello 7] Capacità di trasporto (None = illimitata): usati / massimo.
+    carry_max = mondo.capacita_attuale() if hasattr(mondo, "capacita_attuale") else None
     cur = mondo.posizione_giocatore
     return {
         "currentRoom": cur,
@@ -293,6 +295,8 @@ def _snapshot_mondo(mondo):
         "turn": getattr(mondo, "turno_corrente", 0),
         "status": getattr(mondo, "stato_partita", "in_corso"),
         "inDialogue": mondo.in_dialogo(),
+        "carryUsed": len(getattr(mondo, "inventario", set())),
+        "carryMax": carry_max,
         "variables": sorted(variabili, key=lambda v: v["name"]),
         "inventory": sorted(inventario, key=lambda i: i["name"]),
         "objects": sorted(oggetti, key=lambda o: o["name"]),

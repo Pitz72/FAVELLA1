@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.12.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.13.0)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
 
@@ -315,6 +315,10 @@ class Oggetto:
         # 'dialogo_iniziale' è l'etichetta del nodo di partenza della conversazione.
         self.is_personaggio: bool = False
         self.dialogo_iniziale: Optional[str] = None
+        # [Livello 7] Capacità di trasporto: mentre questo oggetto è nell'inventario,
+        # aumenta di 'bonus_capacita' il numero di oggetti che il giocatore può
+        # portare (es. uno zaino 'dà 15 spazi'). 0 = nessun bonus (default).
+        self.bonus_capacita: int = 0
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -342,6 +346,10 @@ class Mondo:
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
         self.posizione_iniziale: str | None = None
         self.inventario: Set[str] = set()
+        # [Livello 7] Capacità di trasporto BASE (numero di oggetti portabili a mani
+        # nude). None = illimitata (default storico: nessun limite). I bonus degli
+        # oggetti portati (es. uno zaino) si SOMMANO alla base. Vedi capacita_attuale().
+        self.capacita_base: Optional[int] = None
         # [Livello 3] Stato della partita: "in_corso" finché una conseguenza di
         # fine partita non lo porta a "vinta"/"persa"/"terminata". Il loop di
         # gioco lo controlla dopo ogni comando per fermarsi.
@@ -500,6 +508,24 @@ class Mondo:
     def trova_oggetto(self, nome: str) -> Oggetto | None:
         return self.oggetti.get(nome)
 
+    # --- [Livello 7] Capacità di trasporto ---
+
+    def capacita_attuale(self) -> Optional[int]:
+        """Numero massimo di oggetti trasportabili in questo momento: la base più
+        i bonus degli oggetti attualmente nell'inventario (es. uno zaino). None se
+        l'autore non ha dichiarato alcuna capacità (inventario illimitato)."""
+        if self.capacita_base is None:
+            return None
+        bonus = sum(self.oggetti[i].bonus_capacita
+                    for i in self.inventario if i in self.oggetti)
+        return self.capacita_base + bonus
+
+    def puo_portare_altro(self) -> bool:
+        """Vero se il giocatore può prendere ancora un oggetto. Senza capacità
+        dichiarata è sempre vero (illimitato)."""
+        cap = self.capacita_attuale()
+        return cap is None or len(self.inventario) < cap
+
     # --- [Livello 4 / M1] Contenitori e supporti: raggiungibilità ---
 
     def contenitore_aperto(self, oggetto: 'Oggetto') -> bool:
@@ -572,7 +598,7 @@ class Mondo:
     def __str__(self) -> str:
         n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.12.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.13.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"

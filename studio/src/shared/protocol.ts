@@ -163,6 +163,9 @@ export interface WorldSnapshot {
   turn: number
   status: 'in_corso' | Outcome
   inDialogue: boolean
+  // [Livello 7] Capacità di trasporto: oggetti portati / massimo (null = illimitata).
+  carryUsed: number
+  carryMax: number | null
   variables: SnapVariable[]
   inventory: { id: string; name: string }[]
   objects: SnapObject[]

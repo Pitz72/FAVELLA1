@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.12.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.13.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -81,6 +81,9 @@ PAROLE_RISERVATE = frozenset({
     "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude", "conduce",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
+    # capacità di trasporto (Livello 7): 'Il giocatore può portare N oggetti.' /
+    # 'Lo zaino dà N spazi.'
+    "può", "portare", "oggetti", "dà", "spazi",
     # preposizioni d'azione
     "su", "con", "contro",
     # direzioni (estese e abbreviate)
@@ -260,6 +263,8 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_opzione
                   | def_direzioni
                   | def_evento
+                  | def_giocatore_capacita
+                  | def_capacita_oggetto
 
     // --- DEFINIZIONI BASE ---
     def_stanza: ENTITA "è" "una" "stanza" "."
@@ -297,6 +302,13 @@ _GRAMMAR_TEMPLATE = r"""
     def_alias: ENTITA "si" "chiama" "anche" TESTO_QUOTATO "."
     def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA "."
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
+    // [Livello 7] Capacità di trasporto. La BASE: 'Il giocatore può portare N
+    // oggetti.' — inizia come def_giocatore con "Il giocatore"; dopo, il lookahead
+    // "può" vs "comincia/inizia/parte" la distingue (LALR(1) 0-ambiguo). Il BONUS
+    // di un oggetto: 'Lo zaino dà N spazi.' — inizia con ENTITA; dopo l'entità il
+    // lookahead "dà" la distingue da è/si/collega/al (unico costrutto ENTITA "dà").
+    def_giocatore_capacita: "Il" "giocatore" "può" "portare" NUMERO "oggetti" "."
+    def_capacita_oggetto: ENTITA "dà" NUMERO "spazi" "."
 
     // --- STATO ASTRATTO (Livello 3 / G3) ---
     // 'X è uno stato.' dichiara una variabile globale (uno 'stato'); 'X è valore.'
@@ -915,6 +927,29 @@ class FavellaTransformer(Transformer):
         nome_grezzo = tokens[-1]
         self.start_dichiarato_raw = nome_grezzo
         self.mondo.posizione_iniziale = normalizza_nome(nome_grezzo)
+        return None
+
+    def def_giocatore_capacita(self, numero):
+        # [Livello 7] 'Il giocatore può portare N oggetti.': capacità base di
+        # trasporto. NUMERO è già int. Negativi/assurdi: avviso non bloccante.
+        if numero < 0:
+            self.warnings.append(
+                f"Capacità di trasporto negativa ({numero}) ignorata."
+            )
+            return None
+        self.mondo.capacita_base = numero
+        return None
+
+    def def_capacita_oggetto(self, ent_grezzo, numero):
+        # [Livello 7] 'Lo zaino dà N spazi.': l'oggetto, mentre è nell'inventario,
+        # aumenta la capacità di N. _crea_o_trova_oggetto tollera l'ordine delle
+        # dichiarazioni (l'oggetto è comunque un'ENTITA dichiarata, vista dallo scanner).
+        if numero < 0:
+            self.warnings.append(
+                f"Bonus di capacità negativo ({numero}) per '{ent_grezzo}' ignorato."
+            )
+            return None
+        self._crea_o_trova_oggetto(ent_grezzo).bonus_capacita = numero
         return None
 
 

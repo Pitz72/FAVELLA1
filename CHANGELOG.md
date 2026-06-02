@@ -4,6 +4,38 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.13.0] - 2026-06-02
+### Roadmap del Linguaggio — Livello 7: CAPACITÀ DI TRASPORTO 🎒
+Primo costrutto del **Livello 7**. Aggiunge un limite **opzionale** di oggetti
+trasportabili, configurabile dall'autore e **additivo**:
+
+    Il giocatore può portare 5 oggetti.     # capacità base
+    Lo zaino dà 15 spazi.                    # bonus mentre lo zaino è nell'inventario
+
+La capacità attuale è `base + somma dei bonus degli oggetti portati`
+(`Mondo.capacita_attuale()`); l'azione `prendi` rifiuta un oggetto se
+l'inventario è pieno («Hai le mani troppo piene…»). **Senza dichiarazione
+l'inventario resta illimitato** (default storico invariato): la feature non è
+vincolante. L'azione `inventario` mostra «(usati/max)» quando una capacità è
+dichiarata.
+
+**Grammatica** (LALR(1) 0-ambiguo, per costruzione): due regole nuove —
+`def_giocatore_capacita` (`"Il giocatore può portare" NUMERO "oggetti"`,
+distinta da `def_giocatore` sul lookahead `può` vs `comincia/inizia/parte`) e
+`def_capacita_oggetto` (`ENTITA "dà" NUMERO "spazi"`, unico costrutto `ENTITA "dà"`).
+Nuove parole riservate: `può`, `portare`, `oggetti`, `dà`, `spazi`.
+
+**Modello**: `Mondo.capacita_base` (None = illimitata), `Oggetto.bonus_capacita`.
+L'IDE espone `carryUsed`/`carryMax` nello snapshot (`world.snapshot`); l'inspector
+mostra «Inventario (n/max)».
+
+Suite: **334 asserzioni** (era 321), tutte verdi; la guardia anti-ambiguità copre
+i nuovi costrutti (1 albero / 0 conflitti LALR). Spec EBNF aggiornata in
+**`documentazione/grammatica-0.13.0.md`**. Header core (compilatore/strutture/gioco/
+libreria_azioni/suite) + `Mondo.__str__` a **v0.13.0**. Doc: `documentazione/0.13.0.md`.
+
+---
+
 ## [0.11.3] - 2026-05-31
 ### Roadmap del Linguaggio — Livello 6: SPEC EBNF FORMALE VERSIONATA 📐
 Terza patch del Livello 6 (verso `0.12.0`). Aggiunge il documento tecnico

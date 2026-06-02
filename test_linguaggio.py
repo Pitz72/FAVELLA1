@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.12.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.13.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1161,6 +1161,8 @@ _CORPUS_GUARDIA = (
     'Invece di frusta la chiave: dire "Schiocco.".\n'  # regola con verbo custom
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
     "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
+    "Il giocatore può portare 4 oggetti.\n"            # def_giocatore_capacita [Livello 7]
+    "La chiave dà 2 spazi.\n"                          # def_capacita_oggetto [Livello 7]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
     'Invece di prendi la chiave se il punteggio è almeno 2: dire "Punti." '
     'e adesso aumenta il punteggio di 3.\n'            # cond_contatore_gte + cons_aumenta
@@ -2122,7 +2124,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.12.0.md")
+                          "grammatica-0.13.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2139,7 +2141,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.12.0.md è presente")
+           "documentazione/grammatica-0.13.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -2164,6 +2166,86 @@ def test_spec_ebnf_documenta_terminali_chiusi():
         spec = f.read()
     for term in ("ENTITA", "VARIABILE", "DIREZIONE", "PROPRIETA", "TESTO_QUOTATO"):
         _check(term in spec, f"la spec documenta il terminale {term}")
+
+
+# --- Test: capacità di trasporto [Livello 7] --------------------------------
+
+def test_capacita_dichiarazione():
+    print("[capacità: dichiarazione base e bonus oggetto]")
+    src = (
+        "L'atrio è una stanza.\n"
+        "Il giocatore può portare 5 oggetti.\n"
+        "Uno zaino è una cosa.\nLo zaino è in atrio.\n"
+        "Lo zaino dà 15 spazi.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "il sorgente con capacità compila")
+    _check(mondo and mondo.capacita_base == 5, "la capacità base è 5")
+    _check(mondo and mondo.trova_oggetto("zaino").bonus_capacita == 15,
+           "lo zaino dà 15 spazi di bonus")
+
+
+def test_capacita_blocca_oltre_limite():
+    print("[capacità: l'inventario non supera il limite dichiarato]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Il giocatore può portare 1 oggetti.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n"
+        "Una pera è una cosa.\nLa pera è in atrio.\nLa pera è prendibile.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi mela")
+    out = esegui(mondo, "prendi pera")
+    _check("piene" in out.lower(), "il secondo oggetto è rifiutato (inventario pieno)")
+    _check("pera" not in mondo.inventario, "la pera non è entrata nell'inventario")
+    _check("mela" in mondo.inventario, "la mela è rimasta")
+
+
+def test_capacita_bonus_additivo():
+    print("[capacità: un oggetto-bonus alza il limite (additivo)]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Il giocatore può portare 1 oggetti.\n"
+        "Uno zaino è una cosa.\nLo zaino è in atrio.\nLo zaino è prendibile.\n"
+        "Lo zaino dà 2 spazi.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n"
+        "Una pera è una cosa.\nLa pera è in atrio.\nLa pera è prendibile.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.capacita_attuale() == 1, "capacità iniziale = 1 (base)")
+    esegui(mondo, "prendi zaino")
+    _check(mondo.capacita_attuale() == 3, "con lo zaino la capacità diventa 3 (1+2)")
+    esegui(mondo, "prendi mela")
+    esegui(mondo, "prendi pera")
+    _check("pera" in mondo.inventario, "con lo zaino si porta anche la pera (3/3)")
+
+
+def test_capacita_illimitata_default():
+    print("[capacità: senza dichiarazione l'inventario è illimitato]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n"
+        "Una pera è una cosa.\nLa pera è in atrio.\nLa pera è prendibile.\n"
+        "Una noce è una cosa.\nLa noce è in atrio.\nLa noce è prendibile.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.capacita_attuale() is None, "nessuna capacita' dichiarata: illimitata")
+    for n in ("mela", "pera", "noce"):
+        esegui(mondo, f"prendi {n}")
+    _check(len(mondo.inventario) == 3, "si possono prendere tutti gli oggetti")
+
+
+def test_capacita_zero():
+    print("[capacità: con capacità 0 non si prende nulla]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Il giocatore può portare 0 oggetti.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.capacita_base == 0, "capacità base 0 accettata")
+    esegui(mondo, "prendi mela")
+    _check("mela" not in mondo.inventario, "con capacità 0 non si prende nulla")
 
 
 # --- Runner ------------------------------------------------------------------
@@ -2331,6 +2413,12 @@ def main():
         test_spec_ebnf_esiste,
         test_spec_ebnf_allineata_alla_grammatica,
         test_spec_ebnf_documenta_terminali_chiusi,
+        # Livello 7 — capacità di trasporto
+        test_capacita_dichiarazione,
+        test_capacita_blocca_oltre_limite,
+        test_capacita_bonus_additivo,
+        test_capacita_illimitata_default,
+        test_capacita_zero,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -2338,7 +2426,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.12.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.13.0)")
     print("=" * 60)
     for t in tests:
         t()

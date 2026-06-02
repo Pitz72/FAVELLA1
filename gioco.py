@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.12.0)
+# Interprete Interattivo per FAVELLA 1 (v0.13.0)
 
 import sys
 import traceback

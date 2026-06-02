@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.12.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.13.0)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo, frase_indeterminativa
@@ -37,6 +37,12 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str):
         return
     if not oggetto.prendibile:
         print("Non puoi prenderlo.")
+        return
+    # [Livello 7] Capacità di trasporto opzionale: se l'autore l'ha dichiarata,
+    # l'inventario non può superarla (la base più i bonus degli oggetti già
+    # portati, es. uno zaino). Senza dichiarazione → illimitato.
+    if not mondo.puo_portare_altro():
+        print("Hai le mani troppo piene: lascia qualcosa prima di prenderlo.")
         return
 
     # [Livello 4 / M1] Rimuove l'oggetto da dove si trova (stanza, contenitore o
@@ -91,10 +97,13 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
 
 def inventario_logica_default(mondo: Mondo):
     """Logica di default per l'azione INVENTARIO."""
+    # [Livello 7] Se l'autore ha dichiarato una capacità, mostriamo «(usati/max)».
+    cap = mondo.capacita_attuale()
+    suffisso = f" ({len(mondo.inventario)}/{cap})" if cap is not None else ""
     if not mondo.inventario:
-        print("Non stai portando nulla.")
+        print(f"Non stai portando nulla.{suffisso}")
     else:
-        print("Stai portando:")
+        print(f"Stai portando:{suffisso}")
         for id_ogg in sorted(list(mondo.inventario)):
             # Prendiamo il nome originale dell'oggetto per una visualizzazione più gradevole
             nome_visualizzato = mondo.oggetti[id_ogg].nome_visualizzato

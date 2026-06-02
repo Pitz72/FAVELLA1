@@ -4,6 +4,14 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.5.1] — 2026-06-02 — Capacità di trasporto nell'inspector
+
+### Aggiunto
+- `world.snapshot` ora riporta **`carryUsed`/`carryMax`** (capacità di trasporto del
+  giocatore, Livello 7 del linguaggio / motore v0.13.0); l'ispettore di stato mostra
+  «Inventario (n/max)». `carryMax` è `null` se l'autore non ha dichiarato una capacità
+  (inventario illimitato). Sidecar a `0.5.1`, motore riportato a `0.13.0`.
+
 ## [0.5.0] — 2026-06-02 — Fase 4: Mappa & Stato
 
 ### Aggiunto
