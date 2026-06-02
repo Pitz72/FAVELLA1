@@ -148,3 +148,6 @@ yarn-error.log
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Salvataggi di partita (dati utente, non versionati)
+*.favsave

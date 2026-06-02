@@ -184,6 +184,15 @@ export interface SessionHistory {
   entries: DebugEntry[]
 }
 
+// --- Salvataggio partite (command-log) ---
+export interface Savegame {
+  version: number
+  path: string
+  source: string | null
+  commands: string[]
+  turn: number
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

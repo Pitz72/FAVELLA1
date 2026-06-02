@@ -22,7 +22,9 @@ const TIMEOUTS: Record<string, number> = {
   'engine.lexicon': 5000,
   compile: 30000,
   'session.start': 30000,
-  'session.send': 10000
+  'session.send': 10000,
+  'session.load': 30000,
+  'session.save': 10000
 }
 const DEFAULT_TIMEOUT = 15000
 const MAX_RESTART_BACKOFF = 10000

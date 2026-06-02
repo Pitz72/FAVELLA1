@@ -8,7 +8,8 @@ import type {
   SessionResult,
   WorldGraph,
   WorldSnapshot,
-  SessionHistory
+  SessionHistory,
+  Savegame
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -67,6 +68,24 @@ const api = {
   /** [Fase 5] History della partita (uno snapshot per turno) per il debugger. */
   sessionHistory(): Promise<SessionHistory> {
     return ipcRenderer.invoke('rpc', 'session.history', {})
+  },
+
+  // --- Salvataggio partite (command-log) ---
+  /** Esporta il salvataggio della partita attiva (sequenza di comandi + storia). */
+  gameSave(): Promise<Savegame> {
+    return ipcRenderer.invoke('rpc', 'session.save', {})
+  },
+  /** Carica un salvataggio: ricompila e ri-esegue i comandi. */
+  gameLoad(save: Savegame): Promise<SessionResult> {
+    return ipcRenderer.invoke('rpc', 'session.load', { save })
+  },
+  /** Mostra il dialogo «Salva con nome» e scrive il `.favsave`. */
+  writeSaveFile(save: Savegame): Promise<{ ok: boolean; path?: string }> {
+    return ipcRenderer.invoke('game:writeSave', save)
+  },
+  /** Mostra il dialogo «Apri» e legge un `.favsave` (null se annullato). */
+  readSaveFile(): Promise<Savegame | null> {
+    return ipcRenderer.invoke('game:readSave')
   },
 
   // --- Finestra di gioco dedicata (stile Godot) ---

@@ -64,6 +64,7 @@ interface StudioState {
   gameRunning: boolean
   gameBusy: boolean
   gameError: string | null
+  gameNotice: string | null
   // Mappa + Inspector (Fase 4)
   worldGraph: WorldGraph | null
   worldSnapshot: WorldSnapshot | null
@@ -97,6 +98,9 @@ interface StudioState {
   launchGameWindow: () => void
   sendGameCommand: (command: string) => Promise<void>
   resetGame: () => Promise<void>
+  saveGame: () => Promise<void>
+  loadGame: () => Promise<void>
+  clearGameNotice: () => void
   // Mappa + Inspector (Fase 4)
   loadWorldGraph: () => Promise<void>
   loadWorldSnapshot: () => Promise<void>
@@ -149,6 +153,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   gameRunning: false,
   gameBusy: false,
   gameError: null,
+  gameNotice: null,
   worldGraph: null,
   worldSnapshot: null,
   worldLoading: false,
@@ -388,6 +393,56 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
   },
+
+  // --- Salvataggio partite (command-log) ------------------------------------
+
+  saveGame: async () => {
+    if (!get().gameState) return // nessuna partita da salvare
+    try {
+      const save = await window.favella.gameSave()
+      const res = await window.favella.writeSaveFile(save)
+      if (res.ok) set({ gameNotice: `Partita salvata (turno ${save.turn}).` })
+    } catch (e) {
+      set({ gameError: messaggioErrore(e) })
+    }
+  },
+
+  loadGame: async () => {
+    let save
+    try {
+      save = await window.favella.readSaveFile()
+    } catch (e) {
+      set({ gameError: messaggioErrore(e) })
+      return
+    }
+    if (!save) return // annullato
+    set({ gameBusy: true, gameError: null })
+    try {
+      const res = await window.favella.gameLoad(save)
+      if (!res.ok) {
+        set({
+          gameBusy: false,
+          gameRunning: false,
+          gameError: res.errors?.[0]?.message ?? 'Caricamento fallito: la storia non compila più.'
+        })
+        return
+      }
+      set({
+        gameBusy: false,
+        gameError: null,
+        gameNotice: `Partita caricata (turno ${save.turn}).`,
+        gameLines: righeConsole(res.output),
+        gameState: res.state,
+        gameRunning: res.running
+      })
+      void get().loadWorldGraph()
+      void get().loadWorldSnapshot()
+    } catch (e) {
+      set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
+    }
+  },
+
+  clearGameNotice: () => set({ gameNotice: null }),
 
   // --- Mappa + Inspector (Fase 4) -------------------------------------------
 

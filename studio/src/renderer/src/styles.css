@@ -1165,6 +1165,7 @@ button:hover {
   color: var(--text-dim);
 }
 
+.gw-tool,
 .gw-restart-btn {
   background: var(--bg-elev2);
   color: var(--text);
@@ -1172,8 +1173,21 @@ button:hover {
   font-size: 12px;
 }
 
+.gw-tool:hover,
 .gw-restart-btn:hover {
   background: var(--border);
+}
+
+.gw-tool:disabled,
+.gw-restart-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gw-notice {
+  color: #7ee2a8;
+  font-size: 12px;
+  animation: slidein 0.2s ease;
 }
 
 .gw-body {

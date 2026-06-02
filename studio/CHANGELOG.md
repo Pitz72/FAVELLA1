@@ -4,6 +4,20 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.8.0] — 2026-06-02 — Salvataggio partite (command-log)
+
+### Aggiunto
+- **Salva / Carica partita** nella finestra di gioco (💾 / 📂), su file `.favsave`.
+  Approccio **command-log**: poiché FAVELLA è deterministico, il salvataggio è la
+  semplice **sequenza dei comandi giocati** (+ riferimento alla storia: path e
+  sorgente). Il caricamento **ricompila il mondo e ri-esegue i comandi**, riproducendo
+  esattamente lo stato e mostrando il transcript fino al punto salvato. Salvataggi
+  minuscoli e robusti, senza serializzare il Mondo.
+- RPC `session.save` (esporta `{version, path, source, commands, turn}`) e
+  `session.load` (ricompila + replay). Dialoghi file nativi gestiti dal processo main
+  (`game:writeSave` / `game:readSave`). Sidecar a `0.7.0`.
+- Notifica transitoria in finestra di gioco («Partita salvata/caricata (turno N)»).
+
 ## [0.7.0] — 2026-06-02 — Fase 5: Debugger passo-passo
 
 ### Aggiunto

@@ -46,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.6.0"  # Fase 5 — debugger passo-passo (session.history)
+VERSIONE_SIDECAR = "0.7.0"  # Salvataggio partite (command-log: session.save/load)
 
 
 # ==============================================================================
@@ -235,6 +235,53 @@ def rpc_session_reset(_params):
     return rpc_session_start({"path": _SESSIONE.path, "source": _SESSIONE.source})
 
 
+def rpc_session_save(_params):
+    """[Salvataggio partite] Esporta il salvataggio come COMMAND-LOG: la sequenza
+    dei comandi giocati più il riferimento alla storia (path + sorgente). FAVELLA è
+    deterministico, quindi rigiocare i comandi riproduce esattamente lo stato. Il
+    salvataggio è minuscolo e non serializza il Mondo."""
+    if _SESSIONE is None:
+        raise ValueError("Nessuna partita da salvare.")
+    comandi = [h["command"] for h in _SESSIONE.history if h["command"] is not None]
+    return {
+        "version": 1,
+        "path": _SESSIONE.path,
+        "source": _SESSIONE.source,
+        "commands": comandi,
+        "turn": getattr(_SESSIONE.mondo, "turno_corrente", 0),
+    }
+
+
+def rpc_session_load(params):
+    """[Salvataggio partite] Carica un salvataggio command-log: ricompila il mondo
+    (dal path/sorgente salvati) e RI-ESEGUE i comandi, restituendo il transcript
+    completo (così la console mostra la partita fino al punto salvato). Su errore
+    di compilazione restituisce ok=False con le diagnostiche."""
+    global _SESSIONE
+    save = params.get("save") or {}
+    path = save.get("path")
+    if not path:
+        raise ValueError("Salvataggio non valido: manca 'path'.")
+    source = save.get("source")
+    comandi = save.get("commands") or []
+
+    res = rpc_session_start({"path": path, "source": source})
+    if not res.get("ok"):
+        return res  # compilazione fallita: ok=False + errors
+
+    pezzi = [res["output"]]
+    for cmd in comandi:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            continua = elabora_comando(_SESSIONE.mondo, cmd)
+        _SESSIONE.running = bool(continua)
+        _registra_turno(_SESSIONE, cmd)
+        pezzi.append(f"\n> {cmd}\n{buf.getvalue()}")
+
+    return {"ok": True, "output": "".join(pezzi), "running": _SESSIONE.running,
+            "state": _stato_partita(_SESSIONE.mondo)}
+
+
 # ==============================================================================
 # Mappa del mondo e ispettore di stato (Fase 4) — world.graph / world.snapshot
 # ------------------------------------------------------------------------------
@@ -368,6 +415,8 @@ _METODI = {
     "world.graph": rpc_world_graph,
     "world.snapshot": rpc_world_snapshot,
     "session.history": rpc_session_history,
+    "session.save": rpc_session_save,
+    "session.load": rpc_session_load,
 }
 
 

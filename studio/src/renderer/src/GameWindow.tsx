@@ -25,6 +25,10 @@ export default function GameWindow(): JSX.Element {
   const startGameWith = useStudio((s) => s.startGameWith)
   const sendCommand = useStudio((s) => s.sendGameCommand)
   const resetGame = useStudio((s) => s.resetGame)
+  const saveGame = useStudio((s) => s.saveGame)
+  const loadGame = useStudio((s) => s.loadGame)
+  const notice = useStudio((s) => s.gameNotice)
+  const clearNotice = useStudio((s) => s.clearGameNotice)
 
   const [input, setInput] = useState('')
   const storiaRef = useRef<HTMLDivElement | null>(null)
@@ -56,6 +60,13 @@ export default function GameWindow(): JSX.Element {
     if (running && !busy && !state?.inDialogue) inputRef.current?.focus()
   }, [running, busy, state?.inDialogue])
 
+  // La notifica (salvato/caricato) sparisce dopo qualche secondo.
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => clearNotice(), 3000)
+    return () => clearTimeout(t)
+  }, [notice, clearNotice])
+
   const invia = (): void => {
     const testo = input.trim()
     if (!testo) return
@@ -74,9 +85,16 @@ export default function GameWindow(): JSX.Element {
       <header className="gw-header">
         <span className="gw-title">✦ Favella · Gioco</span>
         <span className="gw-place">{state?.room ?? '—'}</span>
+        {notice && <span className="gw-notice">{notice}</span>}
         <span className="gw-spacer" />
         {state && !gameOver && <span className="gw-turn">turno {state.turn}</span>}
-        <button className="gw-restart-btn" onClick={() => void resetGame()} disabled={busy}>
+        <button className="gw-tool" title="Salva la partita" onClick={() => void saveGame()} disabled={busy || !state}>
+          💾 Salva
+        </button>
+        <button className="gw-tool" title="Carica una partita" onClick={() => void loadGame()} disabled={busy}>
+          📂 Carica
+        </button>
+        <button className="gw-restart-btn" onClick={() => void resetGame()} disabled={busy || !state}>
           ↻ Riavvia
         </button>
       </header>

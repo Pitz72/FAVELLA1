@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron'
+import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { Sidecar } from './sidecar'
 import { registraFileSystemIPC } from './fsapi'
@@ -111,6 +112,33 @@ app.whenReady().then(() => {
     createGameWindow()
   })
   ipcMain.handle('game:launchPayload', () => gameLaunch)
+
+  // Salvataggio partite su file .favsave (dialoghi nativi + I/O sul main).
+  ipcMain.handle('game:writeSave', async (_e, save: unknown) => {
+    const win = gameWindow ?? mainWindow ?? undefined
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Salva partita',
+      defaultPath: 'partita.favsave',
+      filters: [{ name: 'Partita Favella', extensions: ['favsave'] }]
+    })
+    if (res.canceled || !res.filePath) return { ok: false }
+    await writeFile(res.filePath, JSON.stringify(save, null, 2), 'utf-8')
+    return { ok: true, path: res.filePath }
+  })
+  ipcMain.handle('game:readSave', async () => {
+    const win = gameWindow ?? mainWindow ?? undefined
+    const res = await dialog.showOpenDialog(win!, {
+      title: 'Carica partita',
+      properties: ['openFile'],
+      filters: [{ name: 'Partita Favella', extensions: ['favsave'] }]
+    })
+    if (res.canceled || res.filePaths.length === 0) return null
+    try {
+      return JSON.parse(await readFile(res.filePaths[0], 'utf-8'))
+    } catch {
+      return null
+    }
+  })
 
   registraFileSystemIPC()
 

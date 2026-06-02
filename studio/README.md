@@ -68,6 +68,8 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
 - [x] **Fase 5 — Debugger passo-passo**: RPC `session.history` (uno snapshot per turno);
       scheda «🐞 Debug» con la timeline dei turni e il diff dello stato (spostamenti,
       inventario, variabili, proprietà, esito).
+- [x] **Salvataggio partite** (command-log): 💾 Salva / 📂 Carica nella finestra di gioco,
+      file `.favsave`. RPC `session.save`/`session.load` (replay deterministico dei comandi).
 - [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
 - [ ] Fase 7 — Packaging del gioco
 
