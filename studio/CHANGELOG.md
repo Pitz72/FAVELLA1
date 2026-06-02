@@ -4,6 +4,33 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.4.0] — 2026-06-02 — Fase 3: Gioca
+
+### Aggiunto
+- **Sessione di gioco** nel sidecar (`favella_server.py`): RPC `session.start`,
+  `session.send`, `session.reset`. Avvolgono `elabora_comando` del motore — già
+  *headless* (prende una stringa, non chiama `input()`, dialoghi a turni) — sotto
+  **cattura di stdout**, restituendo all'IDE il testo della console e un'istantanea
+  di stato `{gameOver, outcome, inDialogue, dialogueOptions, room, turn}`.
+- **Compilazione giocabile** additiva in `compilatore.py`:
+  `compila_mondo(percorso, sorgente=None)` — stessa pipeline di `analizza_file`,
+  ma **restituisce il Mondo** invece di stamparne il riepilogo, e compila il
+  **buffer live** (gli `Includi` risolti dal disco). `analizza_file` resta
+  byte-stabile (**321 test invariati**).
+- **Pannello «Gioca»**: console testuale con auto-scroll ed eco dei comandi,
+  riga di input (Invio per inviare), **bottoni per le opzioni di dialogo** (numerate,
+  filtrate per condizione), **banner di esito** (vinta/persa/terminata), indicatore di
+  stanza e turno, **↻ Riavvia**. Si apre dal pulsante **▶ Gioca** in barra del titolo
+  o con **F5**; gioca il file `.fav` attivo (buffer live).
+
+### Note
+- Il **riavvio** rigioca lo *stesso* sorgente da cui è nata la partita (le modifiche
+  live dell'editor non rientrano a metà partita; per giocarle, ▶ Gioca riparte dal
+  buffer aggiornato).
+- Su errore di compilazione, `session.start` restituisce `ok=false` con le
+  diagnostiche d'autore (dal canale strutturato della Fase 2), mostrate nel pannello.
+- **Prossimo (Fase 4)**: chiusa questa fase, si elimina il vecchio `favella_studio.py`.
+
 ## [0.3.0] — 2026-06-01 — Fase 2: Compile & diagnostica
 
 ### Aggiunto

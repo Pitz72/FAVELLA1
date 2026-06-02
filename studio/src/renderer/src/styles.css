@@ -59,6 +59,29 @@ body {
   font-size: 12px;
 }
 
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.play-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #2f7d4f;
+  color: #eafaf0;
+}
+
+.play-btn:hover {
+  background: #379159;
+}
+
+.play-btn:disabled {
+  background: var(--bg-elev2);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
 /* --- Workbench (explorer + editor) --- */
 .workbench {
   flex: 1 1 auto;
@@ -480,4 +503,189 @@ button:hover {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* --- Pannello Gioca (Fase 3) --- */
+.gamepanel {
+  flex: 0 0 420px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-elev);
+  border-left: 1px solid var(--border);
+}
+
+.gamepanel-header {
+  justify-content: space-between;
+}
+
+.game-room {
+  color: var(--fav);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.gamepanel-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.game-turn {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.game-console {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+  padding: 12px 14px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #161619;
+}
+
+.game-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.game-line.echo {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.game-line.busy {
+  color: var(--text-dim);
+}
+
+.game-hint,
+.game-error {
+  color: var(--text-dim);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+.game-error {
+  color: #f07178;
+  font-style: normal;
+  white-space: pre-wrap;
+}
+
+.game-banner {
+  margin: 14px 0 4px;
+  padding: 10px;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 6px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.game-banner.win {
+  background: #14361f;
+  color: #7ee2a8;
+  border: 1px solid #2f7d4f;
+}
+
+.game-banner.lose {
+  background: #3a1418;
+  color: #f29ba1;
+  border: 1px solid #8a3038;
+}
+
+.game-banner.end {
+  background: var(--bg-elev2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.game-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elev);
+  max-height: 45%;
+  overflow: auto;
+}
+
+.game-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+  background: var(--bg-elev2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 400;
+  white-space: normal;
+}
+
+.game-option:hover {
+  background: #2d4a6b55;
+  border-color: var(--accent);
+}
+
+.game-option:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.game-option-num {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-weight: 700;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+.game-inputrow {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.game-input {
+  flex: 1 1 auto;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 13px;
+}
+
+.game-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.game-input:disabled {
+  opacity: 0.6;
+}
+
+.game-send {
+  flex: 0 0 auto;
+}
+
+.game-restart {
+  flex: 1 1 auto;
+  background: #2f7d4f;
+  color: #eafaf0;
+}
+
+.game-restart:hover {
+  background: #379159;
 }

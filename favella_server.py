@@ -36,8 +36,8 @@ except Exception:
 _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
-                             VERBI_VALIDI, PAROLE_RISERVATE)
-    from utils import DIREZIONI_BASE
+                             compila_mondo, VERBI_VALIDI, PAROLE_RISERVATE)
+    from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
     from strutture import Mondo
@@ -46,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.12.1"
-VERSIONE_SIDECAR = "0.3.0"  # Favella Studio — Fase 2 (compile & diagnostica)
+VERSIONE_SIDECAR = "0.4.0"  # Favella Studio — Fase 3 (Gioca: sessione di gioco)
 
 
 # ==============================================================================
@@ -103,12 +103,130 @@ def rpc_compile(params):
     return analizza_file_strutturato(percorso, sorgente=sorgente)
 
 
-# Tabella di dispatch. Le fasi successive aggiungono qui session.*/world.*
+# ==============================================================================
+# Sessione di gioco (Fase 3) — wrappa elabora_comando sotto cattura stdout
+# ------------------------------------------------------------------------------
+# Il motore è già headless: elabora_comando(mondo, cmd) prende una stringa, NON
+# chiama input(), e i dialoghi sono guidati a turni (le scelte sono stringhe). La
+# sessione qui sotto compila un Mondo giocabile, lo tiene vivo e instrada i
+# comandi, restituendo all'IDE il testo della console e un'istantanea di stato
+# (fine partita, dialogo in corso con le opzioni, stanza, turno).
+# ==============================================================================
+
+class _SessioneGioco:
+    """Una partita in corso: il Mondo compilato più il percorso/sorgente da cui è
+    nato (per il reset, che rigioca lo stesso testo)."""
+    def __init__(self, mondo, path, source):
+        self.mondo = mondo
+        self.path = path
+        self.source = source
+        self.running = True
+
+
+# Il sidecar è monoutente: una sola partita attiva alla volta.
+_SESSIONE = None
+
+
+def _stato_partita(mondo):
+    """Istantanea read-only dello stato di gioco per l'IDE: fine partita (con
+    esito), eventuale dialogo in corso con le opzioni ATTUALMENTE proponibili
+    (filtrate per condizione, già rese con l'interpolazione [var]), stanza e
+    turno correnti. Difensiva: non deve mai sollevare verso il protocollo."""
+    stato = getattr(mondo, "stato_partita", "in_corso")
+    in_dialogo = mondo.in_dialogo()
+    opzioni = []
+    if in_dialogo:
+        nodo = mondo.dialogo_nodi.get(mondo.nodo_dialogo)
+        if nodo is not None:
+            disponibili = [o for o in nodo.opzioni if o.disponibile(mondo)]
+            opzioni = [{"index": i, "text": rendi_testo(mondo, o.testo)}
+                       for i, o in enumerate(disponibili, 1)]
+    stanza = mondo.trova_stanza(mondo.posizione_giocatore)
+    return {
+        "gameOver": stato != "in_corso",
+        "outcome": None if stato == "in_corso" else stato,  # vinta|persa|terminata
+        "inDialogue": in_dialogo,
+        "dialogueOptions": opzioni,
+        "room": stanza.nome_visualizzato if stanza else None,
+        "turn": getattr(mondo, "turno_corrente", 0),
+    }
+
+
+def _intro(mondo):
+    """Testo d'apertura della console: banner + descrizione della stanza iniziale
+    (cattura le print di mostra_stanza in un buffer locale)."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        print("--- BENVENUTO IN FAVELLA 1 ---")
+        print("Scrivi un comando, oppure 'esci' per terminare.")
+        mostra_stanza(mondo)
+    return buf.getvalue()
+
+
+def rpc_session_start(params):
+    """[Fase 3] Compila il file/buffer e avvia una nuova partita. 'path' è il file
+    radice; 'source' (opzionale) è il buffer live non salvato. Su fallimento di
+    compilazione, restituisce ok=False con le diagnostiche d'autore (dal canale
+    strutturato), così l'IDE può spiegare perché non si può giocare."""
+    global _SESSIONE
+    percorso = params.get("path")
+    if not percorso:
+        raise ValueError("Parametro 'path' mancante per 'session.start'.")
+    sorgente = params.get("source")
+
+    mondo = compila_mondo(percorso, sorgente)
+    if mondo is None:
+        _SESSIONE = None
+        diag = analizza_file_strutturato(percorso, sorgente=sorgente)
+        return {"ok": False, "output": "", "running": False, "state": None,
+                "errors": diag.get("errors", [])}
+
+    mondo.carica_azioni(LIBRERIA_AZIONI)
+    mondo.imposta_posizione_iniziale()
+    if not mondo.posizione_giocatore:
+        _SESSIONE = None
+        return {"ok": False, "output": "", "running": False, "state": None,
+                "errors": [{"message": "Nessuna stanza definita: impossibile "
+                                       "avviare il gioco.", "severity": "error"}]}
+
+    _SESSIONE = _SessioneGioco(mondo, percorso, sorgente)
+    return {"ok": True, "output": _intro(mondo), "running": True,
+            "state": _stato_partita(mondo)}
+
+
+def rpc_session_send(params):
+    """[Fase 3] Invia un comando alla partita attiva. L'output del motore è
+    catturato in un buffer locale e restituito come testo della console; 'running'
+    diventa False quando il giocatore esce o la partita finisce."""
+    if _SESSIONE is None:
+        raise ValueError("Nessuna partita attiva: avvia prima con 'session.start'.")
+    comando = params.get("command", "")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        continua = elabora_comando(_SESSIONE.mondo, comando)
+    _SESSIONE.running = bool(continua)
+    return {"ok": True, "output": buf.getvalue(), "running": _SESSIONE.running,
+            "state": _stato_partita(_SESSIONE.mondo)}
+
+
+def rpc_session_reset(_params):
+    """[Fase 3] Riavvia la partita rigiocando lo STESSO sorgente da cui è nata
+    (le eventuali modifiche live dell'editor non rientrano: il riavvio è una
+    rigiocata pulita dello stesso mondo)."""
+    if _SESSIONE is None:
+        raise ValueError("Nessuna partita da riavviare.")
+    return rpc_session_start({"path": _SESSIONE.path, "source": _SESSIONE.source})
+
+
+# Tabella di dispatch. Le fasi successive aggiungono qui world.* (mappa/inspector).
 _METODI = {
     "ping": rpc_ping,
     "engine.version": rpc_engine_version,
     "engine.lexicon": rpc_engine_lexicon,
     "compile": rpc_compile,
+    "session.start": rpc_session_start,
+    "session.send": rpc_session_send,
+    "session.reset": rpc_session_reset,
 }
 
 

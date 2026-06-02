@@ -4,7 +4,8 @@ import type {
   EngineLexicon,
   SidecarStatus,
   Diagnostic,
-  WorldSummary
+  WorldSummary,
+  GameState
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 
@@ -49,6 +50,13 @@ interface StudioState {
   worldSummary: WorldSummary | null
   compiling: boolean
   reveal: RevealRequest | null
+  // Gioco (Fase 3)
+  gameOpen: boolean
+  gameLines: string[]
+  gameState: GameState | null
+  gameRunning: boolean
+  gameBusy: boolean
+  gameError: string | null
 
   // Azioni
   openProject: () => Promise<void>
@@ -66,10 +74,27 @@ interface StudioState {
   compileFile: (path: string, source?: string) => Promise<void>
   compileActive: () => Promise<void>
   requestReveal: (path: string, line: number, col: number) => void
+  // Gioco (Fase 3)
+  startGame: () => Promise<void>
+  sendGameCommand: (command: string) => Promise<void>
+  resetGame: () => Promise<void>
+  closeGame: () => void
 }
 
 function linguaDa(name: string): string {
   return name.toLowerCase().endsWith('.fav') ? FAVELLA_LANG_ID : 'plaintext'
+}
+
+/** Spezza l'output del motore in righe per la console, senza la riga vuota finale. */
+function righeConsole(output: string): string[] {
+  if (!output) return []
+  const righe = output.replace(/\r\n/g, '\n').split('\n')
+  while (righe.length && righe[righe.length - 1] === '') righe.pop()
+  return righe
+}
+
+function messaggioErrore(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
 }
 
 export const useStudio = create<StudioState>((set, get) => ({
@@ -85,6 +110,12 @@ export const useStudio = create<StudioState>((set, get) => ({
   worldSummary: null,
   compiling: false,
   reveal: null,
+  gameOpen: false,
+  gameLines: [],
+  gameState: null,
+  gameRunning: false,
+  gameBusy: false,
+  gameError: null,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -201,5 +232,97 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 
   requestReveal: (path, line, col) =>
-    set((s) => ({ reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 } }))
+    set((s) => ({ reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 } })),
+
+  // --- Gioco (Fase 3) -------------------------------------------------------
+
+  startGame: async () => {
+    const { activePath, openFiles } = get()
+    // Si gioca il file .fav attivo, compilando il BUFFER live (anche non salvato).
+    if (!activePath || !activePath.toLowerCase().endsWith('.fav')) {
+      set({
+        gameOpen: true,
+        gameBusy: false,
+        gameRunning: false,
+        gameState: null,
+        gameLines: [],
+        gameError: 'Apri un file .fav nell’editor per avviare il gioco.'
+      })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    set({ gameOpen: true, gameBusy: true, gameError: null })
+    try {
+      const res = await window.favella.startGame(activePath, file?.content)
+      if (!res.ok) {
+        set({
+          gameBusy: false,
+          gameRunning: false,
+          gameState: null,
+          gameLines: [],
+          gameError: res.errors?.[0]?.message ?? 'Compilazione fallita: correggi gli errori e riprova.'
+        })
+        return
+      }
+      set({
+        gameBusy: false,
+        gameError: null,
+        gameLines: righeConsole(res.output),
+        gameState: res.state,
+        gameRunning: res.running
+      })
+    } catch (e) {
+      set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
+    }
+  },
+
+  sendGameCommand: async (command) => {
+    const testo = command.trim()
+    if (!testo) return
+    const { gameRunning, gameBusy } = get()
+    if (!gameRunning || gameBusy) return
+    // Eco del comando del giocatore in console, poi la risposta del motore.
+    set((s) => ({ gameBusy: true, gameLines: [...s.gameLines, '> ' + testo] }))
+    try {
+      const res = await window.favella.sendCommand(testo)
+      set((s) => ({
+        gameBusy: false,
+        gameLines: [...s.gameLines, ...righeConsole(res.output)],
+        gameState: res.state,
+        gameRunning: res.running
+      }))
+    } catch (e) {
+      set((s) => ({
+        gameBusy: false,
+        gameRunning: false,
+        gameLines: [...s.gameLines, '[errore] ' + messaggioErrore(e)]
+      }))
+    }
+  },
+
+  resetGame: async () => {
+    set({ gameBusy: true, gameError: null })
+    try {
+      const res = await window.favella.resetGame()
+      if (!res.ok) {
+        set({
+          gameBusy: false,
+          gameRunning: false,
+          gameError: res.errors?.[0]?.message ?? 'Riavvio non riuscito.'
+        })
+        return
+      }
+      set({
+        gameBusy: false,
+        gameError: null,
+        gameLines: righeConsole(res.output),
+        gameState: res.state,
+        gameRunning: res.running
+      })
+    } catch (e) {
+      set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
+    }
+  },
+
+  closeGame: () => set({ gameOpen: false })
 }))

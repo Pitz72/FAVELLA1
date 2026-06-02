@@ -6,6 +6,7 @@ import TabBar from './components/TabBar'
 import EditorPane from './components/EditorPane'
 import ProblemsPanel from './components/ProblemsPanel'
 import StatusBar from './components/StatusBar'
+import GamePanel from './components/GamePanel'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
 interface Toast {
@@ -20,6 +21,8 @@ export default function App(): JSX.Element {
   const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
   const compileActive = useStudio((s) => s.compileActive)
+  const startGame = useStudio((s) => s.startGame)
+  const gameOpen = useStudio((s) => s.gameOpen)
   const activePath = useStudio((s) => s.activePath)
   const activeContent = useStudio((s) =>
     s.openFiles.find((f) => f.path === s.activePath)?.content
@@ -85,16 +88,31 @@ export default function App(): JSX.Element {
         e.preventDefault()
         void openProject()
       }
+      // F5: compila e avvia il gioco del file .fav attivo.
+      if (e.key === 'F5') {
+        e.preventDefault()
+        void startGame()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveActive, saveAll, openProject])
+  }, [saveActive, saveAll, openProject, startGame])
 
   return (
     <div className="app">
       <header className="titlebar">
         <span className="logo">✦ Favella Studio</span>
-        <span className="titlebar-hint">Fase 2 · Compile &amp; diagnostica</span>
+        <div className="titlebar-right">
+          <span className="titlebar-hint">Fase 3 · Gioca</span>
+          <button
+            className="play-btn"
+            title="Compila e gioca il file attivo (F5)"
+            onClick={() => void startGame()}
+            disabled={!activePath?.toLowerCase().endsWith('.fav')}
+          >
+            ▶ Gioca
+          </button>
+        </div>
       </header>
 
       <div className="workbench">
@@ -106,6 +124,7 @@ export default function App(): JSX.Element {
           </div>
           <ProblemsPanel />
         </main>
+        {gameOpen && <GamePanel />}
       </div>
 
       <StatusBar />

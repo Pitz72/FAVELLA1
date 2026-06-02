@@ -54,7 +54,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
 - [x] **Fase 2 — Compile & diagnostica**: RPC `compile` + `analizza_file_strutturato`
       (additiva), pannello Problemi con salto a riga, marker inline in Monaco,
       auto-compile del buffer live (debounce) e `Ctrl+B`.
-- [ ] Fase 3 — Console di gioco
+- [x] **Fase 3 — Gioca**: sessione di gioco nel sidecar (`session.start/send/reset`)
+      che avvolge `elabora_comando` sotto cattura stdout; `compila_mondo` additiva
+      (Mondo giocabile dal buffer live); pannello console con eco dei comandi,
+      bottoni per le opzioni di dialogo, banner di esito e ▶ Gioca / F5.
 - [ ] Fase 4 — Mappa del mondo + inspector di stato
 - [ ] Fase 5 — Debugger passo-passo
 - [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)

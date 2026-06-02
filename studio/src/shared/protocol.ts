@@ -88,6 +88,35 @@ export interface CompileResult {
   worldSummary: WorldSummary | null
 }
 
+// --- Sessione di gioco (Fase 3) ---
+
+export type Outcome = 'vinta' | 'persa' | 'terminata'
+
+// Un'opzione di dialogo proponibile al nodo corrente (già filtrata e resa).
+export interface DialogueOption {
+  index: number
+  text: string
+}
+
+// Istantanea read-only dello stato di gioco, allineata a _stato_partita() del sidecar.
+export interface GameState {
+  gameOver: boolean
+  outcome: Outcome | null
+  inDialogue: boolean
+  dialogueOptions: DialogueOption[]
+  room: string | null
+  turn: number
+}
+
+export interface SessionResult {
+  ok: boolean
+  output: string
+  running: boolean
+  state: GameState | null
+  // Presenti solo quando ok=false: diagnostiche d'autore (perché non si gioca).
+  errors?: Diagnostic[]
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

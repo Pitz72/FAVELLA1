@@ -1920,6 +1920,49 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                 "worldSummary": None}
 
 
+def compila_mondo(percorso_file, sorgente=None):
+    """[Favella Studio / Fase 3] Compila un .fav in un Mondo GIOCABILE. ADDITIVA:
+    non tocca analizza_file (byte-stabile per motore/CLI/test). Rispecchia la
+    stessa pipeline a tre passate ma RESTITUISCE il Mondo popolato invece di
+    stamparne il riepilogo, così il sidecar dell'IDE può avviarci una partita.
+
+    Se 'sorgente' è dato, compila quel buffer come radice (testo live non ancora
+    salvato), risolvendo gli 'Includi' dal disco rispetto alla cartella di
+    'percorso_file'. Restituisce il Mondo, oppure None se la compilazione
+    fallisce per qualunque motivo (import, direzioni, sintassi, semantica): in tal
+    caso l'IDE ha già le diagnostiche puntuali dal canale 'compile'
+    (analizza_file_strutturato). NON stampa nulla: tace di proposito, perché la
+    resa degli errori d'autore vive interamente nel percorso strutturato."""
+    try:
+        # PASSATA 0 — espansione Includi (da disco o da buffer in memoria).
+        if sorgente is not None:
+            testo, _mappa, inc_errori = _espandi_inclusioni_seedable(
+                percorso_file, sorgente)
+        else:
+            testo, _mappa, inc_errori = espandi_inclusioni(percorso_file)
+        if inc_errori or not testo.strip():
+            return None
+
+        # PASSATA 1 — symbol-table + validazione direzioni.
+        simboli = costruisci_symbol_table(testo)
+        coppie_dir, _nomi, dir_errori = valida_direzioni_dichiarate(
+            simboli.coppie_direzioni, simboli)
+        if dir_errori:
+            return None
+
+        # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi)
+        tree = parser.parse(testo)
+        transformer = FavellaTransformer(coppie_dir)
+        transformer.transform(tree)
+        transformer.valida_post()
+        if transformer.errori:
+            return None
+        return transformer.mondo
+    except Exception:
+        return None
+
+
 def main():
     print("FAVELLA 1 COMPILER TEST")
     if len(sys.argv) > 1:

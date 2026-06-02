@@ -4,7 +4,8 @@ import type {
   SidecarStatus,
   FileNode,
   OpenedProject,
-  CompileResult
+  CompileResult,
+  SessionResult
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -30,6 +31,24 @@ const api = {
   compile(path: string, source?: string): Promise<CompileResult> {
     return ipcRenderer.invoke('rpc', 'compile', { path, source })
   },
+  // --- Sessione di gioco (Fase 3) ---
+  /**
+   * Avvia una partita compilando `path` (o il buffer live `source`, se dato).
+   * Restituisce l'output iniziale e lo stato; su errore di compilazione,
+   * `ok=false` con le diagnostiche d'autore.
+   */
+  startGame(path: string, source?: string): Promise<SessionResult> {
+    return ipcRenderer.invoke('rpc', 'session.start', { path, source })
+  },
+  /** Invia un comando alla partita attiva (anche il numero/testo di un'opzione di dialogo). */
+  sendCommand(command: string): Promise<SessionResult> {
+    return ipcRenderer.invoke('rpc', 'session.send', { command })
+  },
+  /** Riavvia la partita rigiocando lo stesso sorgente da cui è nata. */
+  resetGame(): Promise<SessionResult> {
+    return ipcRenderer.invoke('rpc', 'session.reset', {})
+  },
+
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */
   onEngineEvent(callback: (event: EngineEvent) => void): () => void {
     const handler = (_e: unknown, event: EngineEvent): void => callback(event)
