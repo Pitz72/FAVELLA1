@@ -4,6 +4,25 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.5] — 2026-06-02 — Fase 6c.1: Editor di regole/eventi (lettura + elimina)
+
+### Aggiunto
+- **Nuova scheda ⚙ Regole** (titlebar + dock): elenca **regole** (`Invece di …`) ed
+  **eventi** (`Al turno N` / `Ogni N turni`) del file come card leggibili — verbo + bersaglio
+  (o «globale»), eventuale condizione **«se …»** (anche annidata: `… e …`, `… oppure …`, `non …`),
+  la risposta **di' "…"** e i **chip delle conseguenze** (`porta → aperta`, `diminuisci carica`,
+  `sposta X → inventario`, `vinci/perdi/termina`). **×** elimina la frase dal sorgente (undo nativo).
+- Sidecar **0.9.0**: nuovo RPC **`world.rules`** + funzione additiva **`analizza_regole`**: compila
+  il Mondo (verità semantica) e dal secondo parse posizionato ricava lo **span** di ogni frase
+  `def_regola`/`def_evento`; condizione e conseguenze sono serializzate in **JSON ricorsivo**
+  (shape simmetrica, pronta per la scrittura di 6c.2/6c.3); include i **menu** per i costruttori
+  (verbi validi, oggetti, stanze, direzioni, stati, contatori). Span agganciato per `(verbo, risposta)`
+  / `(tipo, n, risposta)`. Motore byte-stabile, **334 test verdi**.
+
+### Note
+- Primo dei 4 sotto-step dell'editor regole («logica senza codice»): **6c.1 lettura+elimina** (questo),
+  6c.2 creazione regole, 6c.3 condizioni annidate + modifica, 6c.4 eventi.
+
 ## [0.9.4] — 2026-06-02 — Contenuto di contenitori/supporti (Posizione estesa)
 
 ### Aggiunto

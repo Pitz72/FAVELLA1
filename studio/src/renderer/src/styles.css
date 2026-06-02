@@ -724,6 +724,86 @@ button:hover {
   color: var(--text);
 }
 
+/* --- Editor di regole/eventi (Fase 6c) --- */
+.ruled {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.ruled-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rule-card {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.rule-card.event {
+  border-left-color: #b98b00;
+}
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rule-verb {
+  font-weight: 600;
+  color: var(--accent);
+}
+.rule-target {
+  color: var(--text);
+}
+.rule-global {
+  color: var(--text-dim);
+  font-style: italic;
+}
+.rule-del {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+.rule-del:hover {
+  background: #5a3a3a;
+  color: #ffbcbc;
+}
+.rule-when {
+  font-size: 12.5px;
+  color: #c9b56b;
+}
+.rule-say {
+  font-size: 13px;
+  color: var(--text);
+}
+.rule-then {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+.rule-chip {
+  background: var(--bg-elev2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  color: var(--text);
+}
+
 /* --- Modal «modifiche non salvate» (stile IDE) --- */
 .modal-backdrop {
   position: fixed;

@@ -2296,6 +2296,234 @@ def _spoglia_quotato(s: str) -> str:
 
 
 # ==============================================================================
+# LETTURA DELLE REGOLE/EVENTI (Favella Studio — Fase 6c, «logica senza codice»)
+# ------------------------------------------------------------------------------
+# analizza_regole è il lato LETTURA dell'editor visuale di regole. Riusa la
+# stessa strategia di analizza_outline: compila il Mondo (verità semantica) e da
+# un secondo parse posizionato ricava lo SPAN di ogni frase 'Invece di…' / 'Al
+# turno…'. Le Regola/Evento compilate portano già condizione e conseguenze come
+# OGGETTI strutturati: li serializzo in JSON ricorsivo (shape simmetrica a quella
+# che il serializzatore 'rule'/'event' riaccetterà in scrittura). Lo span lo
+# aggancio per (verbo, risposta) / (tipo, n, risposta). ADDITIVA: motore intatto.
+# ==============================================================================
+
+def _nome_entita(mondo, eid):
+    """ID normalizzato → nome visualizzato (oggetto o stanza); l'ID stesso se
+    ignoto o se è uno pseudo-simbolo (inventario/nulla)."""
+    if eid in getattr(mondo, "oggetti", {}):
+        return mondo.oggetti[eid].nome_visualizzato
+    if eid in getattr(mondo, "stanze", {}):
+        return mondo.stanze[eid].nome_visualizzato
+    return eid
+
+
+def _kind_variabile(mondo, nome):
+    """'contatore' se il valore corrente è int (i contatori nascono a 0), 'stato'
+    altrimenti (gli stati nascono None o stringa). Distinzione usata dall'editor."""
+    return "contatore" if isinstance(mondo.variabili.get(nome), int) else "stato"
+
+
+def _cond_to_json(c, mondo):
+    """Serializza una Condizione (albero) in JSON ricorsivo. None → None."""
+    if c is None:
+        return None
+    if isinstance(c, CondizioneNot):
+        return {"op": "not", "term": _cond_to_json(c.condizione, mondo)}
+    if isinstance(c, CondizioneAnd):
+        return {"op": "and", "terms": [_cond_to_json(x, mondo) for x in c.condizioni]}
+    if isinstance(c, CondizioneOr):
+        return {"op": "or", "terms": [_cond_to_json(x, mondo) for x in c.condizioni]}
+    if isinstance(c, CondizionePossesso):
+        return {"op": "has", "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
+    if isinstance(c, CondizioneProprieta):
+        return {"op": "prop", "id": c.id_oggetto,
+                "name": _nome_entita(mondo, c.id_oggetto), "prop": c.proprieta}
+    if isinstance(c, CondizioneVariabile):
+        return {"op": "var", "name": c.nome, "value": c.valore,
+                "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, CondizioneContatore):
+        return {"op": "count", "name": c.nome, "cmp": c.operatore, "value": c.valore}
+    return {"op": "unknown"}
+
+
+def _conseq_to_json(c, mondo):
+    """Serializza una Conseguenza in JSON. Shape simmetrica al serializzatore."""
+    if isinstance(c, ConseguenzaProprieta):
+        return {"op": "prop", "id": c.id_oggetto,
+                "name": _nome_entita(mondo, c.id_oggetto), "prop": c.proprieta}
+    if isinstance(c, ConseguenzaVariabile):
+        return {"op": "var", "name": c.nome, "value": c.valore,
+                "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, ConseguenzaContatore):
+        return {"op": "count", "name": c.nome, "mode": c.modo, "value": c.valore}
+    if isinstance(c, ConseguenzaSpostamento):
+        dest = c.destinazione
+        dest_name = dest if dest in ("inventario", "nulla") else _nome_entita(mondo, dest)
+        return {"op": "move", "id": c.id_oggetto,
+                "name": _nome_entita(mondo, c.id_oggetto),
+                "dest": dest, "destName": dest_name}
+    if isinstance(c, ConseguenzaFinePartita):
+        _esiti = {"vinta": "vinci", "persa": "perdi", "terminata": "termina"}
+        return {"op": "end", "outcome": _esiti.get(c.esito, c.esito)}
+    return {"op": "unknown"}
+
+
+def analizza_regole(percorso_file, sorgente=None):
+    """[Favella Studio / Fase 6c] Modello editabile di REGOLE ed EVENTI con lo span
+    sorgente di ogni frase. Ritorna:
+      {ok, rules[], events[], menu{verbs,objects,rooms,directions,states,counters},
+       errors[]}
+    rule  = {span, verb, target|None{kind:'object'|'direction', id, name, prep,
+             secondaryId, secondaryName}, condition|None, response, consequences[]}
+    event = {span, mode:'al'|'ogni', n, response, consequences[]}
+    condition/consequence = JSON ricorsivo (vedi _cond_to_json/_conseq_to_json).
+    Difensiva: su errore restituisce ok=False + errors, non solleva."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    vuoto_menu = {"verbs": [], "objects": [], "rooms": [],
+                  "directions": [], "states": [], "counters": []}
+    if not diag.get("ok"):
+        return {"ok": False, "rules": [], "events": [], "menu": vuoto_menu,
+                "errors": diag.get("errors", [])}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "rules": [], "events": [], "menu": vuoto_menu,
+                "errors": diag.get("errors", [])}
+
+    # Span: secondo parse posizionato (come analizza_outline).
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True)
+        tree = parser.parse(testo)
+    except Exception:
+        tree, mappa_righe = None, []
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1]
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp):
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
+
+    # Indicizza le frasi-regola/evento con il loro span e i token utili al match.
+    frasi_regola = []   # {span, verbo, risposta}
+    frasi_evento = []   # {span, tipo, n, risposta}
+    if tree is not None:
+        for nodo in tree.children:
+            if not isinstance(nodo, Tree):
+                continue
+            meta = getattr(nodo, "meta", None)
+            line = getattr(meta, "line", None) if meta else None
+            end = getattr(meta, "end_line", line) if meta else None
+            span = _span(line, end)
+            tok = _tokens_per_tipo(nodo)
+            if nodo.data == "def_regola":
+                verbi = tok.get("VERBO", [])
+                quotati = tok.get("TESTO_QUOTATO", [])
+                frasi_regola.append({
+                    "span": span,
+                    "verbo": str(verbi[0]).lower() if verbi else None,
+                    "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
+                })
+            elif nodo.data in ("evento_al", "evento_ogni"):
+                numeri = tok.get("NUMERO", [])
+                quotati = tok.get("TESTO_QUOTATO", [])
+                frasi_evento.append({
+                    "span": span,
+                    "tipo": "al" if nodo.data == "evento_al" else "ogni",
+                    "n": int(str(numeri[0])) if numeri else None,
+                    "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
+                })
+
+    def _span_regola(verbo, risposta, usate):
+        for i, f in enumerate(frasi_regola):
+            if i in usate:
+                continue
+            if f["verbo"] == verbo and f["risposta"] == risposta:
+                usate.add(i)
+                return f["span"]
+        return None
+
+    def _span_evento(tipo, n, risposta, usate):
+        for i, f in enumerate(frasi_evento):
+            if i in usate:
+                continue
+            if f["tipo"] == tipo and f["n"] == n and f["risposta"] == risposta:
+                usate.add(i)
+                return f["span"]
+        return None
+
+    # REGOLE compilate → JSON.
+    rules = []
+    usate_r = set()
+    for r in getattr(mondo, "regole", []):
+        target = None
+        bid = getattr(r, "id_oggetto_bersaglio", None)
+        if bid:
+            if bid in getattr(mondo, "direzioni", {}).values() or bid in getattr(mondo, "opposte_direzioni", {}):
+                target = {"kind": "direction", "id": bid, "name": bid,
+                          "prep": None, "secondaryId": None, "secondaryName": None}
+            else:
+                sec = getattr(r, "id_oggetto_secondario", None)
+                target = {"kind": "object", "id": bid, "name": _nome_entita(mondo, bid),
+                          "prep": getattr(r, "preposizione", None),
+                          "secondaryId": sec,
+                          "secondaryName": _nome_entita(mondo, sec) if sec else None}
+        rules.append({
+            "span": _span_regola(r.verbo, r.risposta, usate_r),
+            "verb": r.verbo,
+            "target": target,
+            "condition": _cond_to_json(getattr(r, "condizione", None), mondo),
+            "response": r.risposta,
+            "consequences": [_conseq_to_json(c, mondo) for c in getattr(r, "conseguenze", [])],
+        })
+
+    # EVENTI compilati → JSON.
+    events = []
+    usate_e = set()
+    for e in getattr(mondo, "eventi", []):
+        events.append({
+            "span": _span_evento(e.tipo, e.n, e.risposta, usate_e),
+            "mode": e.tipo,
+            "n": e.n,
+            "response": e.risposta,
+            "consequences": [_conseq_to_json(c, mondo) for c in getattr(e, "conseguenze", [])],
+        })
+
+    # Menu per i costruttori (6c.2+): verbi validi, entità, stanze, direzioni,
+    # stati e contatori dichiarati.
+    states, counters = [], []
+    for nome in mondo.variabili:
+        (counters if _kind_variabile(mondo, nome) == "contatore" else states).append(nome)
+    menu = {
+        "verbs": sorted(VERBI_VALIDI),
+        "objects": [{"id": oid, "name": o.nome_visualizzato,
+                     "kind": ("personaggio" if getattr(o, "is_personaggio", False)
+                              else "contenitore" if getattr(o, "is_contenitore", False)
+                              else "supporto" if getattr(o, "is_supporto", False)
+                              else "oggetto")}
+                    for oid, o in mondo.oggetti.items()],
+        "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
+        "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
+        "states": sorted(states),
+        "counters": sorted(counters),
+    }
+
+    return {"ok": True, "rules": rules, "events": events, "menu": menu, "errors": []}
+
+
+# ==============================================================================
 # SERIALIZZATORE CANONICO PER-FRASE (Favella Studio — Fase 6a, scrittura)
 # ------------------------------------------------------------------------------
 # serializza_frase è la metà in SCRITTURA del round-trip: data una specifica

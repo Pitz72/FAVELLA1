@@ -11,12 +11,13 @@ import type {
   DebugEntry,
   Outline,
   OutlineSpan,
-  SerializeSpec
+  SerializeSpec,
+  WorldRules
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 
 /** Vista attiva del dock destro (null = dock chiuso). */
-export type RightTab = 'gioca' | 'mappa' | 'stato' | 'debug' | 'oggetti' | null
+export type RightTab = 'gioca' | 'mappa' | 'stato' | 'debug' | 'oggetti' | 'regole' | null
 
 /** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
 export function stessoPercorso(a: string | null, b: string | null): boolean {
@@ -123,6 +124,9 @@ interface StudioState {
   // Editor visuali (Fase 6a)
   outline: Outline | null
   outlineLoading: boolean
+  // Editor di regole/eventi (Fase 6c)
+  rules: WorldRules | null
+  rulesLoading: boolean
   mapEditMode: boolean
   pendingEdit: PendingEdit | null
   // Larghezza del dock destro (px), ridimensionabile dall'utente
@@ -167,6 +171,8 @@ interface StudioState {
   resolveUnsaved: (choice: UnsavedChoice) => void
   // Editor visuali (Fase 6a)
   loadOutline: () => Promise<void>
+  // Editor di regole/eventi (Fase 6c)
+  loadRules: () => Promise<void>
   setMapEditMode: (on: boolean) => void
   setDockWidth: (px: number) => void
   mapAddConnection: (
@@ -249,6 +255,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   unsavedPrompt: null,
   outline: null,
   outlineLoading: false,
+  rules: null,
+  rulesLoading: false,
   mapEditMode: false,
   pendingEdit: null,
   dockWidth: 440,
@@ -629,6 +637,22 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
   },
 
+  loadRules: async () => {
+    const { activePath, openFiles } = get()
+    if (!activePath?.toLowerCase().endsWith('.fav')) {
+      set({ rules: null })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    set({ rulesLoading: true })
+    try {
+      const r = await window.favella.worldRules(activePath, file?.content)
+      set({ rulesLoading: false, rules: r })
+    } catch {
+      set({ rulesLoading: false })
+    }
+  },
+
   setMapEditMode: (on) => set({ mapEditMode: on }),
 
   setDockWidth: (px) => set({ dockWidth: Math.max(320, Math.min(900, Math.round(px))) }),
@@ -811,6 +835,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     }))
     await get().loadOutline()
     await get().loadWorldGraph()
+    await get().loadRules()
   },
 
   deleteStatement: async (span) => {
@@ -830,5 +855,6 @@ export const useStudio = create<StudioState>((set, get) => ({
     }))
     await get().loadOutline()
     await get().loadWorldGraph()
+    await get().loadRules()
   }
 }))

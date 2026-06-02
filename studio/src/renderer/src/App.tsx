@@ -168,6 +168,14 @@ export default function App(): JSX.Element {
             📦 Oggetti
           </button>
           <button
+            className={'tool-btn' + (rightTab === 'regole' ? ' active' : '')}
+            title="Editor di regole ed eventi (logica senza codice)"
+            onClick={() => (rightTab === 'regole' ? closeDock() : setRightTab('regole'))}
+            disabled={!isFav}
+          >
+            ⚙ Regole
+          </button>
+          <button
             className={'tool-btn' + (rightTab === 'stato' ? ' active' : '')}
             title="Ispettore di stato"
             onClick={() => (rightTab === 'stato' ? closeDock() : setRightTab('stato'))}

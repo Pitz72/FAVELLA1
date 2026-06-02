@@ -5,6 +5,7 @@ import MapView from './MapView'
 import StateInspector from './StateInspector'
 import DebugPanel from './DebugPanel'
 import ObjectsEditor from './ObjectsEditor'
+import RulesEditor from './RulesEditor'
 
 // Titoli mostrati nell'header del dock (le tab vere sono nella titlebar: fila unica).
 const TITOLI: Record<Exclude<RightTab, null>, string> = {
@@ -12,7 +13,8 @@ const TITOLI: Record<Exclude<RightTab, null>, string> = {
   mappa: '🗺 Mappa',
   stato: '🔎 Stato',
   debug: '🐞 Debug',
-  oggetti: '📦 Oggetti'
+  oggetti: '📦 Oggetti',
+  regole: '⚙ Regole'
 }
 
 export default function RightDock(): JSX.Element | null {
@@ -24,6 +26,7 @@ export default function RightDock(): JSX.Element | null {
   const dockWidth = useStudio((s) => s.dockWidth)
   const setDockWidth = useStudio((s) => s.setDockWidth)
   const loadOutline = useStudio((s) => s.loadOutline)
+  const loadRules = useStudio((s) => s.loadRules)
   const editMode = useStudio((s) => s.mapEditMode)
   const gameRunning = useStudio((s) => s.gameRunning)
   const activeContent = useStudio((s) => s.openFiles.find((f) => f.path === s.activePath)?.content)
@@ -36,7 +39,8 @@ export default function RightDock(): JSX.Element | null {
     if (tab === 'stato') void loadSnapshot()
     if (tab === 'debug') void loadDebug()
     if (tab === 'oggetti') void loadOutline()
-  }, [tab, loadGraph, loadSnapshot, loadDebug, loadOutline])
+    if (tab === 'regole') void loadRules()
+  }, [tab, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules])
 
   // Auto-refresh della Mappa MENTRE SI DIGITA (debounce, come l'auto-compile):
   // la topologia segue il testo senza dover riaprire la scheda. Solo in anteprima
@@ -86,6 +90,7 @@ export default function RightDock(): JSX.Element | null {
         {tab === 'stato' && <StateInspector />}
         {tab === 'debug' && <DebugPanel />}
         {tab === 'oggetti' && <ObjectsEditor />}
+        {tab === 'regole' && <RulesEditor />}
       </div>
     </aside>
   )

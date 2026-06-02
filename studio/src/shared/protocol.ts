@@ -289,6 +289,72 @@ export interface SerializeResult {
   error?: string
 }
 
+// --- Editor visuale di regole/eventi (Fase 6c) ---
+
+// Condizione booleana (albero ricorsivo). Negazione (`not`) solo su has/prop/var
+// (la grammatica nega infisso: «non ha», «non è»); contatori e gruppi non negabili.
+export type RuleCondition =
+  | { op: 'has'; id: string; name: string }
+  | { op: 'prop'; id: string; name: string; prop: string }
+  | { op: 'var'; name: string; value: string; kind: 'stato' | 'contatore' }
+  | { op: 'count'; name: string; cmp: '==' | '>=' | '>' | '<'; value: number }
+  | { op: 'not'; term: RuleCondition }
+  | { op: 'and'; terms: RuleCondition[] }
+  | { op: 'or'; terms: RuleCondition[] }
+  | { op: 'unknown' }
+
+// Conseguenza eseguibile (catena «e adesso …»).
+export type RuleConsequence =
+  | { op: 'prop'; id: string; name: string; prop: string }
+  | { op: 'var'; name: string; value: string; kind: 'stato' | 'contatore' }
+  | { op: 'count'; name: string; mode: 'aumenta' | 'diminuisci' | 'diventa'; value: number }
+  | { op: 'move'; id: string; name: string; dest: string; destName: string }
+  | { op: 'end'; outcome: 'vinci' | 'perdi' | 'termina' }
+  | { op: 'unknown' }
+
+export interface RuleTarget {
+  kind: 'object' | 'direction'
+  id: string
+  name: string
+  prep: string | null
+  secondaryId: string | null
+  secondaryName: string | null
+}
+
+export interface Rule {
+  span: OutlineSpan | null
+  verb: string
+  target: RuleTarget | null
+  condition: RuleCondition | null
+  response: string
+  consequences: RuleConsequence[]
+}
+
+export interface GameEvent {
+  span: OutlineSpan | null
+  mode: 'al' | 'ogni'
+  n: number
+  response: string
+  consequences: RuleConsequence[]
+}
+
+export interface RulesMenu {
+  verbs: string[]
+  objects: { id: string; name: string; kind: ObjectKind }[]
+  rooms: { id: string; name: string }[]
+  directions: string[]
+  states: string[]
+  counters: string[]
+}
+
+export interface WorldRules {
+  ok: boolean
+  rules: Rule[]
+  events: GameEvent[]
+  menu: RulesMenu
+  errors: Diagnostic[]
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

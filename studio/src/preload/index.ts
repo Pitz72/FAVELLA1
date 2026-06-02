@@ -12,7 +12,8 @@ import type {
   Savegame,
   Outline,
   SerializeSpec,
-  SerializeResult
+  SerializeResult,
+  WorldRules
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -81,6 +82,10 @@ const api = {
    */
   worldOutline(path?: string, source?: string): Promise<Outline> {
     return ipcRenderer.invoke('rpc', 'world.outline', path ? { path, source } : {})
+  },
+  /** [Fase 6c] Modello editabile di regole/eventi con span sorgente. */
+  worldRules(path?: string, source?: string): Promise<WorldRules> {
+    return ipcRenderer.invoke('rpc', 'world.rules', path ? { path, source } : {})
   },
   /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
   serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {
