@@ -804,6 +804,67 @@ button:hover {
   color: var(--text);
 }
 
+/* Builder di creazione regola (6c.2): MODALE ampia centrata. */
+.rule-modal {
+  width: 620px;
+  display: flex;
+  flex-direction: column;
+}
+.rule-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.ruleform-when {
+  display: flex;
+  gap: 8px;
+}
+.ruleform-when select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cons-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cons-row select,
+.cons-row input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: var(--text);
+  font-size: 12.5px;
+  min-width: 0;
+}
+.cons-row input[type='text'] {
+  flex: 1 1 0;
+}
+.cons-row input[type='number'] {
+  width: 64px;
+}
+.cons-arrow {
+  color: var(--text-dim);
+}
+.cons-del {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+.cons-del:hover {
+  background: #5a3a3a;
+  color: #ffbcbc;
+}
+
 /* --- Modal «modifiche non salvate» (stile IDE) --- */
 .modal-backdrop {
   position: fixed;

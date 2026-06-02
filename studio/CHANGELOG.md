@@ -4,6 +4,30 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.6] — 2026-06-02 — Fase 6c.2: Creazione di regole (builder in modale ampia)
+
+### Aggiunto
+- **Creazione visuale di regole** dalla scheda ⚙ Regole (pulsante ➕): un **builder in
+  finestra modale ampia e centrata** (non più incastrato nel dock), con sezioni spaziate:
+  - **«Quando il giocatore fa…»**: verbo (menu dei verbi validi) + bersaglio (— globale —,
+    un oggetto o una direzione); se oggetto, preposizione `con/su/contro/in` + **secondo
+    oggetto** (regole a due oggetti).
+  - **«Di' al giocatore»**: testo della risposta (obbligatorio).
+  - **«E adesso…»**: lista di **conseguenze** (proprietà di un oggetto · valore di uno stato ·
+    contatore `aumenta/diminuisci/diventa N` · fine partita `vinci/perdi/termina`), ognuna su una
+    riga editabile con rimozione. (Lo **spostamento** di oggetti arriva con 6c.3.)
+  - **Crea regola** appende la frase `Invece di …: dire "…" e adesso …` in fondo al file
+    (round-trip via `outline.serialize`, undo nativo); Esc/click-fuori chiudono.
+- Sidecar **0.9.1**: nuove op del serializzatore **`rule`** ed **`event`** (+ sub-serializer
+  ricorsivi di **condizione** e **conseguenza**, shape simmetrica a `world.rules`). Le condizioni
+  annidate (AND/OR/NOT con parentesi) sono già supportate in scrittura; resta da fare la UfI di
+  costruzione (6c.3). Rispetta i vincoli grammaticali (NOT infisso solo su has/prop/var). Motore
+  byte-stabile, **334 test verdi**.
+
+### Cambiato
+- **UX**: il builder di regole non è più un blocco con scrollbar interna nel dock stretto, ma una
+  **modale dedicata** (separazione panoramica/lista nel dock ↔ editing in modale).
+
 ## [0.9.5] — 2026-06-02 — Fase 6c.1: Editor di regole/eventi (lettura + elimina)
 
 ### Aggiunto

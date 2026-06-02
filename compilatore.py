@@ -2588,6 +2588,103 @@ _DEF_KIND_TESTO = {
 }
 
 
+def _serializza_condizione(c):
+    """[Fase 6c] Condizione JSON (ricorsiva) → testo .fav canonico. Vincoli della
+    grammatica: NOT solo su has/prop/var (infisso «non»); contatori/gruppi non
+    negabili; AND='e', OR='oppure'; i gruppi composti dentro un altro composto
+    vanno fra parentesi. Solleva ValueError su forme non ammesse."""
+    op = c["op"]
+    if op == "has":
+        return f"il giocatore ha {c['name']}"
+    if op == "prop":
+        return f"{c['name']} è {c['prop']}"
+    if op == "var":
+        return f"{c['name']} è {c['value']}"
+    if op == "count":
+        cmp, v = c["cmp"], c["value"]
+        if cmp == "==":
+            return f"{c['name']} è {v}"
+        if cmp == ">=":
+            return f"{c['name']} è almeno {v}"
+        if cmp == ">":
+            return f"{c['name']} è più di {v}"
+        if cmp == "<":
+            return f"{c['name']} è meno di {v}"
+        raise ValueError(f"Confronto contatore sconosciuto: {cmp!r}.")
+    if op == "not":
+        t = c["term"]
+        if t["op"] == "has":
+            return f"il giocatore non ha {t['name']}"
+        if t["op"] == "prop":
+            return f"{t['name']} non è {t['prop']}"
+        if t["op"] == "var":
+            return f"{t['name']} non è {t['value']}"
+        raise ValueError("La negazione è ammessa solo su possesso, proprietà o stato.")
+    if op in ("and", "or"):
+        sep = " e " if op == "and" else " oppure "
+        def _grp(x):
+            s = _serializza_condizione(x)
+            return f"({s})" if x["op"] in ("and", "or") else s
+        return sep.join(_grp(t) for t in c["terms"])
+    raise ValueError(f"Condizione non serializzabile: {op!r}.")
+
+
+def _serializza_conseguenza(c):
+    """[Fase 6c] Conseguenza JSON → testo .fav canonico. 'move' (spostamento) è
+    rimandato a 6c.3 (preposizione concordata): per ora solleva ValueError."""
+    op = c["op"]
+    if op == "prop":
+        return f"{c['name']} è {c['prop']}"
+    if op == "var":
+        return f"{c['name']} è {c['value']}"
+    if op == "count":
+        mode, v = c["mode"], c.get("value", 1)
+        if mode == "diventa":
+            return f"{c['name']} diventa {v}"
+        base = "aumenta" if mode == "aumenta" else "diminuisci"
+        return f"{base} {c['name']}" + (f" di {v}" if v != 1 else "")
+    if op == "end":
+        esiti = {"vinci": "vinci", "perdi": "perdi", "termina": "termina"}
+        if c["outcome"] not in esiti:
+            raise ValueError(f"Esito di fine partita sconosciuto: {c['outcome']!r}.")
+        return esiti[c["outcome"]]
+    if op == "move":
+        raise ValueError("La conseguenza di spostamento non è ancora supportata in scrittura.")
+    raise ValueError(f"Conseguenza non serializzabile: {op!r}.")
+
+
+def _serializza_regola(spec):
+    """[Fase 6c] Regola JSON → «Invece di VERBO [bersaglio] [se COND]: dire "…"
+    [e adesso …].»."""
+    verbo = str(spec["verb"]).strip()
+    parti = [f"Invece di {verbo}"]
+    target = spec.get("target")
+    if target:
+        parti.append(" " + str(target["name"]))
+        if target.get("prep") and target.get("secondaryName"):
+            parti.append(f" {target['prep']} {target['secondaryName']}")
+    cond = spec.get("condition")
+    if cond:
+        parti.append(" se " + _serializza_condizione(cond))
+    parti.append(f": dire {_quota(spec.get('response', ''))}")
+    for c in spec.get("consequences", []):
+        parti.append(" e adesso " + _serializza_conseguenza(c))
+    parti.append(".")
+    return "".join(parti)
+
+
+def _serializza_evento(spec):
+    """[Fase 6c] Evento JSON → «Al turno N: dire "…" […].» / «Ogni N turni: …»."""
+    mode = spec["mode"]
+    n = int(spec["n"])
+    testa = f"Al turno {n}" if mode == "al" else f"Ogni {n} turni"
+    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]
+    for c in spec.get("consequences", []):
+        parti.append(" e adesso " + _serializza_conseguenza(c))
+    parti.append(".")
+    return "".join(parti)
+
+
 def serializza_frase(spec):
     """[Favella Studio / Fase 6a] Genera la frase .fav canonica da una specifica
     strutturata. Ritorna {ok, text} oppure {ok:False, error}. Le op supportate:
@@ -2602,7 +2699,10 @@ def serializza_frase(spec):
       start       {name}
       direction_decl {a, b}   →  'A e B sono direzioni opposte.'
       opposite_decl  {a, b}   →  'a e b sono opposte.' (coppia di proprietà)
-    'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo)."""
+      rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
+      event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
+    'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo); condizione e
+    conseguenze usano la shape JSON di analizza_regole."""
     try:
         op = (spec or {}).get("op")
         if op == "room_def":
@@ -2639,9 +2739,15 @@ def serializza_frase(spec):
             a = str(spec["a"]).strip()
             b = str(spec["b"]).strip()
             return {"ok": True, "text": f"{a} e {b} sono opposte."}
+        if op == "rule":
+            return {"ok": True, "text": _serializza_regola(spec)}
+        if op == "event":
+            return {"ok": True, "text": _serializza_evento(spec)}
         return {"ok": False, "error": f"Operazione di serializzazione sconosciuta: {op!r}."}
     except KeyError as e:
         return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
 
 
 def main():

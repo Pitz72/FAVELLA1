@@ -82,8 +82,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       Posizione raggruppata (stanze/contenitori/supporti) con preposizione articolata
       (`nella scatola`, `sul tavolo`) + sezione Contenuto editabile. **Editor di regole/eventi
       (⚙ Regole)** in corso a sotto-step: **6c.1 lettura+elimina** fatto (RPC `world.rules`,
-      lista leggibile di regole/eventi con condizioni e conseguenze); restano creazione (6c.2),
-      condizioni annidate + modifica (6c.3), eventi (6c.4). Mancano anche dialoghi/NPC (6b).
+      lista leggibile di regole/eventi con condizioni e conseguenze) e **6c.2 creazione** fatto
+      (builder in **modale ampia**: verbo+bersaglio+risposta+conseguenze; op serializzatore
+      `rule`/`event`); restano condizioni annidate + modifica + spostamento (6c.3), eventi (6c.4).
+      Mancano anche dialoghi/NPC (6b).
 - [ ] Fase 7 — Packaging del gioco
 
 Piano completo: `../../.claude/plans/starry-wandering-key.md` (radice utente).

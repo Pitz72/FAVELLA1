@@ -282,6 +282,15 @@ export type SerializeSpec =
   | { op: 'start'; name: string }
   | { op: 'direction_decl'; a: string; b: string }
   | { op: 'opposite_decl'; a: string; b: string }
+  | {
+      op: 'rule'
+      verb: string
+      target: SerializeRuleTarget | null
+      condition?: RuleCondition | null
+      response: string
+      consequences: RuleConsequence[]
+    }
+  | { op: 'event'; mode: 'al' | 'ogni'; n: number; response: string; consequences: RuleConsequence[] }
 
 export interface SerializeResult {
   ok: boolean
@@ -318,6 +327,15 @@ export interface RuleTarget {
   name: string
   prep: string | null
   secondaryId: string | null
+  secondaryName: string | null
+}
+
+// Bersaglio in SCRITTURA (op 'rule'): solo i campi che il serializzatore emette
+// (niente id, che servono solo in lettura per l'identità).
+export interface SerializeRuleTarget {
+  kind: 'object' | 'direction'
+  name: string
+  prep: string | null
   secondaryName: string | null
 }
 

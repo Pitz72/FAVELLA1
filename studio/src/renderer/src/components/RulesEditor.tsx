@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useStudio } from '../store'
 import type { RuleCondition, RuleConsequence } from '../../../shared/protocol'
+import RuleForm from './RuleForm'
 
 // --- Riassunti leggibili (sola lettura, 6c.1) ---
 
@@ -66,6 +68,7 @@ export default function RulesEditor(): JSX.Element {
   const loadRules = useStudio((s) => s.loadRules)
   const deleteStatement = useStudio((s) => s.deleteStatement)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
+  const [creando, setCreando] = useState(false)
 
   if (!isFav) {
     return <div className="insp-empty">Apri un file .fav per vedere le regole e gli eventi.</div>
@@ -102,10 +105,21 @@ export default function RulesEditor(): JSX.Element {
           Regole<span className="debug-count"> · {regole.length}</span> · Eventi
           <span className="debug-count"> · {events.length}</span>
         </span>
-        <button className="icon-btn" title="Aggiorna" onClick={() => void loadRules()}>
-          ⟳
-        </button>
+        <div>
+          <button
+            className="icon-btn"
+            title="Nuova regola"
+            onClick={() => setCreando((v) => !v)}
+          >
+            ➕
+          </button>
+          <button className="icon-btn" title="Aggiorna" onClick={() => void loadRules()}>
+            ⟳
+          </button>
+        </div>
       </div>
+
+      {creando && <RuleForm menu={rules.menu} onDone={() => setCreando(false)} />}
 
       <div className="ruled-body">
         {regole.length === 0 && events.length === 0 && (
