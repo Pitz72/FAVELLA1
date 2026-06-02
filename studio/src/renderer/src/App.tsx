@@ -7,6 +7,7 @@ import EditorPane from './components/EditorPane'
 import ProblemsPanel from './components/ProblemsPanel'
 import StatusBar from './components/StatusBar'
 import RightDock from './components/RightDock'
+import UnsavedDialog from './components/UnsavedDialog'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
 interface Toast {
@@ -80,6 +81,25 @@ export default function App(): JSX.Element {
     const t = setTimeout(() => void compileActive(), 600)
     return () => clearTimeout(t)
   }, [activePath, activeContent, sidecarStatus, compileActive])
+
+  // Guardia «modifiche non salvate» in uscita: quando il main chiede di chiudere,
+  // se ci sono file sporchi mostra il dialogo nativo Salva/Non salvare/Annulla.
+  useEffect(() => {
+    const unsub = window.favella.onRequestClose(async () => {
+      const sporchi = useStudio
+        .getState()
+        .openFiles.filter((f) => f.content !== f.savedContent)
+      if (sporchi.length === 0) {
+        void window.favella.confirmClose()
+        return
+      }
+      const scelta = await useStudio.getState().askUnsaved(sporchi.map((f) => f.name))
+      if (scelta === 'cancel') return
+      if (scelta === 'save') await useStudio.getState().saveAll()
+      void window.favella.confirmClose()
+    })
+    return unsub
+  }, [])
 
   // Scorciatoie globali: Ctrl+S salva il file attivo, Ctrl+Shift+S salva tutto.
   useEffect(() => {
@@ -171,6 +191,8 @@ export default function App(): JSX.Element {
           </div>
         ))}
       </div>
+
+      <UnsavedDialog />
     </div>
   )
 }

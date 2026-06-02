@@ -4,7 +4,7 @@
 
 import re
 import difflib
-from lark import Lark, Transformer, v_args
+from lark import Lark, Transformer, v_args, Token, Tree
 from lark.exceptions import UnexpectedInput
 from strutture import (
     Mondo, Stanza, Oggetto, Regola, Evento,
@@ -520,12 +520,19 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=()) -> str:
     return grammatica
 
 
-def costruisci_parser(simboli, variabili=(), direzioni=()) -> Lark:
+def costruisci_parser(simboli, variabili=(), direzioni=(),
+                      propagate_positions=False) -> Lark:
     """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
     costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
-    GrammarError a build-time, non come scelta silenziosa a runtime."""
+    GrammarError a build-time, non come scelta silenziosa a runtime.
+
+    'propagate_positions' (default False, così il percorso del motore e dei test
+    resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
+    finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
+    ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
     return Lark(costruisci_grammatica(simboli, variabili, direzioni),
-                start="start", parser="lalr")
+                start="start", parser="lalr",
+                propagate_positions=propagate_positions)
 
 
 def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
@@ -1996,6 +2003,260 @@ def compila_mondo(percorso_file, sorgente=None):
         return transformer.mondo
     except Exception:
         return None
+
+
+# ==============================================================================
+# OUTLINE STRUTTURATO PER GLI EDITOR VISUALI (Favella Studio — Fase 6)
+# ------------------------------------------------------------------------------
+# analizza_outline restituisce un modello EDITABILE di stanze e oggetti in cui
+# OGNI campo è ancorato alla/e frase/i sorgente che lo definiscono (span di riga).
+# È la metà in LETTURA del round-trip testo↔visuale: l'IDE rende le form, e per
+# applicare una modifica rigenera la SINGOLA frase canonica e la rimpiazza nel
+# buffer usando lo span qui restituito (editing chirurgico per-frase). Tutto il
+# resto del file (commenti, prosa, ordine, altre entità) resta byte-identico.
+#
+# ADDITIVA: non tocca analizza_file/compila_mondo né il motore (334 test salvi).
+# Combina la VERITÀ SEMANTICA (compila_mondo: id normalizzati, nomi visualizzati,
+# uscite con auto-ritorno, proprietà) con le POSIZIONI ricavate da un secondo
+# parse con propagate_positions=True, correlando le frasi alle entità per nome.
+# ==============================================================================
+
+def _norm_token(tok) -> str:
+    """Nome normalizzato (id canonico) da un token ENTITA grezzo (con articolo)."""
+    return normalizza_nome(str(tok))
+
+
+def _tokens_per_tipo(nodo):
+    """Raccoglie i Token di un sottoalbero raggruppati per tipo (ENTITA, DIREZIONE,
+    PROPRIETA, TESTO_QUOTATO, ...). L'ordine di apparizione è preservato."""
+    per_tipo = {}
+    for figlio in nodo.scan_values(lambda v: isinstance(v, Token)):
+        per_tipo.setdefault(figlio.type, []).append(figlio)
+    return per_tipo
+
+
+def analizza_outline(percorso_file, sorgente=None):
+    """[Favella Studio / Fase 6] Modello editabile di stanze e oggetti con lo span
+    sorgente di ogni frase, per gli editor visuali. 'sorgente' (opzionale) compila
+    il buffer live non salvato, risolvendo gli 'Includi' dal disco.
+
+    Ritorna un dict serializzabile in JSON:
+      {ok, rooms[], objects[], errors[]}
+    room   = {id, name, isStart, defLine, descLine, descConditional,
+              exits[{direction, to, toName, line, implicit}]}
+    object = {id, name, kind, prendibile, defLine, descLine, descConditional,
+              location{id,name,prep,line}|None, properties[{name,line}],
+              aliases[{name,line}]}
+    Le righe sono nel sorgente ORIGINALE (rimappate dagli Includi); None se il
+    campo non ha una frase propria (es. l'auto-ritorno di una connessione, che si
+    edita sulla frase 'collega' di origine → implicit=True, line=quella d'origine).
+    Difensiva: in caso di errore di compilazione restituisce ok=False + errors;
+    non solleva mai verso il protocollo."""
+    # 1. Verità semantica: il Mondo compilato. Se non compila, niente outline.
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "rooms": [], "objects": [],
+                "errors": diag.get("errors", [])}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "rooms": [], "objects": [],
+                "errors": diag.get("errors", [])}
+
+    # 2. Posizioni: secondo parse con propagate_positions, mappa riga→(file, riga).
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        coppie_dir, nomi_dir, _de = valida_direzioni_dichiarate(
+            simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True)
+        tree = parser.parse(testo)
+    except Exception:
+        # Il Mondo c'è ma le posizioni no: outline senza span (editing degradato).
+        tree, mappa_righe = None, []
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1][1]
+        return linea_espansa
+
+    # 3. Indicizza le frasi sorgente per (tipo, entità) → span e dettagli.
+    #    Una stessa entità può avere più frasi (più proprietà, più connessioni):
+    #    raccogliamo liste, non singoli valori.
+    frasi = []  # {data, line, endLine, tokens(per tipo)}
+    if tree is not None:
+        for nodo in tree.children:
+            if not isinstance(nodo, Tree):
+                continue
+            meta = getattr(nodo, "meta", None)
+            line = getattr(meta, "line", None) if meta else None
+            end = getattr(meta, "end_line", line) if meta else None
+            frasi.append({
+                "data": nodo.data,
+                "line": _riga_orig(line),
+                "endLine": _riga_orig(end),
+                "tok": _tokens_per_tipo(nodo),
+            })
+
+    def _prima(data, id_entita, indice_entita=0):
+        """Riga della prima frase di tipo 'data' la cui ENTITA all'indice dato
+        corrisponde a id_entita (None se assente)."""
+        for f in frasi:
+            if f["data"] != data:
+                continue
+            ents = f["tok"].get("ENTITA", [])
+            if len(ents) > indice_entita and _norm_token(ents[indice_entita]) == id_entita:
+                return f["line"]
+        return None
+
+    # 4. STANZE.
+    start = mondo.posizione_iniziale if mondo.posizione_iniziale in mondo.stanze \
+        else next(iter(mondo.stanze), None)
+    rooms = []
+    for rid, st in mondo.stanze.items():
+        # Uscite: per ognuna cerca una frase 'collega' che la dichiara
+        # esplicitamente (from=rid, dir, to). L'opposta (auto-ritorno) non ha
+        # frase propria → implicit, ancorata alla connessione d'origine.
+        exits = []
+        for direzione, dest in getattr(st, "uscite", {}).items():
+            line, implicit = None, True
+            for f in frasi:
+                if f["data"] != "def_connessione":
+                    continue
+                ents = f["tok"].get("ENTITA", [])
+                dirs = f["tok"].get("DIREZIONE", [])
+                if len(ents) >= 2 and dirs and _norm_token(ents[0]) == rid:
+                    forma = str(dirs[0]).lower()
+                    if mondo.direzione_canonica(forma) == direzione \
+                            and _norm_token(ents[1]) == dest:
+                        line, implicit = f["line"], False
+                        break
+            if line is None:
+                # Origine dell'auto-ritorno: la connessione inversa (dest→rid).
+                for f in frasi:
+                    if f["data"] != "def_connessione":
+                        continue
+                    ents = f["tok"].get("ENTITA", [])
+                    if len(ents) >= 2 and _norm_token(ents[0]) == dest \
+                            and _norm_token(ents[1]) == rid:
+                        line = f["line"]
+                        break
+            exits.append({
+                "direction": direzione,
+                "to": dest,
+                "toName": mondo.stanze[dest].nome_visualizzato if dest in mondo.stanze else dest,
+                "line": line,
+                "implicit": implicit,
+            })
+        rooms.append({
+            "id": rid,
+            "name": st.nome_visualizzato,
+            "isStart": rid == start,
+            "defLine": _prima("def_stanza", rid),
+            "descLine": _prima("def_descrizione", rid),
+            "descConditional": _ha_descr_condizionale(frasi, rid),
+            "description": st.descrizione,
+            "exits": exits,
+        })
+
+    # 5. OGGETTI.
+    def _kind(o):
+        if getattr(o, "is_personaggio", False):
+            return "personaggio"
+        if getattr(o, "is_contenitore", False):
+            return "contenitore"
+        if getattr(o, "is_supporto", False):
+            return "supporto"
+        return "oggetto"
+
+    _DEF_PER_KIND = {
+        "oggetto": "def_oggetto", "contenitore": "def_contenitore",
+        "supporto": "def_supporto", "personaggio": "def_personaggio",
+    }
+
+    objects = []
+    for oid, o in mondo.oggetti.items():
+        kind = _kind(o)
+        # Proprietà: ogni 'X è PROPRIETA.' (incl. 'prendibile') con la sua riga.
+        properties = []
+        for f in frasi:
+            if f["data"] != "def_proprieta":
+                continue
+            ents = f["tok"].get("ENTITA", [])
+            props = f["tok"].get("PROPRIETA", [])
+            if ents and props and _norm_token(ents[0]) == oid:
+                properties.append({"name": str(props[0]), "line": f["line"]})
+        # Alias dichiarati per questo oggetto.
+        aliases = []
+        for f in frasi:
+            if f["data"] != "def_alias":
+                continue
+            ents = f["tok"].get("ENTITA", [])
+            quotati = f["tok"].get("TESTO_QUOTATO", [])
+            if ents and quotati and _norm_token(ents[0]) == oid:
+                aliases.append({"name": _spoglia_quotato(str(quotati[0])), "line": f["line"]})
+        # Posizione: 'X è PREP_LUOGO Y.' (ENTITA[0]=oggetto, ENTITA[1]=luogo).
+        location = None
+        pos = getattr(o, "posizione", None)
+        if pos and pos not in (None, "inventario"):
+            line = None
+            prep = None
+            for f in frasi:
+                if f["data"] != "def_posizione":
+                    continue
+                ents = f["tok"].get("ENTITA", [])
+                if len(ents) >= 2 and _norm_token(ents[0]) == oid:
+                    line = f["line"]
+                    preps = f["tok"].get("PREP_LUOGO", [])
+                    prep = str(preps[0]) if preps else None
+                    break
+            nome_luogo = (mondo.stanze[pos].nome_visualizzato if pos in mondo.stanze
+                          else mondo.oggetti[pos].nome_visualizzato if pos in mondo.oggetti
+                          else pos)
+            location = {"id": pos, "name": nome_luogo, "prep": prep, "line": line}
+        objects.append({
+            "id": oid,
+            "name": o.nome_visualizzato,
+            "kind": kind,
+            "prendibile": getattr(o, "prendibile", False),
+            "defLine": _prima(_DEF_PER_KIND[kind], oid),
+            "descLine": _prima("def_descrizione", oid),
+            "descConditional": _ha_descr_condizionale(frasi, oid),
+            "description": o.descrizione,
+            "location": location,
+            "properties": properties,
+            "aliases": aliases,
+        })
+
+    return {"ok": True, "rooms": rooms, "objects": objects, "errors": []}
+
+
+def _ha_descr_condizionale(frasi, id_entita) -> bool:
+    """True se l'entità ha almeno una descrizione CONDIZIONALE (clausola 'se'):
+    rilevata dalla presenza di un sottoalbero condizione nella frase def_descrizione.
+    Round-trip prudente: l'IDE non riscrive le descrizioni condizionali in v1."""
+    for f in frasi:
+        if f["data"] != "def_descrizione":
+            continue
+        ents = f["tok"].get("ENTITA", [])
+        if ents and _norm_token(ents[0]) == id_entita:
+            # Una descrizione condizionale cita almeno un'altra ENTITA/VARIABILE
+            # nella condizione, oppure un PROPRIETA/NUMERO di confronto.
+            if (len(ents) > 1 or f["tok"].get("VARIABILE")
+                    or f["tok"].get("NUMERO")):
+                return True
+    return False
+
+
+def _spoglia_quotato(s: str) -> str:
+    """Rimuove le virgolette esterne da un TESTO_QUOTATO e scioglie gli escape."""
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        s = s[1:-1]
+    return s.replace('\\"', '"').replace("\\\\", "\\")
 
 
 def main():

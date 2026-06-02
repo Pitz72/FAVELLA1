@@ -505,6 +505,127 @@ button:hover {
   }
 }
 
+/* --- Modal «modifiche non salvate» (stile IDE) --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadein 0.12s ease;
+}
+
+.modal {
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  padding: 22px 24px 18px;
+  animation: modalpop 0.14s ease;
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fav);
+}
+
+.modal-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.modal-hint {
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.modal-list {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  max-height: 140px;
+  overflow: auto;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.modal-list li {
+  padding: 2px 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modal-btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-btn.primary {
+  background: var(--accent);
+  color: #0c1116;
+}
+.modal-btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+.modal-btn.ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.modal-btn.ghost:hover {
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+
+.modal-btn.danger {
+  background: transparent;
+  color: #f0a0a0;
+  border: 1px solid #5a3a3a;
+}
+.modal-btn.danger:hover {
+  background: #3a2626;
+  color: #ffbcbc;
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalpop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* --- Dock destro a schede (Fasi 3-4) --- */
 .rightdock {
   flex: 0 0 440px;

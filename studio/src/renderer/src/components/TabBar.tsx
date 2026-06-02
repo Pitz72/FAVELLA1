@@ -5,8 +5,21 @@ export default function TabBar(): JSX.Element | null {
   const activePath = useStudio((s) => s.activePath)
   const setActive = useStudio((s) => s.setActive)
   const closeFile = useStudio((s) => s.closeFile)
+  const saveFile = useStudio((s) => s.saveFile)
+  const askUnsaved = useStudio((s) => s.askUnsaved)
 
   if (openFiles.length === 0) return null
+
+  // Chiusura guardata: se la scheda ha modifiche non salvate, chiedi conferma
+  // (modal integrato Salva/Non salvare/Annulla) prima di scartare il buffer.
+  const chiudiScheda = async (path: string, name: string, dirty: boolean): Promise<void> => {
+    if (dirty) {
+      const scelta = await askUnsaved([name])
+      if (scelta === 'cancel') return
+      if (scelta === 'save') await saveFile(path)
+    }
+    closeFile(path)
+  }
 
   return (
     <div className="tabbar">
@@ -26,7 +39,7 @@ export default function TabBar(): JSX.Element | null {
               className="tab-close"
               onClick={(e) => {
                 e.stopPropagation()
-                closeFile(f.path)
+                void chiudiScheda(f.path, f.name, dirty)
               }}
             >
               {dirty ? '●' : '×'}

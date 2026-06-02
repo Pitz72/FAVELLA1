@@ -70,7 +70,12 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       inventario, variabili, proprietà, esito).
 - [x] **Salvataggio partite** (command-log): 💾 Salva / 📂 Carica nella finestra di gioco,
       file `.favsave`. RPC `session.save`/`session.load` (replay deterministico dei comandi).
-- [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
+- [x] **Guardia «modifiche non salvate»**: avviso Salva/Non salvare/Annulla (modal in stile
+      IDE) chiudendo una scheda o l'app con un `.fav` modificato.
+- [~] **Fase 6 — Editor visuali** (stanze/oggetti/dialoghi): in corso. Fondazione lato lettura
+      pronta — RPC `world.outline` / `analizza_outline` con lo span sorgente di ogni frase
+      (per il round-trip testo↔visuale). Mancano: serializzatore canonico, mappa editabile,
+      inspector oggetti.
 - [ ] Fase 7 — Packaging del gioco
 
 Piano completo: `../../.claude/plans/starry-wandering-key.md` (radice utente).

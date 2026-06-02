@@ -104,6 +104,18 @@ const api = {
     return () => ipcRenderer.removeListener('game-relaunch', handler)
   },
 
+  // --- Guardia «modifiche non salvate» in uscita ---
+  /** Conferma la chiusura della finestra IDE (dopo aver gestito i file sporchi). */
+  confirmClose(): Promise<void> {
+    return ipcRenderer.invoke('app:confirmClose')
+  },
+  /** Il main chiede al renderer di gestire la chiusura (guardia file non salvati). */
+  onRequestClose(callback: () => void): () => void {
+    const handler = (): void => callback()
+    ipcRenderer.on('app:request-close', handler)
+    return () => ipcRenderer.removeListener('app:request-close', handler)
+  },
+
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */
   onEngineEvent(callback: (event: EngineEvent) => void): () => void {
     const handler = (_e: unknown, event: EngineEvent): void => callback(event)

@@ -30,6 +30,15 @@ export interface RevealRequest {
   nonce: number
 }
 
+/** Scelta dell'utente nel dialogo «modifiche non salvate». */
+export type UnsavedChoice = 'save' | 'discard' | 'cancel'
+
+/** Richiesta in sospeso di conferma «modifiche non salvate» (modal integrato). */
+export interface UnsavedPrompt {
+  names: string[]
+  resolve: (choice: UnsavedChoice) => void
+}
+
 export interface OpenFile {
   path: string
   name: string
@@ -72,6 +81,8 @@ interface StudioState {
   // Debugger (Fase 5)
   debugHistory: DebugEntry[]
   debugLoading: boolean
+  // Guardia «modifiche non salvate»: richiesta di conferma in sospeso (modal)
+  unsavedPrompt: UnsavedPrompt | null
 
   // Azioni
   openProject: () => Promise<void>
@@ -106,6 +117,9 @@ interface StudioState {
   loadWorldSnapshot: () => Promise<void>
   // Debugger (Fase 5)
   loadDebugHistory: () => Promise<void>
+  // Guardia «modifiche non salvate»: apre il modal e attende la scelta
+  askUnsaved: (names: string[]) => Promise<UnsavedChoice>
+  resolveUnsaved: (choice: UnsavedChoice) => void
 }
 
 function linguaDa(name: string): string {
@@ -159,6 +173,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   worldLoading: false,
   debugHistory: [],
   debugLoading: false,
+  unsavedPrompt: null,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -490,5 +505,18 @@ export const useStudio = create<StudioState>((set, get) => ({
     } catch {
       set({ debugLoading: false })
     }
+  },
+
+  // --- Guardia «modifiche non salvate» (modal integrato) --------------------
+
+  askUnsaved: (names) =>
+    new Promise<UnsavedChoice>((resolve) => {
+      set({ unsavedPrompt: { names, resolve } })
+    }),
+
+  resolveUnsaved: (choice) => {
+    const p = get().unsavedPrompt
+    set({ unsavedPrompt: null })
+    p?.resolve(choice)
   }
 }))

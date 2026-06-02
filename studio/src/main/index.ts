@@ -10,6 +10,9 @@ let gameWindow: BrowserWindow | null = null
 let sidecar: Sidecar | null = null
 // Payload (path + buffer live) passato dall'IDE alla finestra di gioco al lancio.
 let gameLaunch: { path: string; source?: string } | null = null
+// Guardia «modifiche non salvate»: la chiusura della finestra IDE è intercettata
+// finché il renderer non conferma (eventuale salvataggio o scarto). Vedi createWindow.
+let allowClose = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -29,6 +32,15 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
+
+  // Guardia «modifiche non salvate»: alla prima richiesta di chiusura si blocca
+  // l'evento e si interpella il renderer (che conosce i file sporchi). Il renderer
+  // risponde via IPC `app:confirmClose`, che alza `allowClose` e richiude davvero.
+  mainWindow.on('close', (e) => {
+    if (allowClose) return
+    e.preventDefault()
+    mainWindow?.webContents.send('app:request-close')
+  })
 
   // Apri i link esterni nel browser di sistema, non in una finestra Electron.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -138,6 +150,13 @@ app.whenReady().then(() => {
     } catch {
       return null
     }
+  })
+
+  // Guardia «modifiche non salvate»: il dialogo è un modal React integrato nel
+  // renderer (stile IDE). Qui resta solo la conferma di chiusura effettiva.
+  ipcMain.handle('app:confirmClose', () => {
+    allowClose = true
+    mainWindow?.close()
   })
 
   registraFileSystemIPC()

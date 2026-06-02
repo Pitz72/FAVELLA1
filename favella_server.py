@@ -36,7 +36,8 @@ except Exception:
 _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
-                             compila_mondo, VERBI_VALIDI, PAROLE_RISERVATE)
+                             compila_mondo, analizza_outline,
+                             VERBI_VALIDI, PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
@@ -46,7 +47,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.7.0"  # Salvataggio partite (command-log: session.save/load)
+VERSIONE_SIDECAR = "0.8.0"  # Fase 6a: world.outline (editor visuali, lettura)
 
 
 # ==============================================================================
@@ -394,6 +395,23 @@ def rpc_world_snapshot(_params):
     return _snapshot_mondo(_SESSIONE.mondo)
 
 
+def rpc_world_outline(params):
+    """[Fase 6a] Modello editabile di stanze e oggetti con lo span sorgente di ogni
+    frase, per gli editor visuali (round-trip testo↔visuale). Senza 'path' usa la
+    storia della partita attiva; con 'path' (+ 'source') legge il file/buffer."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    if not percorso:
+        return {"ok": False, "rooms": [], "objects": [],
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return analizza_outline(percorso, sorgente)
+
+
 def rpc_session_history(_params):
     """[Fase 5] History della partita attiva per il debugger passo-passo: uno
     snapshot per turno con il comando che l'ha prodotto. L'IDE calcola i diff fra
@@ -414,6 +432,7 @@ _METODI = {
     "session.reset": rpc_session_reset,
     "world.graph": rpc_world_graph,
     "world.snapshot": rpc_world_snapshot,
+    "world.outline": rpc_world_outline,
     "session.history": rpc_session_history,
     "session.save": rpc_session_save,
     "session.load": rpc_session_load,

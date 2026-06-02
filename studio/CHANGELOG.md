@@ -4,6 +4,25 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.8.1] — 2026-06-02 — Guardia «modifiche non salvate» + fondazione editor visuali
+
+### Aggiunto
+- **Avviso di salvataggio in uscita**: chiudendo una scheda o l'app con un `.fav`
+  modificato, ora compare un dialogo **Salva / Non salvare / Annulla** (prima le
+  modifiche si perdevano in silenzio). Vale sia per la singola scheda sia per la
+  finestra (un solo avviso riepilogativo con N file). Esc = Annulla, Invio = Salva.
+- Il dialogo è un **modal integrato nello stile dell'IDE** (sfondo scurito, card
+  arrotondata, titolo oro, pulsanti primary/ghost/danger), non più la finestra
+  nativa di Windows. Handshake `before-close` main↔renderer: il main intercetta la
+  chiusura, il renderer mostra il modal e conferma.
+- **Fondazione Fase 6a (editor visuali) — lato lettura**: RPC `world.outline` e
+  funzione additiva `analizza_outline` che restituisce un modello editabile di
+  stanze e oggetti con lo **span sorgente di ogni frase** (per il futuro round-trip
+  testo↔visuale: editing chirurgico per-frase senza toccare commenti/prosa/ordine).
+  `costruisci_parser` ha ora un flag `propagate_positions` (default `False`, così
+  il percorso del motore e dei test resta byte-stabile). Sidecar a `0.8.0`.
+  Nessuna UI ancora: è solo la base, già verificata via NDJSON. **334 test verdi.**
+
 ## [0.8.0] — 2026-06-02 — Salvataggio partite (command-log)
 
 ### Aggiunto
