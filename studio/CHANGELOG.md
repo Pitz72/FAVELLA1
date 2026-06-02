@@ -4,6 +4,29 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.4] — 2026-06-02 — Contenuto di contenitori/supporti (Posizione estesa)
+
+### Aggiunto
+- **Posizione verso contenitori e supporti**: il menu Posizione dell'inspector oggetti
+  è ora raggruppato — **Stanze** · **Dentro un contenitore** · **Sopra un supporto**.
+  Scegliendo un contenitore/supporto genera la frase con **preposizione articolata
+  concordata** dall'articolo del bersaglio: `nella scatola`, `sul tavolo`, `nell'armadio`.
+- **Sezione «Contenuto»** sulla scheda di un contenitore (o «Sopra (contenuto)» per i
+  supporti): elenca gli oggetti contenuti, **×** per toglierne uno, e un menu
+  **«+ metti un oggetto qui…»** per aggiungerne (entrambe le vie scrivono la frase di
+  posizione dell'oggetto contenuto — un contenitore può contenerne quanti se ne vuole).
+
+### Corretto
+- **Ordine del sorgente per le posizioni in contenitore** (il transformer tipa le frasi
+  nell'ordine del file): collocare un oggetto *dentro* un contenitore/supporto ora
+  **appende** la frase in fondo (dopo ogni definizione) ed elimina l'eventuale posizione
+  precedente, invece di sostituirla in loco. Evita l'errore «Stanza inesistente '<contenitore>'
+  per posizionare '<oggetto>'» quando la posizione precedeva la definizione del contenitore.
+  Per le **stanze** (definite prima) resta la sostituzione in loco, che preserva il layout.
+
+### Note
+- Nessuna modifica al sidecar (riusa l'op `position` e `world.outline` esistenti): resta 0.8.3.
+
 ## [0.9.3] — 2026-06-02 — Proprietà come coppie opposte / condizioni a due stati
 
 ### Aggiunto

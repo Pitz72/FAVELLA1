@@ -78,8 +78,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       Alias) pronti; round-trip via `world.outline`/`outline.serialize` + splice in Monaco con
       undo nativo. **Proprietà a due stati**: le coppie opposte (aperta↔chiusa + custom) si editano
       come selettori segmentati, non tag liberi (`opposite_decl`). Migliorie IDE: Nuovo progetto,
-      dock ridimensionabile, tab unificate, pannelli live. Mancano: contenuto contenitori/supporti,
-      editor visuale di regole/eventi, dialoghi/NPC (6b).
+      dock ridimensionabile, tab unificate, pannelli live. **Contenuto di contenitori/supporti**:
+      Posizione raggruppata (stanze/contenitori/supporti) con preposizione articolata
+      (`nella scatola`, `sul tavolo`) + sezione Contenuto editabile. Mancano: editor visuale
+      di regole/eventi, dialoghi/NPC (6b).
 - [ ] Fase 7 — Packaging del gioco
 
 Piano completo: `../../.claude/plans/starry-wandering-key.md` (radice utente).

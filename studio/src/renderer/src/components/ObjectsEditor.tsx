@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
-import type { ObjectKind } from '../../../shared/protocol'
+import type { ObjectKind, OutlineObject, OutlineLocation } from '../../../shared/protocol'
 
 const KIND_LABEL: Record<ObjectKind, string> = {
   oggetto: 'Oggetto',
@@ -19,6 +19,45 @@ const KINDS: ObjectKind[] = ['oggetto', 'contenitore', 'supporto', 'personaggio'
 /** Toglie l'articolo iniziale dal nome (per «è in <stanza>» senza doppio articolo). */
 function nucleo(nome: string): string {
   return nome.replace(/^\s*(l'|un'|uno\s+|una\s+|gli\s+|il\s+|lo\s+|la\s+|le\s+|un\s+|i\s+)/i, '').trim()
+}
+
+/** Articolo iniziale del nome (normalizzato), o null se assente. */
+function articoloDi(nome: string): string | null {
+  const m = nome.match(/^\s*(l'|un'|uno|una|gli|il|lo|la|le|un|i)\b/i)
+  if (!m) return null
+  return m[1].toLowerCase()
+}
+
+// Articolo → preposizione articolata «in»/«su». Il serializzatore (prep articolata)
+// assorbe già l'articolo del luogo → «nella scatola», «sul tavolo».
+const PREP_IN: Record<string, string> = {
+  "l'": "nell'", "un'": "nell'", il: 'nel', lo: 'nello', uno: 'nello',
+  la: 'nella', una: 'nella', le: 'nelle', i: 'nei', gli: 'negli', un: 'nel'
+}
+const PREP_SU: Record<string, string> = {
+  "l'": "sull'", "un'": "sull'", il: 'sul', lo: 'sullo', uno: 'sullo',
+  la: 'sulla', una: 'sulla', le: 'sulle', i: 'sui', gli: 'sugli', un: 'sul'
+}
+
+/** Spec della frase di posizione di `objName` verso un bersaglio (stanza, contenitore
+ * o supporto), con la preposizione concordata: «in <stanza>», «nella scatola»
+ * (contenitore), «sul tavolo» (supporto). Fallback a prep nuda + nucleo se l'articolo
+ * non è riconosciuto. */
+function specPosizione(
+  objName: string,
+  target: { name: string; kind: 'stanza' | ObjectKind }
+): { op: 'position'; name: string; prep: string; place: string } {
+  if (target.kind === 'stanza') {
+    return { op: 'position', name: objName, prep: 'in', place: nucleo(target.name) }
+  }
+  const base = target.kind === 'supporto' ? PREP_SU : PREP_IN
+  const art = articoloDi(target.name)
+  if (art && base[art]) {
+    // place = nome completo: la prep articolata gli toglie l'articolo lato sidecar.
+    return { op: 'position', name: objName, prep: base[art], place: target.name }
+  }
+  const nuda = target.kind === 'supporto' ? 'su' : 'in'
+  return { op: 'position', name: objName, prep: nuda, place: nucleo(target.name) }
 }
 
 export default function ObjectsEditor(): JSX.Element {
@@ -101,6 +140,18 @@ export default function ObjectsEditor(): JSX.Element {
     : []
   const prendibileProp = sel?.properties.find((p) => p.name === 'prendibile') ?? null
 
+  // Bersagli di posizione che non sono stanze: contenitori e supporti (escluso
+  // l'oggetto stesso, che non può contenersi). Servono al selettore Posizione e
+  // alla sezione Contenuto.
+  const contenitori = objects.filter((o) => o.kind === 'contenitore' && o.id !== selId)
+  const supporti = objects.filter((o) => o.kind === 'supporto' && o.id !== selId)
+  // Cosa c'è dentro/sopra l'oggetto selezionato, e i candidati da aggiungervi.
+  const contenuto = sel ? objects.filter((o) => o.location?.id === sel.id) : []
+  const candidatiContenuto = sel
+    ? objects.filter((o) => o.id !== sel.id && o.location?.id !== sel.id)
+    : []
+  const èContenitore = sel?.kind === 'contenitore' || sel?.kind === 'supporto'
+
   const cambiaTipo = async (k: ObjectKind): Promise<void> => {
     if (!sel || k === sel.kind) return
     await applyStatement({ op: 'object_def', name: sel.name, kind: k }, sel.defSpan)
@@ -118,18 +169,52 @@ export default function ObjectsEditor(): JSX.Element {
       await applyStatement({ op: 'prendibile', name: sel.name })
     }
   }
-  const cambiaPosizione = async (roomId: string): Promise<void> => {
+  // Colloca `objName` secondo `spec`. Il transformer tipa le posizioni NELL'ORDINE
+  // del sorgente: una frase «X è nel contenitore» che PRECEDE la definizione del
+  // contenitore dà «stanza inesistente». Perciò, quando il bersaglio è un
+  // contenitore/supporto, la frase va APPESA in fondo (dopo ogni definizione),
+  // eliminando l'eventuale posizione precedente. Per le STANZE (definite prima) la
+  // sostituzione in loco è sicura e preserva il layout d'autore.
+  const colloca = async (
+    oldLoc: OutlineLocation | null,
+    spec: { op: 'position'; name: string; prep: string; place: string },
+    inContenitore: boolean
+  ): Promise<void> => {
+    if (inContenitore) {
+      if (oldLoc?.span) await deleteStatement(oldLoc.span)
+      await applyStatement(spec)
+    } else {
+      await applyStatement(spec, oldLoc?.span ?? undefined)
+    }
+  }
+
+  const cambiaPosizione = async (targetId: string): Promise<void> => {
     if (!sel) return
-    if (roomId === '') {
+    if (targetId === '') {
       if (sel.location?.span) await deleteStatement(sel.location.span)
       return
     }
-    const room = rooms.find((r) => r.id === roomId)
-    if (!room) return
-    await applyStatement(
-      { op: 'position', name: sel.name, prep: 'in', place: nucleo(room.name) },
-      sel.location?.span
-    )
+    const room = rooms.find((r) => r.id === targetId)
+    if (room) {
+      await colloca(sel.location, specPosizione(sel.name, { name: room.name, kind: 'stanza' }), false)
+      return
+    }
+    const cont = objects.find((o) => o.id === targetId)
+    if (!cont) return
+    await colloca(sel.location, specPosizione(sel.name, { name: cont.name, kind: cont.kind }), true)
+  }
+
+  // Contenuto di un contenitore/supporto: «La gemma è nella scatola.» Mettere un
+  // oggetto qui = appendere la SUA frase di posizione verso questo nucleo (dopo la
+  // definizione del contenitore), eliminando l'eventuale posizione precedente.
+  const mettiContenuto = async (childId: string): Promise<void> => {
+    if (!sel || !childId) return
+    const child = objects.find((o) => o.id === childId)
+    if (!child) return
+    await colloca(child.location, specPosizione(child.name, { name: sel.name, kind: sel.kind }), true)
+  }
+  const togliContenuto = async (child: OutlineObject): Promise<void> => {
+    if (child.location?.span) await deleteStatement(child.location.span)
   }
   const aggiungiProprieta = async (): Promise<void> => {
     if (!sel) return
@@ -266,13 +351,62 @@ export default function ObjectsEditor(): JSX.Element {
               <label>Posizione</label>
               <select value={sel.location?.id ?? ''} onChange={(e) => void cambiaPosizione(e.target.value)}>
                 <option value="">— nessuna —</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
+                <optgroup label="Stanze">
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {contenitori.length > 0 && (
+                  <optgroup label="Dentro un contenitore">
+                    {contenitori.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {supporti.length > 0 && (
+                  <optgroup label="Sopra un supporto">
+                    {supporti.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
+
+            {èContenitore && (
+              <div className="objed-field">
+                <label>{sel.kind === 'supporto' ? 'Sopra (contenuto)' : 'Contenuto'}</label>
+                <div className="objed-chips">
+                  {contenuto.length === 0 && <span className="insp-none">vuoto</span>}
+                  {contenuto.map((c) => (
+                    <span key={c.id} className="objed-chip">
+                      {c.name}
+                      {c.location?.span && (
+                        <button title="Togli da qui" onClick={() => void togliContenuto(c)}>
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                {candidatiContenuto.length > 0 && (
+                  <select value="" onChange={(e) => void mettiContenuto(e.target.value)}>
+                    <option value="">+ metti un oggetto qui…</option>
+                    {candidatiContenuto.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
 
             <div className="objed-field">
               <label>Descrizione</label>
