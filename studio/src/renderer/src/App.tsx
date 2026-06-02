@@ -24,6 +24,8 @@ export default function App(): JSX.Element {
   const compileActive = useStudio((s) => s.compileActive)
   const launchGameWindow = useStudio((s) => s.launchGameWindow)
   const setRightTab = useStudio((s) => s.setRightTab)
+  const closeDock = useStudio((s) => s.closeDock)
+  const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
   const isFav = !!activePath?.toLowerCase().endsWith('.fav')
   const dirty = useStudio((s) => {
@@ -136,26 +138,26 @@ export default function App(): JSX.Element {
           >
             {dirty ? '● Salva' : '✓ Salvato'}
           </button>
-          <span className="titlebar-hint">Fase 4 · Mappa &amp; Stato</span>
+          <span className="titlebar-sep" />
           <button
-            className="tool-btn"
-            title="Mappa del mondo"
-            onClick={() => setRightTab('mappa')}
+            className={'tool-btn' + (rightTab === 'mappa' ? ' active' : '')}
+            title="Mappa del mondo (editabile)"
+            onClick={() => (rightTab === 'mappa' ? closeDock() : setRightTab('mappa'))}
             disabled={!isFav}
           >
             🗺 Mappa
           </button>
           <button
-            className="tool-btn"
+            className={'tool-btn' + (rightTab === 'stato' ? ' active' : '')}
             title="Ispettore di stato"
-            onClick={() => setRightTab('stato')}
+            onClick={() => (rightTab === 'stato' ? closeDock() : setRightTab('stato'))}
           >
             🔎 Stato
           </button>
           <button
-            className="tool-btn"
+            className={'tool-btn' + (rightTab === 'debug' ? ' active' : '')}
             title="Debugger passo-passo (timeline dei turni)"
-            onClick={() => setRightTab('debug')}
+            onClick={() => (rightTab === 'debug' ? closeDock() : setRightTab('debug'))}
           >
             🐞 Debug
           </button>

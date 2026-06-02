@@ -1,6 +1,6 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron'
 import { readdir, readFile, writeFile, stat } from 'fs/promises'
-import { join, basename } from 'path'
+import { join, basename, dirname } from 'path'
 import type { FileNode, OpenedProject } from '../shared/protocol'
 
 // Cartelle da non mostrare mai nell'albero del progetto.
@@ -51,6 +51,32 @@ export function registraFileSystemIPC(): void {
     const root = res.filePaths[0]
     return { root, tree: await costruisciAlbero(root) }
   })
+
+  // Nuovo progetto: l'utente sceglie cartella e nome (dialogo «Salva con nome»,
+  // che permette anche di creare una cartella nuova), si crea un .fav VUOTO da
+  // riempire da zero e si apre la sua cartella come progetto.
+  ipcMain.handle(
+    'project:new',
+    async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+      const res = await dialog.showSaveDialog(win!, {
+        title: 'Nuovo progetto FAVELLA — scegli cartella e nome',
+        defaultPath: 'storia.fav',
+        filters: [{ name: 'Storia FAVELLA', extensions: ['fav'] }]
+      })
+      if (res.canceled || !res.filePath) return null
+      let file = res.filePath
+      if (!file.toLowerCase().endsWith('.fav')) file += '.fav'
+      // Crea il file VUOTO solo se non esiste già (non sovrascrivere nulla).
+      try {
+        await stat(file)
+      } catch {
+        await writeFile(file, '', 'utf-8')
+      }
+      const root = dirname(file)
+      return { root, tree: await costruisciAlbero(root), openPath: file }
+    }
+  )
 
   ipcMain.handle('project:tree', async (_e, root: string): Promise<FileNode[]> => {
     return costruisciAlbero(root)

@@ -8,7 +8,9 @@ import type {
   GameState,
   WorldGraph,
   WorldSnapshot,
-  DebugEntry
+  DebugEntry,
+  Outline,
+  SerializeSpec
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 
@@ -47,6 +49,34 @@ export interface OpenFile {
   language: string
 }
 
+/**
+ * Modifica programmatica del buffer (editor visuali, Fase 6a). EditorPane la
+ * applica via Monaco (executeEdits) così l'UNDO è nativo; in parallelo lo store
+ * aggiorna subito il contenuto per ricaricare mappa/outline senza attendere il
+ * giro asincrono di onChange.
+ */
+export type BufferEdit =
+  | { kind: 'append'; text: string }
+  | { kind: 'deleteLines'; startLine: number; endLine: number }
+
+export interface PendingEdit {
+  path: string
+  edits: BufferEdit[]
+  nonce: number
+}
+
+/** Applica una BufferEdit al testo (stessa logica replicata in Monaco da EditorPane). */
+export function applicaBufferEdit(content: string, edit: BufferEdit): string {
+  if (edit.kind === 'append') {
+    const base = content.endsWith('\n') || content === '' ? content : content + '\n'
+    return base + edit.text + '\n'
+  }
+  // deleteLines: rimuove le righe [startLine..endLine] (1-based, incluse).
+  const righe = content.split('\n')
+  righe.splice(edit.startLine - 1, edit.endLine - edit.startLine + 1)
+  return righe.join('\n')
+}
+
 interface StudioState {
   // Progetto
   projectRoot: string | null
@@ -83,9 +113,17 @@ interface StudioState {
   debugLoading: boolean
   // Guardia «modifiche non salvate»: richiesta di conferma in sospeso (modal)
   unsavedPrompt: UnsavedPrompt | null
+  // Editor visuali (Fase 6a)
+  outline: Outline | null
+  outlineLoading: boolean
+  mapEditMode: boolean
+  pendingEdit: PendingEdit | null
+  // Larghezza del dock destro (px), ridimensionabile dall'utente
+  dockWidth: number
 
   // Azioni
   openProject: () => Promise<void>
+  newProject: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (node: FileNode) => Promise<void>
   closeFile: (path: string) => void
@@ -120,6 +158,13 @@ interface StudioState {
   // Guardia «modifiche non salvate»: apre il modal e attende la scelta
   askUnsaved: (names: string[]) => Promise<UnsavedChoice>
   resolveUnsaved: (choice: UnsavedChoice) => void
+  // Editor visuali (Fase 6a)
+  loadOutline: () => Promise<void>
+  setMapEditMode: (on: boolean) => void
+  setDockWidth: (px: number) => void
+  mapAddConnection: (fromId: string, direction: string, toId: string) => Promise<void>
+  mapDeleteConnection: (aId: string, bId: string) => Promise<void>
+  mapAddRoom: (name: string) => Promise<void>
 }
 
 function linguaDa(name: string): string {
@@ -174,11 +219,25 @@ export const useStudio = create<StudioState>((set, get) => ({
   debugHistory: [],
   debugLoading: false,
   unsavedPrompt: null,
+  outline: null,
+  outlineLoading: false,
+  mapEditMode: false,
+  pendingEdit: null,
+  dockWidth: 440,
 
   openProject: async () => {
     const res = await window.favella.openProject()
     if (!res) return
     set({ projectRoot: res.root, tree: res.tree })
+  },
+
+  newProject: async () => {
+    const res = await window.favella.newProject()
+    if (!res) return
+    set({ projectRoot: res.root, tree: res.tree })
+    // Apre subito il .fav vuoto appena creato, pronto da riempire.
+    const name = res.openPath.split(/[\\/]/).pop() ?? 'storia.fav'
+    await get().openFile({ name, path: res.openPath, type: 'file' })
   },
 
   refreshTree: async () => {
@@ -518,5 +577,137 @@ export const useStudio = create<StudioState>((set, get) => ({
     const p = get().unsavedPrompt
     set({ unsavedPrompt: null })
     p?.resolve(choice)
+  },
+
+  // --- Editor visuali (Fase 6a) ----------------------------------------------
+
+  loadOutline: async () => {
+    const { activePath, openFiles } = get()
+    if (!activePath?.toLowerCase().endsWith('.fav')) {
+      set({ outline: null })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    set({ outlineLoading: true })
+    try {
+      const o = await window.favella.worldOutline(activePath, file?.content)
+      set({ outlineLoading: false, outline: o })
+    } catch {
+      set({ outlineLoading: false })
+    }
+  },
+
+  setMapEditMode: (on) => set({ mapEditMode: on }),
+
+  setDockWidth: (px) => set({ dockWidth: Math.max(320, Math.min(900, Math.round(px))) }),
+
+  // mapAddConnection/mapDeleteConnection applicano un edit al file ATTIVO:
+  // aggiornano subito il contenuto nello store (così mappa/outline si ricaricano
+  // sul testo nuovo) e segnalano a EditorPane di rispecchiarlo in Monaco (undo
+  // nativo) via `pendingEdit`. Poi ricaricano outline + grafo.
+  mapAddConnection: async (fromId, direction, toId) => {
+    const { outline, activePath, openFiles } = get()
+    if (!outline || !activePath) return
+    const from = outline.rooms.find((r) => r.id === fromId)
+    const to = outline.rooms.find((r) => r.id === toId)
+    if (!from || !to) return
+    let res
+    try {
+      res = await window.favella.serializeStatement({
+        op: 'connection', from: from.name, direction, to: to.name
+      })
+    } catch (e) {
+      set({ gameNotice: 'Errore di serializzazione: ' + messaggioErrore(e) })
+      return
+    }
+    if (!res.ok || !res.text) {
+      set({ gameNotice: res.error ?? 'Impossibile generare la connessione.' })
+      return
+    }
+    // Applica al buffer attivo (append) — store + Monaco — poi ricarica.
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file) return
+    const edit: BufferEdit = { kind: 'append', text: res.text }
+    const nuovo = applicaBufferEdit(file.content, edit)
+    set((s) => ({
+      openFiles: s.openFiles.map((f) =>
+        f.path === activePath ? { ...f, content: nuovo } : f
+      ),
+      pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
+    }))
+    await get().loadOutline()
+    await get().loadWorldGraph()
+  },
+
+  mapDeleteConnection: async (aId, bId) => {
+    const { outline, activePath, openFiles } = get()
+    if (!outline || !activePath) return
+    // Trova la frase 'collega' ESPLICITA (implicit=false, con span) che unisce le
+    // due stanze, in una qualunque delle due direzioni.
+    let span: { file: string; line: number; endLine: number } | null = null
+    for (const rid of [aId, bId]) {
+      const room = outline.rooms.find((r) => r.id === rid)
+      if (!room) continue
+      const altro = rid === aId ? bId : aId
+      const ex = room.exits.find((e) => e.to === altro && !e.implicit && e.span)
+      if (ex?.span) {
+        span = ex.span
+        break
+      }
+    }
+    if (!span) {
+      set({ gameNotice: 'Connessione non trovata nel sorgente (forse generata da un’altra frase).' })
+      return
+    }
+    if (!stessoPercorso(span.file, activePath)) {
+      set({
+        gameNotice:
+          'La connessione è definita in un altro file: aprilo per modificarla dalla mappa.'
+      })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file) return
+    const edit: BufferEdit = {
+      kind: 'deleteLines', startLine: span.line, endLine: span.endLine
+    }
+    const nuovo = applicaBufferEdit(file.content, edit)
+    set((s) => ({
+      openFiles: s.openFiles.map((f) =>
+        f.path === activePath ? { ...f, content: nuovo } : f
+      ),
+      pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
+    }))
+    await get().loadOutline()
+    await get().loadWorldGraph()
+  },
+
+  mapAddRoom: async (name) => {
+    const { activePath, openFiles } = get()
+    const nome = name.trim()
+    if (!nome || !activePath) return
+    let res
+    try {
+      res = await window.favella.serializeStatement({ op: 'room_def', name: nome })
+    } catch (e) {
+      set({ gameNotice: 'Errore di serializzazione: ' + messaggioErrore(e) })
+      return
+    }
+    if (!res.ok || !res.text) {
+      set({ gameNotice: res.error ?? 'Impossibile generare la stanza.' })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file) return
+    const edit: BufferEdit = { kind: 'append', text: res.text }
+    const nuovo = applicaBufferEdit(file.content, edit)
+    set((s) => ({
+      openFiles: s.openFiles.map((f) =>
+        f.path === activePath ? { ...f, content: nuovo } : f
+      ),
+      pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
+    }))
+    await get().loadOutline()
+    await get().loadWorldGraph()
   }
 }))

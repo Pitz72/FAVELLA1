@@ -15,6 +15,7 @@ export default function EditorPane(): JSX.Element {
   const lexicon = useStudio((s) => s.lexicon)
   const problems = useStudio((s) => s.problems)
   const reveal = useStudio((s) => s.reveal)
+  const pendingEdit = useStudio((s) => s.pendingEdit)
   const updateContent = useStudio((s) => s.updateContent)
   const setCursor = useStudio((s) => s.setCursor)
   const saveActive = useStudio((s) => s.saveActive)
@@ -22,6 +23,7 @@ export default function EditorPane(): JSX.Element {
 
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
+  const editApplicatoRef = useRef<number>(0)
 
   const active = openFiles.find((f) => f.path === activePath)
 
@@ -91,6 +93,53 @@ export default function EditorPane(): JSX.Element {
     editor.setPosition({ lineNumber: reveal.line, column: reveal.col })
     editor.focus()
   }, [reveal, activePath])
+
+  // Modifica programmatica dal map editor (Fase 6a): applica gli edit via Monaco
+  // (executeEdits) così l'UNDO è nativo e onChange aggiorna lo store. Dipende SOLO
+  // da pendingEdit (nonce) e activePath, MAI da `active` (vedi nota sul reveal). Il
+  // ref evita di riapplicare lo stesso nonce a un re-render.
+  useEffect(() => {
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+    if (!pendingEdit || !editor || !monaco || !activePath) return
+    if (!stessoPercorso(pendingEdit.path, activePath)) return
+    if (pendingEdit.nonce === editApplicatoRef.current) return
+    const model = editor.getModel()
+    if (!model) return
+    editApplicatoRef.current = pendingEdit.nonce
+
+    const ops: MonacoEditor.IIdentifiedSingleEditOperation[] = []
+    for (const e of pendingEdit.edits) {
+      if (e.kind === 'append') {
+        const lastLine = model.getLineCount()
+        const lastCol = model.getLineMaxColumn(lastLine)
+        const testo = model.getValue()
+        const prefisso = testo.endsWith('\n') || testo === '' ? '' : '\n'
+        ops.push({
+          range: new monaco.Range(lastLine, lastCol, lastLine, lastCol),
+          text: prefisso + e.text + '\n',
+          forceMoveMarkers: true
+        })
+      } else {
+        const lineCount = model.getLineCount()
+        if (e.endLine < lineCount) {
+          ops.push({
+            range: new monaco.Range(e.startLine, 1, e.endLine + 1, 1),
+            text: ''
+          })
+        } else {
+          const sl = e.startLine > 1 ? e.startLine - 1 : e.startLine
+          const sc = e.startLine > 1 ? model.getLineMaxColumn(e.startLine - 1) : 1
+          ops.push({
+            range: new monaco.Range(sl, sc, e.endLine, model.getLineMaxColumn(e.endLine)),
+            text: ''
+          })
+        }
+      }
+    }
+    editor.executeEdits('favella-visual', ops)
+    editor.pushUndoStop()
+  }, [pendingEdit, activePath])
 
   if (!active) {
     return (

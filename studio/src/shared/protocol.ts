@@ -193,6 +193,88 @@ export interface Savegame {
   turn: number
 }
 
+// --- Editor visuali (Fase 6a): outline + serializzazione ---
+
+// Ancora sorgente di una frase: file + riga iniziale/finale nel sorgente
+// ORIGINALE (rimappato dagli Includi). In multi-file il file è indispensabile.
+export interface OutlineSpan {
+  file: string
+  line: number
+  endLine: number
+}
+
+export interface OutlineExit {
+  direction: string
+  to: string
+  toName: string
+  span: OutlineSpan | null
+  // True = auto-ritorno implicito (nessuna frase propria; si edita l'originale).
+  implicit: boolean
+}
+
+export interface OutlineRoom {
+  id: string
+  name: string
+  isStart: boolean
+  defSpan: OutlineSpan | null
+  descSpan: OutlineSpan | null
+  descConditional: boolean
+  description: string
+  exits: OutlineExit[]
+}
+
+export interface OutlineProperty {
+  name: string
+  span: OutlineSpan | null
+}
+
+export interface OutlineLocation {
+  id: string
+  name: string
+  prep: string | null
+  span: OutlineSpan | null
+}
+
+export interface OutlineObject {
+  id: string
+  name: string
+  kind: ObjectKind
+  prendibile: boolean
+  defSpan: OutlineSpan | null
+  descSpan: OutlineSpan | null
+  descConditional: boolean
+  description: string
+  location: OutlineLocation | null
+  properties: OutlineProperty[]
+  aliases: OutlineProperty[]
+}
+
+export interface Outline {
+  ok: boolean
+  rooms: OutlineRoom[]
+  objects: OutlineObject[]
+  errors: Diagnostic[]
+}
+
+// Specifica strutturata per generare una frase .fav canonica (lato sidecar).
+// I nomi (name/from/to/place) sono VISUALIZZATI (con articolo).
+export type SerializeSpec =
+  | { op: 'room_def'; name: string }
+  | { op: 'object_def'; name: string; kind: ObjectKind }
+  | { op: 'description'; name: string; text: string }
+  | { op: 'connection'; from: string; direction: string; to: string }
+  | { op: 'position'; name: string; prep: string; place: string }
+  | { op: 'property'; name: string; property: string }
+  | { op: 'prendibile'; name: string }
+  | { op: 'alias'; name: string; alias: string }
+  | { op: 'start'; name: string }
+
+export interface SerializeResult {
+  ok: boolean
+  text?: string
+  error?: string
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

@@ -4,6 +4,38 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.0] — 2026-06-02 — Fase 6 (parte 1): mappa editabile + migliorie IDE
+
+Primo pezzo VISIBILE degli editor visuali: la mappa diventa modificabile e le
+modifiche si riversano nel sorgente `.fav` canonico (round-trip testo↔visuale).
+Più un giro di rifiniture all'IDE emerse dal test d'uso.
+
+### Aggiunto
+- **Mappa editabile** (dock 🗺 Mappa, pulsante **✏️ Modifica**):
+  - **Trascina** da una stanza all'altra → scegli la direzione → scrive
+    `X collega DIR a Y.` (il ritorno opposto è automatico). Pallini di aggancio
+    resi grandi e dorati per scopribilità.
+  - **➕ Stanza**: crea `Nome è una stanza.` dal nome digitato.
+  - **Clic su una connessione** → conferma → rimuove la frase `collega`.
+  - Le modifiche passano per Monaco (**undo nativo** + diagnostica) e la mappa si
+    ridisegna. Se una frase vive in un file Incluso diverso, viene segnalato.
+  - Tipi `Outline*`/`Serialize*` (protocol), `worldOutline`/`serializeStatement`
+    (preload), azioni `loadOutline`/`mapAddConnection`/`mapDeleteConnection`/
+    `mapAddRoom` + `pendingEdit` applicato da EditorPane (`executeEdits`).
+- **Nuovo progetto** (Esplora → ✚ / «Nuovo progetto…»): scegli cartella e nome,
+  crea un `.fav` vuoto e lo apre. RPC `project:new`.
+- **Dock destro ridimensionabile**: maniglia sul bordo sinistro (larghezza 320–900px).
+
+### Cambiato
+- **Tab unificate (niente più doppioni)**: le schede Mappa/Stato/Debug vivono SOLO
+  nella titlebar — si evidenziano quando attive e, ricliccando l'attiva, chiudono il
+  pannello. Il dock mostra solo titolo + ✕ (rimossa la fila di tab duplicata).
+
+### Corretto
+- **Chiusura scheda con file modificato**: la tab mostrava il pallino ● *al posto*
+  della ×, e sembrava non chiudibile. Ora (stile VS Code) il pallino diventa **×** al
+  passaggio del mouse; il clic chiude sempre (con la guardia Salva/Non salvare/Annulla).
+
 ## [Fase 6a.2] — 2026-06-02 — Serializzatore canonico (round-trip, scrittura)
 
 *Sidecar `0.8.1`; versione IDE invariata a `0.8.1` (nessuna UI ancora: è la base motore).*

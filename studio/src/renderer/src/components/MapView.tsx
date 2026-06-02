@@ -1,15 +1,21 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   MarkerType,
+  type Connection,
+  type Edge as RFEdge,
   type Node,
   type Edge
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useStudio } from '../store'
 import type { WorldGraph } from '../../../shared/protocol'
+
+// Direzioni offerte dal selettore quando si traccia una connessione. FAVELLA crea
+// da sé il ritorno opposto, quindi se ne sceglie una sola.
+const DIREZIONI_COMUNI = ['nord', 'sud', 'est', 'ovest', 'alto', 'basso']
 
 const GAP_X = 200
 const GAP_Y = 130
@@ -130,13 +136,36 @@ interface MapViewProps {
   // In modalità compatta (riquadri piccoli, es. la finestra di gioco) la
   // minimappa coprirebbe il grafo: la nascondiamo e teniamo solo i controlli.
   compact?: boolean
+  // [Fase 6a] Abilita la modifica visuale (solo nell'IDE, non in finestra gioco).
+  editable?: boolean
 }
 
-export default function MapView({ compact = false }: MapViewProps): JSX.Element {
+export default function MapView({ compact = false, editable = false }: MapViewProps): JSX.Element {
   const graph = useStudio((s) => s.worldGraph)
   const snapshot = useStudio((s) => s.worldSnapshot)
   const loading = useStudio((s) => s.worldLoading)
   const loadGraph = useStudio((s) => s.loadWorldGraph)
+  const editMode = useStudio((s) => s.mapEditMode)
+  const setEditMode = useStudio((s) => s.setMapEditMode)
+  const loadOutline = useStudio((s) => s.loadOutline)
+  const addConnection = useStudio((s) => s.mapAddConnection)
+  const deleteConnection = useStudio((s) => s.mapDeleteConnection)
+  const addRoom = useStudio((s) => s.mapAddRoom)
+
+  // Selettore di direzione per una nuova connessione (drag fra due stanze).
+  const [picker, setPicker] = useState<{ from: string; to: string } | null>(null)
+  const [dirLibera, setDirLibera] = useState('')
+  // Connessione selezionata per l'eliminazione (click su un arco in modifica).
+  const [archoSel, setArcoSel] = useState<{ a: string; b: string; label?: string } | null>(null)
+  // Modale «nuova stanza»: nome digitato dall'autore.
+  const [nuovaStanza, setNuovaStanza] = useState<string | null>(null)
+
+  const attivo = editable && editMode
+
+  // In modifica serve l'outline (per gli span delle frasi da eliminare).
+  useEffect(() => {
+    if (attivo) void loadOutline()
+  }, [attivo, loadOutline])
 
   const current = snapshot?.currentRoom ?? null
 
@@ -180,16 +209,76 @@ export default function MapView({ compact = false }: MapViewProps): JSX.Element 
     return <div className="map-empty">Nessuna stanza nel mondo.</div>
   }
 
+  const nomeStanza = (id: string): string =>
+    graph.rooms.find((r) => r.id === id)?.name ?? id
+
+  const onConnect = (c: Connection): void => {
+    if (!attivo || !c.source || !c.target || c.source === c.target) return
+    setPicker({ from: c.source, to: c.target })
+  }
+  const onEdgeClick = (_e: React.MouseEvent, edge: RFEdge): void => {
+    if (!attivo) return
+    setArcoSel({
+      a: edge.source,
+      b: edge.target,
+      label: typeof edge.label === 'string' ? edge.label : undefined
+    })
+  }
+  const confermaDirezione = async (dir: string): Promise<void> => {
+    const d = dir.trim().toLowerCase()
+    if (!picker || !d) return
+    const p = picker
+    setPicker(null)
+    setDirLibera('')
+    await addConnection(p.from, d, p.to)
+  }
+  const confermaElimina = async (): Promise<void> => {
+    if (!archoSel) return
+    const a = archoSel
+    setArcoSel(null)
+    await deleteConnection(a.a, a.b)
+  }
+  const confermaNuovaStanza = async (): Promise<void> => {
+    const nome = (nuovaStanza ?? '').trim()
+    if (!nome) return
+    setNuovaStanza(null)
+    await addRoom(nome)
+  }
+
   return (
-    <div className="map-host">
+    <div className={'map-host' + (attivo ? ' editing' : '')}>
+      {editable && (
+        <div className="map-toolbar">
+          <button
+            className={'map-edit-toggle' + (editMode ? ' on' : '')}
+            onClick={() => setEditMode(!editMode)}
+            title="Attiva/disattiva la modifica visuale della mappa"
+          >
+            {editMode ? '✏️ Modifica attiva' : '✏️ Modifica'}
+          </button>
+          {editMode && (
+            <>
+              <button className="map-edit-toggle" onClick={() => setNuovaStanza('')}>
+                ➕ Stanza
+              </button>
+              <span className="map-edit-hint">
+                Trascina da un pallino di una stanza a un’altra per collegarle · clicca una
+                connessione per eliminarla
+              </span>
+            </>
+          )}
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}
         fitView
         proOptions={{ hideAttribution: true }}
         nodesDraggable
-        nodesConnectable={false}
-        elementsSelectable={false}
+        nodesConnectable={attivo}
+        elementsSelectable={attivo}
+        onConnect={onConnect}
+        onEdgeClick={onEdgeClick}
         minZoom={0.2}
         maxZoom={2}
       >
@@ -205,6 +294,110 @@ export default function MapView({ compact = false }: MapViewProps): JSX.Element 
           />
         )}
       </ReactFlow>
+
+      {picker && (
+        <div className="modal-backdrop" onClick={() => setPicker(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Nuova connessione</h2>
+            <p className="modal-body">
+              In che direzione va <b>{nomeStanza(picker.from)}</b> →{' '}
+              <b>{nomeStanza(picker.to)}</b>?
+              <br />
+              <span className="modal-hint">Il ritorno opposto è creato automaticamente.</span>
+            </p>
+            <div className="dir-grid">
+              {DIREZIONI_COMUNI.map((d) => (
+                <button key={d} className="dir-btn" onClick={() => void confermaDirezione(d)}>
+                  {d}
+                </button>
+              ))}
+            </div>
+            <div className="dir-libera">
+              <input
+                type="text"
+                placeholder="direzione personalizzata…"
+                value={dirLibera}
+                onChange={(e) => setDirLibera(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void confermaDirezione(dirLibera)
+                }}
+              />
+              <button
+                className="modal-btn primary"
+                disabled={!dirLibera.trim()}
+                onClick={() => void confermaDirezione(dirLibera)}
+              >
+                Collega
+              </button>
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn ghost" onClick={() => setPicker(null)}>
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {archoSel && (
+        <div className="modal-backdrop" onClick={() => setArcoSel(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Eliminare la connessione?</h2>
+            <p className="modal-body">
+              {nomeStanza(archoSel.a)} ↔ {nomeStanza(archoSel.b)}
+              {archoSel.label ? ` (${archoSel.label})` : ''}
+              <br />
+              <span className="modal-hint">La frase «collega» verrà rimossa dal sorgente.</span>
+            </p>
+            <div className="modal-actions">
+              <button className="modal-btn ghost" onClick={() => setArcoSel(null)}>
+                Annulla
+              </button>
+              <button className="modal-btn danger" onClick={() => void confermaElimina()}>
+                Elimina
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nuovaStanza !== null && (
+        <div className="modal-backdrop" onClick={() => setNuovaStanza(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Nuova stanza</h2>
+            <p className="modal-body">
+              Nome della stanza (con l’articolo, come lo scrivi nella storia):
+              <br />
+              <span className="modal-hint">Es. «La cantina», «Lo studio».</span>
+            </p>
+            <div className="dir-libera">
+              <input
+                type="text"
+                autoFocus
+                placeholder="La cantina"
+                value={nuovaStanza}
+                onChange={(e) => setNuovaStanza(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void confermaNuovaStanza()
+                  if (e.key === 'Escape') setNuovaStanza(null)
+                }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn ghost" onClick={() => setNuovaStanza(null)}>
+                Annulla
+              </button>
+              <button
+                className="modal-btn primary"
+                disabled={!nuovaStanza.trim()}
+                onClick={() => void confermaNuovaStanza()}
+              >
+                Crea
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

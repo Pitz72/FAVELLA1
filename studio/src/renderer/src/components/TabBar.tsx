@@ -36,13 +36,17 @@ export default function TabBar(): JSX.Element | null {
               {f.name}
             </span>
             <span
-              className="tab-close"
+              className={'tab-close' + (dirty ? ' dirty' : '')}
+              title="Chiudi"
               onClick={(e) => {
                 e.stopPropagation()
                 void chiudiScheda(f.path, f.name, dirty)
               }}
             >
-              {dirty ? '●' : '×'}
+              {/* Sporco: pallino a riposo, × al passaggio del mouse (stile VS Code);
+                  pulito: sempre ×. In ogni caso il click chiude (con guardia). */}
+              <span className="tab-dot">●</span>
+              <span className="tab-x">×</span>
             </span>
           </div>
         )

@@ -9,7 +9,10 @@ import type {
   WorldGraph,
   WorldSnapshot,
   SessionHistory,
-  Savegame
+  Savegame,
+  Outline,
+  SerializeSpec,
+  SerializeResult
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -70,6 +73,20 @@ const api = {
     return ipcRenderer.invoke('rpc', 'session.history', {})
   },
 
+  // --- Editor visuali (Fase 6a) ---
+  /**
+   * Modello editabile di stanze/oggetti con lo span sorgente di ogni frase.
+   * Senza `path` usa la storia della partita attiva; con `path` (+ `source`)
+   * legge il file/buffer live.
+   */
+  worldOutline(path?: string, source?: string): Promise<Outline> {
+    return ipcRenderer.invoke('rpc', 'world.outline', path ? { path, source } : {})
+  },
+  /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
+  serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {
+    return ipcRenderer.invoke('rpc', 'outline.serialize', spec)
+  },
+
   // --- Salvataggio partite (command-log) ---
   /** Esporta il salvataggio della partita attiva (sequenza di comandi + storia). */
   gameSave(): Promise<Savegame> {
@@ -127,6 +144,10 @@ const api = {
   /** Apre il dialog di sistema per scegliere una cartella-progetto. */
   openProject(): Promise<OpenedProject | null> {
     return ipcRenderer.invoke('project:open')
+  },
+  /** Crea un nuovo progetto: cartella + nome scelti dall'utente, .fav vuoto, e lo apre. */
+  newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
+    return ipcRenderer.invoke('project:new')
   },
   /** Ricarica l'albero dei file di un progetto già aperto. */
   refreshTree(root: string): Promise<FileNode[]> {
