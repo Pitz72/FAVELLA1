@@ -64,6 +64,22 @@ const api = {
     return ipcRenderer.invoke('rpc', 'world.snapshot', {})
   },
 
+  // --- Finestra di gioco dedicata (stile Godot) ---
+  /** [IDE] Apre la finestra di gioco passando il file attivo (e il buffer live). */
+  openGameWindow(path: string, source?: string): Promise<void> {
+    return ipcRenderer.invoke('game:open', { path, source })
+  },
+  /** [finestra di gioco] Recupera il payload di lancio (path + buffer) dall'IDE. */
+  gameLaunchPayload(): Promise<{ path: string; source?: string } | null> {
+    return ipcRenderer.invoke('game:launchPayload')
+  },
+  /** [finestra di gioco] Notifica di rilancio (l'IDE ha ripremuto ▶ Gioca). */
+  onGameRelaunch(cb: (payload: { path: string; source?: string } | null) => void): () => void {
+    const handler = (_e: unknown, payload: { path: string; source?: string } | null): void => cb(payload)
+    ipcRenderer.on('game-relaunch', handler)
+    return () => ipcRenderer.removeListener('game-relaunch', handler)
+  },
+
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */
   onEngineEvent(callback: (event: EngineEvent) => void): () => void {
     const handler = (_e: unknown, event: EngineEvent): void => callback(event)

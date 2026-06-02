@@ -89,6 +89,8 @@ interface StudioState {
   closeDock: () => void
   // Gioco (Fase 3)
   startGame: () => Promise<void>
+  startGameWith: (path: string, source?: string) => Promise<void>
+  launchGameWindow: () => void
   sendGameCommand: (command: string) => Promise<void>
   resetGame: () => Promise<void>
   // Mappa + Inspector (Fase 4)
@@ -100,10 +102,20 @@ function linguaDa(name: string): string {
   return name.toLowerCase().endsWith('.fav') ? FAVELLA_LANG_ID : 'plaintext'
 }
 
-/** Spezza l'output del motore in righe per la console, senza la riga vuota finale. */
+/**
+ * Spezza l'output del motore in righe per la console, senza la riga vuota finale.
+ * Rimuove le righe dell'ELENCO numerato delle opzioni di dialogo (formato del
+ * motore «  N. testo»): nell'IDE le opzioni sono rese come bottoni, quindi nel
+ * testo sarebbero un doppione. La battuta dell'NPC (senza numero) resta.
+ */
+const RE_OPZIONE_DIALOGO = /^\s*\d+\.\s/
+
 function righeConsole(output: string): string[] {
   if (!output) return []
-  const righe = output.replace(/\r\n/g, '\n').split('\n')
+  const righe = output
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((l) => !RE_OPZIONE_DIALOGO.test(l))
   while (righe.length && righe[righe.length - 1] === '') righe.pop()
   return righe
 }
@@ -259,24 +271,12 @@ export const useStudio = create<StudioState>((set, get) => ({
 
   // --- Gioco (Fase 3) -------------------------------------------------------
 
-  startGame: async () => {
-    const { activePath, openFiles } = get()
-    // Si gioca il file .fav attivo, compilando il BUFFER live (anche non salvato).
-    if (!activePath || !activePath.toLowerCase().endsWith('.fav')) {
-      set({
-        rightTab: 'gioca',
-        gameBusy: false,
-        gameRunning: false,
-        gameState: null,
-        gameLines: [],
-        gameError: 'Apri un file .fav nell’editor per avviare il gioco.'
-      })
-      return
-    }
-    const file = openFiles.find((f) => f.path === activePath)
-    set({ rightTab: 'gioca', gameBusy: true, gameError: null })
+  // Avvia una partita su un file/buffer espliciti. È il cuore usato sia dal dock
+  // inline (startGame) sia dalla finestra di gioco dedicata (che non ha activePath).
+  startGameWith: async (path, source) => {
+    set({ gameBusy: true, gameError: null })
     try {
-      const res = await window.favella.startGame(activePath, file?.content)
+      const res = await window.favella.startGame(path, source)
       if (!res.ok) {
         set({
           gameBusy: false,
@@ -295,12 +295,38 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameState: res.state,
         gameRunning: res.running
       })
-      // Mappa e stato live della nuova partita (per le viste Mappa/Stato).
       void get().loadWorldGraph()
       void get().loadWorldSnapshot()
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
+  },
+
+  // Avvio inline nel dock dell'IDE (gioca il file .fav attivo, buffer live).
+  startGame: async () => {
+    const { activePath, openFiles } = get()
+    if (!activePath || !activePath.toLowerCase().endsWith('.fav')) {
+      set({
+        rightTab: 'gioca',
+        gameBusy: false,
+        gameRunning: false,
+        gameState: null,
+        gameLines: [],
+        gameError: 'Apri un file .fav nell’editor per avviare il gioco.'
+      })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    set({ rightTab: 'gioca' })
+    await get().startGameWith(activePath, file?.content)
+  },
+
+  // [IDE] Apre la finestra di gioco dedicata sul file .fav attivo (buffer live).
+  launchGameWindow: () => {
+    const { activePath, openFiles } = get()
+    if (!activePath || !activePath.toLowerCase().endsWith('.fav')) return
+    const file = openFiles.find((f) => f.path === activePath)
+    void window.favella.openGameWindow(activePath, file?.content)
   },
 
   sendGameCommand: async (command) => {

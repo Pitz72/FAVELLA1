@@ -4,6 +4,32 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.6.0] — 2026-06-02 — Finestra di gioco dedicata
+
+### Aggiunto
+- **Finestra di gioco separata** (stile Godot): **▶ Gioca** e **F5** ora aprono una
+  finestra dedicata al solo gioco, con **font grande** e layout **a blocchi**:
+  - **Storia** — il racconto, in serif e corpo grande, con auto-scroll ed eco dei comandi;
+  - **Parser** — input dei comandi e bottoni delle opzioni di dialogo, banner di esito;
+  - **Inventario** — sempre visibile, con la capacità di trasporto «(usati/max)»;
+  - **Stato** — variabili (stati/contatori) live;
+  - **Mappa** — la mappa react-flow con la stanza corrente evidenziata.
+- **L'IDE non cambia**: Editor, Problemi e il dock Gioca/Mappa/Stato restano come
+  prima (anteprima/ispezione). Le due finestre hanno store indipendenti ma parlano
+  allo **stesso sidecar** (un'unica partita, posseduta dalla finestra di gioco).
+- Ponte main↔finestra: `game:open` (l'IDE passa path + buffer live), `game:launchPayload`
+  (la finestra lo recupera all'avvio), evento `game-relaunch` (ri-pressione di ▶ Gioca).
+  La finestra carica la stessa build del renderer con hash `#game`.
+
+### Note
+- L'avvio del gioco compila e gioca il **buffer live** del file `.fav` attivo
+  (anche non salvato), come per l'anteprima.
+- Le **opzioni di dialogo** non sono più duplicate: l'elenco numerato del motore è
+  filtrato dal log (`righeConsole`) perché reso come **bottoni**; la battuta dell'NPC resta.
+- Mappa della finestra in modalità **compatta** (`MapView compact`: niente minimappa,
+  che in un riquadro piccolo copriva il grafo) e con **più spazio** (colonna a 430px,
+  la mappa cresce, lo Stato limitato).
+
 ## [0.5.1] — 2026-06-02 — Capacità di trasporto nell'inspector
 
 ### Aggiunto

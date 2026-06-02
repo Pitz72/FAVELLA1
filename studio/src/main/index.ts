@@ -5,7 +5,10 @@ import { registraFileSystemIPC } from './fsapi'
 import type { EngineEvent } from '../shared/protocol'
 
 let mainWindow: BrowserWindow | null = null
+let gameWindow: BrowserWindow | null = null
 let sidecar: Sidecar | null = null
+// Payload (path + buffer live) passato dall'IDE alla finestra di gioco al lancio.
+let gameLaunch: { path: string; source?: string } | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -41,6 +44,43 @@ function createWindow(): void {
   }
 }
 
+function createGameWindow(): void {
+  // Finestra di gioco dedicata (stile Godot): stessa build del renderer, caricata
+  // con l'hash '#game' che ne seleziona la radice React (vedi main.tsx).
+  if (gameWindow && !gameWindow.isDestroyed()) {
+    gameWindow.focus()
+    gameWindow.webContents.send('game-relaunch', gameLaunch)
+    return
+  }
+  gameWindow = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    minWidth: 820,
+    minHeight: 560,
+    show: false,
+    backgroundColor: '#15151a',
+    title: 'Favella — Gioco',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  })
+  gameWindow.setMenuBarVisibility(false)
+  gameWindow.on('ready-to-show', () => gameWindow?.show())
+  gameWindow.on('closed', () => {
+    gameWindow = null
+  })
+
+  const devUrl = process.env['ELECTRON_RENDERER_URL']
+  if (devUrl) {
+    gameWindow.loadURL(`${devUrl}#game`)
+  } else {
+    gameWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'game' })
+  }
+}
+
 function startSidecar(): void {
   const emit = (event: EngineEvent): void => {
     // In chiusura la finestra può essere già distrutta: non scriverci sopra.
@@ -63,6 +103,14 @@ app.whenReady().then(() => {
     sidecar?.stop()
     startSidecar()
   })
+
+  // Finestra di gioco dedicata: l'IDE passa path + buffer live, poi la finestra
+  // li recupera al caricamento e avvia la partita.
+  ipcMain.handle('game:open', (_e, payload: { path: string; source?: string }) => {
+    gameLaunch = payload
+    createGameWindow()
+  })
+  ipcMain.handle('game:launchPayload', () => gameLaunch)
 
   registraFileSystemIPC()
 

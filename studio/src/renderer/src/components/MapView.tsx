@@ -126,7 +126,13 @@ function costruisciArchi(graph: WorldGraph): Edge[] {
   return archi
 }
 
-export default function MapView(): JSX.Element {
+interface MapViewProps {
+  // In modalità compatta (riquadri piccoli, es. la finestra di gioco) la
+  // minimappa coprirebbe il grafo: la nascondiamo e teniamo solo i controlli.
+  compact?: boolean
+}
+
+export default function MapView({ compact = false }: MapViewProps): JSX.Element {
   const graph = useStudio((s) => s.worldGraph)
   const snapshot = useStudio((s) => s.worldSnapshot)
   const loading = useStudio((s) => s.worldLoading)
@@ -189,13 +195,15 @@ export default function MapView(): JSX.Element {
       >
         <Background color="#34343d" gap={20} />
         <Controls showInteractive={false} />
-        <MiniMap
-          pannable
-          zoomable
-          nodeColor={(n) => (n.className?.includes('current') ? '#ffcb6b' : '#4e9aec')}
-          maskColor="rgba(20,20,24,0.7)"
-          style={{ background: '#1a1a1e' }}
-        />
+        {!compact && (
+          <MiniMap
+            pannable
+            zoomable
+            nodeColor={(n) => (n.className?.includes('current') ? '#ffcb6b' : '#4e9aec')}
+            maskColor="rgba(20,20,24,0.7)"
+            style={{ background: '#1a1a1e' }}
+          />
+        )}
       </ReactFlow>
     </div>
   )

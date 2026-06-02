@@ -62,6 +62,9 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       (stato live); dock destro a schede Gioca/Mappa/Stato; mappa react-flow con
       layout a griglia dalle direzioni e stanza corrente evidenziata; ispettore di
       variabili, inventario e oggetti aggiornato a ogni turno.
+- [x] **Finestra di gioco dedicata** (stile Godot): ▶ Gioca / F5 aprono una finestra
+      separata col solo gioco, font grande e blocchi Storia · Parser · Inventario
+      (sempre visibile) · Stato · Mappa. L'IDE resta invariato.
 - [ ] Fase 5 — Debugger passo-passo
 - [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
 - [ ] Fase 7 — Packaging del gioco

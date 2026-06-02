@@ -21,7 +21,7 @@ export default function App(): JSX.Element {
   const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
   const compileActive = useStudio((s) => s.compileActive)
-  const startGame = useStudio((s) => s.startGame)
+  const launchGameWindow = useStudio((s) => s.launchGameWindow)
   const setRightTab = useStudio((s) => s.setRightTab)
   const activePath = useStudio((s) => s.activePath)
   const isFav = !!activePath?.toLowerCase().endsWith('.fav')
@@ -89,15 +89,15 @@ export default function App(): JSX.Element {
         e.preventDefault()
         void openProject()
       }
-      // F5: compila e avvia il gioco del file .fav attivo.
+      // F5: apre la finestra di gioco dedicata sul file .fav attivo.
       if (e.key === 'F5') {
         e.preventDefault()
-        void startGame()
+        launchGameWindow()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveActive, saveAll, openProject, startGame])
+  }, [saveActive, saveAll, openProject, launchGameWindow])
 
   return (
     <div className="app">
@@ -122,8 +122,8 @@ export default function App(): JSX.Element {
           </button>
           <button
             className="play-btn"
-            title="Compila e gioca il file attivo (F5)"
-            onClick={() => void startGame()}
+            title="Apri il gioco in una finestra dedicata (F5)"
+            onClick={launchGameWindow}
             disabled={!isFav}
           >
             ▶ Gioca
