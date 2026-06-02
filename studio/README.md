@@ -58,7 +58,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       che avvolge `elabora_comando` sotto cattura stdout; `compila_mondo` additiva
       (Mondo giocabile dal buffer live); pannello console con eco dei comandi,
       bottoni per le opzioni di dialogo, banner di esito e ▶ Gioca / F5.
-- [ ] Fase 4 — Mappa del mondo + inspector di stato
+- [x] **Fase 4 — Mappa + Stato**: RPC `world.graph` (topologia) e `world.snapshot`
+      (stato live); dock destro a schede Gioca/Mappa/Stato; mappa react-flow con
+      layout a griglia dalle direzioni e stanza corrente evidenziata; ispettore di
+      variabili, inventario e oggetti aggiornato a ogni turno.
 - [ ] Fase 5 — Debugger passo-passo
 - [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
 - [ ] Fase 7 — Packaging del gioco

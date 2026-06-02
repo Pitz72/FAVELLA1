@@ -4,6 +4,34 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.5.0] — 2026-06-02 — Fase 4: Mappa & Stato
+
+### Aggiunto
+- **RPC `world.graph`** nel sidecar: topologia del mondo (stanze = nodi, uscite =
+  archi direzionati con la direzione, stanza di partenza marcata). Senza `path` usa
+  il mondo della partita attiva; con `path`/`source` compila il buffer per
+  un'anteprima della mappa **senza giocare**.
+- **RPC `world.snapshot`**: stato **live** della partita attiva — posizione e nome
+  della stanza, turno, esito, dialogo in corso, **variabili** (stati e contatori con
+  valore), **inventario**, e tutti gli **oggetti** con posizione (stanza/contenitore/
+  inventario) e proprietà.
+- **Dock destro a schede** (`RightDock`): **▶ Gioca · 🗺 Mappa · 🔎 Stato** in un unico
+  pannello. Il pannello Gioca della Fase 3 è ora una scheda.
+- **Mappa del mondo** (react-flow): le stanze sono disposte su una **griglia che segue
+  le direzioni** (nord/sud/est/ovest → su/giù/destra/sinistra; le verticali e le
+  direzioni custom ripiegano su celle libere), archi reciproci uniti in un solo arco
+  bidirezionale etichettato con la direzione. Pan/zoom, minimappa, controlli; la
+  **stanza corrente è evidenziata** (oro) e quella di **partenza** (verde) durante il gioco.
+- **Ispettore di stato**: contatori, stati, inventario e oggetti (per posizione e
+  proprietà) aggiornati a **ogni turno**; intestazione con stanza/turno/esito.
+
+### Note
+- Lo `snapshot` è ricaricato dopo ogni comando (e al riavvio), così Mappa e Inspector
+  restano sincronizzati con la partita. La Mappa, fuori partita, compila il `.fav`
+  attivo per l'anteprima della topologia.
+- Nuova dipendenza front-end: `reactflow` (^11). Build/typecheck puliti, **321 test
+  del motore invariati** (le aggiunte vivono solo nel sidecar).
+
 ## [0.4.0] — 2026-06-02 — Fase 3: Gioca
 
 ### Aggiunto

@@ -117,6 +117,57 @@ export interface SessionResult {
   errors?: Diagnostic[]
 }
 
+// --- Mappa del mondo e Inspector (Fase 4) ---
+
+export interface GraphRoom {
+  id: string
+  name: string
+  isStart: boolean
+}
+
+export interface GraphEdge {
+  from: string
+  to: string
+  direction: string
+}
+
+export interface WorldGraph {
+  ok: boolean
+  rooms: GraphRoom[]
+  edges: GraphEdge[]
+  // Presenti solo quando ok=false (compilazione fallita in anteprima).
+  errors?: Diagnostic[]
+}
+
+export type VariableKind = 'stato' | 'contatore'
+export type ObjectKind = 'oggetto' | 'contenitore' | 'supporto' | 'personaggio'
+
+export interface SnapVariable {
+  name: string
+  value: string | number | null
+  kind: VariableKind
+}
+
+export interface SnapObject {
+  id: string
+  name: string
+  positionId: string | null
+  positionLabel: string | null
+  properties: string[]
+  kind: ObjectKind
+}
+
+export interface WorldSnapshot {
+  currentRoom: string | null
+  currentRoomName: string | null
+  turn: number
+  status: 'in_corso' | Outcome
+  inDialogue: boolean
+  variables: SnapVariable[]
+  inventory: { id: string; name: string }[]
+  objects: SnapObject[]
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

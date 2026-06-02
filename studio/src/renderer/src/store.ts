@@ -5,9 +5,14 @@ import type {
   SidecarStatus,
   Diagnostic,
   WorldSummary,
-  GameState
+  GameState,
+  WorldGraph,
+  WorldSnapshot
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
+
+/** Vista attiva del dock destro (null = dock chiuso). */
+export type RightTab = 'gioca' | 'mappa' | 'stato' | null
 
 /** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
 export function stessoPercorso(a: string | null, b: string | null): boolean {
@@ -50,13 +55,18 @@ interface StudioState {
   worldSummary: WorldSummary | null
   compiling: boolean
   reveal: RevealRequest | null
+  // Dock destro (Fasi 3-4): quale vista è attiva
+  rightTab: RightTab
   // Gioco (Fase 3)
-  gameOpen: boolean
   gameLines: string[]
   gameState: GameState | null
   gameRunning: boolean
   gameBusy: boolean
   gameError: string | null
+  // Mappa + Inspector (Fase 4)
+  worldGraph: WorldGraph | null
+  worldSnapshot: WorldSnapshot | null
+  worldLoading: boolean
 
   // Azioni
   openProject: () => Promise<void>
@@ -74,11 +84,16 @@ interface StudioState {
   compileFile: (path: string, source?: string) => Promise<void>
   compileActive: () => Promise<void>
   requestReveal: (path: string, line: number, col: number) => void
+  // Dock destro
+  setRightTab: (tab: RightTab) => void
+  closeDock: () => void
   // Gioco (Fase 3)
   startGame: () => Promise<void>
   sendGameCommand: (command: string) => Promise<void>
   resetGame: () => Promise<void>
-  closeGame: () => void
+  // Mappa + Inspector (Fase 4)
+  loadWorldGraph: () => Promise<void>
+  loadWorldSnapshot: () => Promise<void>
 }
 
 function linguaDa(name: string): string {
@@ -110,12 +125,15 @@ export const useStudio = create<StudioState>((set, get) => ({
   worldSummary: null,
   compiling: false,
   reveal: null,
-  gameOpen: false,
+  rightTab: null,
   gameLines: [],
   gameState: null,
   gameRunning: false,
   gameBusy: false,
   gameError: null,
+  worldGraph: null,
+  worldSnapshot: null,
+  worldLoading: false,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -234,6 +252,11 @@ export const useStudio = create<StudioState>((set, get) => ({
   requestReveal: (path, line, col) =>
     set((s) => ({ reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 } })),
 
+  // --- Dock destro ----------------------------------------------------------
+
+  setRightTab: (tab) => set({ rightTab: tab }),
+  closeDock: () => set({ rightTab: null }),
+
   // --- Gioco (Fase 3) -------------------------------------------------------
 
   startGame: async () => {
@@ -241,7 +264,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     // Si gioca il file .fav attivo, compilando il BUFFER live (anche non salvato).
     if (!activePath || !activePath.toLowerCase().endsWith('.fav')) {
       set({
-        gameOpen: true,
+        rightTab: 'gioca',
         gameBusy: false,
         gameRunning: false,
         gameState: null,
@@ -251,7 +274,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       return
     }
     const file = openFiles.find((f) => f.path === activePath)
-    set({ gameOpen: true, gameBusy: true, gameError: null })
+    set({ rightTab: 'gioca', gameBusy: true, gameError: null })
     try {
       const res = await window.favella.startGame(activePath, file?.content)
       if (!res.ok) {
@@ -260,7 +283,8 @@ export const useStudio = create<StudioState>((set, get) => ({
           gameRunning: false,
           gameState: null,
           gameLines: [],
-          gameError: res.errors?.[0]?.message ?? 'Compilazione fallita: correggi gli errori e riprova.'
+          gameError: res.errors?.[0]?.message ?? 'Compilazione fallita: correggi gli errori e riprova.',
+          worldSnapshot: null
         })
         return
       }
@@ -271,6 +295,9 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameState: res.state,
         gameRunning: res.running
       })
+      // Mappa e stato live della nuova partita (per le viste Mappa/Stato).
+      void get().loadWorldGraph()
+      void get().loadWorldSnapshot()
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
@@ -291,6 +318,8 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameState: res.state,
         gameRunning: res.running
       }))
+      // Aggiorna lo stato live (inspector + evidenziazione stanza sulla mappa).
+      void get().loadWorldSnapshot()
     } catch (e) {
       set((s) => ({
         gameBusy: false,
@@ -319,10 +348,46 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameState: res.state,
         gameRunning: res.running
       })
+      void get().loadWorldGraph()
+      void get().loadWorldSnapshot()
     } catch (e) {
       set({ gameBusy: false, gameRunning: false, gameError: messaggioErrore(e) })
     }
   },
 
-  closeGame: () => set({ gameOpen: false })
+  // --- Mappa + Inspector (Fase 4) -------------------------------------------
+
+  loadWorldGraph: async () => {
+    // Con una partita attiva, la mappa è quella del mondo giocato; altrimenti si
+    // compila il buffer .fav attivo per un'anteprima della topologia.
+    const { gameRunning, activePath, openFiles } = get()
+    set({ worldLoading: true })
+    try {
+      let graph: WorldGraph
+      if (gameRunning) {
+        graph = await window.favella.worldGraph()
+      } else if (activePath?.toLowerCase().endsWith('.fav')) {
+        const file = openFiles.find((f) => f.path === activePath)
+        graph = await window.favella.worldGraph(activePath, file?.content)
+      } else {
+        set({ worldLoading: false, worldGraph: null })
+        return
+      }
+      set({ worldLoading: false, worldGraph: graph })
+    } catch {
+      set({ worldLoading: false })
+    }
+  },
+
+  loadWorldSnapshot: async () => {
+    if (!get().gameRunning && !get().gameState) {
+      set({ worldSnapshot: null })
+      return
+    }
+    try {
+      set({ worldSnapshot: await window.favella.worldSnapshot() })
+    } catch {
+      /* nessuna partita attiva: lascia l'ultimo snapshot */
+    }
+  }
 }))

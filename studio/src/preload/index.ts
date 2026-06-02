@@ -5,7 +5,9 @@ import type {
   FileNode,
   OpenedProject,
   CompileResult,
-  SessionResult
+  SessionResult,
+  WorldGraph,
+  WorldSnapshot
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -47,6 +49,19 @@ const api = {
   /** Riavvia la partita rigiocando lo stesso sorgente da cui è nata. */
   resetGame(): Promise<SessionResult> {
     return ipcRenderer.invoke('rpc', 'session.reset', {})
+  },
+
+  // --- Mappa del mondo e Inspector (Fase 4) ---
+  /**
+   * Topologia del mondo per la Mappa. Senza `path` usa il mondo della partita
+   * attiva; con `path` (+ `source`) compila il file/buffer per un'anteprima.
+   */
+  worldGraph(path?: string, source?: string): Promise<WorldGraph> {
+    return ipcRenderer.invoke('rpc', 'world.graph', path ? { path, source } : {})
+  },
+  /** Stato live della partita attiva (posizione, turno, variabili, inventario, oggetti). */
+  worldSnapshot(): Promise<WorldSnapshot> {
+    return ipcRenderer.invoke('rpc', 'world.snapshot', {})
   },
 
   /** Sottoscrive gli eventi del motore (ready, notifiche, cambi di stato). */

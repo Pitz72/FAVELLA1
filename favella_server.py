@@ -46,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.12.1"
-VERSIONE_SIDECAR = "0.4.0"  # Favella Studio — Fase 3 (Gioca: sessione di gioco)
+VERSIONE_SIDECAR = "0.5.0"  # Favella Studio — Fase 4 (Mappa + State Inspector)
 
 
 # ==============================================================================
@@ -218,7 +218,115 @@ def rpc_session_reset(_params):
     return rpc_session_start({"path": _SESSIONE.path, "source": _SESSIONE.source})
 
 
-# Tabella di dispatch. Le fasi successive aggiungono qui world.* (mappa/inspector).
+# ==============================================================================
+# Mappa del mondo e ispettore di stato (Fase 4) — world.graph / world.snapshot
+# ------------------------------------------------------------------------------
+# world.graph: topologia STATICA (stanze = nodi, uscite = archi direzionati), per
+#   disegnare la mappa. Dal mondo della partita attiva, oppure compilando un
+#   file/buffer su richiesta (anteprima senza giocare).
+# world.snapshot: stato LIVE della partita in corso (posizione, turno, esito,
+#   variabili, inventario, oggetti con posizione e proprietà), per l'inspector.
+# ==============================================================================
+
+def _grafo_mondo(mondo):
+    """Topologia del mondo per la Mappa: stanze (nodi) e uscite (archi
+    direzionati 'from -> to' con la direzione). La stanza di partenza è marcata."""
+    start = mondo.posizione_iniziale if mondo.posizione_iniziale in mondo.stanze \
+        else next(iter(mondo.stanze), None)
+    rooms = [{"id": rid, "name": getattr(st, "nome_visualizzato", rid),
+              "isStart": rid == start}
+             for rid, st in mondo.stanze.items()]
+    edges = []
+    for rid, st in mondo.stanze.items():
+        for direzione, dest in getattr(st, "uscite", {}).items():
+            edges.append({"from": rid, "to": dest, "direction": direzione})
+    return {"ok": True, "rooms": rooms, "edges": edges, "errors": []}
+
+
+def _snapshot_mondo(mondo):
+    """Stato live del mondo per l'Inspector. Difensivo via getattr: non solleva."""
+    def _luogo(oid, ogg):
+        # (id, etichetta) del luogo dell'oggetto: inventario, stanza o contenitore.
+        if oid in getattr(mondo, "inventario", set()):
+            return "inventario", "Inventario"
+        pos = getattr(ogg, "posizione", None)
+        if pos and pos in mondo.stanze:
+            return pos, mondo.stanze[pos].nome_visualizzato
+        if pos and pos in mondo.oggetti:
+            return pos, mondo.oggetti[pos].nome_visualizzato
+        return None, None
+
+    def _tipo(ogg):
+        if getattr(ogg, "is_personaggio", False):
+            return "personaggio"
+        if getattr(ogg, "is_contenitore", False):
+            return "contenitore"
+        if getattr(ogg, "is_supporto", False):
+            return "supporto"
+        return "oggetto"
+
+    variabili = []
+    for nome, val in getattr(mondo, "variabili", {}).items():
+        # I contatori hanno valore int (lo 0 iniziale); gli stati str/None.
+        tipo = "contatore" if isinstance(val, int) and not isinstance(val, bool) else "stato"
+        variabili.append({"name": nome, "value": val, "kind": tipo})
+
+    inventario = [{"id": oid, "name": mondo.oggetti[oid].nome_visualizzato}
+                  for oid in getattr(mondo, "inventario", set()) if oid in mondo.oggetti]
+
+    oggetti = []
+    for oid, ogg in mondo.oggetti.items():
+        pid, plabel = _luogo(oid, ogg)
+        oggetti.append({
+            "id": oid,
+            "name": getattr(ogg, "nome_visualizzato", oid),
+            "positionId": pid,
+            "positionLabel": plabel,
+            "properties": sorted(getattr(ogg, "proprieta", set())),
+            "kind": _tipo(ogg),
+        })
+
+    cur = mondo.posizione_giocatore
+    return {
+        "currentRoom": cur,
+        "currentRoomName": mondo.stanze[cur].nome_visualizzato if cur in mondo.stanze else None,
+        "turn": getattr(mondo, "turno_corrente", 0),
+        "status": getattr(mondo, "stato_partita", "in_corso"),
+        "inDialogue": mondo.in_dialogo(),
+        "variables": sorted(variabili, key=lambda v: v["name"]),
+        "inventory": sorted(inventario, key=lambda i: i["name"]),
+        "objects": sorted(oggetti, key=lambda o: o["name"]),
+    }
+
+
+def rpc_world_graph(params):
+    """[Fase 4] Topologia del mondo per la Mappa. Senza 'path' usa il mondo della
+    partita attiva; con 'path' (+ 'source' opzionale) compila il file/buffer per
+    un'anteprima della mappa senza dover giocare."""
+    percorso = params.get("path")
+    if percorso:
+        mondo = compila_mondo(percorso, params.get("source"))
+        if mondo is None:
+            diag = analizza_file_strutturato(percorso, sorgente=params.get("source"))
+            return {"ok": False, "rooms": [], "edges": [],
+                    "errors": diag.get("errors", [])}
+    elif _SESSIONE is not None:
+        mondo = _SESSIONE.mondo
+    else:
+        return {"ok": False, "rooms": [], "edges": [],
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return _grafo_mondo(mondo)
+
+
+def rpc_world_snapshot(_params):
+    """[Fase 4] Stato live della partita attiva per l'Inspector."""
+    if _SESSIONE is None:
+        raise ValueError("Nessuna partita attiva: lo stato live richiede 'session.start'.")
+    return _snapshot_mondo(_SESSIONE.mondo)
+
+
+# Tabella di dispatch. Le fasi successive aggiungono qui debug.* (passo-passo).
 _METODI = {
     "ping": rpc_ping,
     "engine.version": rpc_engine_version,
@@ -227,6 +335,8 @@ _METODI = {
     "session.start": rpc_session_start,
     "session.send": rpc_session_send,
     "session.reset": rpc_session_reset,
+    "world.graph": rpc_world_graph,
+    "world.snapshot": rpc_world_snapshot,
 }
 
 

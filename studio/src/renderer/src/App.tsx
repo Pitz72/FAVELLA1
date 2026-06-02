@@ -6,7 +6,7 @@ import TabBar from './components/TabBar'
 import EditorPane from './components/EditorPane'
 import ProblemsPanel from './components/ProblemsPanel'
 import StatusBar from './components/StatusBar'
-import GamePanel from './components/GamePanel'
+import RightDock from './components/RightDock'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
 interface Toast {
@@ -22,8 +22,9 @@ export default function App(): JSX.Element {
   const openProject = useStudio((s) => s.openProject)
   const compileActive = useStudio((s) => s.compileActive)
   const startGame = useStudio((s) => s.startGame)
-  const gameOpen = useStudio((s) => s.gameOpen)
+  const setRightTab = useStudio((s) => s.setRightTab)
   const activePath = useStudio((s) => s.activePath)
+  const isFav = !!activePath?.toLowerCase().endsWith('.fav')
   const activeContent = useStudio((s) =>
     s.openFiles.find((f) => f.path === s.activePath)?.content
   )
@@ -103,12 +104,27 @@ export default function App(): JSX.Element {
       <header className="titlebar">
         <span className="logo">✦ Favella Studio</span>
         <div className="titlebar-right">
-          <span className="titlebar-hint">Fase 3 · Gioca</span>
+          <span className="titlebar-hint">Fase 4 · Mappa &amp; Stato</span>
+          <button
+            className="tool-btn"
+            title="Mappa del mondo"
+            onClick={() => setRightTab('mappa')}
+            disabled={!isFav}
+          >
+            🗺 Mappa
+          </button>
+          <button
+            className="tool-btn"
+            title="Ispettore di stato"
+            onClick={() => setRightTab('stato')}
+          >
+            🔎 Stato
+          </button>
           <button
             className="play-btn"
             title="Compila e gioca il file attivo (F5)"
             onClick={() => void startGame()}
-            disabled={!activePath?.toLowerCase().endsWith('.fav')}
+            disabled={!isFav}
           >
             ▶ Gioca
           </button>
@@ -124,7 +140,7 @@ export default function App(): JSX.Element {
           </div>
           <ProblemsPanel />
         </main>
-        {gameOpen && <GamePanel />}
+        <RightDock />
       </div>
 
       <StatusBar />

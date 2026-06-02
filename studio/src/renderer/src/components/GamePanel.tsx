@@ -17,7 +17,6 @@ export default function GamePanel(): JSX.Element {
   const startGame = useStudio((s) => s.startGame)
   const sendCommand = useStudio((s) => s.sendGameCommand)
   const resetGame = useStudio((s) => s.resetGame)
-  const closeGame = useStudio((s) => s.closeGame)
 
   const [input, setInput] = useState('')
   const consoleRef = useRef<HTMLDivElement | null>(null)
@@ -46,19 +45,13 @@ export default function GamePanel(): JSX.Element {
   const inDialogue = state?.inDialogue && !gameOver
 
   return (
-    <aside className="gamepanel">
-      <div className="panel-header gamepanel-header">
-        <span>
-          ▶ Gioca
-          {state?.room && <span className="game-room"> · {state.room}</span>}
-        </span>
-        <span className="gamepanel-tools">
+    <div className="gamepanel">
+      <div className="game-toolbar">
+        <span className="game-loc">{state?.room ?? '—'}</span>
+        <span className="game-toolbar-right">
           {state && !gameOver && <span className="game-turn">turno {state.turn}</span>}
-          <button className="icon-btn" title="Riavvia la partita" onClick={() => void resetGame()} disabled={busy}>
+          <button className="icon-btn" title="Riavvia la partita" onClick={() => void resetGame()} disabled={busy || !state}>
             ↻
-          </button>
-          <button className="icon-btn" title="Chiudi" onClick={closeGame}>
-            ✕
           </button>
         </span>
       </div>
@@ -70,7 +63,7 @@ export default function GamePanel(): JSX.Element {
         )}
         {lines.map((l, i) => (
           <div key={i} className={'game-line' + (l.startsWith('>') ? ' echo' : '')}>
-            {l === '' ? ' ' : l}
+            {l === '' ? ' ' : l}
           </div>
         ))}
         {busy && <div className="game-line busy">…</div>}
@@ -118,6 +111,6 @@ export default function GamePanel(): JSX.Element {
           </button>
         )}
       </div>
-    </aside>
+    </div>
   )
 }

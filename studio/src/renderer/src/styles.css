@@ -505,9 +505,9 @@ button:hover {
   }
 }
 
-/* --- Pannello Gioca (Fase 3) --- */
-.gamepanel {
-  flex: 0 0 420px;
+/* --- Dock destro a schede (Fasi 3-4) --- */
+.rightdock {
+  flex: 0 0 440px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -515,22 +515,91 @@ button:hover {
   border-left: 1px solid var(--border);
 }
 
-.gamepanel-header {
-  justify-content: space-between;
-}
-
-.game-room {
-  color: var(--fav);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.gamepanel-tools {
+.dock-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  text-transform: none;
-  letter-spacing: 0;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.dock-tab {
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.dock-tab:hover {
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+
+.dock-tab.active {
+  background: var(--bg-elev2);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.dock-spacer {
+  flex: 1 1 auto;
+}
+
+.dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Tool button (titlebar) --- */
+.tool-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+
+.tool-btn:hover {
+  background: var(--border);
+}
+
+.tool-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- Pannello Gioca (Fase 3) --- */
+.gamepanel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.game-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.game-loc {
+  color: var(--fav);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.game-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .game-turn {
@@ -688,4 +757,234 @@ button:hover {
 
 .game-restart:hover {
   background: #379159;
+}
+
+/* --- Mappa del mondo (Fase 4) --- */
+.map-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.map-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.map-reload,
+.react-flow__controls-button {
+  font-style: normal;
+}
+
+/* Nodi-stanza di react-flow */
+.react-flow__node.rf-room {
+  background: var(--bg-elev2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  width: 150px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.react-flow__node.rf-room.start {
+  border-color: #2f7d4f;
+}
+
+.react-flow__node.rf-room.current {
+  border-color: var(--fav);
+  background: #3a3320;
+  box-shadow: 0 0 0 2px var(--fav), 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.react-flow__controls-button {
+  background: var(--bg-elev2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  fill: var(--text);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--border);
+}
+
+/* --- Inspector di stato (Fase 4) --- */
+.inspector {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.insp-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.insp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.insp-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.insp-room {
+  color: var(--fav);
+  font-weight: 600;
+}
+
+.insp-meta {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.insp-status {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--bg-elev2);
+  color: var(--text-dim);
+}
+
+.insp-status.vinta {
+  background: #14361f;
+  color: #7ee2a8;
+}
+
+.insp-status.persa {
+  background: #3a1418;
+  color: #f29ba1;
+}
+
+.insp-status.terminata {
+  color: var(--text);
+}
+
+.insp-dialogue {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.insp-body {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px 0;
+}
+
+.insp-section {
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid #2a2a31;
+}
+
+.insp-section h4 {
+  margin: 4px 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.insp-none {
+  margin: 0;
+  color: var(--text-dim);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.insp-var {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.insp-var-name {
+  color: var(--text);
+}
+
+.insp-var-num {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.insp-var-val {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  color: var(--fav);
+}
+
+.insp-item {
+  padding: 2px 0;
+  color: var(--text);
+}
+
+.insp-obj {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.insp-obj-icon {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  width: 14px;
+}
+
+.insp-obj-name {
+  flex: 1 1 auto;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insp-obj-pos {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.insp-obj-props {
+  flex: 0 0 auto;
+  color: var(--fav);
+  font-size: 10px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
