@@ -146,6 +146,33 @@ def frase_indeterminativa(nome_visualizzato: str) -> str:
     return f"uno {nucleo}" if s_impura else f"un {nucleo}"
 
 
+# Aggettivi-proprietà invarianti o irregolari che NON vanno troncati sulla
+# desinenza finale: lo si farebbe accorpare a parole diverse con la stessa radice
+# (colori invariabili e simili). Lista volutamente piccola ed estendibile.
+_PROPRIETA_INVARIANTI = {
+    "blu", "rosa", "viola", "lilla", "beige", "ciano", "amaranto", "pari", "dispari",
+}
+
+
+def radice_proprieta(prop: str) -> str:
+    """[Concordanza di genere/numero] Riduce una proprietà-aggettivo italiana a una
+    RADICE neutra rispetto a genere e numero, togliendo la desinenza regolare finale
+    -o/-a/-i/-e ('aperto'/'aperta'/'aperti'/'aperte' → 'apert'; 'chiuso'/'chiusa' →
+    'chius'; 'spento'/'spenta' → 'spent'). Serve a far sì che il confronto fra
+    proprietà di stato IGNORI la concordanza, com'è naturale in un linguaggio
+    d'autore italiano: «il portale è aperto» e «la porta è aperta» devono valere
+    uguale. Le parole nella lista delle invarianti, o troppo corte perché resti una
+    radice di almeno 3 lettere, sono lasciate intatte (per non accorpare termini
+    distinti). Il confronto è sempre fra radici, quindi i refusi veri (che cambiano
+    la radice, es. 'chuisa'→'chuis') restano distinti e il linter li intercetta."""
+    p = (prop or "").strip().lower()
+    if p in _PROPRIETA_INVARIANTI:
+        return p
+    if len(p) >= 4 and p[-1] in "oaie":
+        return p[:-1]
+    return p
+
+
 def normalizza_tipografia(testo: str) -> str:
     """
     Normalizza apostrofi e virgolette "curve" (tipici di copia-incolla da

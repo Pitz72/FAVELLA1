@@ -46,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
-VERSIONE_MOTORE = "0.13.0"
+VERSIONE_MOTORE = "0.14.0"
 VERSIONE_SIDECAR = "0.9.2"  # Fase 6c.3: serialize move (spostamento) nelle conseguenze
 
 

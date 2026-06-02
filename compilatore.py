@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.13.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.14.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -18,7 +18,7 @@ from strutture import (
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
-    DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo,
+    DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo, radice_proprieta,
 )
 import os
 import sys
@@ -1207,14 +1207,17 @@ class FavellaTransformer(Transformer):
         #    via conseguenza) è quasi sempre un refuso: resterebbe sempre falsa.
         #    [v0.6.0] Le condizioni possono essere composite: estraiamo
         #    ricorsivamente tutti gli atomi CondizioneProprieta.
-        proprieta_assegnabili = set()  # insieme di tuple (id_oggetto, proprieta)
+        # [Concordanza] Confronto per RADICE (id, radice_proprieta(prop)): così una
+        # condizione «è aperto» non è segnalata come refuso se altrove si assegna
+        # «aperta» (stessa radice). Un refuso vero cambia la radice → resta segnalato.
+        proprieta_assegnabili = set()  # insieme di tuple (id_oggetto, radice)
         for id_ogg, ogg in m.oggetti.items():
             for prop in ogg.proprieta:
-                proprieta_assegnabili.add((id_ogg, prop))
+                proprieta_assegnabili.add((id_ogg, radice_proprieta(prop)))
         for regola in m.regole:
             for cons in regola.conseguenze:
                 if isinstance(cons, ConseguenzaProprieta):
-                    proprieta_assegnabili.add((cons.id_oggetto, cons.proprieta))
+                    proprieta_assegnabili.add((cons.id_oggetto, radice_proprieta(cons.proprieta)))
 
         for regola in m.regole:
             for cond in self._atomi_proprieta(regola.condizione):
@@ -1222,7 +1225,7 @@ class FavellaTransformer(Transformer):
                     self.warnings.append(
                         f"Condizione su oggetto inesistente: '{cond.id_oggetto}'."
                     )
-                elif (cond.id_oggetto, cond.proprieta) not in proprieta_assegnabili:
+                elif (cond.id_oggetto, radice_proprieta(cond.proprieta)) not in proprieta_assegnabili:
                     self.warnings.append(
                         f"La proprietà '{cond.proprieta}' di '{cond.id_oggetto}' non "
                         f"è mai assegnata da nessuna parte: possibile refuso? La "

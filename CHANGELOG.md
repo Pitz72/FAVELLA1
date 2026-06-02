@@ -4,6 +4,36 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.14.0] - 2026-06-03
+### Concordanza di genere/numero sulle proprietà di stato 🇮🇹
+In un linguaggio d'autore italiano, `aperto` e `aperta` devono valere uguale.
+Finora le proprietà erano confrontate **alla lettera**: `il portale è aperto` NON
+rimuoveva `chiusa`, così il contenitore restava chiuso pur dicendo «si apre».
+
+Da questa versione il motore confronta le proprietà di stato per **RADICE**,
+ignorando la desinenza regolare `-o/-a/-i/-e`:
+
+    aperto = aperta = aperti = aperte   ->  apert
+    chiuso = chiusa                     ->  chius
+    spento = spenta                     ->  spent
+    bloccato = bloccata                 ->  bloccat
+
+Il folding (nuova `utils.radice_proprieta`) si applica nei **quattro punti** che
+contano: condizioni (`se X è aperto` combacia con `aperta`), conseguenze opposte
+(`è aperto` rimuove `chiusa`/`chiuso`), apertura dei contenitori
+(`Mondo.contenitore_aperto`) e il linter dei refusi. Le coppie opposte dichiarate
+al maschile valgono anche al femminile e viceversa (`acceso/spento` ⇄ `accesa/spenta`).
+
+- **Le proprietà restano scritte come le ha messe l'autore** (display/IDE/serializzazione
+  invariati): la normalizzazione è solo interna al confronto.
+- **I refusi veri restano segnalati**: cambiano la radice (`chuisa` ≠ `chiusa`), quindi
+  il linter li intercetta ancora.
+- Pochi termini invariabili (colori come `rosa`, `viola`, `blu`) sono esclusi dal troncamento.
+- **Grammatica invariata** rispetto a 0.13.0 (modifica solo semantica): la spec EBNF
+  `documentazione/grammatica-0.13.0.md` resta valida.
+- Suite linguaggio: **344 asserzioni** (era 334), tutte verdi. `analizza_file` invariata.
+- Sidecar `VERSIONE_MOTORE` → 0.14.0. Dettaglio in `documentazione/0.14.0.md`.
+
 ## [0.13.0] - 2026-06-02
 ### Roadmap del Linguaggio — Livello 7: CAPACITÀ DI TRASPORTO 🎒
 Primo costrutto del **Livello 7**. Aggiunge un limite **opzionale** di oggetti

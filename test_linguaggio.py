@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.13.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.14.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -19,7 +19,7 @@ import contextlib
 from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
-    espandi_inclusioni, _GRAMMAR_TEMPLATE,
+    espandi_inclusioni, _GRAMMAR_TEMPLATE, analizza_file_strutturato,
 )
 
 
@@ -384,6 +384,67 @@ def test_opposti_default_aperta_chiusa():
     mondo.regole[0].esegui_conseguenze(mondo)
     _check("aperta" in porta.proprieta and "chiusa" not in porta.proprieta,
            "aprire rimuove 'chiusa' anche senza dichiarazione esplicita")
+
+
+def test_concordanza_genere_proprieta():
+    print("[concordanza: le proprietà di stato ignorano genere/numero (aperto = aperta)]")
+    from utils import radice_proprieta
+    _check(radice_proprieta("aperto") == radice_proprieta("aperta") == "apert",
+           "aperto e aperta hanno la stessa radice 'apert'")
+    _check(radice_proprieta("chiuso") == radice_proprieta("chiuse") == "chius",
+           "chiuso/chiuse -> 'chius'")
+    _check(radice_proprieta("chuisa") != radice_proprieta("chiusa"),
+           "un refuso ('chuisa') resta una radice distinta (il linter lo intercetta)")
+
+    # Contenitore dichiarato al MASCHILE ('chiuso') e aperto con 'aperto': deve
+    # funzionare come 'chiusa'/'aperta' (genere ignorato dal motore).
+    src = (
+        "La cucina è una stanza.\n"
+        "Il portale è un contenitore.\nIl portale è in cucina.\nIl portale è chiuso.\n"
+        "La gemma è una cosa.\nLa gemma è nel portale.\n"
+        "La chiave è una cosa.\nLa chiave è prendibile.\nLa chiave è in cucina.\n"
+        "Il giocatore comincia in cucina.\n"
+        'Invece di usa la chiave su il portale se il portale è chiuso: '
+        'dire "Si apre." e adesso il portale è aperto.\n'
+    )
+    mondo, _ = compila(src)
+    portale = mondo.trova_oggetto("portale") if mondo else None
+    _check(portale is not None and not mondo.contenitore_aperto(portale),
+           "un contenitore 'chiuso' (maschile) è chiuso come 'chiusa'")
+    _check(mondo.regole[0].condizione.valuta(mondo),
+           "la condizione 'è chiuso' è vera (combacia con la dichiarazione)")
+    mondo.regole[0].esegui_conseguenze(mondo)
+    _check(mondo.contenitore_aperto(portale),
+           "'è aperto' apre davvero il contenitore (rimuove 'chiuso')")
+
+    # Condizione incrociata: stato 'aperta', condizione 'è aperto'.
+    src2 = (
+        "La cella è una stanza.\n"
+        "La porta è una cosa.\nLa porta è in cella.\nLa porta è aperta.\n"
+        'Invece di guarda la porta se la porta è aperto: dire "Spalancata.".\n'
+    )
+    mondo2, _ = compila(src2)
+    _check(mondo2 is not None and mondo2.regole[0].condizione.valuta(mondo2),
+           "condizione 'è aperto' combacia con la proprietà 'aperta'")
+
+    # Coppia opposta dichiarata al maschile, usata al femminile.
+    src3 = (
+        "La sala è una stanza.\n"
+        "La lampada è una cosa.\nLa lampada è in sala.\n"
+        "acceso e spento sono opposte.\nLa lampada è accesa.\n"
+        'Invece di spegni la lampada: dire "Buio." e adesso la lampada è spenta.\n'
+    )
+    mondo3, _ = compila(src3)
+    lampada = mondo3.trova_oggetto("lampada") if mondo3 else None
+    _check(lampada is not None and "accesa" in lampada.proprieta, "lampada inizialmente accesa")
+    mondo3.regole[0].esegui_conseguenze(mondo3)
+    _check("spenta" in lampada.proprieta and "accesa" not in lampada.proprieta,
+           "'spenta' rimuove 'accesa' benché la coppia sia dichiarata 'acceso/spento'")
+
+    # Il linter NON deve segnalare refuso per la differenza di sola concordanza.
+    refusi = [w for w in analizza_file_strutturato("<concordanza>", src)["warnings"]
+              if "refuso" in w.get("message", "").lower()]
+    _check(refusi == [], "nessun falso warning di refuso per 'aperto' vs 'chiuso'")
 
 
 # --- Test: alias/sinonimi di oggetti [Livello 4] -----------------------------
@@ -2304,6 +2365,7 @@ def main():
         # Livello 3 — proprietà opposte dichiarabili (M5)
         test_opposti_dichiarati,
         test_opposti_default_aperta_chiusa,
+        test_concordanza_genere_proprieta,
         # Livello 3 — condizioni di fine partita
         test_fine_partita_vinci,
         test_fine_partita_perdi_termina,
@@ -2426,7 +2488,7 @@ def main():
         test_storia_esempio_compila,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.13.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.14.0)")
     print("=" * 60)
     for t in tests:
         t()

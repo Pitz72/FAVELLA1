@@ -1,7 +1,7 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.13.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.14.0)
 from typing import Callable, List, Dict, Set, Optional
-from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE
+from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -28,7 +28,12 @@ class CondizioneProprieta(Condizione):
 
     def valuta(self, mondo: 'Mondo') -> bool:
         oggetto = mondo.trova_oggetto(self.id_oggetto)
-        return oggetto is not None and self.proprieta in oggetto.proprieta
+        if oggetto is None:
+            return False
+        # [Concordanza] Confronto per RADICE: «è aperto» combacia con «aperta» e
+        # viceversa (genere/numero ignorati). I refusi veri cambiano la radice.
+        r = radice_proprieta(self.proprieta)
+        return any(radice_proprieta(p) == r for p in oggetto.proprieta)
 
 class CondizioneVariabile(Condizione):
     """[Livello 3] 'se [stato] è [valore]'. Uno 'stato' è una variabile globale
@@ -109,8 +114,13 @@ class ConseguenzaProprieta(Conseguenza):
             # Le coppie sono dichiarabili dall'autore ('Aperta e chiusa sono
             # opposte.') e raccolte in mondo.opposti; aperta↔chiusa è precaricata
             # come default. Assegnare una proprietà rimuove tutte le sue opposte.
-            for opposta in mondo.opposti.get(self.proprieta, ()):
-                oggetto.proprieta.discard(opposta)
+            # [Concordanza] Il confronto è per RADICE: assegnare 'aperto' rimuove
+            # 'chiusa'/'chiuso' indistintamente (genere/numero ignorati).
+            opp_radici = mondo.radici_opposte(self.proprieta)
+            if opp_radici:
+                for p in list(oggetto.proprieta):
+                    if radice_proprieta(p) in opp_radici:
+                        oggetto.proprieta.discard(p)
 
 class ConseguenzaVariabile(Conseguenza):
     """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
@@ -424,9 +434,22 @@ class Mondo:
         self.variabili.setdefault(nome, 0)
 
     def dichiara_opposte(self, prop_a: str, prop_b: str):
-        """Registra che due proprietà sono opposte (relazione simmetrica)."""
+        """Registra che due proprietà sono opposte (relazione simmetrica). Le
+        forme restano come scritte dall'autore (servono all'IDE per la lista delle
+        coppie); il confronto a runtime è poi per RADICE (vedi radici_opposte)."""
         self.opposti.setdefault(prop_a, set()).add(prop_b)
         self.opposti.setdefault(prop_b, set()).add(prop_a)
+
+    def radici_opposte(self, prop: str) -> Set[str]:
+        """[Concordanza] Insieme delle RADICI opposte a `prop`, confrontando le
+        coppie dichiarate per radice anziché alla lettera. Così 'aperto' trova
+        l'opposta 'chiusa' (dichiarata aperta↔chiusa) anche se cambia il genere."""
+        r = radice_proprieta(prop)
+        out: Set[str] = set()
+        for chiave, opposte in self.opposti.items():
+            if radice_proprieta(chiave) == r:
+                out.update(radice_proprieta(o) for o in opposte)
+        return out
 
     def dichiara_alias(self, alias: str, id_canonico: str):
         """[Livello 4] Registra un nome alternativo per un oggetto. Entrambi gli
@@ -529,8 +552,10 @@ class Mondo:
     # --- [Livello 4 / M1] Contenitori e supporti: raggiungibilità ---
 
     def contenitore_aperto(self, oggetto: 'Oggetto') -> bool:
-        """Un contenitore è aperto (contenuto visibile) finché non è 'chiusa'."""
-        return "chiusa" not in oggetto.proprieta
+        """Un contenitore è aperto (contenuto visibile) finché non è 'chiusa'.
+        [Concordanza] Il confronto è per RADICE: vale anche 'chiuso'/'chiusi'."""
+        r_chiusa = radice_proprieta("chiusa")
+        return not any(radice_proprieta(p) == r_chiusa for p in oggetto.proprieta)
 
     def oggetto_raggiungibile(self, id_oggetto: str, _visti: Set[str] = None) -> bool:
         """Vero se l'oggetto è alla portata del giocatore: nella stanza corrente,
@@ -598,7 +623,7 @@ class Mondo:
     def __str__(self) -> str:
         n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.13.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.14.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"
