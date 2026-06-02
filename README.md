@@ -58,20 +58,26 @@ Puoi usare FAVELLA in due modi: tramite il nuovo IDE grafico o da riga di comand
 
 ### Opzione A: FAVELLA STUDIO (Consigliata)
 
-1.  **Installa le dipendenze:**
+IDE desktop ufficiale (Electron + React) con editor a syntax highlighting,
+diagnostica in tempo reale e console di gioco integrata. Vive in `studio/`.
+
+1.  **Installa le dipendenze** (Node.js 20+ e una `.venv` Python con `lark`):
     ```bash
-    pip install PySide6 networkx matplotlib
+    cd studio
+    npm install
     ```
 
 2.  **Avvia l'IDE:**
     ```bash
-    python favella_studio.py
+    npm run dev
     ```
 
 3.  **Divertiti:**
-    - Apri un file `.fav` (es. `storia.fav`).
-    - Premi **"Compila & Verifica"** per vedere la mappa.
-    - Premi **"Gioca"** per testare la tua avventura.
+    - Apri la cartella del progetto e seleziona un file `.fav` (es. `storia.fav`).
+    - La **diagnostica** è continua: errori e avvisi nel pannello Problemi.
+    - Premi **▶ Gioca** (o **F5**) per testare la tua avventura nella console integrata.
+
+> Dettagli, build e packaging: [`studio/README.md`](studio/README.md).
 
 ### Opzione B: Riga di Comando (Legacy)
 
