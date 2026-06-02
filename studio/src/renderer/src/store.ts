@@ -10,12 +10,13 @@ import type {
   WorldSnapshot,
   DebugEntry,
   Outline,
+  OutlineSpan,
   SerializeSpec
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 
 /** Vista attiva del dock destro (null = dock chiuso). */
-export type RightTab = 'gioca' | 'mappa' | 'stato' | 'debug' | null
+export type RightTab = 'gioca' | 'mappa' | 'stato' | 'debug' | 'oggetti' | null
 
 /** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
 export function stessoPercorso(a: string | null, b: string | null): boolean {
@@ -58,6 +59,7 @@ export interface OpenFile {
 export type BufferEdit =
   | { kind: 'append'; text: string }
   | { kind: 'deleteLines'; startLine: number; endLine: number }
+  | { kind: 'replaceLines'; startLine: number; endLine: number; text: string }
 
 export interface PendingEdit {
   path: string
@@ -71,8 +73,13 @@ export function applicaBufferEdit(content: string, edit: BufferEdit): string {
     const base = content.endsWith('\n') || content === '' ? content : content + '\n'
     return base + edit.text + '\n'
   }
-  // deleteLines: rimuove le righe [startLine..endLine] (1-based, incluse).
   const righe = content.split('\n')
+  if (edit.kind === 'replaceLines') {
+    // Sostituisce le righe [startLine..endLine] con il nuovo testo (1-based).
+    righe.splice(edit.startLine - 1, edit.endLine - edit.startLine + 1, edit.text)
+    return righe.join('\n')
+  }
+  // deleteLines: rimuove le righe [startLine..endLine] (1-based, incluse).
   righe.splice(edit.startLine - 1, edit.endLine - edit.startLine + 1)
   return righe.join('\n')
 }
@@ -170,6 +177,9 @@ interface StudioState {
   ) => Promise<void>
   mapDeleteConnection: (aId: string, bId: string) => Promise<void>
   mapAddRoom: (name: string) => Promise<void>
+  // Editor oggetti (6a.4): genera/sostituisce o elimina una frase nel file attivo.
+  applyStatement: (spec: SerializeSpec, span?: OutlineSpan | null) => Promise<void>
+  deleteStatement: (span: OutlineSpan) => Promise<void>
 }
 
 function linguaDa(name: string): string {
@@ -756,6 +766,66 @@ export const useStudio = create<StudioState>((set, get) => ({
       openFiles: s.openFiles.map((f) =>
         f.path === activePath ? { ...f, content: nuovo } : f
       ),
+      pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
+    }))
+    await get().loadOutline()
+    await get().loadWorldGraph()
+  },
+
+  // Genera la frase canonica dalla spec e la SCRIVE nel buffer: se 'span' è dato
+  // SOSTITUISCE quella frase (deve essere nel file attivo), altrimenti la AGGIUNGE
+  // in fondo al file attivo. Aggiorna store + Monaco (undo) e ricarica l'outline.
+  applyStatement: async (spec, span) => {
+    const { activePath, openFiles } = get()
+    if (!activePath) return
+    let res
+    try {
+      res = await window.favella.serializeStatement(spec)
+    } catch (e) {
+      set({ gameNotice: 'Errore di serializzazione: ' + messaggioErrore(e) })
+      return
+    }
+    if (!res.ok || !res.text) {
+      set({ gameNotice: res.error ?? 'Operazione non riuscita.' })
+      return
+    }
+    let edit: BufferEdit
+    if (span) {
+      if (!stessoPercorso(span.file, activePath)) {
+        set({
+          gameNotice:
+            'Questa frase è in un altro file (incluso): aprilo per modificarla da qui.'
+        })
+        return
+      }
+      edit = { kind: 'replaceLines', startLine: span.line, endLine: span.endLine, text: res.text }
+    } else {
+      edit = { kind: 'append', text: res.text }
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file) return
+    const nuovo = applicaBufferEdit(file.content, edit)
+    set((s) => ({
+      openFiles: s.openFiles.map((f) => (f.path === activePath ? { ...f, content: nuovo } : f)),
+      pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
+    }))
+    await get().loadOutline()
+    await get().loadWorldGraph()
+  },
+
+  deleteStatement: async (span) => {
+    const { activePath, openFiles } = get()
+    if (!activePath) return
+    if (!stessoPercorso(span.file, activePath)) {
+      set({ gameNotice: 'Questa frase è in un altro file (incluso): aprilo per modificarla da qui.' })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    if (!file) return
+    const edit: BufferEdit = { kind: 'deleteLines', startLine: span.line, endLine: span.endLine }
+    const nuovo = applicaBufferEdit(file.content, edit)
+    set((s) => ({
+      openFiles: s.openFiles.map((f) => (f.path === activePath ? { ...f, content: nuovo } : f)),
       pendingEdit: { path: activePath, edits: [edit], nonce: (s.pendingEdit?.nonce ?? 0) + 1 }
     }))
     await get().loadOutline()

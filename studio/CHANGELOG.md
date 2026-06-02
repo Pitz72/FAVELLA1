@@ -4,6 +4,25 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.2] — 2026-06-02 — Fase 6a.4: Inspector oggetti (crea + modifica)
+
+### Aggiunto
+- **Scheda 📦 Oggetti**: lista degli oggetti del file e form di modifica del selezionato.
+  - **➕ Nuovo oggetto** (nome + tipo: oggetto/contenitore/supporto/personaggio).
+  - Campi editabili: **Tipo**, **Prendibile**, **Posizione** (stanza), **Descrizione**,
+    **Proprietà** (aggiungi/rimuovi), **Sinonimi/alias** (aggiungi/rimuovi).
+  - Tutto round-trip: ogni modifica genera/sostituisce/elimina la frase `.fav` canonica
+    via `outline.serialize` + splice in Monaco (**undo nativo**), poi ricarica l'outline.
+- Nuovo edit `replaceLines` (oltre ad append/deleteLines) e azioni store generiche
+  `applyStatement(spec, span?)` / `deleteStatement(span)`.
+
+### Note
+- La modifica di frasi GIÀ esistenti agisce sul **file attivo**; in multi-file le aggiunte
+  funzionano sempre, mentre per cambiare una frase di un file Incluso l'IDE invita ad aprirlo.
+- Limite di design noto (prossimo lavoro): le **proprietà** sono ancora «tag» liberi. Alcune
+  sono in realtà **condizioni a due stati** che il motore conosce (aperta↔chiusa) o che vanno
+  rese tali (accesa↔spenta) + **regole** di comportamento. Vedi roadmap.
+
 ## [0.9.1] — 2026-06-02 — Pannelli live + direzioni custom dalla mappa
 
 ### Aggiunto

@@ -160,6 +160,14 @@ export default function App(): JSX.Element {
             🗺 Mappa
           </button>
           <button
+            className={'tool-btn' + (rightTab === 'oggetti' ? ' active' : '')}
+            title="Editor oggetti (crea e modifica)"
+            onClick={() => (rightTab === 'oggetti' ? closeDock() : setRightTab('oggetti'))}
+            disabled={!isFav}
+          >
+            📦 Oggetti
+          </button>
+          <button
             className={'tool-btn' + (rightTab === 'stato' ? ' active' : '')}
             title="Ispettore di stato"
             onClick={() => (rightTab === 'stato' ? closeDock() : setRightTab('stato'))}

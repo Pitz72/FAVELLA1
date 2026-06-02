@@ -528,6 +528,163 @@ button:hover {
   }
 }
 
+/* --- Editor oggetti (Fase 6a.4) --- */
+.objed {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.objed-create {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.objed-create input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: var(--text);
+  font-size: 13px;
+}
+.objed-create select,
+.objed-field select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.objed-create input:focus,
+.objed-field select:focus,
+.objed-field input:focus,
+.objed-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.objed-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.objed-list {
+  flex: 0 0 38%;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 6px;
+}
+.objed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.objed-row:hover {
+  background: var(--bg-elev2);
+  color: var(--text);
+}
+.objed-row.sel {
+  background: var(--bg-elev2);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.objed-row-icon {
+  color: var(--accent);
+}
+.objed-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.objed-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.objed-field > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.objed-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.objed-field textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.objed-save {
+  align-self: flex-start;
+}
+.objed-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.objed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-elev2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 4px 3px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+.objed-chip button {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 0 4px;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.objed-chip button:hover {
+  background: #5a3a3a;
+  color: #ffbcbc;
+}
+.objed-add {
+  display: flex;
+  gap: 6px;
+}
+.objed-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: var(--text);
+  font-size: 13px;
+}
+
 /* --- Modal «modifiche non salvate» (stile IDE) --- */
 .modal-backdrop {
   position: fixed;

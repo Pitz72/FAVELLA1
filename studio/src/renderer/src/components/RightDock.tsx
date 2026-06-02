@@ -4,13 +4,15 @@ import GamePanel from './GamePanel'
 import MapView from './MapView'
 import StateInspector from './StateInspector'
 import DebugPanel from './DebugPanel'
+import ObjectsEditor from './ObjectsEditor'
 
 // Titoli mostrati nell'header del dock (le tab vere sono nella titlebar: fila unica).
 const TITOLI: Record<Exclude<RightTab, null>, string> = {
   gioca: '▶ Gioca',
   mappa: '🗺 Mappa',
   stato: '🔎 Stato',
-  debug: '🐞 Debug'
+  debug: '🐞 Debug',
+  oggetti: '📦 Oggetti'
 }
 
 export default function RightDock(): JSX.Element | null {
@@ -33,7 +35,8 @@ export default function RightDock(): JSX.Element | null {
     if (tab === 'mappa') void loadGraph()
     if (tab === 'stato') void loadSnapshot()
     if (tab === 'debug') void loadDebug()
-  }, [tab, loadGraph, loadSnapshot, loadDebug])
+    if (tab === 'oggetti') void loadOutline()
+  }, [tab, loadGraph, loadSnapshot, loadDebug, loadOutline])
 
   // Auto-refresh della Mappa MENTRE SI DIGITA (debounce, come l'auto-compile):
   // la topologia segue il testo senza dover riaprire la scheda. Solo in anteprima
@@ -82,6 +85,7 @@ export default function RightDock(): JSX.Element | null {
         {tab === 'mappa' && <MapView editable />}
         {tab === 'stato' && <StateInspector />}
         {tab === 'debug' && <DebugPanel />}
+        {tab === 'oggetti' && <ObjectsEditor />}
       </div>
     </aside>
   )

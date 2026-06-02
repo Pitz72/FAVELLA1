@@ -120,6 +120,11 @@ export default function EditorPane(): JSX.Element {
           text: prefisso + e.text + '\n',
           forceMoveMarkers: true
         })
+      } else if (e.kind === 'replaceLines') {
+        ops.push({
+          range: new monaco.Range(e.startLine, 1, e.endLine, model.getLineMaxColumn(e.endLine)),
+          text: e.text
+        })
       } else {
         const lineCount = model.getLineCount()
         if (e.endLine < lineCount) {
