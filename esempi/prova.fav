@@ -1,0 +1,7 @@
+la cucina è una stanza.
+corridoio è una stanza.
+soggiorno è una stanza.
+camera da letto è una stanza.
+la cucina collega sud a corridoio.
+corridoio collega est a soggiorno.
+corridoio collega ovest a camera da letto.
