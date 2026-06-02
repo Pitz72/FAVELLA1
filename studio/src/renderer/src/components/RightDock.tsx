@@ -3,11 +3,13 @@ import { useStudio, type RightTab } from '../store'
 import GamePanel from './GamePanel'
 import MapView from './MapView'
 import StateInspector from './StateInspector'
+import DebugPanel from './DebugPanel'
 
 const TABS: Array<{ id: Exclude<RightTab, null>; label: string }> = [
   { id: 'gioca', label: '▶ Gioca' },
   { id: 'mappa', label: '🗺 Mappa' },
-  { id: 'stato', label: '🔎 Stato' }
+  { id: 'stato', label: '🔎 Stato' },
+  { id: 'debug', label: '🐞 Debug' }
 ]
 
 export default function RightDock(): JSX.Element | null {
@@ -16,13 +18,16 @@ export default function RightDock(): JSX.Element | null {
   const closeDock = useStudio((s) => s.closeDock)
   const loadGraph = useStudio((s) => s.loadWorldGraph)
   const loadSnapshot = useStudio((s) => s.loadWorldSnapshot)
+  const loadDebug = useStudio((s) => s.loadDebugHistory)
 
-  // All'apertura della Mappa carica la topologia (mondo giocato o buffer attivo);
-  // all'apertura dello Stato aggiorna lo snapshot live.
+  // All'apertura di ogni scheda aggiorna i dati: Mappa → topologia, Stato →
+  // snapshot live, Debug → history dei turni (la partita può girare nella finestra
+  // di gioco, quindi si rilegge dal sidecar condiviso).
   useEffect(() => {
     if (tab === 'mappa') void loadGraph()
     if (tab === 'stato') void loadSnapshot()
-  }, [tab, loadGraph, loadSnapshot])
+    if (tab === 'debug') void loadDebug()
+  }, [tab, loadGraph, loadSnapshot, loadDebug])
 
   if (tab === null) return null
 
@@ -48,6 +53,7 @@ export default function RightDock(): JSX.Element | null {
         {tab === 'gioca' && <GamePanel />}
         {tab === 'mappa' && <MapView />}
         {tab === 'stato' && <StateInspector />}
+        {tab === 'debug' && <DebugPanel />}
       </div>
     </aside>
   )

@@ -4,6 +4,33 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.7.0] — 2026-06-02 — Fase 5: Debugger passo-passo
+
+### Aggiunto
+- **RPC `session.history`** nel sidecar: la sessione registra **uno snapshot per
+  turno** (più il comando che l'ha prodotto, `null` per lo stato iniziale). Sidecar
+  a `0.6.0`.
+- **Scheda «🐞 Debug»** nel dock destro: timeline turno-per-turno con il **diff dello
+  stato** calcolato fra snapshot consecutivi — spostamenti del giocatore, oggetti
+  presi/lasciati, cambi di **variabili** (stati/contatori), spostamenti di oggetti,
+  cambi di **proprietà** (es. porta chiusa → aperta) ed esito della partita. Ogni passo
+  mostra turno, comando e i cambiamenti; più recente in cima; ⟳ per aggiornare.
+- La history si rilegge dal **sidecar condiviso**, quindi il debugger nell'IDE
+  riflette anche le partite giocate nella **finestra di gioco** (⟳ per aggiornare).
+- Pulsante **🐞 Debug** in barra del titolo (apre il dock sulla scheda Debug).
+
+### Corretto
+- **Bug critico di digitazione nell'editor**: modificando la riga di un errore dopo
+  averci cliccato sopra nel pannello Problemi, il testo si scriveva **al contrario**.
+  Causa: l'effetto di "salto al cursore" (reveal) dipendeva da `active`, che cambia
+  identità a ogni battitura, e rispingeva il cursore alla posizione del reveal a ogni
+  tasto. Ora dipende solo dalla richiesta di reveal (nonce) e da `activePath`.
+  L'editor passa inoltre a `defaultValue` (uncontrolled) per non reimpostare il buffer.
+
+### Aggiunto (UX)
+- **Pulsante Salva** in barra del titolo: **● Salva** (ambra) quando ci sono modifiche,
+  **✓ Salvato** a riposo. Affianca le scorciatoie esistenti `Ctrl+S` / `Ctrl+Shift+S`.
+
 ## [0.6.0] — 2026-06-02 — Finestra di gioco dedicata
 
 ### Aggiunto

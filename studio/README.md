@@ -65,7 +65,9 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
 - [x] **Finestra di gioco dedicata** (stile Godot): ▶ Gioca / F5 aprono una finestra
       separata col solo gioco, font grande e blocchi Storia · Parser · Inventario
       (sempre visibile) · Stato · Mappa. L'IDE resta invariato.
-- [ ] Fase 5 — Debugger passo-passo
+- [x] **Fase 5 — Debugger passo-passo**: RPC `session.history` (uno snapshot per turno);
+      scheda «🐞 Debug» con la timeline dei turni e il diff dello stato (spostamenti,
+      inventario, variabili, proprietà, esito).
 - [ ] Fase 6 — Editor visuali (stanze/oggetti/dialoghi)
 - [ ] Fase 7 — Packaging del gioco
 

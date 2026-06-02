@@ -7,12 +7,13 @@ import type {
   WorldSummary,
   GameState,
   WorldGraph,
-  WorldSnapshot
+  WorldSnapshot,
+  DebugEntry
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 
 /** Vista attiva del dock destro (null = dock chiuso). */
-export type RightTab = 'gioca' | 'mappa' | 'stato' | null
+export type RightTab = 'gioca' | 'mappa' | 'stato' | 'debug' | null
 
 /** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
 export function stessoPercorso(a: string | null, b: string | null): boolean {
@@ -67,6 +68,9 @@ interface StudioState {
   worldGraph: WorldGraph | null
   worldSnapshot: WorldSnapshot | null
   worldLoading: boolean
+  // Debugger (Fase 5)
+  debugHistory: DebugEntry[]
+  debugLoading: boolean
 
   // Azioni
   openProject: () => Promise<void>
@@ -96,6 +100,8 @@ interface StudioState {
   // Mappa + Inspector (Fase 4)
   loadWorldGraph: () => Promise<void>
   loadWorldSnapshot: () => Promise<void>
+  // Debugger (Fase 5)
+  loadDebugHistory: () => Promise<void>
 }
 
 function linguaDa(name: string): string {
@@ -146,6 +152,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   worldGraph: null,
   worldSnapshot: null,
   worldLoading: false,
+  debugHistory: [],
+  debugLoading: false,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -414,6 +422,18 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ worldSnapshot: await window.favella.worldSnapshot() })
     } catch {
       /* nessuna partita attiva: lascia l'ultimo snapshot */
+    }
+  },
+
+  // --- Debugger (Fase 5) ----------------------------------------------------
+
+  loadDebugHistory: async () => {
+    set({ debugLoading: true })
+    try {
+      const h = await window.favella.sessionHistory()
+      set({ debugLoading: false, debugHistory: h.entries })
+    } catch {
+      set({ debugLoading: false })
     }
   }
 }))

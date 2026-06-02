@@ -44,15 +44,18 @@ export default function EditorPane(): JSX.Element {
   }
 
   // Marker Monaco: traduce le diagnostiche del file attivo in setModelMarkers.
+  // Dipende da `activePath` (primitivo), NON da `active`: quest'ultimo cambia
+  // identità a ogni battitura (lo store ricrea openFiles), e ri-eseguire questo
+  // effetto a ogni tasto è inutile.
   useEffect(() => {
     const editor = editorRef.current
     const monaco = monacoRef.current
-    if (!editor || !monaco || !active) return
+    if (!editor || !monaco || !activePath) return
     const model = editor.getModel()
     if (!model) return
 
     const markers: MonacoEditor.IMarkerData[] = problems
-      .filter((d) => stessoPercorso(d.file, active.path) && d.line)
+      .filter((d) => stessoPercorso(d.file, activePath) && d.line)
       .map((d) => {
         const line = d.line as number
         const col = d.col ?? 1
@@ -72,17 +75,22 @@ export default function EditorPane(): JSX.Element {
         }
       })
     monaco.editor.setModelMarkers(model, MARKER_OWNER, markers)
-  }, [problems, active, activePath])
+  }, [problems, activePath])
 
-  // Salto a riga richiesto dal pannello Problemi.
+  // Salto a riga richiesto dal pannello Problemi. CRITICO: dipende SOLO da
+  // `reveal` (che cambia identità a ogni nuova richiesta, via nonce) e da
+  // `activePath`. NON da `active`: se dipendesse da `active` — che cambia a ogni
+  // battitura — il cursore verrebbe rispinto alla posizione del reveal a ogni
+  // tasto, scrivendo il testo al contrario (bug osservato editando la riga di un
+  // errore dopo averci cliccato sopra nel pannello Problemi).
   useEffect(() => {
     const editor = editorRef.current
-    if (!reveal || !active || !editor) return
-    if (!stessoPercorso(reveal.path, active.path)) return
+    if (!reveal || !activePath || !editor) return
+    if (!stessoPercorso(reveal.path, activePath)) return
     editor.revealLineInCenter(reveal.line)
     editor.setPosition({ lineNumber: reveal.line, column: reveal.col })
     editor.focus()
-  }, [reveal, active])
+  }, [reveal, activePath])
 
   if (!active) {
     return (
@@ -98,10 +106,15 @@ export default function EditorPane(): JSX.Element {
 
   return (
     <Editor
+      // key per-percorso: ogni file ha il proprio editor/modello, rimontato al
+      // cambio scheda. defaultValue (NON value): l'editor è "uncontrolled" sul
+      // testo — Monaco possiede il buffer e il cursore, lo store si aggiorna via
+      // onChange. Con `value` controllato il round-trip a ogni tasto resettava il
+      // cursore (testo digitato al contrario). 'path' rimosso per evitare la cache
+      // dei modelli per-URI fra i rimontaggi.
       key={active.path}
-      path={active.path}
       language={active.language}
-      value={active.content}
+      defaultValue={active.content}
       theme={FAVELLA_THEME}
       beforeMount={handleBeforeMount}
       onMount={handleMount}

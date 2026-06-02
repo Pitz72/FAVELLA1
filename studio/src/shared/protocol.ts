@@ -171,6 +171,19 @@ export interface WorldSnapshot {
   objects: SnapObject[]
 }
 
+// --- Debugger passo-passo (Fase 5) ---
+
+// Uno snapshot per turno con il comando che l'ha prodotto (null = stato iniziale).
+export interface DebugEntry {
+  turn: number
+  command: string | null
+  snapshot: WorldSnapshot
+}
+
+export interface SessionHistory {
+  entries: DebugEntry[]
+}
+
 // --- File system (Fase 1) ---
 
 export interface FileNode {

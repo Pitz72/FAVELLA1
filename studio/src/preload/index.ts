@@ -7,7 +7,8 @@ import type {
   CompileResult,
   SessionResult,
   WorldGraph,
-  WorldSnapshot
+  WorldSnapshot,
+  SessionHistory
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -62,6 +63,10 @@ const api = {
   /** Stato live della partita attiva (posizione, turno, variabili, inventario, oggetti). */
   worldSnapshot(): Promise<WorldSnapshot> {
     return ipcRenderer.invoke('rpc', 'world.snapshot', {})
+  },
+  /** [Fase 5] History della partita (uno snapshot per turno) per il debugger. */
+  sessionHistory(): Promise<SessionHistory> {
+    return ipcRenderer.invoke('rpc', 'session.history', {})
   },
 
   // --- Finestra di gioco dedicata (stile Godot) ---

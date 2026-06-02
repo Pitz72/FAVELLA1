@@ -573,6 +573,21 @@ button:hover {
   cursor: not-allowed;
 }
 
+.save-btn.dirty {
+  background: #8a6d1f;
+  color: #fff6e0;
+  opacity: 1;
+}
+
+.save-btn.dirty:hover {
+  background: #a3811f;
+}
+
+.save-btn:disabled {
+  /* «✓ Salvato»: stato a riposo, non un errore */
+  opacity: 0.6;
+}
+
 /* --- Pannello Gioca (Fase 3) --- */
 .gamepanel {
   flex: 1 1 auto;
@@ -987,6 +1002,131 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* --- Debugger passo-passo (Fase 5) --- */
+.debug {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.debug-title {
+  display: flex;
+  align-items: baseline;
+}
+
+.debug-count {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.debug-body {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.debug-empty {
+  padding: 18px;
+  color: var(--text-dim);
+  text-align: center;
+  font-style: italic;
+}
+
+.debug-step {
+  border-bottom: 1px solid #2a2a31;
+  padding: 6px 12px 8px;
+}
+
+.debug-step.inizio {
+  background: #1f1f25;
+}
+
+.debug-step-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.debug-turn {
+  flex: 0 0 auto;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: #0c1116;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.debug-cmd {
+  flex: 1 1 auto;
+  color: var(--text);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debug-room {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.debug-changes {
+  margin-top: 5px;
+  padding-left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.debug-nochange {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.debug-change {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.debug-change-icon {
+  flex: 0 0 auto;
+  width: 14px;
+  text-align: center;
+}
+
+.debug-change.add {
+  color: #7ee2a8;
+}
+
+.debug-change.rem {
+  color: #f29ba1;
+}
+
+.debug-change.var {
+  color: var(--fav);
+}
+
+.debug-change.move {
+  color: var(--accent-hover);
+}
+
+.debug-change.end {
+  color: var(--fav);
+  font-weight: 600;
 }
 
 /* --- Finestra di gioco dedicata (Fase Gioco / stile Godot) --- */

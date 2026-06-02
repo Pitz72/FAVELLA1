@@ -25,6 +25,10 @@ export default function App(): JSX.Element {
   const setRightTab = useStudio((s) => s.setRightTab)
   const activePath = useStudio((s) => s.activePath)
   const isFav = !!activePath?.toLowerCase().endsWith('.fav')
+  const dirty = useStudio((s) => {
+    const f = s.openFiles.find((x) => x.path === s.activePath)
+    return !!f && f.content !== f.savedContent
+  })
   const activeContent = useStudio((s) =>
     s.openFiles.find((f) => f.path === s.activePath)?.content
   )
@@ -104,6 +108,14 @@ export default function App(): JSX.Element {
       <header className="titlebar">
         <span className="logo">✦ Favella Studio</span>
         <div className="titlebar-right">
+          <button
+            className={'tool-btn save-btn' + (dirty ? ' dirty' : '')}
+            title="Salva il file attivo (Ctrl+S)"
+            onClick={() => void saveActive()}
+            disabled={!dirty}
+          >
+            {dirty ? '● Salva' : '✓ Salvato'}
+          </button>
           <span className="titlebar-hint">Fase 4 · Mappa &amp; Stato</span>
           <button
             className="tool-btn"
@@ -119,6 +131,13 @@ export default function App(): JSX.Element {
             onClick={() => setRightTab('stato')}
           >
             🔎 Stato
+          </button>
+          <button
+            className="tool-btn"
+            title="Debugger passo-passo (timeline dei turni)"
+            onClick={() => setRightTab('debug')}
+          >
+            🐞 Debug
           </button>
           <button
             className="play-btn"

@@ -46,7 +46,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.13.0"
-VERSIONE_SIDECAR = "0.5.1"  # Fase 4 + capacità di trasporto nello snapshot (Livello 7)
+VERSIONE_SIDECAR = "0.6.0"  # Fase 5 — debugger passo-passo (session.history)
 
 
 # ==============================================================================
@@ -115,16 +115,31 @@ def rpc_compile(params):
 
 class _SessioneGioco:
     """Una partita in corso: il Mondo compilato più il percorso/sorgente da cui è
-    nato (per il reset, che rigioca lo stesso testo)."""
+    nato (per il reset, che rigioca lo stesso testo). [Fase 5] Tiene la 'history':
+    uno snapshot per turno (più il comando che l'ha prodotto) per il debugger
+    passo-passo dell'IDE, che ne calcola i diff."""
     def __init__(self, mondo, path, source):
         self.mondo = mondo
         self.path = path
         self.source = source
         self.running = True
+        self.history = []
 
 
 # Il sidecar è monoutente: una sola partita attiva alla volta.
 _SESSIONE = None
+
+
+def _registra_turno(sess, command):
+    """[Fase 5] Aggiunge alla history uno snapshot dello stato col comando che lo
+    ha prodotto (None per lo stato iniziale). L'IDE calcola i diff fra snapshot
+    consecutivi. _snapshot_mondo è definito più sotto: la risoluzione avviene a
+    runtime, quando il modulo è già caricato per intero."""
+    sess.history.append({
+        "turn": getattr(sess.mondo, "turno_corrente", 0),
+        "command": command,
+        "snapshot": _snapshot_mondo(sess.mondo),
+    })
 
 
 def _stato_partita(mondo):
@@ -190,6 +205,7 @@ def rpc_session_start(params):
                                        "avviare il gioco.", "severity": "error"}]}
 
     _SESSIONE = _SessioneGioco(mondo, percorso, sorgente)
+    _registra_turno(_SESSIONE, None)  # [Fase 5] stato iniziale nella history
     return {"ok": True, "output": _intro(mondo), "running": True,
             "state": _stato_partita(mondo)}
 
@@ -205,6 +221,7 @@ def rpc_session_send(params):
     with contextlib.redirect_stdout(buf):
         continua = elabora_comando(_SESSIONE.mondo, comando)
     _SESSIONE.running = bool(continua)
+    _registra_turno(_SESSIONE, comando)  # [Fase 5] snapshot post-comando
     return {"ok": True, "output": buf.getvalue(), "running": _SESSIONE.running,
             "state": _stato_partita(_SESSIONE.mondo)}
 
@@ -330,6 +347,15 @@ def rpc_world_snapshot(_params):
     return _snapshot_mondo(_SESSIONE.mondo)
 
 
+def rpc_session_history(_params):
+    """[Fase 5] History della partita attiva per il debugger passo-passo: uno
+    snapshot per turno con il comando che l'ha prodotto. L'IDE calcola i diff fra
+    snapshot consecutivi. Lista vuota se nessuna partita è attiva."""
+    if _SESSIONE is None:
+        return {"entries": []}
+    return {"entries": _SESSIONE.history}
+
+
 # Tabella di dispatch. Le fasi successive aggiungono qui debug.* (passo-passo).
 _METODI = {
     "ping": rpc_ping,
@@ -341,6 +367,7 @@ _METODI = {
     "session.reset": rpc_session_reset,
     "world.graph": rpc_world_graph,
     "world.snapshot": rpc_world_snapshot,
+    "session.history": rpc_session_history,
 }
 
 
