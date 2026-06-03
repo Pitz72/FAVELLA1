@@ -87,8 +87,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       possesso/proprietà/stato), **modifica** delle regole esistenti (✎ riapre la modale
       precompilata, o «✎ testo» per quelle troppo complesse) e conseguenza di **spostamento**
       (`move`: nel nulla / in inventario / stanza / contenitore / supporto, prep concordata).
-      Resta **6c.4** (eventi `Al turno N` / `Ogni N turni` nella stessa modale). Mancano anche
-      dialoghi/NPC (6b).
+      **6c.4 fatto (IDE 0.9.9)**: **eventi visuali** (`Al turno N` / `Ogni N turni`) nella stessa
+      modale via toggle Regola/Evento, con ✎ per modificarli; **avviso «Invece di sostituisce
+      l'azione normale»** sui verbi con effetto di default (prendi/lascia/metti/apri). Mancano
+      i dialoghi/NPC (6b).
 - [x] **Pannello «Stati & Contatori» (⚖ Stati, IDE 0.9.8 / sidecar 0.9.3)**: crea/modifica/
       elimina i **parametri di stato** del mondo — **stati** (variabili a parole, enum-like) e
       **contatori** (numeri da 0). Creazione in modale ampia (nome, valore iniziale, elenco

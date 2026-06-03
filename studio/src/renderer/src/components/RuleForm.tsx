@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
 import type {
   Rule,
+  GameEvent,
   RuleCondition,
   RuleConsequence,
   RulesMenu,
@@ -20,6 +21,19 @@ const CONS_LABEL: Record<ConsKind, string> = {
   move: 'sposta un oggetto',
   end: 'fine partita'
 }
+
+// Verbi con un EFFETTO di default che «Invece di» sopprime: prendi (→ inventario),
+// lascia (→ stanza), metti (→ contenitore/supporto), apri. Una regola su questi verbi
+// SOSTITUISCE l'azione normale → se l'autore vuole anche l'effetto, deve ricrearlo in
+// una conseguenza. Mostriamo un avviso inline (tranello classico dell'IF). Forme
+// canoniche + sinonimi da VERBI_VALIDI.
+const VERBI_CON_EFFETTO = new Set([
+  'prendi', 'prendere', 'afferra', 'afferrare', 'raccogli', 'raccogliere',
+  'lascia', 'lasciare', 'molla', 'mollare', 'posa', 'posare', 'butta', 'buttare',
+  'appoggia', 'appoggiare',
+  'metti', 'mettere', 'poni', 'porre', 'infila', 'infilare', 'inserisci', 'inserire',
+  'apri', 'aprire'
+])
 
 // --- Spostamento: dal bersaglio scelto alla conseguenza `move` con prep/place ---
 // destSel codificato: 'sp:inventario' | 'sp:nulla' | 'r:<idStanza>' | 'o:<idOggetto>'.
@@ -119,25 +133,33 @@ function initTarget(rule?: Rule | null): { sel: string; prep: string; obj: strin
 export default function RuleForm({
   menu,
   rule,
+  event,
   span,
   onDone
 }: {
   menu: RulesMenu
   rule?: Rule | null
+  event?: GameEvent | null
   span?: OutlineSpan | null
   onDone: () => void
 }): JSX.Element {
   const applyStatement = useStudio((s) => s.applyStatement)
-  const inModifica = !!rule
+  const inModifica = !!rule || !!event
+  // 'rule' = «Invece di…», 'event' = «Al turno N / Ogni N turni». In modifica il
+  // tipo è fisso (lo determina ciò che si sta editando); in creazione è scelto col toggle.
+  const [kind, setKind] = useState<'rule' | 'event'>(event ? 'event' : 'rule')
 
   const t0 = initTarget(rule)
   const [verb, setVerb] = useState(rule?.verb ?? menu.verbs[0] ?? '')
   const [targetSel, setTargetSel] = useState(t0.sel) // '' = globale, 'o:<id>', 'd:<dir>'
   const [secPrep, setSecPrep] = useState(t0.prep)
   const [secObj, setSecObj] = useState(t0.obj)
-  const [response, setResponse] = useState(rule?.response ?? '')
+  // Tempistica dell'evento: 'al' = al turno N (una volta), 'ogni' = ogni N turni (ripetuto).
+  const [evMode, setEvMode] = useState<'al' | 'ogni'>(event?.mode ?? 'ogni')
+  const [evN, setEvN] = useState<number>(event?.n ?? 1)
+  const [response, setResponse] = useState(event?.response ?? rule?.response ?? '')
   const [cons, setCons] = useState<RuleConsequence[]>(
-    rule ? arricchisciCons(rule.consequences, menu) : []
+    event ? arricchisciCons(event.consequences, menu) : rule ? arricchisciCons(rule.consequences, menu) : []
   )
   const [condition, setCondition] = useState<RuleCondition | null>(rule?.condition ?? null)
   const [addKind, setAddKind] = useState<ConsKind>('prop')
@@ -170,8 +192,28 @@ export default function RuleForm({
     if (a) setCondition({ op: 'and', terms: [a] })
   }
 
+  // Un evento è valido con risposta + N≥1; una regola con verbo + risposta.
+  const valido =
+    kind === 'event'
+      ? response.trim().length > 0 && Number.isInteger(evN) && evN >= 1
+      : verb.trim().length > 0 && response.trim().length > 0
+
   const salva = async (): Promise<void> => {
-    if (!verb.trim() || !response.trim()) return
+    if (!valido) return
+    if (kind === 'event') {
+      await applyStatement(
+        {
+          op: 'event',
+          mode: evMode,
+          n: evN,
+          response: response.trim(),
+          consequences: cons
+        },
+        span ?? undefined
+      )
+      onDone()
+      return
+    }
     let target: SerializeRuleTarget | null = null
     if (targetSel.startsWith('o:')) {
       const o = menu.objects.find((x) => x.id === targetSel.slice(2))
@@ -209,8 +251,50 @@ export default function RuleForm({
       }}
     >
       <div className="modal rule-modal">
-        <h2 className="modal-title">{inModifica ? 'Modifica regola' : 'Nuova regola'}</h2>
+        <h2 className="modal-title">
+          {inModifica
+            ? kind === 'event'
+              ? 'Modifica evento'
+              : 'Modifica regola'
+            : 'Nuova regola o evento'}
+        </h2>
         <div className="rule-modal-body">
+          {!inModifica && (
+            <div className="objed-field">
+              <label>Tipo</label>
+              <div className="objed-seg">
+                <button className={kind === 'rule' ? 'on' : ''} onClick={() => setKind('rule')}>
+                  Regola (reazione a un'azione)
+                </button>
+                <button className={kind === 'event' ? 'on' : ''} onClick={() => setKind('event')}>
+                  Evento (a tempo, sui turni)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {kind === 'event' && (
+            <div className="objed-field">
+              <label>Quando (tempistica)</label>
+              <div className="ruleform-when">
+                <select value={evMode} onChange={(e) => setEvMode(e.target.value as 'al' | 'ogni')}>
+                  <option value="al">al turno (una volta sola)</option>
+                  <option value="ogni">ogni N turni (ripetuto)</option>
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={evN}
+                  onChange={(e) => setEvN(parseInt(e.target.value, 10) || 1)}
+                  style={{ width: 80 }}
+                />
+                <span className="cons-arrow">{evMode === 'al' ? 'º turno' : 'turni'}</span>
+              </div>
+            </div>
+          )}
+
+          {kind === 'rule' && (
+          <>
           <div className="objed-field">
             <label>Quando il giocatore fa…</label>
             <div className="ruleform-when">
@@ -261,6 +345,14 @@ export default function RuleForm({
                 </select>
               </div>
             )}
+            {VERBI_CON_EFFETTO.has(verb) && (
+              <p className="ruleform-warn">
+                ⚠️ «Invece di {verb}» <b>sostituisce</b> l'azione normale: la regola viene
+                eseguita <i>al posto</i> di «{verb}». Se vuoi che l'effetto avvenga comunque
+                (es. l'oggetto finisca in inventario), aggiungilo come conseguenza qui sotto
+                (es. <b>sposta un oggetto → in inventario</b>).
+              </p>
+            )}
           </div>
 
           <div className="objed-field">
@@ -279,6 +371,8 @@ export default function RuleForm({
               />
             )}
           </div>
+          </>
+          )}
 
           <div className="objed-field">
             <label>Di’ al giocatore (obbligatorio)</label>
@@ -314,12 +408,14 @@ export default function RuleForm({
           <button className="modal-btn ghost" onClick={onDone}>
             Annulla
           </button>
-          <button
-            className="modal-btn primary"
-            disabled={!verb.trim() || !response.trim()}
-            onClick={() => void salva()}
-          >
-            {inModifica ? 'Salva regola' : 'Crea regola'}
+          <button className="modal-btn primary" disabled={!valido} onClick={() => void salva()}>
+            {inModifica
+              ? kind === 'event'
+                ? 'Salva evento'
+                : 'Salva regola'
+              : kind === 'event'
+                ? 'Crea evento'
+                : 'Crea regola'}
           </button>
         </div>
       </div>

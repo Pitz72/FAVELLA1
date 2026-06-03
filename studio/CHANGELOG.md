@@ -4,6 +4,24 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.9] — 2026-06-03 — Fase 6c.4: Eventi visuali + avviso «Invece di»
+
+### Aggiunto
+- **Creazione/modifica visuale di EVENTI** nella stessa modale di RuleForm. Il pulsante ➕
+  della scheda ⚙ Regole ora apre una modale con un **toggle «Regola» / «Evento»**.
+  Scegliendo **Evento**: tempistica **«al turno N» (una volta)** o **«ogni N turni»
+  (ripetuto)** + numero, la frase `dire`, e le **stesse conseguenze** delle regole
+  (proprietà/stato/contatore/sposta/fine partita). Genera `Al turno N: …` / `Ogni N turni: …`
+  (op serializzatore `event`, già esistente da 6c.2). Gli eventi nella lista hanno ora **✎**
+  per riaprirli precompilati (prima solo ×). Frontend-only: **sidecar invariato (0.9.3),
+  motore byte-stabile, 344 test verdi.**
+- **Avviso «Invece di sostituisce l'azione normale»** nel builder di regole: quando il verbo
+  ha un **effetto di default** (prendi, lascia, metti, apri… + sinonimi) compare un riquadro
+  che ricorda che `Invece di` viene eseguito **al posto** dell'azione normale, e che per
+  mantenere l'effetto (es. l'oggetto in inventario) va aggiunto come conseguenza
+  (es. **sposta → in inventario**). Previene il tranello classico dell'IF (regola che blocca
+  silenziosamente la presa di un oggetto).
+
 ## [0.9.8] — 2026-06-03 — Pannello «Stati & Contatori» (parametri di stato)
 
 ### Aggiunto

@@ -759,6 +759,16 @@ button:hover {
   color: var(--text-dim);
   margin-top: 4px;
 }
+.ruleform-warn {
+  margin: 8px 0 0;
+  padding: 7px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: color-mix(in srgb, #d9a441 16%, var(--bg-elev2));
+  border: 1px solid color-mix(in srgb, #d9a441 45%, var(--border));
+  border-radius: 6px;
+}
 
 /* --- Editor di regole/eventi (Fase 6c) --- */
 .ruled {

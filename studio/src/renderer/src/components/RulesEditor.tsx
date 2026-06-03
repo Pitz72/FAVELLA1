@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useStudio } from '../store'
-import type { Rule, RuleCondition, RuleConsequence, OutlineSpan } from '../../../shared/protocol'
+import type {
+  Rule,
+  GameEvent,
+  RuleCondition,
+  RuleConsequence,
+  OutlineSpan
+} from '../../../shared/protocol'
 import RuleForm from './RuleForm'
 
 // --- Riassunti leggibili (sola lettura, 6c.1) ---
@@ -68,6 +74,12 @@ function ruleRepresentable(r: Rule): boolean {
   return condRepresentable(r.condition) && r.consequences.every((c) => c.op !== 'unknown')
 }
 
+// Un evento è sempre riapribile nella modale se le sue conseguenze sono note
+// (nessuna 'unknown'): non ha condizione né bersaglio da ricostruire.
+function eventRepresentable(e: GameEvent): boolean {
+  return e.consequences.every((c) => c.op !== 'unknown')
+}
+
 function conseqText(c: RuleConsequence): string {
   switch (c.op) {
     case 'prop':
@@ -94,8 +106,12 @@ export default function RulesEditor(): JSX.Element {
   const deleteStatement = useStudio((s) => s.deleteStatement)
   const requestReveal = useStudio((s) => s.requestReveal)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
-  // null = modale chiusa; {rule:null} = creazione; {rule} = modifica.
-  const [editing, setEditing] = useState<{ rule: Rule | null; span: OutlineSpan | null } | null>(null)
+  // null = modale chiusa; tutto-null = creazione; {rule}/{event} = modifica.
+  const [editing, setEditing] = useState<{
+    rule?: Rule | null
+    event?: GameEvent | null
+    span: OutlineSpan | null
+  } | null>(null)
 
   if (!isFav) {
     return <div className="insp-empty">Apri un file .fav per vedere le regole e gli eventi.</div>
@@ -135,8 +151,8 @@ export default function RulesEditor(): JSX.Element {
         <div>
           <button
             className="icon-btn"
-            title="Nuova regola"
-            onClick={() => setEditing((v) => (v ? null : { rule: null, span: null }))}
+            title="Nuova regola o evento"
+            onClick={() => setEditing((v) => (v ? null : { rule: null, event: null, span: null }))}
           >
             ➕
           </button>
@@ -150,6 +166,7 @@ export default function RulesEditor(): JSX.Element {
         <RuleForm
           menu={rules.menu}
           rule={editing.rule}
+          event={editing.event}
           span={editing.span}
           onDone={() => setEditing(null)}
         />
@@ -157,9 +174,7 @@ export default function RulesEditor(): JSX.Element {
 
       <div className="ruled-body">
         {regole.length === 0 && events.length === 0 && (
-          <p className="insp-none">
-            nessuna regola né evento — la creazione visuale arriva nel prossimo step
-          </p>
+          <p className="insp-none">nessuna regola né evento — creane uno con ➕</p>
         )}
 
         {regole.map((r, i) => (
@@ -224,6 +239,24 @@ export default function RulesEditor(): JSX.Element {
               <span className="rule-verb">
                 {e.mode === 'al' ? `al turno ${e.n}` : `ogni ${e.n} turni`}
               </span>
+              {e.span &&
+                (eventRepresentable(e) ? (
+                  <button
+                    className="rule-edit"
+                    title="Modifica questo evento"
+                    onClick={() => setEditing({ event: e, span: e.span })}
+                  >
+                    ✎
+                  </button>
+                ) : (
+                  <button
+                    className="rule-edit"
+                    title="Troppo complesso per l’editor: modificalo nel testo"
+                    onClick={() => requestReveal(e.span!.file, e.span!.line, 1)}
+                  >
+                    ✎ testo
+                  </button>
+                ))}
               {e.span && (
                 <button
                   className="rule-del"
