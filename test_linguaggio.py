@@ -740,6 +740,166 @@ def test_collocazione_su_non_contenitore_errore():
            "il log spiega che la pietra non è un contenitore/supporto")
 
 
+# --- Test: ROBUSTEZZA D'ORDINE [0.17.0] --------------------------------------
+# L'ordine delle frasi non deve più contare: posizioni, proprietà, descrizioni e
+# conseguenze risolvono le entità in valida_post, a mondo completo.
+
+def test_ordine_posizione_prima_della_stanza():
+    print("[ordine: 'X è in Y' funziona PRIMA che la stanza Y sia definita]")
+    src = (
+        "La torcia è una cosa.\n"
+        "La torcia è in cucina.\n"     # cucina non ancora definita
+        "La cucina è una stanza.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila nonostante la posizione preceda la stanza")
+    _check(mondo.trova_oggetto("torcia").posizione == "cucina",
+           "la torcia è collocata in cucina")
+    _check("torcia" in mondo.trova_stanza("cucina").oggetti,
+           "la stanza elenca la torcia")
+
+
+def test_ordine_collocazione_prima_del_contenitore():
+    print("[ordine: 'La gemma è nella scatola' PRIMA di 'La scatola è un contenitore']")
+    src = (
+        "La cripta è una stanza.\n"
+        "La gemma è una cosa.\n"
+        "La gemma è nella scatola.\n"   # scatola non ancora dichiarata contenitore
+        "La scatola è un contenitore.\n"
+        "La scatola è in cripta.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila nonostante la collocazione preceda il contenitore")
+    _check("gemma" in mondo.trova_oggetto("scatola").contenuto,
+           "la gemma è dentro la scatola")
+
+
+def test_ordine_proprieta_prima_dell_oggetto():
+    print("[ordine: 'La porta è chiusa' PRIMA di 'La porta è una cosa']")
+    src = (
+        "L'ingresso è una stanza.\n"
+        "La porta è chiusa.\n"          # proprietà prima della dichiarazione
+        "La porta è una cosa.\n"
+        "La porta è in ingresso.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila nonostante la proprietà preceda l'oggetto")
+    _check("chiusa" in mondo.trova_oggetto("porta").proprieta,
+           "la proprietà 'chiusa' è applicata")
+
+
+def test_ordine_descrizione_prima_dell_entita():
+    print("[ordine: la descrizione PRIMA della dichiarazione dell'entità]")
+    src = (
+        'La descrizione della spada è "Una lama affilata.".\n'  # prima
+        "La spada è una cosa.\n"
+        "L'armeria è una stanza.\nLa spada è in armeria.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "compila nonostante la descrizione preceda l'entità")
+    _check(mondo.trova_oggetto("spada").descrizione == "Una lama affilata.",
+           "la descrizione è applicata")
+
+
+def test_ordine_conseguenza_verso_oggetto_definito_dopo():
+    print("[ordine: una conseguenza riferisce un oggetto definito DOPO]")
+    src = (
+        "La stanza è una stanza.\n"
+        "Il giocatore comincia in stanza.\n"
+        'Invece di guarda: dire "Prendi la chiave." e adesso la chiave è in inventario.\n'
+        "La chiave è una cosa.\n"      # definita dopo la regola che la sposta
+        "La chiave è in stanza.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None,
+           "compila: la conseguenza è validata a mondo completo, non in ordine")
+
+
+def test_ordine_destinazione_inesistente_resta_errore():
+    print("[ordine: una destinazione MAI definita resta un errore bloccante]")
+    src = (
+        "La stanza è una stanza.\n"
+        "La gemma è una cosa.\n"
+        "La gemma è nel forziere.\n"   # forziere non esiste da nessuna parte
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "la destinazione inesistente fallisce ancora la compilazione")
+
+
+def test_ordine_regola_bersaglio_definito_dopo():
+    print("[ordine: 'Invece di apri la porta' PRIMA che 'la porta' sia dichiarata]")
+    src = (
+        "L'atrio è una stanza.\n"
+        "Il giocatore comincia in atrio.\n"
+        'Invece di apri la porta: dire "È sigillata.".\n'   # porta non ancora definita
+        "La porta è una cosa.\n"
+        "La porta è in atrio.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "la regola compila anche se il bersaglio è definito dopo")
+    out = esegui(mondo, "apri porta")
+    _check("È sigillata." in out, "la regola scatta correttamente a runtime")
+
+
+def test_linter_demone_non_falsa_variabile_inutilizzata():
+    print("[audit/linter: una variabile usata SOLO in un demone non è 'inutilizzata']")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "L'allarme è un contatore.\n"
+        'Quando l\'allarme è almeno 3: dire "Suona." e adesso vinci.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("inutilizz" not in log.lower(),
+           "l'allarme, usato nella condizione del demone, non è segnalato inutilizzato")
+
+
+def test_linter_demone_non_falsa_oggetto_orfano():
+    print("[audit/linter: un oggetto introdotto SOLO da un demone non è 'orfano']")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Il punteggio è un contatore.\n"
+        "La chiave è una cosa.\n"            # mai collocata in una stanza
+        'Ogni turno se il punteggio è almeno 1: dire "Tintinnio." e adesso la chiave è in inventario.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("mai collocato" not in log.lower(),
+           "la chiave, introdotta dalla conseguenza del demone, non è segnalata orfana")
+
+
+def test_comando_dopo_fine_partita_e_noop():
+    print("[audit: a partita finita un comando è un no-op (niente turni/eventi)]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        'Al turno 1: dire "Fine." e adesso perdi.\n'
+        'Ogni 1 turno: dire "TICK." e adesso vinci.\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "guarda")               # turno 1 -> perdi
+    turno_dopo_fine = mondo.turno_corrente
+    out2 = esegui(mondo, "guarda")        # a partita persa: no-op
+    _check(mondo.stato_partita == "persa", "la partita resta persa")
+    _check(mondo.turno_corrente == turno_dopo_fine,
+           "il contatore dei turni non avanza dopo la fine")
+    _check(out2.strip() == "", "nessun output: l'evento 'Ogni turno' non riscatta")
+
+
+def test_ordine_regola_bersaglio_non_oggetto_resta_errore():
+    print("[ordine: una regola su un bersaglio che non è un oggetto resta un errore]")
+    src = (
+        "L'atrio è una stanza.\n"
+        "Il giocatore comincia in atrio.\n"
+        'Invece di apri l\'atrio: dire "...".\n'   # atrio è una stanza, non un oggetto
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "il bersaglio non-oggetto fallisce ancora la compilazione")
+    _check("inesistente" in log.lower(), "il log segnala il bersaglio non valido")
+
+
 def test_scanner_raccoglie_contenitori():
     print("[scanner: 'X è un contenitore' popola gli oggetti]")
     src = "La cella è una stanza.\nUno scrigno è un contenitore.\n"
@@ -2522,6 +2682,18 @@ def main():
         test_collocazione_in_contenitore,
         test_collocazione_su_supporto,
         test_collocazione_su_non_contenitore_errore,
+        # 0.17.0 — robustezza d'ordine
+        test_ordine_posizione_prima_della_stanza,
+        test_ordine_collocazione_prima_del_contenitore,
+        test_ordine_proprieta_prima_dell_oggetto,
+        test_ordine_descrizione_prima_dell_entita,
+        test_ordine_conseguenza_verso_oggetto_definito_dopo,
+        test_ordine_destinazione_inesistente_resta_errore,
+        test_ordine_regola_bersaglio_definito_dopo,
+        test_ordine_regola_bersaglio_non_oggetto_resta_errore,
+        test_linter_demone_non_falsa_variabile_inutilizzata,
+        test_linter_demone_non_falsa_oggetto_orfano,
+        test_comando_dopo_fine_partita_e_noop,
         test_scanner_raccoglie_contenitori,
         # Livello 4 — contenitori e supporti, runtime (M1)
         test_runtime_contenitore_aperto_scope,

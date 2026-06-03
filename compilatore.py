@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.16.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.17.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -648,6 +648,16 @@ class FavellaTransformer(Transformer):
         #   _nodo_speaker:   etichetta del nodo -> npc_id che vi parla (per validare).
         self._dialogo_inizio = {}
         self._nodo_speaker = {}
+        # [0.17.0 — robustezza d'ordine] Operazioni che RISOLVONO entità per nome
+        # (posizioni, proprietà, descrizioni) e la validazione delle conseguenze
+        # vengono DIFFERITE a valida_post, così l'ordine delle frasi non conta più:
+        # 'La gemma è nella scatola.' funziona anche PRIMA di 'La scatola è un
+        # contenitore.'. Ogni voce conserva l'ordine sorgente (contenuto/varianti).
+        self._pending_posizioni = []     # (ogg_grezzo, prep, luogo_grezzo)
+        self._pending_proprieta = []     # (ogg_grezzo, proprieta_grezzo)
+        self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
+        self._pending_conseguenze = []   # liste di Conseguenza da validare
+        self._pending_regole_target = [] # (id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo)
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -778,7 +788,7 @@ class FavellaTransformer(Transformer):
                 esito = a              # ("conduce"|"chiude", destinazione)
             elif isinstance(a, Conseguenza):
                 conseguenze.append(a)
-        self._valida_conseguenze(conseguenze)
+        self._pending_conseguenze.append(conseguenze)
         tipo, destinazione = esito
         if tipo == "chiude":
             opz = OpzioneDialogo(testo_opzione, chiude=True,
@@ -818,12 +828,16 @@ class FavellaTransformer(Transformer):
             if isinstance(t, Condizione):
                 condizione = t
                 break
+        # [0.17.0] Differita a valida_post: l'entità può essere dichiarata dopo.
+        self._pending_descrizioni.append((nome_grezzo, condizione, testo))
+        return None
 
+    def _applica_descrizione(self, nome_grezzo, condizione, testo):
         id_entita = normalizza_nome(nome_grezzo)
         bersaglio = self.mondo.trova_stanza(id_entita) or self.mondo.trova_oggetto(id_entita)
         if bersaglio is None:
             self.errori.append(f"Descrizione per entità inesistente: '{nome_grezzo}'")
-            return None
+            return
 
         if condizione is None:
             # Descrizione di base (fallback se nessuna condizionale è vera).
@@ -831,9 +845,14 @@ class FavellaTransformer(Transformer):
         else:
             # [Livello 5] Variante condizionale, valutata in ordine a runtime.
             bersaglio.descrizioni_condizionali.append((condizione, testo))
-        return None
 
     def def_posizione(self, ogg_grezzo, prep, luogo_grezzo):
+        # [0.17.0] Differita a valida_post (vedi _applica_posizione): la
+        # destinazione può essere dichiarata DOPO la posizione.
+        self._pending_posizioni.append((ogg_grezzo, prep, luogo_grezzo))
+        return None
+
+    def _applica_posizione(self, ogg_grezzo, prep, luogo_grezzo):
         id_ogg = normalizza_nome(ogg_grezzo)
         id_luogo = normalizza_nome(luogo_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
@@ -858,24 +877,27 @@ class FavellaTransformer(Transformer):
             )
         else:
             self.errori.append(f"Stanza inesistente '{luogo_grezzo}' per posizionare '{ogg_grezzo}'")
-        return None
 
     def def_proprieta(self, ogg_grezzo, proprieta_grezzo):
         # [Livello 2.5] 'è prendibile' è confluito qui come PROPRIETÀ SPECIALE:
         # avere una regola def_prendibile separata creava l'unica vera collisione
         # lessicale residua (`è prendibile` = keyword vs proprietà). Trattando
         # 'prendibile' come proprietà speciale, la grammatica diventa 0-ambigua.
+        # [0.17.0] Differita a valida_post: l'oggetto può essere dichiarato dopo.
+        self._pending_proprieta.append((ogg_grezzo, proprieta_grezzo))
+        return None
+
+    def _applica_proprieta(self, ogg_grezzo, proprieta_grezzo):
         id_ogg = normalizza_nome(ogg_grezzo)
         proprieta = normalizza_nome(proprieta_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         if not oggetto:
             self.errori.append(f"Proprietà '{proprieta_grezzo}' per oggetto inesistente: '{ogg_grezzo}'")
-            return None
+            return
         if proprieta == "prendibile":
             oggetto.prendibile = True
         else:
             oggetto.aggiungi_proprieta(proprieta)
-        return None
 
     def def_stato(self, var_grezzo):
         # [Livello 3] Dichiarazione di uno 'stato' globale (valore iniziale None).
@@ -1104,7 +1126,7 @@ class FavellaTransformer(Transformer):
                 f"almeno 1; evento ignorato."
             )
             return None
-        self._valida_conseguenze(conseguenze)
+        self._pending_conseguenze.append(conseguenze)
         self.mondo.aggiungi_evento(Evento(tipo, numero, risposta, conseguenze))
         return None
 
@@ -1121,7 +1143,7 @@ class FavellaTransformer(Transformer):
         condizione = args[0]
         risposta = args[1]
         conseguenze = [a for a in args[2:] if isinstance(a, Conseguenza)]
-        self._valida_conseguenze(conseguenze)
+        self._pending_conseguenze.append(conseguenze)
         self.mondo.aggiungi_demone(Demone(tipo, condizione, risposta, conseguenze))
         return None
 
@@ -1166,7 +1188,7 @@ class FavellaTransformer(Transformer):
 
         # --- Regola GLOBALE (senza bersaglio) ---
         if target is None:
-            self._valida_conseguenze(conseguenze)
+            self._pending_conseguenze.append(conseguenze)
             self.mondo.aggiungi_regola(Regola(
                 verbo=verbo,
                 id_oggetto_bersaglio=None,
@@ -1190,28 +1212,23 @@ class FavellaTransformer(Transformer):
         if id_ogg1 in self.mondo.direzioni:
             id_ogg1 = self.mondo.direzioni[id_ogg1]
 
-        # Verifica entità principali della regola
-        if self.mondo.trova_oggetto(id_ogg1) or id_ogg1 in self.mondo.opposte_direzioni:
-            if id_ogg2 and not self.mondo.trova_oggetto(id_ogg2):
-                self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
-            else:
-                # Valida ogni conseguenza a compile-time (logica condivisa con
-                # gli eventi). Non tutte agiscono su un oggetto (es. fine partita).
-                self._valida_conseguenze(conseguenze)
-
-                nuova_regola = Regola(
-                    verbo=verbo,
-                    id_oggetto_bersaglio=id_ogg1,
-                    risposta=risposta,
-                    condizione=condizione,
-                    preposizione=prep_azione,
-                    id_oggetto_secondario=id_ogg2,
-                    conseguenze=conseguenze
-                )
-                self.mondo.aggiungi_regola(nuova_regola)
-        else:
-            self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
-
+        # [0.17.0 — robustezza d'ordine] La regola viene SEMPRE costruita e
+        # aggiunta; la validazione dell'esistenza del bersaglio (e del secondo
+        # oggetto) è DIFFERITA a valida_post, così 'Invece di apri la porta: …'
+        # funziona anche se 'la porta' è dichiarata DOPO la regola. Le conseguenze
+        # seguono la stessa differita. La canonicalizzazione delle direzioni è già
+        # order-independent (mappe pre-popolate in __init__ dalla Passata 1).
+        self._pending_conseguenze.append(conseguenze)
+        self._pending_regole_target.append((id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo))
+        self.mondo.aggiungi_regola(Regola(
+            verbo=verbo,
+            id_oggetto_bersaglio=id_ogg1,
+            risposta=risposta,
+            condizione=condizione,
+            preposizione=prep_azione,
+            id_oggetto_secondario=id_ogg2,
+            conseguenze=conseguenze,
+        ))
         return None
 
     # --- Validazione semantica globale (dopo il transform completo) ---
@@ -1223,6 +1240,26 @@ class FavellaTransformer(Transformer):
         (bloccanti) e warnings (non bloccanti).
         """
         m = self.mondo
+
+        # 0. [0.17.0 — robustezza d'ordine] Applica le operazioni DIFFERITE che
+        #    risolvono entità per nome, ora che TUTTE le dichiarazioni sono state
+        #    processate (tipi inclusi: stanza/contenitore/supporto). L'ordine
+        #    sorgente è preservato (contenuto dei contenitori, varianti di
+        #    descrizione). Va PRIMA di ogni altro controllo perché il linter
+        #    (analisi_statica) e il baseline dei demoni leggono posizioni/proprietà.
+        for ogg, prep, luogo in self._pending_posizioni:
+            self._applica_posizione(ogg, prep, luogo)
+        for ogg, prop in self._pending_proprieta:
+            self._applica_proprieta(ogg, prop)
+        for nome, cond, testo in self._pending_descrizioni:
+            self._applica_descrizione(nome, cond, testo)
+        for conseguenze in self._pending_conseguenze:
+            self._valida_conseguenze(conseguenze)
+        for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
+            if not (m.trova_oggetto(id_ogg1) or id_ogg1 in m.opposte_direzioni):
+                self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
+            elif id_ogg2 and not m.trova_oggetto(id_ogg2):
+                self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
 
         # 1. [GG1] La stanza di partenza dichiarata deve esistere.
         if self.start_dichiarato_raw is not None:
@@ -1506,6 +1543,8 @@ class FavellaTransformer(Transformer):
         descrizioni condizionali."""
         m = self.mondo
         condizioni = [r.condizione for r in m.regole if r.condizione is not None]
+        # [Livello 8] Ogni demone ha SEMPRE una condizione (è la sua ragion d'essere).
+        condizioni += [d.condizione for d in m.demoni]
         for nodo in m.dialogo_nodi.values():
             condizioni += [o.condizione for o in nodo.opzioni if o.condizione is not None]
         for ent in list(m.stanze.values()) + list(m.oggetti.values()):
@@ -1520,6 +1559,8 @@ class FavellaTransformer(Transformer):
             conseguenze.extend(r.conseguenze)
         for e in m.eventi:
             conseguenze.extend(e.conseguenze)
+        for d in m.demoni:                 # [Livello 8]
+            conseguenze.extend(d.conseguenze)
         for nodo in m.dialogo_nodi.values():
             for opz in nodo.opzioni:
                 conseguenze.extend(opz.conseguenze)
@@ -1536,6 +1577,7 @@ class FavellaTransformer(Transformer):
             testi += [t for _, t in ent.descrizioni_condizionali]
         testi += [r.risposta for r in m.regole]
         testi += [e.risposta for e in m.eventi]
+        testi += [d.risposta for d in m.demoni]   # [Livello 8]
         for nodo in m.dialogo_nodi.values():
             testi.append(nodo.battuta)
             testi += [o.testo for o in nodo.opzioni]

@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.16.0)
+# Interprete Interattivo per FAVELLA 1 (v0.17.0)
 
 import sys
 import traceback
@@ -150,6 +150,12 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     Restituisce True se il gioco deve continuare, False se deve terminare
     (uscita del giocatore, fine partita o evento terminale).
     """
+    # [Audit 0.17.0] A partita conclusa il comando è un no-op: niente turni, niente
+    # eventi/demoni. Difende dai chiamanti che ignorano il False di ritorno (in un
+    # loop corretto non si arriva mai qui dopo la fine). Si controlla lo stato
+    # SENZA passare da partita_finita(), che ristamperebbe l'esito.
+    if getattr(mondo, "stato_partita", "in_corso") != "in_corso":
+        return False
     comando_pulito = comando_grezzo.strip().lower()
     if not comando_pulito:
         return True

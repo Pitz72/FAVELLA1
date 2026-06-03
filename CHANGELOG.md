@@ -4,6 +4,41 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.17.0] - 2026-06-03
+### Robustezza d'ordine + audit dei Livelli 1-8 🧱
+Due lavori della sequenza «linguaggio al massimo»: rendere il linguaggio
+**indipendente dall'ordine** delle frasi e una **rassegna** dei livelli 1-8.
+
+**Robustezza d'ordine.** Finora una frase che *usa* un'entità doveva venire DOPO
+la sua definizione: `La gemma è nella scatola.` falliva se `La scatola è un
+contenitore.` arrivava dopo. Ora la risoluzione delle entità per nome è
+**differita a fine compilazione** (`valida_post`, a mondo completo), così l'ordine
+non conta più. Vale per:
+- **posizioni** (`X è in/nella/sul Y`), incluse le collocazioni in contenitori/supporti;
+- **proprietà** (`X è chiusa`);
+- **descrizioni** (`La descrizione di X è "…"`);
+- **conseguenze** (`… e adesso la chiave è in inventario`) che citano entità definite dopo;
+- **bersaglio delle regole** (`Invece di apri la porta: …` con `la porta` dichiarata dopo).
+
+Gli errori veri restano: una destinazione/bersaglio **mai** definito fallisce
+ancora la compilazione (solo il *momento* del controllo è cambiato, non l'esito).
+È una modifica **semantica**: la grammatica è invariata (spec
+`documentazione/grammatica-0.16.0.md` resta valida).
+
+**Audit — due bug corretti:**
+1. **No-op a partita conclusa.** Dopo `vinci`/`perdi`/`termina`, un ulteriore
+   comando non avanza più il turno né fa scattare eventi/demoni (prima, un
+   chiamante che ignorava il valore di ritorno poteva far ripartire gli eventi).
+2. **Linter cieco ai demoni.** Le analisi statiche «variabile inutilizzata» e
+   «oggetto orfano» non guardavano dentro i demoni (Livello 8): una variabile o un
+   oggetto usati *solo* in un demone venivano falsamente segnalati. Ora
+   `_tutte_le_condizioni`/`_tutte_le_conseguenze`/`_tutti_i_testi` includono i demoni.
+
+- Suite linguaggio: **386 asserzioni** (era 364), tutte verdi; 11 nuovi test
+  (8 di robustezza d'ordine, 1 no-op fine partita, 2 linter+demoni). `analizza_file`
+  invariata. Sidecar `VERSIONE_MOTORE` → 0.17.0. Dettaglio in
+  `documentazione/0.17.0.md`.
+
 ## [0.16.0] - 2026-06-03
 ### Valore iniziale configurabile dei contatori 🔢
 Finora un contatore partiva **sempre da 0**: per dargli un valore di partenza
