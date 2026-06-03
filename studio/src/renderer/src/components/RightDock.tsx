@@ -5,6 +5,7 @@ import MapView from './MapView'
 import StateInspector from './StateInspector'
 import DebugPanel from './DebugPanel'
 import ObjectsEditor from './ObjectsEditor'
+import RoomEditor from './RoomEditor'
 import RulesEditor from './RulesEditor'
 import VariablesEditor from './VariablesEditor'
 
@@ -12,6 +13,7 @@ import VariablesEditor from './VariablesEditor'
 const TITOLI: Record<Exclude<RightTab, null>, string> = {
   gioca: '▶ Gioca',
   mappa: '🗺 Mappa',
+  stanze: '🏠 Stanze',
   stato: '🔎 Stato',
   debug: '🐞 Debug',
   oggetti: '📦 Oggetti',
@@ -42,6 +44,7 @@ export default function RightDock(): JSX.Element | null {
     if (tab === 'stato') void loadSnapshot()
     if (tab === 'debug') void loadDebug()
     if (tab === 'oggetti') void loadOutline()
+    if (tab === 'stanze') void loadOutline()
     if (tab === 'regole') void loadRules()
     if (tab === 'stati') void loadVariables()
   }, [tab, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables])
@@ -94,6 +97,7 @@ export default function RightDock(): JSX.Element | null {
         {tab === 'stato' && <StateInspector />}
         {tab === 'debug' && <DebugPanel />}
         {tab === 'oggetti' && <ObjectsEditor />}
+        {tab === 'stanze' && <RoomEditor />}
         {tab === 'regole' && <RulesEditor />}
         {tab === 'stati' && <VariablesEditor />}
       </div>

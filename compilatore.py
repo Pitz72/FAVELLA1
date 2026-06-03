@@ -2060,11 +2060,13 @@ def analizza_outline(percorso_file, sorgente=None):
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     if not diag.get("ok"):
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "opposites": [], "errors": diag.get("errors", [])}
+                "directions": [], "opposites": [], "startSpan": None,
+                "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "opposites": [], "errors": diag.get("errors", [])}
+                "directions": [], "opposites": [], "startSpan": None,
+                "errors": diag.get("errors", [])}
 
     # 2. Posizioni: secondo parse con propagate_positions, mappa riga→(file, riga).
     try:
@@ -2270,8 +2272,13 @@ def analizza_outline(percorso_file, sorgente=None):
             opposites.append({"a": chiave[0], "b": chiave[1]})
     opposites.sort(key=lambda p: (p["a"], p["b"]))
 
+    # Span della frase di partenza ('Il giocatore comincia in X.'), se presente:
+    # permette all'editor stanze di SOSTITUIRLA (non accumularne di nuove).
+    start_span = next((f["span"] for f in frasi if f["data"] == "def_giocatore"), None)
+
     return {"ok": True, "rooms": rooms, "objects": objects,
-            "directions": directions, "opposites": opposites, "errors": []}
+            "directions": directions, "opposites": opposites,
+            "startSpan": start_span, "errors": []}
 
 
 def _ha_descr_condizionale(frasi, id_entita) -> bool:

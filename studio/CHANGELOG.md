@@ -4,6 +4,27 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.10] — 2026-06-03 — Editor delle stanze + fix ordine posizioni
+
+### Aggiunto
+- **Editor delle STANZE** (nuova scheda **🏠 Stanze**, titlebar + dock): lista delle stanze
+  + form per la stanza selezionata. Modifica la **descrizione** (textarea + Salva, round-trip
+  via `descSpan`; le descrizioni condizionali restano «modificale nel testo» con salto alla riga).
+  Imposta la **posizione iniziale del giocatore** (checkbox ★): scrive `Il giocatore comincia in
+  <stanza>.` (nome senza articolo → «in cucina») **sostituendo** l'eventuale partenza precedente
+  invece di accumularne. Mostra anche le **uscite** (sola lettura: si collegano dalla Mappa). Il
+  **nome** è in sola lettura (rinominare cambia l'id → si fa nel testo).
+- Backend additivo: `world.outline` ora espone **`startSpan`** (span della frase «Il giocatore
+  comincia in X.»), per sostituirla in modo pulito. Sidecar **0.9.4**. Motore byte-stabile, **344 test verdi**.
+
+### Corretto
+- **Ordine delle posizioni** nell'editor Oggetti: spostando un oggetto in una **stanza creata da
+  poco** (definita in fondo al file), la frase di posizione veniva sostituita *in loco* finendo
+  PRIMA della definizione della stanza → errore «stanza inesistente». Ora l'IDE controlla se la
+  destinazione è definita prima del punto della frase: se sì sostituisce in loco (preserva il
+  layout), se è definita dopo **appende in fondo** (come già per i contenitori). Stessa
+  salvaguardia ordine-dipendenze del transformer.
+
 ## [0.9.9] — 2026-06-03 — Fase 6c.4: Eventi visuali + avviso «Invece di»
 
 ### Aggiunto

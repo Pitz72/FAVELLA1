@@ -759,6 +759,11 @@ button:hover {
   color: var(--text-dim);
   margin-top: 4px;
 }
+.var-badge {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
 .ruleform-warn {
   margin: 8px 0 0;
   padding: 7px 10px;

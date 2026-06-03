@@ -89,7 +89,10 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       (`move`: nel nulla / in inventario / stanza / contenitore / supporto, prep concordata).
       **6c.4 fatto (IDE 0.9.9)**: **eventi visuali** (`Al turno N` / `Ogni N turni`) nella stessa
       modale via toggle Regola/Evento, con ✎ per modificarli; **avviso «Invece di sostituisce
-      l'azione normale»** sui verbi con effetto di default (prendi/lascia/metti/apri). Mancano
+      l'azione normale»** sui verbi con effetto di default (prendi/lascia/metti/apri).
+      **Editor STANZE (🏠 Stanze, IDE 0.9.10 / sidecar 0.9.4)**: descrizione + posizione iniziale
+      del giocatore (round-trip via `descSpan`/`startSpan`), uscite in sola lettura. Più un fix
+      all'ordine delle posizioni (oggetto → stanza creata di recente = append in fondo). Mancano
       i dialoghi/NPC (6b).
 - [x] **Pannello «Stati & Contatori» (⚖ Stati, IDE 0.9.8 / sidecar 0.9.3)**: crea/modifica/
       elimina i **parametri di stato** del mondo — **stati** (variabili a parole, enum-like) e

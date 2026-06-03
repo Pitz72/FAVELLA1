@@ -48,7 +48,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.14.0"
-VERSIONE_SIDECAR = "0.9.3"  # Stati & contatori: world.variables + op serializzatore stati
+VERSIONE_SIDECAR = "0.9.4"  # Editor stanze: world.outline espone startSpan (frase di partenza)
 
 
 # ==============================================================================

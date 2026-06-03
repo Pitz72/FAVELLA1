@@ -21,6 +21,7 @@ import { FAVELLA_LANG_ID } from './monaco/favella-language'
 export type RightTab =
   | 'gioca'
   | 'mappa'
+  | 'stanze'
   | 'stato'
   | 'debug'
   | 'oggetti'

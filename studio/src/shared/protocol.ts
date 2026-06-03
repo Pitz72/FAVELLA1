@@ -265,6 +265,9 @@ export interface Outline {
   directions: string[]
   // Coppie di proprietà opposte note nel mondo (default + dichiarate dall'autore).
   opposites: OutlinePair[]
+  // Span della frase «Il giocatore comincia in X.» (null se assente): permette
+  // all'editor stanze di SOSTITUIRLA invece di accumularne di nuove.
+  startSpan: OutlineSpan | null
   errors: Diagnostic[]
 }
 

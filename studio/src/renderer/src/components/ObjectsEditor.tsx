@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
-import type { ObjectKind, OutlineObject, OutlineLocation } from '../../../shared/protocol'
+import type { ObjectKind, OutlineObject, OutlineLocation, OutlineSpan } from '../../../shared/protocol'
 import { specPosizione } from '../utils/posizione'
 
 const KIND_LABEL: Record<ObjectKind, string> = {
@@ -126,24 +126,31 @@ export default function ObjectsEditor(): JSX.Element {
       await applyStatement({ op: 'prendibile', name: sel.name })
     }
   }
-  // Colloca `objName` secondo `spec`. Il transformer tipa le posizioni NELL'ORDINE
-  // del sorgente: una frase «X è nel contenitore» che PRECEDE la definizione del
-  // contenitore dà «stanza inesistente». Perciò, quando il bersaglio è un
-  // contenitore/supporto, la frase va APPESA in fondo (dopo ogni definizione),
-  // eliminando l'eventuale posizione precedente. Per le STANZE (definite prima) la
-  // sostituzione in loco è sicura e preserva il layout d'autore.
+  // Colloca un oggetto secondo `spec`. Il transformer tipa le posizioni NELL'ORDINE
+  // del sorgente: una frase «X è in Y» che PRECEDE la definizione di Y dà «stanza/
+  // contenitore inesistente». Quindi: se la destinazione è definita DOPO il punto in
+  // cui finirebbe la frase, va APPESA in fondo (dopo ogni definizione), eliminando la
+  // posizione precedente; altrimenti la sostituzione in loco è sicura e preserva il
+  // layout d'autore. `append=true` forza l'append (contenitori/supporti, o stanza
+  // definita dopo — es. stanza appena creata in fondo al file).
   const colloca = async (
     oldLoc: OutlineLocation | null,
     spec: { op: 'position'; name: string; prep: string; place: string },
-    inContenitore: boolean
+    append: boolean
   ): Promise<void> => {
-    if (inContenitore) {
+    if (append) {
       if (oldLoc?.span) await deleteStatement(oldLoc.span)
       await applyStatement(spec)
     } else {
       await applyStatement(spec, oldLoc?.span ?? undefined)
     }
   }
+
+  // Replace-in-loco sicuro solo se la destinazione è definita PRIMA del punto in cui
+  // la frase resterebbe (la riga della vecchia posizione). Senza vecchia posizione,
+  // senza defSpan, o su file diversi → append in coda (sempre dopo ogni definizione).
+  const definitaPrima = (destDefSpan: OutlineSpan | null, oldSpan: OutlineSpan | null): boolean =>
+    !!destDefSpan && !!oldSpan && destDefSpan.file === oldSpan.file && destDefSpan.line < oldSpan.line
 
   const cambiaPosizione = async (targetId: string): Promise<void> => {
     if (!sel) return
@@ -153,7 +160,10 @@ export default function ObjectsEditor(): JSX.Element {
     }
     const room = rooms.find((r) => r.id === targetId)
     if (room) {
-      await colloca(sel.location, specPosizione(sel.name, { name: room.name, kind: 'stanza' }), false)
+      // Stanza: append se definita DOPO (es. stanza appena creata in fondo), altrimenti
+      // sostituzione in loco (caso normale: stanze in cima al file).
+      const append = !definitaPrima(room.defSpan, sel.location?.span ?? null)
+      await colloca(sel.location, specPosizione(sel.name, { name: room.name, kind: 'stanza' }), append)
       return
     }
     const cont = objects.find((o) => o.id === targetId)

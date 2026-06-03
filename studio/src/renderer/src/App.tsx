@@ -160,6 +160,14 @@ export default function App(): JSX.Element {
             🗺 Mappa
           </button>
           <button
+            className={'tool-btn' + (rightTab === 'stanze' ? ' active' : '')}
+            title="Editor stanze (descrizione, posizione iniziale)"
+            onClick={() => (rightTab === 'stanze' ? closeDock() : setRightTab('stanze'))}
+            disabled={!isFav}
+          >
+            🏠 Stanze
+          </button>
+          <button
             className={'tool-btn' + (rightTab === 'oggetti' ? ' active' : '')}
             title="Editor oggetti (crea e modifica)"
             onClick={() => (rightTab === 'oggetti' ? closeDock() : setRightTab('oggetti'))}
