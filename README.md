@@ -1,6 +1,8 @@
 # FAVELLA 1
 
-![Favella Banner](https://i.imgur.com/your-banner-image.png) <!-- Immagine placeholder, da sostituire -->
+<p align="center">
+  <img src="assets/banner.png" alt="FAVELLA 1 — Programmare storie interattive in linguaggio naturale italiano" width="840">
+</p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
 

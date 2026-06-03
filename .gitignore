@@ -154,3 +154,6 @@ Thumbs.db
 
 # IDE Favella Studio: spostato in repo privata (Pitz72/favella-studio)
 /studio/
+
+# Brand kit 2026: fonte locale (master + derivati + archivio); in pubblico vanno solo gli asset in assets/
+/Branding2026/
