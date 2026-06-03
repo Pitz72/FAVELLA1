@@ -1,0 +1,58 @@
+# ============================================================================
+# traduci.fav — Modulo MATRICE DI TRADUZIONE  [Livelli 3+5: contatore,
+#               descrizioni a soglia, interpolazione, verbo custom 'traduci']
+# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.17.0
+# ----------------------------------------------------------------------------
+# Il contatore 'traduzione' (0→100) cresce ANALIZZANDO quattro reperti:
+#   Lastra Dati 4% · Cilindro Mnemonico 18% · Stele 75% · Nucleo 100%.
+# Più la matrice è avanzata, più i testi alieni si aprono. Le quattro fasce
+# sono rese mutuamente esclusive con condizioni composte (è almeno X e è meno
+# di Y): così l'ordine delle regole non conta. La soglia 100% accende un demone
+# (in relitto.fav). Sola lettura: TRADUCI non cambia lo stato del gioco.
+# Incluso da relitto.fav.
+# ============================================================================
+
+# ╔════════════════════════════════════════════════════════════════════════╗
+# ║ A. ANALIZZA dei reperti → avanzamento della matrice                      ║
+# ╚════════════════════════════════════════════════════════════════════════╝
+Invece di analizza la lastra dati se la traduzione è meno di 4: dire "Inserisci la lastra in un alloggiamento del multiscanner: i processori lavorano febbrilmente e iniziano a costruire una matrice di traduzione. Una voce metallica e distorta restituisce un frammento: '...giorno del Grande Salto... (intraducibile: canto-radice)... le tre lune danzano fredde... il Viaggio è il nostro (intraducibile: dovere-gioia)... presto vedremo nuove stelle...' (Matrice di traduzione: 4%)" e adesso la traduzione diventa 4.
+Invece di analizza la lastra dati: dire "Hai già estratto i dati della lastra. (Matrice di traduzione: [traduzione]%)".
+
+Invece di analizza il cilindro mnemonico se la traduzione è meno di 18: dire "Inserisci il cilindro nello scanner: è un'altra registrazione, la matrice si aggiorna. La voce è più chiara, più personale: '...il legame-collettivo si affievolisce. I cicli sono quasi compiuti. Il Grande Salto è stato un successo, ma il nostro tempo finisce. Lasciamo questa eco... questo (intraducibile: seme-dell-anima)... perché chi verrà dopo conosca il motivo. Non la fine. La continuazione...' (Matrice di traduzione: 18%)" e adesso la traduzione diventa 18.
+Invece di analizza il cilindro mnemonico: dire "Hai già analizzato il cilindro. (Matrice di traduzione: [traduzione]%)".
+
+Invece di analizza la stele se la traduzione è meno di 75: dire "Lo scanner assorbe i dati a velocità impressionante: una chiave di volta linguistica, un archivio culturale immenso. Una voce quasi perfetta, poetica e malinconica, risuona dal traduttore: 'Quando i tre soli sanguinarono, sapemmo che il tempo era cenere. Non piangemmo il nostro mondo, perché il mondo è un'idea, e le idee non muoiono. Lo affidammo al Grande Vuoto, perché un nuovo seme potesse attecchire in un terreno non ancora scritto. Il nostro corpo è polvere, ma il nostro ricordo è una stella.' (Matrice di traduzione: 75% — i tre soli, ora, hanno un nome)" e adesso la traduzione diventa 75 e adesso il sistema è noto.
+Invece di analizza la stele: dire "Hai già analizzato la stele. (Matrice di traduzione: [traduzione]%)".
+
+Invece di analizza il nucleo se la traduzione è meno di 100: dire "Il cristallo non contiene dati storici: una sola registrazione, l'ultima voce salvata prima del collasso dell'archivio. (Una voce calma ma infinitamente stanca) 'Log dell'Archivista, ciclo... non ha più importanza. Le matrici si sfaldano. Il canto della nostra storia svanisce. Presto, tutto ciò che eravamo non sarà mai stato. Ho salvato questo singolo pensiero. Un'eco nell'oscurità. Se qualcuno un giorno lo troverà, sappia che siamo esistiti. E che abbiamo sperato. Fine della registrazione.'" e adesso la traduzione diventa 100.
+Invece di analizza il nucleo: dire "Hai già estratto l'ultima, triste eco da questo cristallo. Non c'è altro da scoprire.".
+
+# ╔════════════════════════════════════════════════════════════════════════╗
+# ║ B. TRADUCI il bassorilievo (santuario del silenzio) — lettura a soglie    ║
+# ╚════════════════════════════════════════════════════════════════════════╝
+Invece di traduci il bassorilievo se la traduzione è meno di 18: dire "Provi a leggere i glifi accanto a ogni scena. La matrice restituisce solo forme: linee che si rincorrono, spirali, un ritmo. Le immagini parlano — tre soli, semi di luce, navi in partenza — ma le parole restano chiuse. Ti serve più materiale linguistico.".
+Invece di traduci il bassorilievo se la traduzione è almeno 18 e la traduzione è meno di 75: dire "Qualche parola affiora dai glifi, isolata, come una pietra dalla bassa marea: '...sanguinarono...', '...non il mondo, ma l'idea...', '...affidare...'. Il senso completo sfugge ancora, ma non è più soltanto arte: è una frase spezzata, che qualcuno ha voluto lasciare.".
+Invece di traduci il bassorilievo se la traduzione è almeno 75 e la traduzione è meno di 100: dire "I glifi si sciolgono in lingua. Sotto ogni scena scorre una didascalia, e per la prima volta il fregio non racconta soltanto: dice. 'Vedemmo i tre soli sanguinare e non maledicemmo il cielo. Piantammo dove non avremmo raccolto. Salimmo sapendo di non arrivare. Chi troverà queste pareti sappia: non fu una fuga. Fu una semina.'".
+Invece di traduci il bassorilievo se la traduzione è almeno 100: dire "Il fregio si apre del tutto. 'Vedemmo i tre soli sanguinare e non maledicemmo il cielo. Piantammo dove non avremmo raccolto. Salimmo sapendo di non arrivare. Non fu una fuga: fu una semina.' E un'ultima riga corre al margine, più piccola, incisa forse da una mano sola dopo tutte le altre: 'E se la semina ha attecchito, allora qualcuno sta leggendo. Allora non eravamo soli. Allora è bastato.'".
+
+# ╔════════════════════════════════════════════════════════════════════════╗
+# ║ C. TRADUCI il globo olografico e la lastra incisa (scriptorium)                 ║
+# ╚════════════════════════════════════════════════════════════════════════╝
+Invece di traduci il globo olografico se la traduzione è meno di 18: dire "I globi turbinano troppo in fretta perché la matrice li agganci. Per un istante un simbolo si ferma, quasi leggibile, poi si dissolve nel flusso. È come voler bere da una cascata.".
+Invece di traduci il globo olografico se la traduzione è almeno 18 e la traduzione è meno di 75: dire "Rallentando i globi, fermi qualche intestazione: 'registro di chi nacque sotto il primo sole', 'atlante delle acque perdute', 'canti per chi resta'. Solo i titoli. Ma bastano a misurare l'abisso: qui c'è la memoria intera di un popolo.".
+Invece di traduci il globo olografico se la traduzione è almeno 75 e la traduzione è meno di 100: dire "Per la prima volta gli indici si aprono. Non è una biblioteca: è tutto. Nascite e lutti, mappe di fiumi che non esistono più, leggi, ninnenanne, l'inclinazione di tre soli all'alba di un giorno qualunque. Ne sfiori uno a caso: è una filastrocca per addormentare i piccoli. La traduci a mezza voce, e ti accorgi che la stai quasi cantando.".
+Invece di traduci il globo olografico se la traduzione è almeno 100: dire "Gli archivi sono interamente leggibili. Eppure un solo globo, in disparte, non è un archivio: è un messaggio lasciato aperto, indirizzato a chi sarebbe venuto. 'Non leggerci tutti. Non potresti, e non devi. Leggine uno, e portalo via con te. Ne basta uno perché non sia stato invano.'".
+
+Invece di traduci la lastra incisa se la traduzione è meno di 18: dire "Passi le dita sui solchi mentre la matrice tenta la lettura. Non escono parole, solo la loro forma: pressione decisa, un ritmo che accelera e poi si ferma di colpo. Qualcosa di urgente, e di personale. Ma chiuso.".
+Invece di traduci la lastra incisa se la traduzione è almeno 18 e la traduzione è meno di 75: dire "Affiorano poche parole, e tra queste un pronome che torna: 'io... io che ho inciso...', '...l'ultima...'. Non è il linguaggio impersonale degli archivi. Qui qualcuno parla in prima persona. Da solo.".
+Invece di traduci la lastra incisa se la traduzione è almeno 75 e la traduzione è meno di 100: dire "La firma si apre, e non è un documento: è una voce. 'Io sono l'ultimo che ha scritto qui. Non un re, non un sapiente: soltanto l'ultima mano ancora sveglia. Ho inciso questo nella pietra perché nessun guasto possa cancellarlo: siamo stati. Abbiamo amato il nostro mondo e l'abbiamo lasciato andare. Se mi leggi, di' il nostro nome, anche se non lo conosci. Dillo lo stesso.'".
+Invece di traduci la lastra incisa se la traduzione è almeno 100: dire "Leggi la firma fino in fondo: 'Se mi leggi, di' il nostro nome, anche se non lo conosci. Dillo lo stesso.' L'ultimo glifo è incompiuto — un solco che parte e non torna: lo scriba si è fermato a metà del segno e non ha più ripreso. La matrice non ha nulla da tradurre, lì. Eppure è la riga che capisci meglio.".
+
+# ╔════════════════════════════════════════════════════════════════════════╗
+# ║ D. TRADUCI la mappa stellare (ponte di comando) — solo a Ponte attivo    ║
+# ╚════════════════════════════════════════════════════════════════════════╝
+Invece di traduci la mappa stellare se la proiezione è spenta: dire "Non c'è nessuna mappa proiettata da tradurre: il Ponte è ancora inerte.".
+Invece di traduci la mappa stellare se la traduzione è meno di 18: dire "Lungo la rotta, accanto a ogni tappa, galleggiano piccole annotazioni in simboli alieni. La matrice non le aggancia: per ora sono solo decorazioni di luce su un viaggio che non sai ancora leggere.".
+Invece di traduci la mappa stellare se la traduzione è almeno 18 e la traduzione è meno di 75: dire "Qualche annotazione si lascia leggere a tratti: numeri di cicli, distanze, e una parola sola ripetuta con insistenza vicino al punto d'arrivo — il tuo sistema solare. Non riesci ancora a renderla, ma è scritta più grande delle altre, come se contasse più di tutto.".
+Invece di traduci la mappa stellare se la traduzione è almeno 75 e la traduzione è meno di 100: dire "Le annotazioni si aprono lungo la rotta: segnavia, un conto alla rovescia di cicli che nessuno avrebbe visto scadere, le coordinate della partenza presso i tre soli. E accanto al tuo sole, finalmente, quella parola ripetuta: 'giardino — qui, se da qualche parte.'".
+Invece di traduci la mappa stellare se la traduzione è almeno 100: dire "Leggi tutto. 'giardino — qui, se da qualche parte.' E proprio sopra il tuo sistema solare, in una grafia più piccola, aggiunta dopo, una riga che non è una rotta: 'Non torneremo a vedere se è fiorito. Va bene così.'".
