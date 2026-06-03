@@ -40,7 +40,8 @@ attuale delle conoscenze. Grammatica sempre **LALR(1) 0-ambigua**. Suite da 386 
 
 **Consolidamento:** versioni allineate a **0.18.0** (moduli core, suite, sidecar,
 `Mondo.__str__`); spec EBNF `documentazione/grammatica-0.18.0.md`; demo
-naturalizzate (`su il`→`sul`). Sidecar `VERSIONE_MOTORE` → 0.18.0.
+naturalizzate (`su il`→`sul`). Sidecar `VERSIONE_MOTORE` → 0.18.0. Dettaglio in
+`documentazione/0.18.0.md`.
 
 ## [0.17.0] - 2026-06-03
 ### Robustezza d'ordine + audit dei Livelli 1-8 🧱

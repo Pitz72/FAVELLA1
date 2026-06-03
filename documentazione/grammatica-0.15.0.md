@@ -1,5 +1,9 @@
 # FAVELLA 1 — Specifica formale della grammatica (v0.15.0)
 
+> ⚠️ **Specifica storica.** Fotografa la grammatica alla **v0.15.0**. La versione
+> **corrente** è [`grammatica-0.18.0.md`](grammatica-0.18.0.md); questo documento è
+> conservato come cronaca dell'evoluzione del linguaggio.
+
 > Documento **tecnico** versionato. Fissa lo *scheletro statico* della grammatica
 > di FAVELLA 1 e il modello dei *terminali chiusi generati per-file*. **Non** è il
 > manuale d'autore: descrive il linguaggio dal punto di vista del compilatore.

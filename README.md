@@ -41,7 +41,7 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Libreria azioni (`libreria_azioni.py`) | **0.18.0** | header di modulo |
 | Specifica formale della grammatica | **0.18.0** | [`documentazione/grammatica-0.18.0.md`](documentazione/grammatica-0.18.0.md) |
 | Suite di test (`test_linguaggio.py`) | **0.18.0** | 446 test verdi |
-| Sidecar IDE (`favella_server.py`) | `VERSIONE_MOTORE` 0.18.0 | — |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 0.18.0 | — |
 
 > Le etichette di versione più vecchie che compaiono nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** delle tappe e non riflettono lo stato attuale, che è **v0.18.0** su tutta la linea. Il manuale d'autore (`documentazione/manuale/`) sarà rigenerato sulla v0.18.0 in una prossima iterazione.
 
@@ -67,12 +67,6 @@ Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.7
 - **Diagnostica d'autore:** avvisi su refusi nelle proprietà, verbi sconosciuti, condizioni sempre false.
 - **Grammatica disambiguata** + **suite di test** (`python test_linguaggio.py`), **stringhe con escape**, **tolleranza tipografica**.
 
-### Novità: FAVELLA STUDIO (IDE Premium v0.4.0)
-- **Design System Premium "Cyber-Scrittore":** Una splendida Dark Mode con stili coordinati per menu, toolbar, schede (tab) e finestre di dialogo, ottimizzando la leggibilità della prosa.
-- **Rendering Asincrono della Mappa:** Visualizza il grafo delle stanze e delle connessioni in tempo reale. Il calcolo delle posizioni dei nodi è delegato ad un thread secondario (`QThread`) eliminando ogni freeze dell'interfaccia.
-- **Marker Visivi degli Errori Sintattici:** Evidenziazione visiva automatica in rosso scuro soffuso della riga d'errore Lark per assistere l'autore nel debug del codice.
-- **Console di Gioco Ottimizzata:** Cattura l'output del gioco eliminando spazi e righe vuote duplicate e fornendo un feedback visivo immediato se il gioco non è attivo.
-
 ### Core del Linguaggio (storico — etichettato all'epoca «Grammatica v0.4.0»)
 - **Conservazione dell'Estetica Originale:** I nomi di stanze e oggetti conservano gli articoli e la capitalizzazione originali scritti dall'autore (es. `"Una keycard magnetica"`, `"La cella di contenimento"`), pur mantenendo l'ID normalizzato per la logica.
 - **Preposizioni Tolleranti:** Tolleranza ed eliminazione del problema *"guess-the-preposition"* nei comandi a due oggetti (es. `usa la keycard con la porta` si mappa automaticamente a `usa la keycard su la porta`).
@@ -85,40 +79,15 @@ Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.7
 
 ## 🎮 Come Iniziare
 
-Puoi usare FAVELLA in due modi: tramite il nuovo IDE grafico o da riga di comando.
-
-### Opzione A: FAVELLA STUDIO (Consigliata)
-
-IDE desktop ufficiale (Electron + React) con editor a syntax highlighting,
-diagnostica in tempo reale e console di gioco integrata. Vive in `studio/`.
-
-1.  **Installa le dipendenze** (Node.js 20+ e una `.venv` Python con `lark`):
-    ```bash
-    cd studio
-    npm install
-    ```
-
-2.  **Avvia l'IDE:**
-    ```bash
-    npm run dev
-    ```
-
-3.  **Divertiti:**
-    - Apri la cartella del progetto e seleziona un file `.fav`. Esempi pronti in
-      [`esempi/`](esempi/): la demo completa in `esempi/demo/storia.fav` e una
-      storia con un errore voluto in `esempi/test debug/storia-con-errore.fav`.
-    - La **diagnostica** è continua: errori e avvisi nel pannello Problemi.
-    - Premi **▶ Gioca** (o **F5**) per testare la tua avventura.
-
-> Dettagli, build e packaging: [`studio/README.md`](studio/README.md).
-
-### Opzione B: Riga di Comando (Legacy)
-
-Per i puristi del terminale, l'interprete classico è sempre disponibile:
+FAVELLA si usa da riga di comando: il compilatore e l'interprete sono in Python
+puro (unica dipendenza: `lark`). Esempi pronti in [`esempi/`](esempi/) — su tutti
+la **demo ufficiale** «Il Relitto Silente» in
+[`esempi/demo/relitto-silente/`](esempi/demo/relitto-silente/) e una storia con un
+errore voluto in `esempi/test debug/storia-con-errore.fav`.
 
 1.  **Clona il Repository:**
     ```sh
-    git clone https://github.com/tuo-username/FAVELLA1.git
+    git clone https://github.com/Pitz72/FAVELLA1.git
     cd FAVELLA1
     ```
 
@@ -147,10 +116,11 @@ Per i puristi del terminale, l'interprete classico è sempre disponibile:
 3.  **Esegui il Gioco:**
     Lancia il gioco dal terminale, passandogli il nome del tuo file di storia:
     ```sh
-    python gioco.py esempi/demo/storia.fav
+    python gioco.py esempi/demo/relitto-silente/relitto.fav
     ```
 
-    Apparirà il mondo che hai creato. Inserisci comandi come:
+    Apparirà il mondo che hai creato (o la demo ufficiale, se lanci quella).
+    Inserisci comandi come:
     - `nord` o `n` per muoverti tra le stanze
     - `prendi chiave` per raccogliere oggetti
     - `inventario` o `i` per vedere cosa possiedi
@@ -177,17 +147,23 @@ Per i puristi del terminale, l'interprete classico è sempre disponibile:
 
 ---
 
-## 🗺️ Roadmap Futura
+## 🗺️ Roadmap
 
-FAVELLA 1 è un progetto in crescita. Le prossime tappe includono:
+I **Livelli 1-8** della roadmap del linguaggio sono **chiusi** e la v0.18.0 ha
+consolidato il tutto: il linguaggio FAVELLA è completo ed eccellente allo stato
+attuale delle conoscenze. Sono già disponibili azioni a due oggetti (`usa X su Y`,
+ora con clausola `se`), condizioni composte (AND/OR/NOT con parentesi),
+contenitori e supporti, modifiche dinamiche del mondo (`e adesso …`), stati e
+contatori, NPC con dialoghi ramificati, eventi a turni e demoni (eventi
+condizionali). Il percorso completo è documentato in [CHANGELOG.md](CHANGELOG.md)
+e nei documenti per-versione in [`documentazione/`](documentazione/).
 
--   **Azioni a Due Oggetti:** Implementazione completa di `usa X con Y`
--   **Condizioni Composte:** Logica AND, OR, NOT per puzzle più complessi
--   **Contenitori:** Oggetti che possono contenerne altri
--   **Modifiche Dinamiche:** Cambiare proprietà degli oggetti durante il gioco
--   **Personaggi Non Giocanti (NPC):** Entità con cui dialogare
--   **Sistema di Dialoghi:** Conversazioni ramificate
--   **Eventi Temporali:** Azioni che si attivano dopo un certo numero di turni
+Le prossime tappe non riguardano nuove primitive del linguaggio, ma il suo
+contorno:
+
+-   **Manuale d'autore completo**, rigenerato sulla v0.18.0 (con la demo come guida).
+-   **Eventuale internazionalizzazione** e valutazione di una **1.0.0** «linguaggio
+    maturo» quando l'esperienza d'uso lo confermerà.
 
 ---
 
