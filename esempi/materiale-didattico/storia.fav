@@ -1,5 +1,10 @@
-# storia.fav — Orchestratore demo «La Casa di Via Stradivari»
-# FAVELLA 1 v0.12.0 — Vetrina dei costrutti del linguaggio (Livelli 1→6)
+# storia.fav — «La Casa di Via Stradivari»  [MATERIALE DIDATTICO]
+# FAVELLA 1 v0.17.0 — Vetrina dei costrutti del linguaggio (Livelli 1→8)
+#
+# Questo esempio è pensato per il MANUALE: ogni costrutto è etichettato col suo
+# Livello. Aggiornato dalla v0.12 con le novità del motore: contatore con VALORE
+# INIZIALE [0.16.0], DEMONI / if-then autonomi [Livello 8, 0.15.0] e una
+# dimostrazione esplicita di ROBUSTEZZA D'ORDINE [0.17.0] (il cassettone, in oggetti.fav).
 #
 # Premessa: tua zia Adele è morta da tre giorni. Sei venuto per firmare e
 # chiudere. La casa non torna. Devi capire cos'è successo e decidere cosa farne.
@@ -26,7 +31,7 @@ La descrizione della cucina è "Pavimentazione di graniglia. Lo schienale della 
 La descrizione della cucina se la verita è svelata è "Pavimentazione di graniglia. Non ti torna l'idea che sia caduta qui dentro: il pavimento è troppo pulito per una caduta. Forse non è caduta proprio.".
 
 La camera è una stanza.
-La descrizione della camera è "Letto rifatto, lenzuola fresche. Sul comodino, un libro con il segnalibro al quinto capitolo. Sopra di te, la botola della soffitta.".
+La descrizione della camera è "Letto rifatto, lenzuola fresche. Sul comodino, un libro con il segnalibro al quinto capitolo. Contro la parete, un cassettone di noce: il primo cassetto è stato forzato di recente. Sopra di te, la botola della soffitta.".
 
 La soffitta è una stanza.
 La descrizione della soffitta se la torcia è spenta è "Buio fitto sotto la trave. Distingui solo l'angolo del lucernario, e non basta.".
@@ -78,6 +83,12 @@ Il temporale è lontano.
 Gli indizi è un contatore.
 La fiducia è un contatore.
 
+# [Valore iniziale del contatore — 0.16.0] La 'calma' del protagonista non parte
+# da zero ma da 3, e cala man mano che la casa svela ciò che nasconde. È la
+# riserva su cui agiscono i demoni qui sotto.
+La calma è un contatore.
+La calma parte da 3.
+
 # ============================================================================
 # 6. MODULI INCLUSI  [Livello 6 / 0.11.2]
 # ============================================================================
@@ -94,8 +105,34 @@ Al turno 8: dire "Comincia a piovere forte. La grondaia ha un buco da anni, si s
 Ogni 5 turni: dire "L'orologio batte ma il pendolo no: si è fermato alle quattro e ventidue.".
 
 # ============================================================================
+# 7bis. DEMONI — if-then AUTONOMI  [Livello 8 / 0.15.0]  (NOVITÀ dalla v0.12)
+# ============================================================================
+# Un demone sorveglia una condizione da solo, a ogni turno, senza essere legato
+# a un verbo digitato né a un turno fisso. Due forme:
+#
+# (a) A LIVELLO — 'Ogni turno se ...': ri-scatta a OGNI turno in cui è vera.
+#     Quando il temporale è scoppiato, restare in questa casa logora la calma:
+#     l'effetto è continuo, un turno dopo l'altro (è proprio questo il senso del
+#     demone a livello).
+Ogni turno se il temporale è scoppiato: dire "Dal soffitto cade una goccia, poi un'altra. La casa, intorno a te, sembra disfarsi piano." e adesso diminuisci la calma.
+
+# (b) FRONTE DI SALITA — 'Quando ... diventa vera': scatta UNA volta sola, sulla
+#     transizione falso→vero (utile per soglie e scoperte). 'diventa vera' è
+#     opzionale, ma rende l'intento esplicito.
+Quando la calma è meno di 1 diventa vera: dire "Ti accorgi che le mani ti tremano. Non è freddo: è che questa casa ha smesso di essere una casa, e tu vuoi solo finire e andartene.".
+Quando gli indizi è almeno 4 diventa vera: dire "(Per un attimo i pezzi stanno insieme da soli: le lettere chiuse, le mensilità mai cessate, la valigia mai partita. Manca solo un nome.)".
+
+# ============================================================================
 # 8. REGOLE — GATING, PUZZLE, INDIZI, FINALI
 # ============================================================================
+
+# --- Cassettone in camera: APRI (lo scrigno del medaglione) -----------------------
+# Vedi oggetti.fav: il contenuto del cassettone è dichiarato PRIMA del cassettone stesso,
+# per dimostrare la robustezza d'ordine [0.17.0].
+Invece di apri il cassettone se il cassettone è chiuso: dire "Il primo cassetto cede subito: era solo accostato. Dentro, avvolto in un fazzoletto, qualcosa di piccolo e pesante." e adesso il cassettone è aperto.
+
+# medaglione: altro indizio; intacca anche la calma (sentinella 'notato').
+Invece di esamina il medaglione se il medaglione non è notato: dire "Dentro, una ciocca di capelli chiarissimi e mezza fotografia: lo stesso neonato della foto di gruppo. L'ha tenuto addosso per cinquant'anni, e non l'ha mai detto a nessuno." e adesso aumenta gli indizi e adesso il medaglione è notato e adesso diminuisci la calma.
 
 # --- Gating delle stanze buie / sbarrate ------------------------------------
 # 'basso' esiste solo dall'ingresso → la porta sbarrata blocca un percorso
@@ -140,10 +177,10 @@ Invece di bevi il bicchiere di grappa: dire "Ne resta poca. Ti riempie la bocca 
 
 # --- Esami con conseguenza: indizi + eventuale cambio di stato --------------
 # fotografia: gated da 'verita ignota' (si auto-disarma). CONSEGUENZE MULTIPLE.
-Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verita è sospetta.
+Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verita è sospetta e adesso diminuisci la calma.
 
 # medicine: sentinella d'oggetto 'notata' per impedire il farming.
-Invece di esamina il flacone di medicine se il flacone di medicine non è notata: dire "Cardioaspirina, scatola sigillata, prescrizione del mese scorso. Non ne ha presa una. Chi smette di prenderle è qualcuno che ha deciso di smettere." e adesso aumenta gli indizi e adesso il flacone di medicine è notata.
+Invece di esamina il flacone di medicine se il flacone di medicine non è notata: dire "Cardioaspirina, scatola sigillata, prescrizione del mese scorso. Non ne ha presa una. Chi smette di prenderle è qualcuno che ha deciso di smettere." e adesso aumenta gli indizi e adesso il flacone di medicine è notata e adesso diminuisci la calma.
 
 # valigia: gated dal proprio stato (chiusa → aperta), conseguenze multiple
 Invece di apri la valigia se la valigia è chiusa: dire "Pelle morbida, perfettamente vuota fatta eccezione per un biglietto del treno. Mai timbrato. Voleva andare." e adesso la valigia è aperta e adesso aumenta gli indizi.

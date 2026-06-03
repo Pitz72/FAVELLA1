@@ -108,6 +108,22 @@ Il biglietto del treno è prendibile.
 Il biglietto del treno è nella valigia.
 La descrizione del biglietto del treno è "Stazione di destinazione: una città del nord. Data: il mese scorso. Mai timbrato.".
 
+# --- CAMERA: il cassettone  [DIMOSTRAZIONE di ROBUSTEZZA D'ORDINE — 0.17.0] --------
+# Di proposito colloco il medaglione DENTRO il cassettone e dichiaro il cassettone DOPO.
+# Fino alla v0.16 questo dava errore ("contenitore inesistente"); dalla v0.17.0
+# le posizioni, le proprietà e i bersagli si risolvono a fine compilazione, a
+# mondo completo: l'ordine delle frasi non conta più. (Provalo: sposta queste
+# righe a piacere, compila ancora — funziona lo stesso.)
+Il medaglione è una cosa.
+Il medaglione è prendibile.
+Il medaglione è nel cassettone.
+La descrizione del medaglione è "Un medaglione d'ottone annerito, liscio dall'uso. Si apre a fatica.".
+
+Il cassettone è un contenitore.
+Il cassettone è in camera.
+Il cassettone è chiuso.
+La descrizione del cassettone è "Un cassettone di noce a quattro cassetti. Il primo era chiuso a chiave — o lo era: la serratura è già stata forzata, di recente, da mani che non avevano più molta fermezza.".
+
 # --- SOFFITTA ---------------------------------------------------------------
 La scatola di latta è un contenitore.
 La scatola di latta è in soffitta.

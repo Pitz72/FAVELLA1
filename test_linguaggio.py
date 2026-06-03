@@ -247,7 +247,7 @@ def test_normalizzazione_apostrofo_tipografico():
 
 def test_storia_esempio_compila():
     print("[storia.fav del repository compila]")
-    percorso = os.path.join(os.path.dirname(__file__), "esempi", "demo", "storia.fav")
+    percorso = os.path.join(os.path.dirname(__file__), "esempi", "materiale-didattico", "storia.fav")
     if not os.path.exists(percorso):
         _check(True, "storia.fav non presente: test saltato")
         return
