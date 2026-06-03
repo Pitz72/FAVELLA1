@@ -151,3 +151,6 @@ Thumbs.db
 
 # Salvataggi di partita (dati utente, non versionati)
 *.favsave
+
+# IDE Favella Studio: spostato in repo privata (Pitz72/favella-studio)
+/studio/
