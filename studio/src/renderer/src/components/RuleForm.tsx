@@ -519,10 +519,16 @@ function CondAtomRow({
           <span className="cons-arrow">è</span>
           <input
             type="text"
+            list={`sv-${atom.name}`}
             placeholder="valore (es. svelata)"
             value={atom.value}
             onChange={(e) => emit({ ...atom, value: e.target.value })}
           />
+          <datalist id={`sv-${atom.name}`}>
+            {(menu.stateValues?.[atom.name] ?? []).map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
         </>
       )}
 
@@ -609,10 +615,16 @@ function ConsRow({
           <span className="cons-arrow">→</span>
           <input
             type="text"
+            list={`sv-${c.name}`}
             placeholder="valore (es. accesa)"
             value={c.value}
             onChange={(e) => onChange({ ...c, value: e.target.value })}
           />
+          <datalist id={`sv-${c.name}`}>
+            {(menu.stateValues?.[c.name] ?? []).map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
         </>
       )}
       {c.op === 'count' && (

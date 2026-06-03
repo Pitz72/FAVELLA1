@@ -13,7 +13,8 @@ import type {
   Outline,
   SerializeSpec,
   SerializeResult,
-  WorldRules
+  WorldRules,
+  WorldVariables
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -86,6 +87,10 @@ const api = {
   /** [Fase 6c] Modello editabile di regole/eventi con span sorgente. */
   worldRules(path?: string, source?: string): Promise<WorldRules> {
     return ipcRenderer.invoke('rpc', 'world.rules', path ? { path, source } : {})
+  },
+  /** [Stati] Modello editabile di stati/contatori con span sorgente. */
+  worldVariables(path?: string, source?: string): Promise<WorldVariables> {
+    return ipcRenderer.invoke('rpc', 'world.variables', path ? { path, source } : {})
   },
   /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
   serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {

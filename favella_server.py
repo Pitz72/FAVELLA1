@@ -37,7 +37,8 @@ _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
                              compila_mondo, analizza_outline, analizza_regole,
-                             serializza_frase, VERBI_VALIDI, PAROLE_RISERVATE)
+                             analizza_variabili, serializza_frase, VERBI_VALIDI,
+                             PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
@@ -47,7 +48,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.14.0"
-VERSIONE_SIDECAR = "0.9.2"  # Fase 6c.3: serialize move (spostamento) nelle conseguenze
+VERSIONE_SIDECAR = "0.9.3"  # Stati & contatori: world.variables + op serializzatore stati
 
 
 # ==============================================================================
@@ -431,6 +432,24 @@ def rpc_world_rules(params):
     return analizza_regole(percorso, sorgente)
 
 
+def rpc_world_variables(params):
+    """[Stati & contatori] Modello editabile di STATI e CONTATORI con lo span
+    sorgente delle frasi (dichiarazione, valore iniziale, commento dei valori), per
+    il pannello «Stati & Contatori». Stessa risoluzione di world.outline: senza
+    'path' usa la partita attiva; con 'path' (+ 'source') legge il buffer."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    if not percorso:
+        return {"ok": False, "states": [], "counters": [],
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return analizza_variabili(percorso, sorgente)
+
+
 def rpc_outline_serialize(params):
     """[Fase 6a] Genera la frase .fav canonica da una specifica strutturata
     (op + campi), per il round-trip in SCRITTURA degli editor visuali. L'IDE
@@ -461,6 +480,7 @@ _METODI = {
     "world.snapshot": rpc_world_snapshot,
     "world.outline": rpc_world_outline,
     "world.rules": rpc_world_rules,
+    "world.variables": rpc_world_variables,
     "outline.serialize": rpc_outline_serialize,
     "session.history": rpc_session_history,
     "session.save": rpc_session_save,

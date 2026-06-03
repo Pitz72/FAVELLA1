@@ -724,6 +724,42 @@ button:hover {
   color: var(--text);
 }
 
+/* --- Pannello Stati & Contatori --- */
+.var-values {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+.var-chipname {
+  background: transparent !important;
+  color: var(--text) !important;
+  border: none;
+  padding: 0 2px !important;
+  font: inherit;
+  cursor: pointer;
+}
+.objed-chip.var-initial {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-elev2));
+}
+.objed-chip.var-initial .var-chipname {
+  color: var(--accent) !important;
+  font-weight: 600;
+  cursor: default;
+}
+.var-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.var-note {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
 /* --- Editor di regole/eventi (Fase 6c) --- */
 .ruled {
   display: flex;

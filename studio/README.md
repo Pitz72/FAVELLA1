@@ -89,6 +89,14 @@ Per il packaging completo il motore Python va congelato con PyInstaller (`onedir
       (`move`: nel nulla / in inventario / stanza / contenitore / supporto, prep concordata).
       Resta **6c.4** (eventi `Al turno N` / `Ogni N turni` nella stessa modale). Mancano anche
       dialoghi/NPC (6b).
+- [x] **Pannello «Stati & Contatori» (⚖ Stati, IDE 0.9.8 / sidecar 0.9.3)**: crea/modifica/
+      elimina i **parametri di stato** del mondo — **stati** (variabili a parole, enum-like) e
+      **contatori** (numeri da 0). Creazione in modale ampia (nome, valore iniziale, elenco
+      valori ammessi); i valori ammessi si persistono in un **commento canonico**
+      `# valori di X: a, b, c` (ignorato dal motore → byte-stabile) che popola i menu del
+      builder **subito**. Modifica inline (chip valori: clic = iniziale ★, × = togli; +valore;
+      elimina). Backend additivo: `analizza_variabili` + RPC `world.variables` + op serializzatore
+      stati + `menu.stateValues` (valori osservati ∪ commento). **344 test verdi.**
 - [ ] Fase 7 — Packaging del gioco
 
 Piano completo: `../../.claude/plans/starry-wandering-key.md` (radice utente).

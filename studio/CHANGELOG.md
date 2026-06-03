@@ -4,6 +4,37 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente v0.12.1).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [0.9.8] — 2026-06-03 — Pannello «Stati & Contatori» (parametri di stato)
+
+### Aggiunto
+- **Nuova scheda ⚖ Stati** (titlebar + dock): crea, modifica ed elimina i **parametri
+  di stato** del mondo — gli **stati** (variabili a parole, enum-like: `atmosfera` =
+  tranquilla/inquieta/ostile) e i **contatori** (numeri che salgono e scendono, partono
+  da 0: `sospetto`, `punteggio`). Finora si dichiaravano solo a mano nel testo, e i menu
+  a tendina del builder di regole restavano vuoti finché non lo si faceva.
+- **Creazione** in una **modale ampia**: tipo (stato/contatore), nome, e per gli stati
+  il **valore iniziale** + l'**elenco dei valori ammessi**. Scrive le frasi canoniche
+  `X è uno stato.` / `X è un contatore.` / `X è valore.`
+- **Persistenza dei valori ammessi** via un **commento canonico** `# valori di X: a, b, c`
+  scritto sotto la dichiarazione: il **motore lo ignora** (è un commento → semantica
+  byte-stabile, 344 test intatti) ma il sidecar lo legge per popolare i menu **subito**,
+  anche con valori non ancora usati in alcuna regola.
+- **Modifica inline** di uno stato nella lista: **chip dei valori** cliccabili (clic =
+  imposta come **valore iniziale ★**, **×** = togli dall'elenco), campo **+valore** per
+  aggiungerne, **×** per eliminare lo stato/contatore. Ogni operazione riscrive una sola
+  frase via lo span (undo nativo); l'eliminazione rimuove dichiarazione + valore iniziale
+  + commento dal basso verso l'alto (le righe superiori non slittano).
+- **Builder di regole più ricco**: il campo «valore» di una condizione/conseguenza su uno
+  stato ora **suggerisce i valori noti** (datalist) restando comunque digitabile. Alimentato
+  dal nuovo `menu.stateValues` (valori **osservati** nel sorgente ∪ **dichiarati** nel commento).
+
+### Backend (additivo — motore byte-stabile, 344 test verdi)
+- `compilatore.py`: 4 op del serializzatore (`state_decl`, `state_init`, `counter_decl`,
+  `state_values_comment`); funzione `analizza_variabili(path, source)` (stati/contatori con
+  gli **span** di dichiarazione/valore iniziale/commento, per l'editing chirurgico);
+  `menu.stateValues` in `analizza_regole`.
+- Sidecar **0.9.3**: nuova RPC **`world.variables`**.
+
 ## [0.9.7] — 2026-06-02 — Fase 6c.3: Condizioni annidate, modifica regole, spostamento
 
 ### Aggiunto

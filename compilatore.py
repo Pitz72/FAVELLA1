@@ -2326,6 +2326,50 @@ def _kind_variabile(mondo, nome):
     return "contatore" if isinstance(mondo.variabili.get(nome), int) else "stato"
 
 
+# [Favella Studio / Stati] Commento canonico che persiste l'elenco dei valori
+# ammessi di uno stato: '# valori di <nome>: a, b, c'. Il motore lo ignora (è un
+# commento); il sidecar lo legge per popolare i dropdown anche con valori non
+# ancora usati in alcuna regola. Vedi serializza_frase op 'state_values_comment'.
+_RE_VALORI_COMMENTO = re.compile(
+    r"^\s*#\s*valori\s+di\s+(?P<nome>.+?)\s*:\s*(?P<lista>.+?)\s*$", re.IGNORECASE)
+
+
+def _raccogli_valori_cond(cond, acc):
+    """Accumula in acc (dict id-stato -> set di valori) i valori-stato citati in una
+    condizione JSON (ricorsiva: not/and/or)."""
+    if not cond:
+        return
+    op = cond.get("op")
+    if op == "var" and cond.get("value"):
+        acc.setdefault(cond["name"], set()).add(cond["value"])
+    elif op == "not":
+        _raccogli_valori_cond(cond.get("term"), acc)
+    elif op in ("and", "or"):
+        for t in cond.get("terms", []):
+            _raccogli_valori_cond(t, acc)
+
+
+def _raccogli_valori_conseq(conseguenze, acc):
+    """Accumula in acc i valori-stato impostati da una lista di conseguenze JSON."""
+    for c in conseguenze or []:
+        if c.get("op") == "var" and c.get("value"):
+            acc.setdefault(c["name"], set()).add(c["value"])
+
+
+def _valori_commento(testo):
+    """Scansiona il sorgente espanso per i commenti '# valori di X: …'. Ritorna
+    una lista di (nome_grezzo, [valori], linea_espansa). Nessun filtro qui sui
+    nomi: il chiamante normalizza e tiene solo gli stati realmente dichiarati."""
+    fuori = []
+    for i, riga in enumerate(testo.splitlines(), start=1):
+        m = _RE_VALORI_COMMENTO.match(riga)
+        if not m:
+            continue
+        valori = [v.strip().lower() for v in m.group("lista").split(",") if v.strip()]
+        fuori.append((m.group("nome").strip(), valori, i))
+    return fuori
+
+
 def _cond_to_json(c, mondo):
     """Serializza una Condizione (albero) in JSON ricorsivo. None → None."""
     if c is None:
@@ -2509,6 +2553,27 @@ def analizza_regole(percorso_file, sorgente=None):
     states, counters = [], []
     for nome in mondo.variabili:
         (counters if _kind_variabile(mondo, nome) == "contatore" else states).append(nome)
+
+    # [Stati] Valori ammessi per ogni stato: OSSERVATI (valore iniziale + valori
+    # citati in condizioni/conseguenze) ∪ DICHIARATI (commento '# valori di X: …').
+    # Alimenta il dropdown del valore-stato nel builder di regole.
+    valori_acc = {}
+    for nome in states:
+        iniziale = mondo.variabili.get(nome)
+        if isinstance(iniziale, str) and iniziale:
+            valori_acc.setdefault(nome, set()).add(iniziale)
+    for r in rules:
+        _raccogli_valori_cond(r.get("condition"), valori_acc)
+        _raccogli_valori_conseq(r.get("consequences"), valori_acc)
+    for e in events:
+        _raccogli_valori_conseq(e.get("consequences"), valori_acc)
+    set_states = set(states)
+    for nome_grezzo, valori_c, _linea in _valori_commento(testo if tree is not None else ""):
+        nid = normalizza_nome(nome_grezzo)
+        if nid in set_states:
+            valori_acc.setdefault(nid, set()).update(valori_c)
+    state_values = {nome: sorted(valori_acc.get(nome, set())) for nome in states}
+
     menu = {
         "verbs": sorted(VERBI_VALIDI),
         "objects": [{"id": oid, "name": o.nome_visualizzato,
@@ -2521,9 +2586,111 @@ def analizza_regole(percorso_file, sorgente=None):
         "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
         "states": sorted(states),
         "counters": sorted(counters),
+        "stateValues": state_values,
     }
 
     return {"ok": True, "rules": rules, "events": events, "menu": menu, "errors": []}
+
+
+def analizza_variabili(percorso_file, sorgente=None):
+    """[Favella Studio / Stati] Modello editabile di STATI e CONTATORI con lo span
+    sorgente delle frasi rilevanti, per il pannello «Stati & Contatori». Ritorna:
+      {ok,
+       states[{name, initial|None, initialSpan|None, declSpan|None,
+                values[], valuesComment{span,values}|None}],
+       counters[{name, declSpan|None}],
+       errors[]}
+    'values' è l'elenco curato dei valori ammessi = valore iniziale ∪ commento
+    canonico '# valori di X: …'. Difensiva: su errore ritorna ok=False, non solleva."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "states": [], "counters": [],
+                "errors": diag.get("errors", [])}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "states": [], "counters": [],
+                "errors": diag.get("errors", [])}
+
+    # Span: secondo parse posizionato (come analizza_regole/analizza_outline).
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True)
+        tree = parser.parse(testo)
+    except Exception:
+        tree, mappa_righe, testo = None, [], ""
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1]
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp=None):
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
+
+    # Indicizza le frasi di dichiarazione/valore-iniziale con il loro span.
+    decl_stato, decl_cont, init_stato = {}, {}, {}
+    if tree is not None:
+        for nodo in tree.children:
+            if not isinstance(nodo, Tree):
+                continue
+            meta = getattr(nodo, "meta", None)
+            line = getattr(meta, "line", None) if meta else None
+            end = getattr(meta, "end_line", line) if meta else None
+            span = _span(line, end)
+            tok = _tokens_per_tipo(nodo)
+            vlist = tok.get("VARIABILE", [])
+            if not vlist:
+                continue
+            nome = normalizza_nome(str(vlist[0]))
+            if nodo.data == "def_stato":
+                decl_stato[nome] = span
+            elif nodo.data == "def_contatore":
+                decl_cont[nome] = span
+            elif nodo.data == "def_stato_valore":
+                props = tok.get("PROPRIETA", [])
+                valore = normalizza_nome(str(props[0])) if props else None
+                init_stato[nome] = (valore, span)  # l'ultima vince (come il motore)
+
+    # Commenti '# valori di X: …' → mappa id-stato -> (valori, span). Ultima vince.
+    commenti = {}
+    for nome_grezzo, valori_c, linea in _valori_commento(testo if tree is not None else ""):
+        nid = normalizza_nome(nome_grezzo)
+        commenti[nid] = (valori_c, _span(linea))
+
+    states, counters = [], []
+    for nome in mondo.variabili:
+        if _kind_variabile(mondo, nome) == "contatore":
+            counters.append({"name": nome, "declSpan": decl_cont.get(nome)})
+            continue
+        iniziale = mondo.variabili.get(nome)
+        iniziale = iniziale if isinstance(iniziale, str) and iniziale else None
+        cval, cspan = commenti.get(nome, (None, None))
+        valori = set(cval or [])
+        if iniziale:
+            valori.add(iniziale)
+        states.append({
+            "name": nome,
+            "initial": iniziale,
+            "initialSpan": (init_stato.get(nome) or (None, None))[1],
+            "declSpan": decl_stato.get(nome),
+            "values": sorted(valori),
+            "valuesComment": ({"span": cspan, "values": cval} if cval is not None else None),
+        })
+
+    states.sort(key=lambda s: s["name"])
+    counters.sort(key=lambda c: c["name"])
+    return {"ok": True, "states": states, "counters": counters, "errors": []}
 
 
 # ==============================================================================
@@ -2724,6 +2891,10 @@ def serializza_frase(spec):
       start       {name}
       direction_decl {a, b}   →  'A e B sono direzioni opposte.'
       opposite_decl  {a, b}   →  'a e b sono opposte.' (coppia di proprietà)
+      state_decl     {name}          →  'X è uno stato.'
+      state_init     {name, value}   →  'X è valore.' (valore iniziale dello stato)
+      counter_decl   {name}          →  'X è un contatore.'
+      state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
     'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo); condizione e
@@ -2764,6 +2935,28 @@ def serializza_frase(spec):
             a = str(spec["a"]).strip()
             b = str(spec["b"]).strip()
             return {"ok": True, "text": f"{a} e {b} sono opposte."}
+        if op == "state_decl":
+            # [Favella Studio / Stati] 'X è uno stato.' — dichiara una variabile
+            # globale enum-like. Il nome è scritto verbatim (il regex VARIABILE
+            # tollera l'articolo opzionale, come per le ENTITA).
+            return {"ok": True, "text": f"{str(spec['name']).strip()} è uno stato."}
+        if op == "state_init":
+            # 'X è valore.' — valore iniziale di uno stato (def_stato_valore). Vale
+            # anche per CAMBIARE il valore iniziale. Il valore è una PROPRIETA
+            # (monoparola, minuscola).
+            return {"ok": True,
+                    "text": f"{str(spec['name']).strip()} è {str(spec['value']).strip()}."}
+        if op == "counter_decl":
+            # 'X è un contatore.' — contatore numerico (valore iniziale 0).
+            return {"ok": True, "text": f"{str(spec['name']).strip()} è un contatore."}
+        if op == "state_values_comment":
+            # Commento canonico per persistere l'elenco dei valori ammessi di uno
+            # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo
+            # IGNORA (è un commento) → semantica byte-stabile; il sidecar lo legge in
+            # analizza_variabili per popolare i dropdown. Forma: '# valori di X: a, b'.
+            valori = [str(v).strip() for v in (spec.get("values") or []) if str(v).strip()]
+            return {"ok": True,
+                    "text": f"# valori di {str(spec['name']).strip()}: {', '.join(valori)}"}
         if op == "rule":
             return {"ok": True, "text": _serializza_regola(spec)}
         if op == "event":

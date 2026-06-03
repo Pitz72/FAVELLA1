@@ -291,6 +291,13 @@ export type SerializeSpec =
       consequences: RuleConsequence[]
     }
   | { op: 'event'; mode: 'al' | 'ogni'; n: number; response: string; consequences: RuleConsequence[] }
+  // Stati & contatori. 'state_decl'/'counter_decl' dichiarano la variabile;
+  // 'state_init' (ri)assegna il valore iniziale di uno stato; 'state_values_comment'
+  // emette il commento canonico '# valori di X: …' (ignorato dal motore).
+  | { op: 'state_decl'; name: string }
+  | { op: 'state_init'; name: string; value: string }
+  | { op: 'counter_decl'; name: string }
+  | { op: 'state_values_comment'; name: string; values: string[] }
 
 export interface SerializeResult {
   ok: boolean
@@ -366,6 +373,9 @@ export interface RulesMenu {
   directions: string[]
   states: string[]
   counters: string[]
+  // Valori ammessi per ogni stato (osservati ∪ commento canonico). Alimenta il
+  // dropdown del valore-stato nel builder di regole. Mappa id-stato -> valori.
+  stateValues: Record<string, string[]>
 }
 
 export interface WorldRules {
@@ -373,6 +383,32 @@ export interface WorldRules {
   rules: Rule[]
   events: GameEvent[]
   menu: RulesMenu
+  errors: Diagnostic[]
+}
+
+// --- Pannello Stati & Contatori ---
+
+// Uno STATO globale (variabile enum-like). 'values' è l'elenco curato dei valori
+// ammessi (valore iniziale ∪ commento canonico '# valori di X: …'). Gli span
+// permettono all'IDE di modificare/eliminare le frasi via splice Monaco.
+export interface VarState {
+  name: string
+  initial: string | null
+  initialSpan: OutlineSpan | null
+  declSpan: OutlineSpan | null
+  values: string[]
+  valuesComment: { span: OutlineSpan | null; values: string[] } | null
+}
+
+export interface VarCounter {
+  name: string
+  declSpan: OutlineSpan | null
+}
+
+export interface WorldVariables {
+  ok: boolean
+  states: VarState[]
+  counters: VarCounter[]
   errors: Diagnostic[]
 }
 

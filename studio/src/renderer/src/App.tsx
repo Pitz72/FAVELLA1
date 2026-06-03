@@ -176,6 +176,14 @@ export default function App(): JSX.Element {
             ⚙ Regole
           </button>
           <button
+            className={'tool-btn' + (rightTab === 'stati' ? ' active' : '')}
+            title="Stati e contatori (parametri di stato del mondo)"
+            onClick={() => (rightTab === 'stati' ? closeDock() : setRightTab('stati'))}
+            disabled={!isFav}
+          >
+            ⚖ Stati
+          </button>
+          <button
             className={'tool-btn' + (rightTab === 'stato' ? ' active' : '')}
             title="Ispettore di stato"
             onClick={() => (rightTab === 'stato' ? closeDock() : setRightTab('stato'))}
