@@ -1248,6 +1248,46 @@ def test_demone_cascata_un_solo_passaggio():
            "il demone a valle ha applicato la sua conseguenza nel medesimo passaggio")
 
 
+# --- Test: VALORE INIZIALE DEI CONTATORI [0.16.0] ----------------------------
+
+def test_contatore_valore_iniziale():
+    print("[contatore: 'La forza parte da N' imposta il valore iniziale]")
+    src = (
+        "La forza è un contatore.\n"
+        "La forza parte da 3.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "la dichiarazione con valore iniziale compila")
+    _check(mondo.variabili["forza"] == 3, "il contatore parte da 3, non da 0")
+
+
+def test_contatore_valore_iniziale_ordine_libero():
+    print("[contatore: 'parte da' funziona anche PRIMA di 'è un contatore']")
+    src = (
+        "La forza parte da 5.\n"
+        "La forza è un contatore.\n"   # setdefault non sovrascrive il 5
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and mondo.variabili["forza"] == 5,
+           "l'ordine delle due frasi non conta: resta 5")
+
+
+def test_contatore_valore_iniziale_in_condizione():
+    print("[contatore: il valore iniziale è visibile alle condizioni a runtime]")
+    src = (
+        "L'atrio è una stanza.\n"
+        "Il giocatore comincia in atrio.\n"
+        "La porta è una cosa.\nLa porta è in atrio.\n"
+        "La forza è un contatore.\n"
+        "La forza parte da 5.\n"
+        'Invece di apri la porta se la forza è meno di 3: dire "Troppo pesante.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "apri porta")
+    _check("Troppo pesante." not in out,
+           "con forza iniziale 5 il gating (meno di 3) non scatta")
+
+
 def test_scanner_raccoglie_variabili():
     print("[scanner: 'X è uno stato' popola le variabili, non le entità]")
     src = (
@@ -1345,6 +1385,7 @@ _CORPUS_GUARDIA = (
     'Invece di frusta la chiave: dire "Schiocco.".\n'  # regola con verbo custom
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
     "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
+    "Il punteggio parte da 2.\n"                        # def_contatore_iniziale [0.16.0]
     "Il giocatore può portare 4 oggetti.\n"            # def_giocatore_capacita [Livello 7]
     "La chiave dà 2 spazi.\n"                          # def_capacita_oggetto [Livello 7]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
@@ -2312,7 +2353,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.15.0.md")
+                          "grammatica-0.16.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2329,7 +2370,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.15.0.md è presente")
+           "documentazione/grammatica-0.16.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -2523,6 +2564,10 @@ def main():
         test_demone_quando_scatta_una_sola_volta,
         test_demone_ogni_turno_a_livello,
         test_demone_cascata_un_solo_passaggio,
+        # 0.16.0 — valore iniziale dei contatori
+        test_contatore_valore_iniziale,
+        test_contatore_valore_iniziale_ordine_libero,
+        test_contatore_valore_iniziale_in_condizione,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,

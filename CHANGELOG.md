@@ -4,6 +4,28 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.16.0] - 2026-06-03
+### Valore iniziale configurabile dei contatori 🔢
+Finora un contatore partiva **sempre da 0**: per dargli un valore di partenza
+(forza, vita, mana iniziali per una storia in stile GDR) bisognava alzarlo a mano
+con una conseguenza. Da questa versione basta una frase:
+
+    La forza è un contatore.
+    La forza parte da 3.
+
+- **Additivo e order-independent.** La frase `parte da N` imposta il valore; può
+  comparire prima o dopo `è un contatore.` (la dichiarazione usa `setdefault` e non
+  sovrascrive). Richiede comunque che il contatore sia dichiarato nel file.
+- **Grammatica.** Nuova produzione `def_contatore_iniziale` (`VARIABILE "parte"
+  "da" NUMERO "."`): inizia con VARIABILE, il lookahead `parte` vs `è` la distingue
+  dagli altri costrutti su variabile → **LALR(1) 0-ambiguo**. Nuova riservata: `da`.
+- **Capacità di trasporto invariata.** Conferma del modello "moltiplicatore" del
+  Livello 7 (`Il giocatore può portare N oggetti.` + `Lo zaino dà N spazi.`):
+  inventario piatto, nessun contenitore-zaino, nessuno slot "indossato".
+- Suite linguaggio: **364 asserzioni** (era 360), tutte verdi; guardia
+  anti-ambiguità estesa. Spec EBNF `documentazione/grammatica-0.16.0.md`. Sidecar
+  `VERSIONE_MOTORE` → 0.16.0. Dettaglio in `documentazione/0.16.0.md`.
+
 ## [0.15.0] - 2026-06-03
 ### Roadmap del Linguaggio — Livello 8: REATTIVITÀ / DEMONI 👁️
 L'ultima capacità mancante del linguaggio: gli **eventi condizionali** (i

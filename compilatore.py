@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.15.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.16.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -66,6 +66,8 @@ PAROLE_RISERVATE = frozenset({
     "sul", "sulla", "sullo", "sui", "sugli", "sulle",
     # connessioni e posizione iniziale del giocatore
     "collega", "a", "giocatore", "comincia", "inizia", "parte",
+    # valore iniziale dei contatori (0.16.0): 'La forza parte da 3.'
+    "da",
     # regole, condizioni, conseguenze
     "invece", "se", "dire", "e", "adesso", "oppure", "non", "ha",
     # proprietà opposte (Livello 3 / M5)
@@ -258,6 +260,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_stato
                   | def_stato_valore
                   | def_contatore
+                  | def_contatore_iniziale
                   | def_contenitore
                   | def_supporto
                   | def_personaggio
@@ -323,6 +326,12 @@ _GRAMMAR_TEMPLATE = r"""
     // Contatori numerici: 'X è un contatore.' (valore iniziale 0). Distinto da
     // def_stato per il lookahead "un" vs "uno".
     def_contatore: VARIABILE "è" "un" "contatore" "."
+    // [Livello 8 / 0.16.0] Valore INIZIALE configurabile di un contatore (default
+    // 0). 'La forza parte da 3.' — richiede che il contatore sia dichiarato
+    // ('X è un contatore.', in qualunque punto del file). Inizia con VARIABILE; il
+    // lookahead "parte" vs "è" la distingue da def_stato*/def_contatore → LALR(1)
+    // 0-ambiguo (def_giocatore usa "parte" ma parte da "Il giocatore", non VARIABILE).
+    def_contatore_iniziale: VARIABILE "parte" "da" NUMERO "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -883,6 +892,14 @@ class FavellaTransformer(Transformer):
     def def_contatore(self, var_grezzo):
         # [Livello 3] Dichiarazione di un contatore numerico (valore iniziale 0).
         self.mondo.dichiara_contatore(normalizza_nome(var_grezzo))
+        return None
+
+    def def_contatore_iniziale(self, var_grezzo, numero):
+        # [0.16.0] Imposta il valore INIZIALE di un contatore ('La forza parte da
+        # 3.'). Order-independent: scriviamo direttamente il valore; una eventuale
+        # 'X è un contatore.' successiva usa setdefault e non lo sovrascrive.
+        nome = normalizza_nome(var_grezzo)
+        self.mondo.variabili[nome] = numero
         return None
 
     def def_direzioni(self, dir_a, dir_b):
