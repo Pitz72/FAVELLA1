@@ -1,5 +1,5 @@
 # storia.fav — «La Casa di Via Stradivari»  [MATERIALE DIDATTICO]
-# FAVELLA 1 v0.17.0 — Vetrina dei costrutti del linguaggio (Livelli 1→8)
+# FAVELLA 1 v0.18.0 — Vetrina dei costrutti del linguaggio (Livelli 1→8)
 #
 # Questo esempio è pensato per il MANUALE: ogni costrutto è etichettato col suo
 # Livello. Aggiornato dalla v0.12 con le novità del motore: contatore con VALORE
@@ -145,11 +145,11 @@ Invece di vai sopra se la torcia è spenta: dire "La botola dà su un buio compa
 Invece di apri la credenza se la credenza è chiusa: dire "L'anta cede con un cigolio. Dentro vedi una chiave e una lettera sciolta." e adesso la credenza è aperta.
 
 # --- Apertura della porta della cantina con la chiave (regola a 2 oggetti) --
-Invece di usa la chiave della cantina su la porta della cantina se la porta della cantina è chiusa: dire "La doppia mappa gira due volte, di scatto. La porta si apre verso il basso." e adesso la porta della cantina è aperta.
+Invece di usa la chiave della cantina sulla porta della cantina se la porta della cantina è chiusa: dire "La doppia mappa gira due volte, di scatto. La porta si apre verso il basso." e adesso la porta della cantina è aperta.
 
 # --- Apertura del cassetto: due strade --------------------------------------
 # (a) regola a 2 oggetti con la chiave dello studio
-Invece di usa la chiave dello studio su il cassetto se il cassetto è chiuso: dire "La chiave gira liscia. Il cassetto si apre senza forzature." e adesso il cassetto è aperto.
+Invece di usa la chiave dello studio sul cassetto se il cassetto è chiuso: dire "La chiave gira liscia. Il cassetto si apre senza forzature." e adesso il cassetto è aperto.
 
 # (b) verbo custom 'forza' con il portaombrelli come leva — esercita verbo
 #     custom + due oggetti + condizione composta (AND con possesso negato).

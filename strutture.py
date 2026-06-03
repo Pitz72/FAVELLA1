@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.17.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.18.0)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
@@ -68,7 +68,19 @@ class CondizioneContatore(Condizione):
             return v > self.valore
         if self.operatore == "<":
             return v < self.valore
+        if self.operatore == "<=":   # [0.18.0 / B4] 'al massimo N'
+            return v <= self.valore
         return False
+
+class CondizionePosizioneGiocatore(Condizione):
+    """[0.18.0 / B1] 'se il giocatore è in [stanza]': vera quando il giocatore si
+    trova nella stanza indicata. La negazione si ottiene avvolgendola in
+    CondizioneNot ('se il giocatore non è in [stanza]')."""
+    def __init__(self, id_stanza: str):
+        self.id_stanza = id_stanza
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return mondo.posizione_giocatore == self.id_stanza
 
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
@@ -157,11 +169,18 @@ class ConseguenzaFinePartita(Conseguenza):
     globale del mondo, che il loop di gioco controlla dopo ogni comando."""
     ESITI = ("vinta", "persa", "terminata")
 
-    def __init__(self, esito: str):
+    def __init__(self, esito: str, messaggio: Optional[str] = None):
         self.esito = esito
+        # [0.18.0 / B3] Testo d'esito opzionale: se presente, sostituisce il
+        # messaggio fisso ('*** HAI VINTO! ***' ecc.) alla chiusura della partita.
+        self.messaggio = messaggio
 
     def esegui(self, mondo: 'Mondo'):
         mondo.stato_partita = self.esito
+        # Memorizza l'eventuale messaggio personalizzato sul mondo, così il loop di
+        # gioco (gioco.partita_finita) lo stampa al posto del banner di default.
+        if self.messaggio is not None:
+            mondo.messaggio_esito = self.messaggio
 
 class ConseguenzaSpostamento(Conseguenza):
     """Rappresenta uno spostamento di un oggetto (es. verso l'inventario, una stanza o il nulla)."""
@@ -194,6 +213,19 @@ class ConseguenzaSpostamento(Conseguenza):
                 if contenitore and (contenitore.is_contenitore or contenitore.is_supporto):
                     contenitore.contenuto.add(self.id_oggetto)
                     oggetto.posizione = self.destinazione
+
+class ConseguenzaSpostamentoGiocatore(Conseguenza):
+    """[0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il giocatore è in
+    [stanza]'. Sposta il giocatore nella stanza indicata, senza passare per le
+    connessioni (`collega`). La stanza dev'essere esistente (validata in
+    valida_post); a stanza inesistente l'effetto è nullo. Il loop di gioco mostra
+    la nuova stanza quando il movimento avviene per una regola del giocatore."""
+    def __init__(self, id_stanza: str):
+        self.id_stanza = id_stanza
+
+    def esegui(self, mondo: 'Mondo'):
+        if mondo.trova_stanza(self.id_stanza):
+            mondo.posizione_giocatore = self.id_stanza
 
 # --- Classi Esistenti (con modifiche) ---
 
@@ -391,6 +423,9 @@ class Mondo:
         # fine partita non lo porta a "vinta"/"persa"/"terminata". Il loop di
         # gioco lo controlla dopo ogni comando per fermarsi.
         self.stato_partita: str = "in_corso"
+        # [0.18.0 / B3] Messaggio d'esito personalizzato impostato da una
+        # conseguenza 'vinci/perdi/termina "…"'. None = usa il banner di default.
+        self.messaggio_esito: str | None = None
         # [Livello 3] Eventi temporali e contatore dei turni di gioco.
         self.eventi: List['Evento'] = []
         self.turno_corrente: int = 0
@@ -656,7 +691,7 @@ class Mondo:
     def __str__(self) -> str:
         n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.17.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.18.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"

@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.17.0)
+# Interprete Interattivo per FAVELLA 1 (v0.18.0)
 
 import sys
 import traceback
@@ -83,7 +83,31 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
         return None
 
 
-PREPOSIZIONI = ["su", "con", "contro", "in"]
+# [0.18.0 / A4] Le preposizioni d'azione del parser runtime includono ora le
+# forme ARTICOLATE (simmetriche alla grammatica): il giocatore può digitare
+# 'usa la batteria sul pannello' o 'metti la spada nella teca'. Le forme semplici
+# (su/con/contro/in) restano valide. Lo split sceglie la prima parola-preposizione
+# trovata; la risoluzione dell'oggetto a destra ignora comunque l'articolo.
+PREPOSIZIONI = [
+    "su", "sul", "sullo", "sulla", "sui", "sugli", "sulle", "sull'",
+    "con", "contro",
+    "in", "nel", "nello", "nella", "nei", "negli", "nelle", "nell'",
+]
+
+
+def _match_verbo_multiparola(mondo: Mondo, parole) -> str | None:
+    """[0.18.0 / B6] Se il comando del giocatore inizia con un verbo personalizzato
+    MULTI-PAROLA dichiarato, restituisce quel verbo (il più lungo che combacia come
+    prefisso, in numero di parole); altrimenti None. I verbi monoparola non sono
+    considerati qui (li gestisce il normale parole[0])."""
+    verbi = getattr(mondo, "verbi_personalizzati", None) or ()
+    candidati = sorted((v for v in verbi if " " in v),
+                       key=lambda v: len(v.split()), reverse=True)
+    for v in candidati:
+        n = len(v.split())
+        if len(parole) >= n and " ".join(parole[:n]) == v:
+            return v
+    return None
 
 
 def partita_finita(mondo: Mondo) -> bool:
@@ -93,7 +117,12 @@ def partita_finita(mondo: Mondo) -> bool:
     stato = getattr(mondo, "stato_partita", "in_corso")
     if stato == "in_corso":
         return False
-    if stato == "vinta":
+    # [0.18.0 / B3] Se una conseguenza ha fornito un testo d'esito, lo si stampa
+    # al posto del banner fisso (interpolando gli eventuali segnaposto [var]).
+    messaggio = getattr(mondo, "messaggio_esito", None)
+    if messaggio:
+        print("\n" + rendi_testo(mondo, messaggio))
+    elif stato == "vinta":
         print("\n*** HAI VINTO! ***")
     elif stato == "persa":
         print("\n*** HAI PERSO. ***")
@@ -317,6 +346,15 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if not parole:
             return True
 
+        # [0.18.0 / B6] Verbo personalizzato MULTI-PAROLA: se il comando inizia con
+        # un verbo dichiarato di più parole ('fai scattare'), lo si tratta come un
+        # unico verbo (longest-match) e si ricompone 'parole' con la frase-verbo in
+        # testa, così il resto del parsing (preposizioni, argomenti) non cambia.
+        verbo_multi = _match_verbo_multiparola(mondo, parole)
+        if verbo_multi:
+            n = len(verbo_multi.split())
+            parole = [verbo_multi] + parole[n:]
+
         verbo_giocatore = parole[0]
 
         # [Livello 5b] 'parla con X' (o 'parla X') avvia un dialogo con un NPC.
@@ -407,33 +445,49 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         print(f"Non vedo '{argomento_dx}' qui.")
                     return True
 
-        # --- MOTORE DI GIOCO v0.9.5 (Supporto 2 Oggetti) ---
+        # --- MOTORE DI GIOCO (Supporto 2 Oggetti; il 'se' è valutato, 0.18.0/A1) ---
         regola_applicata = False
         regola_da_eseguire = None # Memorizza la regola trovata per eseguirne la conseguenza
         
         if azione.richiede_oggetto:
             verbi_da_controllare = {verbo_giocatore, nome_azione}
             
-            # FASE 0: Regole a DUE OGGETTI (Priorità Massima)
+            # FASE 0: Regole a DUE OGGETTI (Priorità Massima). [0.18.0] Come le
+            # regole a un oggetto (FASE 1/2), ora VALUTANO la clausola 'se': fra
+            # più regole che combaciano su verbo+ogg1+prep+ogg2 vince la prima
+            # CONDIZIONALE soddisfatta; in assenza, la prima SEMPLICE. Prima si
+            # privilegia la preposizione esatta, poi (fallback tollerante) si
+            # accetta qualunque preposizione sugli stessi due oggetti. Senza
+            # questa valutazione del 'se', più 'Invece di usa X su Y se …'
+            # collassavano (vinceva sempre la prima dichiarata).
             if id_oggetto2:
-                for regola in mondo.regole:
-                    if (regola.verbo in verbi_da_controllare and 
-                        regola.id_oggetto_bersaglio == id_oggetto1 and
-                        regola.preposizione == preposizione_trovata and
-                        regola.id_oggetto_secondario == id_oggetto2):
-                        
-                        print(rendi_testo(mondo, regola.risposta))
-                        regola_applicata = True
-                        regola_da_eseguire = regola
-                        break
-                
-                # FALLBACK tollerante per le preposizioni nelle regole a due oggetti
-                if not regola_applicata:
-                    for regola in mondo.regole:
-                        if (regola.verbo in verbi_da_controllare and 
+                def _combacia_due_oggetti(regola, prep_esatta):
+                    if not (regola.verbo in verbi_da_controllare and
                             regola.id_oggetto_bersaglio == id_oggetto1 and
                             regola.id_oggetto_secondario == id_oggetto2):
-                            
+                        return False
+                    if prep_esatta:
+                        return regola.preposizione == preposizione_trovata
+                    return True
+
+                # Quattro tier, in ordine di precedenza: per la preposizione
+                # esatta prima e poi tollerante, dentro ciascuna le condizionali
+                # soddisfatte prima delle semplici.
+                for prep_esatta in (True, False):
+                    if regola_applicata:
+                        break
+                    for regola in mondo.regole:  # condizionali soddisfatte
+                        if (_combacia_due_oggetti(regola, prep_esatta)
+                                and regola.condizione
+                                and regola.condizione.valuta(mondo)):
+                            print(rendi_testo(mondo, regola.risposta))
+                            regola_applicata = True
+                            regola_da_eseguire = regola
+                            break
+                    if regola_applicata:
+                        break
+                    for regola in mondo.regole:  # poi le semplici
+                        if _combacia_due_oggetti(regola, prep_esatta) and not regola.condizione:
                             print(rendi_testo(mondo, regola.risposta))
                             regola_applicata = True
                             regola_da_eseguire = regola
@@ -484,9 +538,15 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
 
         if regola_applicata:
             if regola_da_eseguire:
+                # [0.18.0 / B2] Se una conseguenza teletrasporta il giocatore, dopo
+                # l'esecuzione mostriamo la nuova stanza (come per il movimento via
+                # direzioni), così l'effetto è visibile e non muto.
+                pos_prima = mondo.posizione_giocatore
                 regola_da_eseguire.esegui_conseguenze(mondo)
                 if partita_finita(mondo):
                     return False
+                if mondo.posizione_giocatore != pos_prima:
+                    mostra_stanza(mondo)
             return True
 
         # 2. Esecuzione Logica di Default

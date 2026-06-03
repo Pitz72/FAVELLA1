@@ -1,7 +1,7 @@
 # ============================================================================
 # traduci.fav — Modulo MATRICE DI TRADUZIONE  [Livelli 3+5: contatore,
 #               descrizioni a soglia, interpolazione, verbo custom 'traduci']
-# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.17.0
+# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.18.0
 # ----------------------------------------------------------------------------
 # Il contatore 'traduzione' (0→100) cresce ANALIZZANDO quattro reperti:
 #   Lastra Dati 4% · Cilindro Mnemonico 18% · Stele 75% · Nucleo 100%.

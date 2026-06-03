@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.17.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.18.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -10,8 +10,9 @@ from strutture import (
     Mondo, Stanza, Oggetto, Regola, Evento, Demone,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
-    CondizioneContatore,
+    CondizioneContatore, CondizionePosizioneGiocatore,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
+    ConseguenzaSpostamentoGiocatore,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
     OpzioneDialogo,
 )
@@ -109,6 +110,11 @@ class TabellaSimboli:
         # [Livello 4 / L1] Coppie di direzioni personalizzate dichiarate
         # ('Alto e basso sono direzioni opposte.'), come tuple (a, b) normalizzate.
         self.coppie_direzioni = []
+        # [0.18.0 / B6] Verbi personalizzati MULTI-PAROLA dichiarati ('"fai
+        # scattare" è un comando.'), normalizzati (lowercase, spazi singoli). Solo
+        # i multiparola servono alla grammatica (terminale chiuso VERBO_MULTI); i
+        # verbi monoparola restano coperti da VERBO=WORD (aperto).
+        self.verbi_multi = set()
 
     @property
     def tutti(self):
@@ -124,17 +130,20 @@ class TabellaSimboli:
 # Pattern delle SOLE forme dichiarative che introducono un nome-entità.
 # Tutto il resto (proprietà, posizione, descrizione, regole) si limita a
 # *referenziare* entità già dichiarate e quindi non popola la symbol table.
-_RE_DEF_STANZA = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+stanza$", re.IGNORECASE)
-_RE_DEF_OGGETTO = re.compile(r"^(?P<nome>.+?)\s+è\s+una\s+cosa$", re.IGNORECASE)
+# [0.18.0 / A5] La copula è/sono è intercambiabile: lo scanner accetta entrambe
+# (la grammatica usa la regola inline _copula). '_COP' è il frammento condiviso.
+_COP = r"(?:è|sono)"
+_RE_DEF_STANZA = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+una\s+stanza$", re.IGNORECASE)
+_RE_DEF_OGGETTO = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+una\s+cosa$", re.IGNORECASE)
 # 'X è uno stato' introduce uno 'stato' (variabile globale del mondo). [Livello 3]
 _RE_DEF_FLAG = re.compile(r"^(?P<nome>.+?)\s+è\s+uno\s+stato$", re.IGNORECASE)
 # 'X è un contatore' introduce un contatore numerico. [Livello 3]
 _RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNORECASE)
 # 'X è un contenitore' / 'X è un supporto' introducono un OGGETTO. [Livello 4 / M1]
-_RE_DEF_CONTENITORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contenitore$", re.IGNORECASE)
-_RE_DEF_SUPPORTO = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+supporto$", re.IGNORECASE)
+_RE_DEF_CONTENITORE = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+contenitore$", re.IGNORECASE)
+_RE_DEF_SUPPORTO = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+supporto$", re.IGNORECASE)
 # 'X è un personaggio' introduce un OGGETTO speciale (un NPC). [Livello 5b]
-_RE_DEF_PERSONAGGIO = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+personaggio$", re.IGNORECASE)
+_RE_DEF_PERSONAGGIO = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+personaggio$", re.IGNORECASE)
 # 'X collega <direzione> a Y' introduce (o conferma) due stanze.
 _RE_DEF_CONNESSIONE = re.compile(
     r"^(?P<x>.+?)\s+collega\s+\S+\s+a\s+(?P<y>.+)$", re.IGNORECASE)
@@ -145,6 +154,10 @@ _RE_DEF_DIREZIONI = re.compile(
 # Stringhe quotate e commenti vanno rimossi prima di spezzare sui punti.
 _RE_QUOTATO = re.compile(r'"(\\.|[^"\\])*"')
 _RE_COMMENTO = re.compile(r"#[^\n]*")
+# [0.18.0 / B6] Verbo personalizzato (eventualmente multi-parola): '"frase" è un
+# comando.'. Va cercato PRIMA di azzerare le stringhe quotate (lo scanner le
+# svuota), perché il nome del comando vive proprio dentro le virgolette.
+_RE_DEF_VERBO = re.compile(r'"([^"]+)"\s+è\s+un\s+comando\b', re.IGNORECASE)
 
 
 def costruisci_symbol_table(testo: str) -> TabellaSimboli:
@@ -166,6 +179,14 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
     # Normalizzazione tipografica + rimozione di stringhe e commenti, così i
     # punti (".") interni a descrizioni o note non spezzino erroneamente le frasi.
     pulito = normalizza_tipografia(testo)
+    # [0.18.0 / B6] Raccogli i verbi personalizzati MULTI-PAROLA *prima* di svuotare
+    # le stringhe quotate (il nome del comando vive nelle virgolette). Servono alla
+    # grammatica per generare il terminale chiuso VERBO_MULTI.
+    senza_commenti = _RE_COMMENTO.sub("", pulito)
+    for m in _RE_DEF_VERBO.finditer(senza_commenti):
+        verbo = " ".join(m.group(1).lower().split())
+        if " " in verbo:
+            tab.verbi_multi.add(verbo)
     pulito = _RE_QUOTATO.sub('""', pulito)
     pulito = _RE_COMMENTO.sub("", pulito)
 
@@ -274,16 +295,26 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_capacita_oggetto
 
     // --- DEFINIZIONI BASE ---
-    def_stanza: ENTITA "è" "una" "stanza" "."
-    def_oggetto: ENTITA "è" "una" "cosa" "."
+    // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
+    // (plurale). Regola INLINE (prefisso '_'): non produce figli, quindi i metodi
+    // del transformer restano identici (ricevono solo l'ENTITA/PROPRIETA). Vale
+    // ovunque il soggetto sia un'ENTITA, così l'autore può scrivere l'italiano
+    // corretto sui nomi plurali ('Le tacche SONO una cosa', 'Le tacche SONO
+    // vergini', 'Le tacche SONO nel corridoio'), senza più la stonatura 'Le
+    // tacche È una cosa'. 'sono' resta riservata anche per 'sono opposte'/'sono
+    // direzioni opposte' (contesti distinti: il token precedente è PROPRIETA o
+    // DIREZIONE, non ENTITA → nessun conflitto LALR).
+    _copula: "è" | "sono"
+    def_stanza: ENTITA _copula "una" "stanza" "."
+    def_oggetto: ENTITA _copula "una" "cosa" "."
     // [Livello 4 / M1] Contenitore e supporto: oggetti speciali. Si distinguono
-    // da def_proprieta (ENTITA "è" PROPRIETA) sul token "un" (PROPRIETA, a
+    // da def_proprieta (ENTITA _copula PROPRIETA) sul token "un" (PROPRIETA, a
     // priorità bassa, non può essere la keyword "un"): stesso schema di def_contatore.
-    def_contenitore: ENTITA "è" "un" "contenitore" "."
-    def_supporto: ENTITA "è" "un" "supporto" "."
+    def_contenitore: ENTITA _copula "un" "contenitore" "."
+    def_supporto: ENTITA _copula "un" "supporto" "."
     // [Livello 5b] NPC: un personaggio con cui 'parlare'. Stesso schema di
     // contenitore/supporto (distinto sul token "un").
-    def_personaggio: ENTITA "è" "un" "personaggio" "."
+    def_personaggio: ENTITA _copula "un" "personaggio" "."
     // [Livello 4 / M1] Verbo personalizzato. La parola-comando è quotata (come
     // gli alias: vocabolario nuovo, non ancora un token noto), così non collide
     // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
@@ -294,10 +325,10 @@ _GRAMMAR_TEMPLATE = r"""
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
     // lookahead distingue nettamente "se" da "è": LALR(1) resta 0-ambiguo.
     def_descrizione: "La" "descrizione" _PREP_DESCR ENTITA ( "se" condizione )? "è" TESTO_QUOTATO "."
-    def_posizione: ENTITA "è" PREP_LUOGO ENTITA "."
+    def_posizione: ENTITA _copula PREP_LUOGO ENTITA "."
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
-    def_proprieta: ENTITA "è" PROPRIETA "."
+    def_proprieta: ENTITA _copula PROPRIETA "."
     // [Livello 3 / M5] Dichiarazione di proprietà opposte (mutuamente esclusive).
     // Inizia con PROPRIETA (priorità bassa): nessun'altra dichiarazione parte con
     // PROPRIETA, quindi LALR distingue questo costrutto al primo token.
@@ -396,8 +427,13 @@ _GRAMMAR_TEMPLATE = r"""
     // oggetto (es. "Invece di guarda se il punteggio è almeno 3: ..."). Il
     // bersaglio è incapsulato in 'regola_target' così, quando manca, l'unica
     // stringa nuda residua è la risposta (il transformer non confonde i due str).
-    // Dopo VERBO il lookahead distingue nettamente ENTITA/DIREZIONE dal "se" o ":".
-    def_regola: "Invece" "di" VERBO regola_target? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+    // Dopo il verbo il lookahead distingue nettamente ENTITA/DIREZIONE dal "se" o ":".
+    // [0.18.0 / B6] Il verbo può essere MULTI-PAROLA se dichiarato ('"fai scattare"
+    // è un comando.'): VERBO_MULTI è un terminale CHIUSO generato per-file (come
+    // DIREZIONE) con priorità ALTA, così 'fai scattare' vince sul singolo WORD
+    // 'fai'. Restano validi i verbi monoparola (VERBO=WORD, aperto: preserva la
+    // diagnostica 'verbo non riconosciuto' per i refusi).
+    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
     regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
 
     // --- CONDIZIONI (logica booleana) ---
@@ -412,51 +448,90 @@ _GRAMMAR_TEMPLATE = r"""
              | cond_base
     ?cond_base: cond_possesso
               | cond_possesso_neg
+              | cond_posizione_giocatore
+              | cond_posizione_giocatore_neg
               | cond_proprieta
               | cond_proprieta_neg
               | cond_variabile
               | cond_variabile_neg
               | cond_contatore_eq
+              | cond_contatore_neq
               | cond_contatore_gte
               | cond_contatore_gt
               | cond_contatore_lt
+              | cond_contatore_lte
+              | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
     cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
-    cond_proprieta: ENTITA "è" PROPRIETA
-    cond_proprieta_neg: ENTITA "non" "è" PROPRIETA
+    // [0.18.0 / B1] Posizione del giocatore: 'se il giocatore è in [stanza]'.
+    // Dopo 'il giocatore' il lookahead distingue "ha"/"non ha" (possesso) dalla
+    // copula è/sono (posizione) → LALR(1) 0-ambiguo.
+    cond_posizione_giocatore: "il" "giocatore" _copula PREP_LUOGO ENTITA
+    cond_posizione_giocatore_neg: "il" "giocatore" "non" _copula PREP_LUOGO ENTITA
+    cond_proprieta: ENTITA _copula PROPRIETA
+    cond_proprieta_neg: ENTITA "non" _copula PROPRIETA
     // 'se [stato] è [valore]' — il terminale VARIABILE distingue dallo stato di
     // un oggetto (cond_proprieta), senza ambiguità.
     cond_variabile: VARIABILE "è" PROPRIETA
     cond_variabile_neg: VARIABILE "non" "è" PROPRIETA
     // Confronti su contatore. Dopo 'VARIABILE è' il lookahead distingue:
-    // PROPRIETA (stato) | NUMERO (==) | "almeno"/"più"/"meno" (>=, >, <).
+    // PROPRIETA (stato) | NUMERO (==) | "almeno"/"più"/"meno"/"al massimo" (>=, >, <, <=).
     cond_contatore_eq: VARIABILE "è" NUMERO
+    // [0.18.0 / B5] '≠ N' sui contatori. Dopo 'VARIABILE non è' il lookahead
+    // NUMERO (≠) vs PROPRIETA (stato, cond_variabile_neg) decide → 0-ambiguo.
+    cond_contatore_neq: VARIABILE "non" "è" NUMERO
     cond_contatore_gte: VARIABILE "è" "almeno" NUMERO
     cond_contatore_gt: VARIABILE "è" "più" "di" NUMERO
     cond_contatore_lt: VARIABILE "è" "meno" "di" NUMERO
+    // [0.18.0 / B4] '≤ N' ('al massimo'), simmetrico ad 'almeno' (≥). Dopo
+    // 'VARIABILE è' il lookahead "al" distingue dagli altri confronti → 0-ambiguo.
+    cond_contatore_lte: VARIABILE "è" "al" "massimo" NUMERO
+    // [0.18.0 / B7] Negazione di un GRUPPO booleano: 'non ( A e B )'. È l'unico
+    // cond_base che inizia con "non" → distinto al primo token, 0-ambiguo.
+    cond_non_gruppo: "non" "(" cond_or ")"
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
     // gli pseudo-simboli "inventario"/"nulla" iniettati nella regex.
-    ?conseguenza: ENTITA "è" PREP_LUOGO ENTITA -> cons_spostamento
-                | ENTITA "è" PROPRIETA          -> cons_proprieta
+    ?conseguenza: ENTITA _copula PREP_LUOGO ENTITA -> cons_spostamento
+                | ENTITA _copula PROPRIETA          -> cons_proprieta
+                // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
+                // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
+                // (mai un'ENTITA: 'giocatore' è riservata), distinta da
+                // cons_spostamento (che parte da ENTITA) al primo token → 0-ambiguo.
+                | "il" "giocatore" _copula PREP_LUOGO ENTITA -> cons_giocatore_sposta
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
                 | "aumenta" VARIABILE ( "di" NUMERO )?    -> cons_aumenta
                 | "diminuisci" VARIABILE ( "di" NUMERO )? -> cons_diminuisci
                 | VARIABILE "diventa" NUMERO     -> cons_contatore_set
-                | "vinci"                        -> cons_vinci
-                | "perdi"                        -> cons_perdi
-                | "termina"                      -> cons_termina
+                // [0.18.0 / B3] Testo d'esito opzionale: 'vinci "Sei libero!"'.
+                // Nessun'altra conseguenza inizia con TESTO_QUOTATO → 0-ambiguo.
+                | "vinci" TESTO_QUOTATO?         -> cons_vinci
+                | "perdi" TESTO_QUOTATO?         -> cons_perdi
+                | "termina" TESTO_QUOTATO?       -> cons_termina
 
     // --- TERMINALI LESSICALI ---
     PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
-    PREP_AZIONE: "su" | "con" | "contro" | "in"
+    // [0.18.0 / A4] Preposizioni d'azione (regole a due oggetti: 'usa X PREP Y').
+    // Oltre alle forme semplici, ora sono ammesse le forme ARTICOLATE ('usa la
+    // batteria SUL pannello', 'metti la spada NELLA teca'), simmetriche a
+    // PREP_LUOGO: elimina la stonatura 'su il'/'su la' a cui l'autore era
+    // costretto. La sovrapposizione con PREP_LUOGO (es. 'sul', 'nel') è innocua:
+    // i due terminali non sono mai validi nello stesso stato LALR (PREP_AZIONE
+    // solo in regola_target; PREP_LUOGO solo in posizione/spostamento), come già
+    // accade per 'in'. La preposizione esatta conta solo per la priorità di
+    // match: il fallback prep-tollerante (stessi due oggetti) fa comunque da rete.
+    PREP_AZIONE: "sull'" | "sul" | "sullo" | "sulla" | "sui" | "sugli" | "sulle" | "su" | "con" | "contro" | "nell'" | "nel" | "nello" | "nella" | "nei" | "negli" | "nelle" | "in"
     // [Livello 5] Preposizioni articolate della descrizione come TERMINALE UNICO
     // (maximal-munch: 'della' non si spezza più in 'del'+'la') e FILTRATO dal
     // tree (prefisso '_'): elimina alla radice un'ambiguità preesistente di
     // def_descrizione, com'è già per PREP_LUOGO. Il transformer resta invariato.
-    _PREP_DESCR: "di" | "del" | "della" | "dell'" | "degli" | "delle"
+    // [0.18.0 / A2] Aggiunto 'dei' (genitivo plurale maschile davanti a consonante:
+    // 'la descrizione DEI pilastri'). 'dello'/'degli'/'delle' restano coperti
+    // (degli/delle esplicitamente; 'dello' tramite 'del' + articolo 'lo' del prefisso
+    // ENTITA): mancava solo 'dei', che non si scompone in 'del' + articolo.
+    _PREP_DESCR: "di" | "del" | "dei" | "della" | "dell'" | "degli" | "delle"
     // [Livello 4 / L1] DIREZIONE è generata per-file: le forme di base
     // (utils.DIREZIONI_BASE) più le direzioni personalizzate dichiarate.
     // È una regex con confine di parola (\b) e priorità ALTA (.2): serve a
@@ -465,6 +540,13 @@ _GRAMMAR_TEMPLATE = r"""
     // Sicuro per l'invariante "e"=est vs congiunzione: il lexer contestuale non
     // pone mai DIREZIONE e la congiunzione "e" come candidati nello stesso stato.
     DIREZIONE.2: /(?:__DIREZIONE_ALT__)\b/i
+
+    // [0.18.0 / B6] VERBO_MULTI: alternanza CHIUSA dei verbi personalizzati
+    // MULTI-PAROLA dichiarati ('"fai scattare" è un comando.'), generata per-file
+    // (vedi costruisci_grammatica). Priorità ALTA (.3) e confine di parola, così la
+    // frase intera vince il longest-match contro il singolo WORD del primo token.
+    // Vuota (nessun verbo multiparola) -> regex che non matcha mai.
+    VERBO_MULTI.3: /(?:__VERBI_MULTI__)\b/i
 
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
@@ -541,19 +623,31 @@ def _costruisci_alt_direzioni(direzioni_extra=()) -> str:
     return "|".join(re.escape(f) for f in ordinate)
 
 
-def costruisci_grammatica(simboli, variabili=(), direzioni=()) -> str:
+def _costruisci_alt_verbi_multi(verbi_multi=()) -> str:
+    """[0.18.0 / B6] Corpo regex dell'alternanza del terminale VERBO_MULTI: i
+    verbi personalizzati multi-parola dichiarati, con spazi flessibili (\\s+) e
+    ordinati per lunghezza decrescente (longest-match). Vuoto -> regex che non
+    matcha mai (lo stesso sentinella usata per i terminali chiusi vuoti)."""
+    verbi = sorted(set(v for v in verbi_multi if v), key=len, reverse=True)
+    if not verbi:
+        return r"[^\s\S]"
+    return "|".join(_pattern_nome(v) for v in verbi)
+
+
+def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
-    ENTITA, VARIABILE e DIREZIONE risolti dai simboli noti (Passata 2). VARIABILE
-    è la classe degli 'stati' (Livello 3); DIREZIONE include le direzioni
-    personalizzate dichiarate (Livello 4)."""
+    ENTITA, VARIABILE, DIREZIONE e VERBO_MULTI risolti dai simboli noti (Passata 2).
+    VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include le direzioni
+    personalizzate (Livello 4); VERBO_MULTI i verbi custom multi-parola (0.18.0)."""
     grammatica = _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
+    grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
     return grammatica
 
 
 def costruisci_parser(simboli, variabili=(), direzioni=(),
-                      propagate_positions=False) -> Lark:
+                      propagate_positions=False, verbi_multi=()) -> Lark:
     """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
     costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
     GrammarError a build-time, non come scelta silenziosa a runtime.
@@ -562,7 +656,7 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
     finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
-    return Lark(costruisci_grammatica(simboli, variabili, direzioni),
+    return Lark(costruisci_grammatica(simboli, variabili, direzioni, verbi_multi),
                 start="start", parser="lalr",
                 propagate_positions=propagate_positions)
 
@@ -693,7 +787,13 @@ class FavellaTransformer(Transformer):
         
     def VERBO(self, token):
         return token.value.lower()
-        
+
+    def VERBO_MULTI(self, token):
+        # [0.18.0 / B6] Verbo personalizzato multi-parola: normalizza gli spazi
+        # interni a uno singolo, così combacia con l'id dichiarato e con il
+        # riconoscimento a runtime ('fai   scattare' -> 'fai scattare').
+        return " ".join(token.value.lower().split())
+
     def DIREZIONE(self, token):
         return token.value.lower()
 
@@ -800,18 +900,14 @@ class FavellaTransformer(Transformer):
         return None
 
     def def_verbo(self, testo_quotato):
-        # [Livello 4 / M1] '"spingi" è un comando.'. La parola-comando deve essere
-        # singola (il parser dei comandi a runtime tratta come verbo solo la prima
-        # parola digitata): un comando multiparola non sarebbe mai riconosciuto.
-        verbo = testo_quotato.strip().lower()
+        # [Livello 4 / M1] '"spingi" è un comando.'. [0.18.0 / B6] Ora è ammesso
+        # anche un comando MULTI-PAROLA ('"fai scattare" è un comando.'): la
+        # grammatica lo riconosce via il terminale chiuso VERBO_MULTI e il parser
+        # runtime lo individua per longest-match all'inizio del comando del
+        # giocatore. Normalizziamo gli spazi interni a uno singolo.
+        verbo = " ".join(testo_quotato.lower().split())
         if not verbo:
             self.warnings.append("Comando vuoto ignorato.")
-            return None
-        if " " in verbo:
-            self.warnings.append(
-                f"Comando personalizzato '{verbo}' multiparola ignorato: usa una "
-                f"sola parola (il giocatore digita un solo verbo)."
-            )
             return None
         self.mondo.dichiara_verbo(verbo)
         return None
@@ -1030,6 +1126,14 @@ class FavellaTransformer(Transformer):
     def cond_possesso_neg(self, ogg_grezzo):
         return CondizioneNot(CondizionePossesso(normalizza_nome(ogg_grezzo)))
 
+    def cond_posizione_giocatore(self, prep, stanza_grezzo):
+        # [0.18.0 / B1] 'se il giocatore è in [stanza]'. 'prep' è il token
+        # PREP_LUOGO (in/nel/nella…), ininfluente sull'id della stanza.
+        return CondizionePosizioneGiocatore(normalizza_nome(stanza_grezzo))
+
+    def cond_posizione_giocatore_neg(self, prep, stanza_grezzo):
+        return CondizioneNot(CondizionePosizioneGiocatore(normalizza_nome(stanza_grezzo)))
+
     def cond_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
 
@@ -1054,6 +1158,18 @@ class FavellaTransformer(Transformer):
     def cond_contatore_lt(self, var_grezzo, numero):
         return CondizioneContatore(normalizza_nome(var_grezzo), "<", numero)
 
+    def cond_contatore_lte(self, var_grezzo, numero):
+        # [0.18.0 / B4] 'al massimo N' (≤).
+        return CondizioneContatore(normalizza_nome(var_grezzo), "<=", numero)
+
+    def cond_contatore_neq(self, var_grezzo, numero):
+        # [0.18.0 / B5] 'non è N' (≠): negazione dell'uguaglianza numerica.
+        return CondizioneNot(CondizioneContatore(normalizza_nome(var_grezzo), "==", numero))
+
+    def cond_non_gruppo(self, condizione):
+        # [0.18.0 / B7] 'non ( ... )': negazione di un intero gruppo booleano.
+        return CondizioneNot(condizione)
+
     def make_and(self, *condizioni):
         return CondizioneAnd(list(condizioni))
 
@@ -1072,6 +1188,10 @@ class FavellaTransformer(Transformer):
     def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
 
+    def cons_giocatore_sposta(self, prep, stanza_grezzo):
+        # [0.18.0 / B2] 'e adesso il giocatore è in [stanza]': teletrasporto.
+        return ConseguenzaSpostamentoGiocatore(normalizza_nome(stanza_grezzo))
+
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
 
@@ -1087,15 +1207,17 @@ class FavellaTransformer(Transformer):
     def cons_contatore_set(self, var_grezzo, numero):
         return ConseguenzaContatore(normalizza_nome(var_grezzo), "diventa", numero)
 
-    # Conseguenze di fine partita: nessun figlio (keyword nuda dopo 'e adesso').
-    def cons_vinci(self):
-        return ConseguenzaFinePartita("vinta")
+    # Conseguenze di fine partita. [0.18.0 / B3] Accettano un TESTO_QUOTATO
+    # OPZIONALE: se presente, è il messaggio d'esito stampato alla chiusura
+    # (al posto del banner fisso). 'args' è vuoto oppure contiene la sola stringa.
+    def cons_vinci(self, *args):
+        return ConseguenzaFinePartita("vinta", args[0] if args else None)
 
-    def cons_perdi(self):
-        return ConseguenzaFinePartita("persa")
+    def cons_perdi(self, *args):
+        return ConseguenzaFinePartita("persa", args[0] if args else None)
 
-    def cons_termina(self):
-        return ConseguenzaFinePartita("terminata")
+    def cons_termina(self, *args):
+        return ConseguenzaFinePartita("terminata", args[0] if args else None)
 
     # --- Eventi a turni (Livello 3) ---
 
@@ -1114,6 +1236,10 @@ class FavellaTransformer(Transformer):
                 dest_ogg = self.mondo.trova_oggetto(c.destinazione)
                 if not dest and not (dest_ogg and (dest_ogg.is_contenitore or dest_ogg.is_supporto)):
                     self.errori.append(f"Luogo inesistente nella conseguenza: '{c.destinazione}'")
+            if isinstance(c, ConseguenzaSpostamentoGiocatore) and not self.mondo.trova_stanza(c.id_stanza):
+                # [0.18.0 / B2] Il teletrasporto deve puntare a una stanza esistente.
+                self.errori.append(
+                    f"Stanza inesistente nel teletrasporto del giocatore: '{c.id_stanza}'")
 
     def _crea_evento(self, tipo, args):
         # args: (NUMERO, TESTO_QUOTATO, conseguenza*)
@@ -1788,7 +1914,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             return None
 
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
-        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
@@ -2013,7 +2140,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                     "worldSummary": None}
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
-        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
         transformer = FavellaTransformer(coppie_dir)
         transformer.transform(tree)
@@ -2105,7 +2233,8 @@ def compila_mondo(percorso_file, sorgente=None):
             return None
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
-        parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
         transformer = FavellaTransformer(coppie_dir)
         transformer.transform(tree)
@@ -2187,7 +2316,8 @@ def analizza_outline(percorso_file, sorgente=None):
         coppie_dir, nomi_dir, _de = valida_direzioni_dichiarate(
             simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   propagate_positions=True)
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
     except Exception:
         # Il Mondo c'è ma le posizioni no: outline senza span (editing degradato).
@@ -2561,7 +2691,8 @@ def analizza_regole(percorso_file, sorgente=None):
         simboli = costruisci_symbol_table(testo)
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   propagate_positions=True)
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
     except Exception:
         tree, mappa_righe = None, []
@@ -2736,7 +2867,8 @@ def analizza_variabili(percorso_file, sorgente=None):
         simboli = costruisci_symbol_table(testo)
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   propagate_positions=True)
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
     except Exception:
         tree, mappa_righe, testo = None, [], ""

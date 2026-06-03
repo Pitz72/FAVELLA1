@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.14.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.18.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -576,16 +576,18 @@ def test_verbo_personalizzato_senza_regola():
            "un verbo custom senza regola stampa un messaggio neutro, non 'non capisco'")
 
 
-def test_verbo_personalizzato_multiparola_warning():
-    print("[verbo personalizzato: multiparola = warning, ignorato]")
+def test_verbo_personalizzato_multiparola_accettato():
+    print("[verbo personalizzato: multiparola ORA accettato (0.18.0 / B6)]")
+    # Cambio di comportamento dalla 0.18.0: un comando multi-parola non è più
+    # ignorato, ma registrato e usabile (vedi test_verbo_multiparola_*).
     src = (
         "La cella è una stanza.\n"
         '"dai un calcio" è un comando.\n'
     )
     mondo, log = compila(src)
-    _check(mondo is not None, "compila comunque (warning non bloccante)")
-    _check(mondo and not mondo.verbi_personalizzati, "il comando multiparola non è registrato")
-    _check("multiparola" in log.lower(), "il log avvisa che il comando multiparola è ignorato")
+    _check(mondo is not None, "compila senza errori")
+    _check(mondo and "dai un calcio" in mondo.verbi_personalizzati,
+           "il comando multiparola è registrato (niente più rifiuto)")
 
 
 # --- Test: direzioni personalizzate / data-driven [Livello 4 / L1] -----------
@@ -2513,7 +2515,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.16.0.md")
+                          "grammatica-0.18.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2530,7 +2532,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.16.0.md è presente")
+           "documentazione/grammatica-0.18.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -2637,6 +2639,435 @@ def test_capacita_zero():
     _check("mela" not in mondo.inventario, "con capacità 0 non si prende nulla")
 
 
+# --- Test: regole a DUE OGGETTI che valutano la clausola 'se' [0.18.0 / A1] --
+
+def _MONDO_DUE_OGGETTI(extra_regole):
+    return (
+        "La sala è una stanza.\n"
+        "La chiave è una cosa.\nLa chiave è prendibile.\nLa chiave è in sala.\n"
+        "La porta è una cosa.\nLa porta è chiusa.\nLa porta è in sala.\n"
+        "Il giocatore comincia in sala.\n"
+        + extra_regole
+    )
+
+
+def test_due_oggetti_se_condizionale_vince_sulla_semplice():
+    print("[2 oggetti: la regola condizionale soddisfatta vince sulla semplice]")
+    src = _MONDO_DUE_OGGETTI(
+        'Invece di usa la chiave su la porta se la porta è chiusa: '
+        'dire "La apri." e adesso la porta è aperta.\n'
+        'Invece di usa la chiave su la porta: dire "Era già aperta.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi chiave")
+    out1 = esegui(mondo, "usa chiave su porta")  # porta chiusa -> condizionale
+    _check("La apri." in out1, "1ª volta (porta chiusa): scatta la regola condizionale")
+    _check("aperta" in mondo.trova_oggetto("porta").proprieta,
+           "la conseguenza ha aperto la porta")
+    out2 = esegui(mondo, "usa chiave su porta")  # porta aperta -> 'se' falso -> semplice
+    _check("Era già aperta." in out2,
+           "2ª volta (condizione falsa): scatta la regola semplice, NON più la condizionale")
+
+
+def test_due_oggetti_se_falso_senza_fallback_cade_su_default():
+    print("[2 oggetti: 'se' falso e nessuna regola semplice -> azione di default]")
+    src = _MONDO_DUE_OGGETTI(
+        'Invece di usa la chiave su la porta se la porta è aperta: '
+        'dire "Solo se aperta.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi chiave")
+    out = esegui(mondo, "usa chiave su porta")  # porta chiusa -> 'se' falso
+    _check("Solo se aperta." not in out,
+           "con la condizione falsa la regola condizionale NON scatta")
+
+
+def test_due_oggetti_prep_tollerante_resta_attiva():
+    print("[2 oggetti: il fallback prep-tollerante continua a funzionare]")
+    src = _MONDO_DUE_OGGETTI(
+        'Invece di usa la chiave su la porta: dire "Combaciano.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi chiave")
+    # Il giocatore usa 'con' invece di 'su': stessi due oggetti -> match tollerante.
+    out = esegui(mondo, "usa chiave con porta")
+    _check("Combaciano." in out,
+           "preposizione diversa ma stessi due oggetti: la regola scatta lo stesso")
+
+
+# --- Test: genitivo 'dei' nelle descrizioni [0.18.0 / A2] -------------------
+
+def test_descrizione_genitivo_dei():
+    print("[descrizione: il genitivo plurale maschile 'dei' è accettato]")
+    src = (
+        "La cripta è una stanza.\n"
+        "I pilastri è una cosa.\n"
+        'La descrizione dei pilastri è "Antiche colonne scanalate.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "'La descrizione dei pilastri…' compila")
+    ogg = mondo.trova_oggetto("pilastri") if mondo else None
+    _check(ogg is not None and ogg.descrizione == "Antiche colonne scanalate.",
+           "la descrizione è associata all'oggetto plurale maschile")
+
+
+def test_descrizione_genitivi_singolari_restano_validi():
+    print("[descrizione: i genitivi singolari/plurali esistenti restano validi]")
+    src = (
+        "La stiva è una stanza.\n"
+        "Lo specchio è una cosa.\n"
+        "Le chiavi è una cosa.\n"
+        'La descrizione dello specchio è "Opaco.".\n'
+        'La descrizione delle chiavi è "Arrugginite.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "'dello' e 'delle' continuano a compilare")
+    _check(mondo and mondo.trova_oggetto("specchio").descrizione == "Opaco.",
+           "'dello specchio' risolve l'oggetto")
+    _check(mondo and mondo.trova_oggetto("chiavi").descrizione == "Arrugginite.",
+           "'delle chiavi' risolve l'oggetto")
+
+
+# --- Test: copula plurale 'sono' [0.18.0 / A5] ------------------------------
+
+def test_copula_sono_dichiarazioni():
+    print("[copula 'sono': dichiarazioni di entità plurali]")
+    src = (
+        "Il corridoio è una stanza.\n"
+        "Le tacche sono una cosa.\n"
+        "I pilastri sono una cosa.\n"
+        "Gli scaffali sono un supporto.\n"
+        "Le casse sono un contenitore.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "le dichiarazioni con 'sono' compilano")
+    _check(mondo and mondo.trova_oggetto("tacche") is not None, "'Le tacche sono una cosa' crea l'oggetto")
+    _check(mondo and mondo.trova_oggetto("pilastri") is not None, "'I pilastri sono una cosa' crea l'oggetto")
+    _check(mondo and mondo.trova_oggetto("scaffali") and mondo.trova_oggetto("scaffali").is_supporto,
+           "'Gli scaffali sono un supporto' è un supporto")
+    _check(mondo and mondo.trova_oggetto("casse") and mondo.trova_oggetto("casse").is_contenitore,
+           "'Le casse sono un contenitore' è un contenitore")
+
+
+def test_copula_sono_proprieta_posizione():
+    print("[copula 'sono': proprietà e posizione di entità plurali]")
+    src = (
+        "Il corridoio è una stanza.\n"
+        "Le tacche sono una cosa.\n"
+        "Le tacche sono nel corridoio.\n"
+        "Le tacche sono vergini.\n"
+    )
+    mondo, _ = compila(src)
+    tacche = mondo.trova_oggetto("tacche") if mondo else None
+    _check(tacche is not None and tacche.posizione == "corridoio",
+           "'Le tacche sono nel corridoio' colloca l'oggetto")
+    _check(tacche is not None and "vergini" in tacche.proprieta,
+           "'Le tacche sono vergini' assegna la proprietà")
+
+
+def test_copula_sono_condizioni_e_conseguenze():
+    print("[copula 'sono': condizioni e conseguenze su entità plurali]")
+    src = (
+        "Il corridoio è una stanza.\nIl giocatore comincia in corridoio.\n"
+        "Le tacche sono una cosa.\nLe tacche sono nel corridoio.\n"
+        "Vergini e segnate sono opposte.\nLe tacche sono vergini.\n"
+        'Invece di esamina le tacche se le tacche sono vergini: '
+        'dire "Le marchi." e adesso le tacche sono segnate.\n'
+        'Invece di esamina le tacche se le tacche non sono vergini: dire "Già marchiate.".\n'
+    )
+    mondo = runtime(src)
+    out1 = esegui(mondo, "esamina tacche")
+    _check("Le marchi." in out1, "la condizione 'sono vergini' è valutata e scatta")
+    _check("segnate" in mondo.trova_oggetto("tacche").proprieta,
+           "la conseguenza 'sono segnate' ha aggiornato lo stato")
+    out2 = esegui(mondo, "esamina tacche")
+    _check("Già marchiate." in out2,
+           "la negazione 'non sono vergini' è valutata correttamente al 2° giro")
+
+
+def test_copula_e_ancora_valida():
+    print("[copula: 'è' singolare continua a funzionare (retro-compat)]")
+    src = (
+        "La cella è una stanza.\n"
+        "La porta è una cosa.\nLa porta è chiusa.\nLa porta è in cella.\n"
+    )
+    mondo, _ = compila(src)
+    porta = mondo.trova_oggetto("porta") if mondo else None
+    _check(porta is not None and "chiusa" in porta.proprieta and porta.posizione == "cella",
+           "le dichiarazioni singolari con 'è' restano invariate")
+
+
+# --- Test: normalizzazione NFC degli accenti nei nomi [0.18.0 / A3] ---------
+
+def test_accenti_nfc_normalizzazione_nome():
+    print("[accenti: normalizza_nome unifica NFC/NFD allo stesso id]")
+    import unicodedata
+    from utils import normalizza_nome
+    nfc = unicodedata.normalize("NFC", "Il comò")
+    nfd = unicodedata.normalize("NFD", "Il comò")
+    _check(nfc != nfd, "le due forme Unicode sono diverse byte-per-byte (precondizione)")
+    _check(normalizza_nome(nfc) == normalizza_nome(nfd) == "comò",
+           "NFC e NFD si normalizzano allo stesso id 'comò'")
+
+
+def test_accenti_risoluzione_runtime_nfd():
+    print("[accenti: il giocatore risolve un oggetto accentato anche in forma NFD]")
+    import unicodedata
+    from gioco import risolvi_nome_oggetto
+    src = (
+        "La cabina è una stanza.\n"
+        "Il comò è una cosa.\nIl comò è nella cabina.\n"
+        "Il giocatore comincia nella cabina.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None and mondo.trova_oggetto("comò") is not None,
+           "l'oggetto accentato 'comò' è dichiarato")
+    nfd = unicodedata.normalize("NFD", "comò")
+    nfc = unicodedata.normalize("NFC", "comò")
+    _check(risolvi_nome_oggetto(mondo, nfc) == "comò",
+           "input precomposto (NFC) risolve l'oggetto")
+    _check(risolvi_nome_oggetto(mondo, nfd) == "comò",
+           "input decomposto (NFD) risolve lo STESSO oggetto (prima falliva)")
+
+
+def test_accenti_sorgente_nfd_compila():
+    print("[accenti: un sorgente scritto in NFD compila e risolve come NFC]")
+    import unicodedata
+    src_nfd = unicodedata.normalize("NFD",
+        "La cabina è una stanza.\n"
+        "La caffettiera è una cosa.\n"
+        'La descrizione della caffettiera è "Annerita dall\'uso.".\n'
+    )
+    mondo, _ = compila(src_nfd)
+    _check(mondo is not None, "il sorgente in forma decomposta compila")
+    _check(mondo and mondo.trova_oggetto("caffettiera") is not None,
+           "l'entità è registrata con id NFC indipendentemente dalla forma sorgente")
+
+
+# --- Test: preposizioni d'azione articolate [0.18.0 / A4] -------------------
+
+def test_prep_azione_articolata_compila():
+    print("[prep. azione: 'usa X sul Y' e 'usa X nella Y' compilano]")
+    src = (
+        "La sala è una stanza.\n"
+        "La batteria è una cosa.\nLa batteria è in sala.\n"
+        "Il pannello è una cosa.\nIl pannello è in sala.\n"
+        "La gemma è una cosa.\nLa gemma è in sala.\n"
+        "La teca è una cosa.\nLa teca è in sala.\n"
+        'Invece di usa la batteria sul pannello: dire "Inserita.".\n'
+        'Invece di usa la gemma nella teca: dire "Incastonata.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "le regole con preposizione articolata compilano")
+    _check(mondo and len(mondo.regole) == 2, "entrambe le regole a due oggetti sono registrate")
+    _check(mondo and mondo.regole[0].preposizione == "sul",
+           "la preposizione articolata 'sul' è conservata sulla regola")
+
+
+def test_prep_azione_articolata_runtime():
+    print("[prep. azione: il giocatore digita 'usa X sul Y' e la regola scatta]")
+    src = (
+        "La sala è una stanza.\nIl giocatore comincia in sala.\n"
+        "La batteria è una cosa.\nLa batteria è prendibile.\nLa batteria è in sala.\n"
+        "Il pannello è una cosa.\nIl pannello è in sala.\n"
+        'Invece di usa la batteria sul pannello: dire "Il pannello si accende." e adesso la batteria è nel nulla.\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi batteria")
+    out = esegui(mondo, "usa batteria sul pannello")
+    _check("Il pannello si accende." in out,
+           "il comando con preposizione articolata 'sul' attiva la regola")
+
+
+def test_prep_azione_semplice_resta_valida():
+    print("[prep. azione: le forme semplici su/in restano valide (retro-compat)]")
+    src = (
+        "La sala è una stanza.\nIl giocatore comincia in sala.\n"
+        "La chiave è una cosa.\nLa chiave è prendibile.\nLa chiave è in sala.\n"
+        "La porta è una cosa.\nLa porta è in sala.\n"
+        'Invece di usa la chiave su la porta: dire "Click.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi chiave")
+    out = esegui(mondo, "usa chiave su porta")
+    _check("Click." in out, "la forma semplice 'su' continua a funzionare")
+
+
+# --- Test: nuovi costrutti di design [0.18.0 / B1-B7] -----------------------
+
+def test_contatore_al_massimo_lte():
+    print("[B4: confronto '<=' — 'al massimo N']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La forza è un contatore.\nLa forza parte da 2.\n"
+        'Invece di guarda se la forza è al massimo 2: dire "Debole.".\n'
+    )
+    mondo = runtime(src)
+    cond = mondo.regole[0].condizione
+    _check(cond.operatore == "<=" and cond.valuta(mondo) is True, "2 <= 2 è vero")
+    _check("Debole." in esegui(mondo, "guarda"), "la regola con '<=' scatta a parità")
+    src2 = src.replace("parte da 2", "parte da 5")
+    mondo2 = runtime(src2)
+    _check(mondo2.regole[0].condizione.valuta(mondo2) is False, "5 <= 2 è falso")
+
+
+def test_contatore_diverso_neq():
+    print("[B5: disuguaglianza numerica '!=' — 'non è N']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La forza è un contatore.\nLa forza parte da 3.\n"
+        'Invece di guarda se la forza non è 0: dire "Hai forza.".\n'
+    )
+    mondo = runtime(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneNot", "'non è N' è una negazione")
+    _check(type(cond.condizione).__name__ == "CondizioneContatore",
+           "negazione di un confronto NUMERICO (non di uno stato)")
+    _check("Hai forza." in esegui(mondo, "guarda"), "3 != 0 -> la regola scatta")
+    src0 = src.replace("La forza parte da 3.\n", "")
+    mondo0 = runtime(src0)
+    _check(mondo0.regole[0].condizione.valuta(mondo0) is False,
+           "0 != 0 è falso (il contatore di default vale 0)")
+
+
+def test_non_gruppo_b7():
+    print("[B7: negazione di un gruppo booleano 'non ( A e B )']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La chiave è una cosa.\nLa chiave è in cella.\n"
+        "La torcia è una cosa.\nLa torcia è spenta.\nLa torcia è in cella.\n"
+        'Invece di guarda se non ( il giocatore ha la chiave e la torcia è accesa ): '
+        'dire "Ti manca qualcosa.".\n'
+    )
+    mondo = runtime(src)
+    cond = mondo.regole[0].condizione
+    _check(type(cond).__name__ == "CondizioneNot", "'non ( … )' produce una negazione")
+    _check(cond.valuta(mondo) is True,
+           "il gruppo (ha chiave AND torcia accesa) è falso -> la sua negazione è vera")
+    _check("Ti manca qualcosa." in esegui(mondo, "guarda"), "la regola scatta")
+
+
+def test_posizione_giocatore_b1():
+    print("[B1: condizione 'se il giocatore è in [stanza]' + negazione]")
+    src = (
+        "L'atrio è una stanza.\nLa cripta è una stanza.\n"
+        "L'atrio collega nord a cripta.\n"
+        "Il giocatore comincia in atrio.\n"
+        'Invece di guarda se il giocatore è in atrio: dire "Sei nell\'atrio.".\n'
+        'Invece di guarda se il giocatore non è in atrio: dire "Hai lasciato l\'atrio.".\n'
+    )
+    mondo = runtime(src)
+    _check("Sei nell'atrio." in esegui(mondo, "guarda"),
+           "all'avvio (in atrio) la condizione di posizione è vera")
+    esegui(mondo, "nord")  # ora in cripta
+    _check(mondo.posizione_giocatore == "cripta", "il giocatore si è spostato in cripta")
+    out_cripta = esegui(mondo, "guarda")
+    _check("Sei nell'atrio." not in out_cripta,
+           "fuori dall'atrio la condizione 'è in atrio' è falsa")
+    _check("Hai lasciato l'atrio." in out_cripta,
+           "la negazione 'non è in atrio' è vera in cripta")
+
+
+def test_teletrasporto_giocatore_b2():
+    print("[B2: conseguenza 'e adesso il giocatore è in [stanza]' (teletrasporto)]")
+    src = (
+        "L'altare è una stanza.\nIl vuoto è una stanza.\n"
+        "Il giocatore comincia in altare.\n"
+        "Il portale è una cosa.\nIl portale è in altare.\n"
+        'Invece di usa il portale: dire "Vieni risucchiato." e adesso il giocatore è nel vuoto.\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "usa portale")
+    _check(mondo.posizione_giocatore == "vuoto", "il teletrasporto ha spostato il giocatore")
+    _check("Vieni risucchiato." in out, "il testo della regola è stampato")
+    _check("--- Il vuoto ---" in out or "vuoto" in out.lower(),
+           "dopo il teletrasporto è mostrata la nuova stanza")
+
+
+def test_teletrasporto_stanza_inesistente_errore():
+    print("[B2: il teletrasporto verso una stanza inesistente è un errore]")
+    src = (
+        "L'altare è una stanza.\nIl giocatore comincia in altare.\n"
+        "Il portale è una cosa.\nIl portale è in altare.\n"
+        'Invece di usa il portale: dire "Vai." e adesso il giocatore è nel limbo.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "una destinazione di teletrasporto inesistente blocca la compilazione")
+
+
+def test_esito_personalizzato_b3():
+    print("[B3: testo d'esito personalizzato per vinci/perdi/termina]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il bottone è una cosa.\nIl bottone è in cella.\n"
+        'Invece di usa il bottone: dire "Premi." e adesso vinci "FUGA RIUSCITA: sei libero!".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "usa bottone")
+    _check("FUGA RIUSCITA: sei libero!" in out, "stampa il messaggio d'esito personalizzato")
+    _check("HAI VINTO" not in out, "il banner fisso è sostituito dal testo d'autore")
+    _check(mondo.stato_partita == "vinta", "lo stato della partita è comunque 'vinta'")
+
+
+def test_esito_default_resta_senza_testo():
+    print("[B3: senza testo, l'esito mostra ancora il banner di default]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La trappola è una cosa.\nLa trappola è in cella.\n"
+        'Invece di usa la trappola: dire "Scatta!" e adesso perdi.\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "usa trappola")
+    _check("HAI PERSO" in out, "senza testo personalizzato resta il banner di default")
+
+
+# --- Test: verbi personalizzati multi-parola [0.18.0 / B6] ------------------
+
+def test_verbo_multiparola_dichiarazione_e_regola():
+    print("[B6: '\"fai scattare\" è un comando.' è accettato e usabile in una regola]")
+    src = (
+        "La cripta è una stanza.\nIl giocatore comincia in cripta.\n"
+        "La leva è una cosa.\nLa leva è in cripta.\n"
+        '"fai scattare" è un comando.\n'
+        'Invece di fai scattare la leva: dire "La trappola scatta!".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "il comando multi-parola compila (niente più rifiuto)")
+    _check(mondo and "fai scattare" in mondo.verbi_personalizzati,
+           "il verbo multi-parola è registrato")
+    _check(mondo and any(r.verbo == "fai scattare" for r in mondo.regole),
+           "la regola 'Invece di fai scattare la leva' usa il verbo multi-parola")
+    _check("non si attiverà" not in log.lower(),
+           "nessun avviso di verbo non riconosciuto per il comando dichiarato")
+
+
+def test_verbo_multiparola_runtime():
+    print("[B6: il giocatore digita il verbo multi-parola e la regola scatta]")
+    src = (
+        "La cripta è una stanza.\nIl giocatore comincia in cripta.\n"
+        "La leva è una cosa.\nLa leva è in cripta.\n"
+        '"fai scattare" è un comando.\n'
+        'Invece di fai scattare la leva: dire "La trappola scatta!".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "fai scattare leva")
+    _check("La trappola scatta!" in out,
+           "'fai scattare leva' attiva la regola del verbo multi-parola")
+
+
+def test_verbo_monoparola_resta_valido():
+    print("[B6: i verbi personalizzati monoparola continuano a funzionare]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La leva è una cosa.\nLa leva è in cella.\n"
+        '"spingi" è un comando.\n'
+        'Invece di spingi la leva: dire "Spinta.".\n'
+    )
+    mondo = runtime(src)
+    _check("Spinta." in esegui(mondo, "spingi leva"),
+           "il verbo monoparola 'spingi' funziona come prima")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -2669,7 +3100,7 @@ def main():
         test_verbo_personalizzato_dichiarazione,
         test_verbo_personalizzato_runtime,
         test_verbo_personalizzato_senza_regola,
-        test_verbo_personalizzato_multiparola_warning,
+        test_verbo_personalizzato_multiparola_accettato,
         # Livello 4 — direzioni personalizzate / data-driven (L1)
         test_direzioni_personalizzate_connessione,
         test_direzioni_personalizzate_runtime,
@@ -2837,9 +3268,42 @@ def main():
         test_errore_entita_suggerimento,
         test_errore_sintassi_resta_generico,
         test_storia_esempio_compila,
+        # 0.18.0 — A1: regole a DUE OGGETTI che valutano la clausola 'se'
+        test_due_oggetti_se_condizionale_vince_sulla_semplice,
+        test_due_oggetti_se_falso_senza_fallback_cade_su_default,
+        test_due_oggetti_prep_tollerante_resta_attiva,
+        # 0.18.0 — A2: genitivo 'dei' nelle descrizioni
+        test_descrizione_genitivo_dei,
+        test_descrizione_genitivi_singolari_restano_validi,
+        # 0.18.0 — A5: copula plurale 'sono'
+        test_copula_sono_dichiarazioni,
+        test_copula_sono_proprieta_posizione,
+        test_copula_sono_condizioni_e_conseguenze,
+        test_copula_e_ancora_valida,
+        # 0.18.0 — A3: normalizzazione NFC degli accenti
+        test_accenti_nfc_normalizzazione_nome,
+        test_accenti_risoluzione_runtime_nfd,
+        test_accenti_sorgente_nfd_compila,
+        # 0.18.0 — A4: preposizioni d'azione articolate
+        test_prep_azione_articolata_compila,
+        test_prep_azione_articolata_runtime,
+        test_prep_azione_semplice_resta_valida,
+        # 0.18.0 — B: nuovi costrutti di design
+        test_contatore_al_massimo_lte,
+        test_contatore_diverso_neq,
+        test_non_gruppo_b7,
+        test_posizione_giocatore_b1,
+        test_teletrasporto_giocatore_b2,
+        test_teletrasporto_stanza_inesistente_errore,
+        test_esito_personalizzato_b3,
+        test_esito_default_resta_senza_testo,
+        # 0.18.0 — B6: verbi personalizzati multi-parola
+        test_verbo_multiparola_dichiarazione_e_regola,
+        test_verbo_multiparola_runtime,
+        test_verbo_monoparola_resta_valido,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.14.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.18.0)")
     print("=" * 60)
     for t in tests:
         t()

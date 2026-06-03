@@ -4,6 +4,44 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.18.0] - 2026-06-03
+### Consolidamento del linguaggio — «linguaggio al massimo» 🏁
+Sessione dedicata a **colmare ogni buco e asimmetria** emersi scrivendo le demo,
+senza più workaround: il linguaggio è ora completo ed eccellente allo stato
+attuale delle conoscenze. Grammatica sempre **LALR(1) 0-ambigua**. Suite da 386 a
+**446 test** verdi.
+
+**Correzioni di limiti/asimmetrie (A):**
+- **A1 — Le regole a DUE oggetti valutano il `se`.** `usa X PREP Y` ora sceglie,
+  fra le regole che combaciano, la prima **condizionale soddisfatta**, poi la
+  prima **semplice** (esatto come le regole a un oggetto), con fallback
+  prep-tollerante. Prima il `se` era ignorato: vinceva sempre la prima dichiarata.
+- **A2 — Genitivo `dei`** nelle descrizioni: `La descrizione dei pilastri è "…"`.
+- **A3 — Accenti NFC.** Sorgente e input del giocatore sono normalizzati in forma
+  NFC: i nomi accentati (`comò`) si risolvono in modo affidabile anche se digitati
+  in forma decomposta. Cade la convenzione «niente accenti nei nomi».
+- **A4 — Preposizioni d'azione articolate.** `usa la batteria sul pannello`,
+  `metti la spada nella teca`: niente più la stonatura `su il`/`su la`.
+- **A5 — Copula plurale `sono`.** `Le tacche sono una cosa`, `Le tacche sono
+  vergini`, `se le tacche sono segnate`: l'italiano corretto sui nomi plurali (era
+  obbligatorio scrivere `Le tacche È una cosa`).
+
+**Nuovi costrutti di design (B):**
+- **B1 — `se il giocatore è in [stanza]`** (+ negazione).
+- **B2 — Teletrasporto:** `e adesso il giocatore è in [stanza]` (mostra la nuova
+  stanza; destinazione validata a compile-time).
+- **B3 — Testo d'esito personalizzato:** `… e adesso vinci "Sei libero!"` (anche
+  `perdi`/`termina`), al posto del banner fisso.
+- **B4 — Confronto `al massimo N`** (≤) sui contatori, simmetrico ad `almeno` (≥).
+- **B5 — Disuguaglianza numerica `non è N`** (≠) sui contatori.
+- **B6 — Verbi personalizzati multi-parola:** `"fai scattare" è un comando.`
+  (terminale chiuso `VERBO_MULTI` + longest-match a runtime).
+- **B7 — Negazione di un gruppo:** `non ( A e B )`.
+
+**Consolidamento:** versioni allineate a **0.18.0** (moduli core, suite, sidecar,
+`Mondo.__str__`); spec EBNF `documentazione/grammatica-0.18.0.md`; demo
+naturalizzate (`su il`→`sul`). Sidecar `VERSIONE_MOTORE` → 0.18.0.
+
 ## [0.17.0] - 2026-06-03
 ### Robustezza d'ordine + audit dei Livelli 1-8 🧱
 Due lavori della sequenza «linguaggio al massimo»: rendere il linguaggio

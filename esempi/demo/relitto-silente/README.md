@@ -2,7 +2,8 @@
 
 > Porting in linguaggio `.fav` dell'avventura testuale **«Il Relitto Silente»** di
 > Simone (Pitz72). Pensata come vetrina **esaustiva** del motore FAVELLA 1
-> (v0.17.0): esercita ogni primitiva del linguaggio, dai Livelli 1 agli 8.
+> (compatibile con **v0.18.0**): esercita ogni primitiva del linguaggio, dai
+> Livelli 1 agli 8.
 
 Sei il pilota solitario della nave da carico **Santa Maria**. Intercetti
 un'anomalia alla deriva: un'antica nave stellare aliena, silenziosa e morta. La
@@ -78,14 +79,15 @@ a diversi livelli di traduzione.
 
 ## Note tecniche (per chi studia il sorgente)
 
-- **Direzioni per il gating**: una direzione usata in una regola `Invece di vai`
-  deve esistere in una sola stanza, perché non c'è una condizione «se il
-  giocatore è nella stanza X».
-- **Regole a due oggetti** (`usa X su Y`): nel motore v0.17.0 la clausola `se`
-  non viene valutata per queste regole (vince la prima dichiarata). Perciò ogni
-  combinazione è **una sola** regola di successo; le guardie condizionali le
-  fanno le regole a **un** oggetto (`prendi`/`apri`/`vai`), dove il `se`
-  funziona. L'idempotenza è garantita dal consumo dell'oggetto o dallo stato.
+- **Direzioni per il gating**: questa demo àncora il gating del movimento a
+  direzioni uniche per stanza. _(Dalla v0.18.0 il motore offre anche la
+  condizione `se il giocatore è in [stanza]` e il teletrasporto `e adesso il
+  giocatore è in [stanza]`; la demo conserva il pattern topologico originale.)_
+- **Regole a due oggetti** (`usa X su Y`): dalla v0.18.0 il motore **valuta la
+  clausola `se`** anche per queste regole (la prima condizionale soddisfatta
+  vince, poi la semplice). Questa demo usa per ogni combinazione **una sola**
+  regola di successo e ottiene l'idempotenza consumando l'oggetto o cambiando
+  stato — un pattern che resta valido e robusto.
 - **Echi delle stanze sigillate**: plancia, stiva e camera restano alle spalle
   del giocatore; i loro echi vengono catturati **retroattivamente** in un colpo
   solo `sintonizza`ndo le pareti del Corridoio.

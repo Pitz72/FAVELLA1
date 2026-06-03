@@ -18,7 +18,36 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.7.0 - Disambiguazione Strutturale (Alpha)
+## 🚀 Stato Attuale: v0.18.0 — Consolidamento del linguaggio
+
+Il linguaggio FAVELLA è ora **completo ed eccellente allo stato attuale**: i Livelli 1-8 della roadmap sono chiusi e la v0.18.0 ha colmato ogni buco e asimmetria emersi scrivendo le demo, **senza più workaround nelle storie**. La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate: symbol-table → LALR con i nomi come token chiusi). Suite di **446 test** verdi. Spec tecnica: [`documentazione/grammatica-0.18.0.md`](documentazione/grammatica-0.18.0.md).
+
+### Novità del Linguaggio (v0.18.0 — Consolidamento)
+- **Regole a due oggetti con `se`:** `Invece di usa X su Y se [condizione]: …` ora valuta davvero la condizione (più esiti per la stessa combinazione).
+- **Italiano più ricco e corretto:** copula plurale (`Le tacche sono una cosa`), genitivo `dei` (`la descrizione dei pilastri`), preposizioni articolate (`usa la batteria sul pannello`), accenti affidabili nei nomi (`comò`).
+- **Più potere espressivo:** condizione e teletrasporto sulla posizione del giocatore (`se il giocatore è in X`, `e adesso il giocatore è in X`); testo d'esito personalizzato (`… e adesso vinci "Sei libero!"`); confronti `al massimo N` (≤) e `non è N` (≠) sui contatori; negazione di gruppi `non ( A e B )`; verbi personalizzati multi-parola (`"fai scattare" è un comando.`).
+
+Storia completa in [CHANGELOG.md](CHANGELOG.md). Le sezioni seguenti documentano le tappe precedenti della roadmap.
+
+### 📌 Versioni (linea unica)
+
+Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il linguaggio: non esiste più uno schema separato «Grammatica vX». Motore, compilatore e specifica della grammatica avanzano insieme.
+
+| Componente | Versione | Riferimento |
+|---|---|---|
+| Motore / interprete (`gioco.py`) | **0.18.0** | header di modulo |
+| Compilatore (`compilatore.py`) | **0.18.0** | header di modulo |
+| Strutture dati (`strutture.py`) | **0.18.0** | header + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **0.18.0** | header di modulo |
+| Specifica formale della grammatica | **0.18.0** | [`documentazione/grammatica-0.18.0.md`](documentazione/grammatica-0.18.0.md) |
+| Suite di test (`test_linguaggio.py`) | **0.18.0** | 446 test verdi |
+| Sidecar IDE (`favella_server.py`) | `VERSIONE_MOTORE` 0.18.0 | — |
+
+> Le etichette di versione più vecchie che compaiono nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** delle tappe e non riflettono lo stato attuale, che è **v0.18.0** su tutta la linea. Il manuale d'autore (`documentazione/manuale/`) sarà rigenerato sulla v0.18.0 in una prossima iterazione.
+
+---
+
+## Stato storico: v0.7.0 — Disambiguazione Strutturale (Alpha)
 
 Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.7.0 completa il **Livello 2.5 — Disambiguazione strutturale**: la grammatica di FAVELLA è ora **non ambigua per costruzione**. Il compilatore è stato riscritto in **due passate** (symbol-table → parsing **LALR(1)** con i nomi come token chiusi), eliminando alla radice l'ambiguità formale `[G1]` che prima era solo *mitigata* da priorità di regola.
 
@@ -44,7 +73,7 @@ Il progetto segue una **roadmap evolutiva del linguaggio** in 6 livelli. La v0.7
 - **Marker Visivi degli Errori Sintattici:** Evidenziazione visiva automatica in rosso scuro soffuso della riga d'errore Lark per assistere l'autore nel debug del codice.
 - **Console di Gioco Ottimizzata:** Cattura l'output del gioco eliminando spazi e righe vuote duplicate e fornendo un feedback visivo immediato se il gioco non è attivo.
 
-### Core del Linguaggio (Grammatica v0.4.0)
+### Core del Linguaggio (storico — etichettato all'epoca «Grammatica v0.4.0»)
 - **Conservazione dell'Estetica Originale:** I nomi di stanze e oggetti conservano gli articoli e la capitalizzazione originali scritti dall'autore (es. `"Una keycard magnetica"`, `"La cella di contenimento"`), pur mantenendo l'ID normalizzato per la logica.
 - **Preposizioni Tolleranti:** Tolleranza ed eliminazione del problema *"guess-the-preposition"* nei comandi a due oggetti (es. `usa la keycard con la porta` si mappa automaticamente a `usa la keycard su la porta`).
 - **Conseguenze Dinamiche:** Regole che modificano il mondo (`... e adesso la porta è aperta`).

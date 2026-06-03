@@ -1,6 +1,6 @@
 # ============================================================================
 # echi.fav — Modulo ECHI TEMPORALI (il Sintonizzatore di Frequenza)
-# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.17.0
+# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.18.0
 # ----------------------------------------------------------------------------
 # Il motore non può condizionare sulla stanza corrente, quindi ogni eco è
 # ancorato a un OGGETTO fisso della stanza e si attiva con SINTONIZZA <oggetto>

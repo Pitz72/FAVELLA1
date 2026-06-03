@@ -1,7 +1,51 @@
 la cucina è una stanza.
+il tavolo è un supporto.
+torcia elettrica è una cosa.
+torcia elettrica è prendibile.
+torcia elettrica è sul tavolo.
+La descrizione di torcia elettrica è "Si tratta di una torcia elettrica.".
+carica e scarica sono opposte.
+accesa e spenta sono opposte.
+torcia elettrica è carica.
+torcia elettrica è spenta.
+torcia elettrica è spenta.
+torcia elettrica si chiama anche "lampada tascabile".
+scatola misteriosa è un contenitore.
+scatola misteriosa è prendibile.
+scatola misteriosa è sul tavolo.
+La descrizione di scatola misteriosa è "Questa scatola sembra proprio misteriosa".
+scatola misteriosa è chiusa.
+piccola scheda magnetica è una cosa.
+piccola scheda magnetica è prendibile.
+piccola scheda magnetica è sul tavolo.
+piccola scheda magnetica si chiama anche "scheda magnetica".
+piccola scheda magnetica si chiama anche "scheda".
+chiave antica è una cosa.
+chiave antica è prendibile.
+chiave antica è in scatola misteriosa.
+La descrizione di chiave antica è "Deve per forza aprire il grande portale misterioso della cucina.".
+chiave antica si chiama anche "chiave".
+portale è un contenitore.
+La descrizione di portale è "Sembra un portale molto antico. E' strano trovarlo in cucina.".
+portale è chiusa.
+portale si chiama anche "porta".
+Uomo del Tempo è un personaggio.
+Uomo del Tempo è in portale.
+La descrizione di Uomo del Tempo è "Un uomo che sembra veramente molto antico.".
+Invece di usa piccola scheda magnetica con scatola misteriosa: dire "La scatola fa click e si apre mostrando il contenuto." e adesso scatola misteriosa è aperta.
+Invece di usa chiave antica con portale se il giocatore ha torcia elettrica: dire "Con un suono grave e pesante il portale si apre." e adesso portale è aperto.
+Ogni 4 turni: dire "Un brivido attraversa la cucina. L'aria sa di pioggia anche se le finestre sono chiuse.".
+Sospetto è un contatore.
+Atmosfera è uno stato.
+# valori di Atmosfera: inquieta, ostile, tranquilla
+atmosfera è tranquilla.
+Invece di prendi torcia elettrica: dire "Ora che la torcia è nelle tue mani ti senti più sereno." e adesso torcia elettrica è in inventario.
+Al turno 3: dire "Senti salire un sospetto importante." e adesso aumenta sospetto.
+La descrizione della cucina è "Misteriosamente ti trovi in una stanza che ti ricorda una cucina qualunque ma che vagamente ti riporta ad una casa di quando eri piccolo.".
 corridoio è una stanza.
-soggiorno è una stanza.
-camera da letto è una stanza.
-la cucina collega sud a corridoio.
-corridoio collega est a soggiorno.
-corridoio collega ovest a camera da letto.
+portale è in corridoio.
+la cucina collega est a corridoio.
+La descrizione di corridoio è "E' un lungo corridoio di una vecchia casa. Sembra che nessuno passi quì da così tanto tempo. Manca la corrente.".
+la lavanderia è una stanza.
+la cucina collega nord a la lavanderia.
+il tavolo è in lavanderia.

@@ -47,8 +47,8 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
-VERSIONE_MOTORE = "0.17.0"
-VERSIONE_SIDECAR = "0.9.4"  # Editor stanze: world.outline espone startSpan (frase di partenza)
+VERSIONE_MOTORE = "0.18.0"
+VERSIONE_SIDECAR = "0.9.5"  # Consolidamento linguaggio 0.18.0 (A1-A5 + B1-B7)
 
 
 # ==============================================================================

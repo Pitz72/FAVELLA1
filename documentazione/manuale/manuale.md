@@ -1,3 +1,12 @@
+> ⚠️ **MANUALE DISALLINEATO — da rigenerare.** Questo documento descrive una
+> versione **storica** del linguaggio (≈0.0.9.2). Lo stato attuale è **FAVELLA 1
+> v0.18.0** (linea di versione unica: motore, compilatore e grammatica sono tutti
+> 0.18.0). Per il riferimento aggiornato usa la specifica formale
+> [`documentazione/grammatica-0.18.0.md`](../grammatica-0.18.0.md), il
+> [README principale](../../README.md) e il [CHANGELOG](../../CHANGELOG.md). Il
+> manuale d'autore completo sarà **riscritto sulla v0.18.0** in una prossima
+> iterazione, con la demo «Il Relitto Silente» come esempio guida.
+
 ### **Azione 1: Creazione del Manuale Utente v0.1**
 
 Ho preparato un documento Markdown che funge da "Manuale di Riferimento Rapido" per FAVELLA 1, basato su tutte le funzionalità che abbiamo implementato fino alla versione 0.0.9.2 (Grammatica v0.8).

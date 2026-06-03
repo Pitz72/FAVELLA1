@@ -2,6 +2,7 @@
 # Modulo per le funzioni di utilità di FAVELLA 1
 
 import re
+import unicodedata
 
 # Articoli italiani riconosciuti come prefisso opzionale dei nomi-entità.
 # Fonte unica: usata sia da normalizza_nome (rimozione) sia dalla grammatica
@@ -177,8 +178,13 @@ def normalizza_tipografia(testo: str) -> str:
     """
     Normalizza apostrofi e virgolette "curve" (tipici di copia-incolla da
     editor di testo) nelle versioni dritte attese dalla grammatica [L2].
-    Idempotente: applicarla più volte non cambia il risultato.
+    [0.18.0 / A3] Normalizza anche la COMPOSIZIONE Unicode in forma NFC, così un
+    accento digitato/incollato in forma decomposta (es. 'o'+◌̀) diventa il
+    carattere precomposto atteso ('ò'): i nomi-entità accentati ('comò') si
+    risolvono in modo affidabile, perché TUTTA la pipeline (symbol-table, regex
+    ENTITA, parsing) vede la stessa forma. Idempotente.
     """
+    testo = unicodedata.normalize("NFC", testo)
     return (testo
             .replace('’', "'").replace('‘', "'")
             .replace('“', '"').replace('”', '"'))
@@ -200,8 +206,11 @@ def normalizza_nome(nome: str) -> str:
     Returns:
         L'ID normalizzato della stringa.
     """
-    # 1. Converti in minuscolo
-    nome_processato = nome.lower()
+    # 1. Converti in minuscolo. [0.18.0 / A3] Prima normalizza la composizione
+    #    Unicode in NFC, così l'id è indipendente dalla forma (precomposta o
+    #    decomposta) con cui gli accenti arrivano dal sorgente o dall'input del
+    #    giocatore a runtime: 'comò' digitato come 'o'+◌̀ risolve l'oggetto 'comò'.
+    nome_processato = unicodedata.normalize("NFC", nome).lower()
 
     # 2. Rimuovi l'articolo iniziale. Gli articoli con apostrofo ("l'", "un'")
     #    sono attaccati al nome; gli altri richiedono lo spazio separatore.

@@ -1,6 +1,6 @@
 # ============================================================================
 # regole.fav — Modulo REGOLE: gating, enigmi, verbi custom
-# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.17.0
+# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.18.0
 # ----------------------------------------------------------------------------
 # Convenzione: i verbi vanno all'IMPERATIVO come li digita il giocatore.
 # "Invece di" sostituisce l'azione di default: dove serve mantenere l'effetto
@@ -43,11 +43,11 @@ Invece di analizza lo scafo nero: dire "Il multiscanner rileva una sottile disco
 # dichiarata). Quindi ogni 'usa X su Y' è UNA sola regola di successo; le
 # guardie le fanno le regole a UN oggetto (prendi/apri/vai), che il 'se' lo
 # valutano. L'idempotenza è garantita dal consumo dell'oggetto o dallo stato.
-Invece di usa la taglierina su la crepa se la crepa è compatta: dire "Attivi la taglierina al plasma. Un getto di luce silenziosa incide il metallo oscuro: la sezione tagliata si stacca, rivelando un'apertura scura. Sembra l'ingresso di una camera di compensazione. Puoi ENTRARE col VARCO." e adesso la crepa è tagliata.
+Invece di usa la taglierina sulla crepa se la crepa è compatta: dire "Attivi la taglierina al plasma. Un getto di luce silenziosa incide il metallo oscuro: la sezione tagliata si stacca, rivelando un'apertura scura. Sembra l'ingresso di una camera di compensazione. Puoi ENTRARE col VARCO." e adesso la crepa è tagliata.
 
 # Camera: la batteria alimenta il pannello; poi si apre la porta interna.
 Invece di analizza il pannello: dire "Il multiscanner rileva una micro-rete di fibre energetiche sotto la superficie: gestisce pressurizzazione e apertura, ma è dormiente. C'è una porta d'accesso per una fonte di energia esterna a basso voltaggio.".
-Invece di usa la batteria su il pannello se il pannello è spento: dire "Trovi un incavo nascosto sul pannello e inserisci il connettore della batteria. Il pannello si anima con un ronzio e una linea di luce ambrata appare. Un 'clack' sordo proviene dalla porta interna: ora si può aprire." e adesso il pannello è acceso e adesso la batteria è nel nulla.
+Invece di usa la batteria sul pannello se il pannello è spento: dire "Trovi un incavo nascosto sul pannello e inserisci il connettore della batteria. Il pannello si anima con un ronzio e una linea di luce ambrata appare. Un 'clack' sordo proviene dalla porta interna: ora si può aprire." e adesso il pannello è acceso e adesso la batteria è nel nulla.
 Invece di apri la porta interna se il pannello è spento: dire "La porta è sigillata e non si muove: manca energia al meccanismo.".
 Invece di apri la porta interna se la porta interna è aperta: dire "La porta interna è già aperta.".
 Invece di apri la porta interna se la porta interna è chiusa: dire "Appoggi la mano sulla linea di luce ambrata del pannello. Con un sibilo appena udibile, la porta si ritrae nella parete, rivelando un lungo corridoio. Si attraversa la SOGLIA." e adesso la porta interna è aperta.
@@ -55,7 +55,7 @@ Invece di apri la porta interna se la porta interna è chiusa: dire "Appoggi la 
 # ╔════════════════════════════════════════════════════════════════════════╗
 # ║ C. CHIAVE 1 — IL SEME VIVENTE (serra morente)                            ║
 # ╚════════════════════════════════════════════════════════════════════════╝
-Invece di usa la tavoletta su la teca se la teca è sigillata: dire "Inserisci la tavoletta nell'incavo del pannello: si adatta perfettamente. I simboli si illuminano in sequenza, un 'clic' armonioso. La teca di cristallo si dissolve in pulviscolo di luce, lasciando il Seme Vivente a fluttuare libero davanti a te. La vibrazione cessa di colpo: il silenzio cala sulla stanza come neve." e adesso la teca è svuotata e adesso il seme vivente è nella serra morente e adesso la tavoletta è nel nulla.
+Invece di usa la tavoletta sulla teca se la teca è sigillata: dire "Inserisci la tavoletta nell'incavo del pannello: si adatta perfettamente. I simboli si illuminano in sequenza, un 'clic' armonioso. La teca di cristallo si dissolve in pulviscolo di luce, lasciando il Seme Vivente a fluttuare libero davanti a te. La vibrazione cessa di colpo: il silenzio cala sulla stanza come neve." e adesso la teca è svuotata e adesso il seme vivente è nella serra morente e adesso la tavoletta è nel nulla.
 Invece di prendi il seme vivente se la teca è sigillata: dire "Non puoi prenderlo: è sigillato all'interno della teca di cristallo.".
 Invece di prendi il seme vivente se la teca è svuotata: dire "Chiudi le dita attorno al Seme Vivente. È caldo, quasi febbrile, e una vibrazione costante risale lungo il tuo braccio. Hai recuperato la prima chiave.(Non un oggetto, non una 'chiave': una promessa. L'ultima di una civiltà morta credendo nel futuro. Una responsabilità che non hai chiesto, e che non puoi ignorare.)" e adesso il seme vivente è in inventario.
 
@@ -72,7 +72,7 @@ Invece di prendi la stele se l'altare è schiuso: dire "Prendi la Stele del Rico
 # ╔════════════════════════════════════════════════════════════════════════╗
 # ║ CHIAVE 3 — IL NUCLEO DI MEMORIA (arca della memoria)                     ║
 # ╚════════════════════════════════════════════════════════════════════════╝
-Invece di usa la taglierina su il terminale se il terminale è spento: dire "È un'idea folle, ma l'unica che hai. Imposti la taglierina al plasma sulla massima potenza e, per una frazione di secondo, dirigi il getto sul pannello di bypass. Il terminale sfrigola, un odore acre di metallo fuso... poi lo schermo si accende con un'unica parola aliena e un piccolo scomparto si apre alla base, rivelando un cristallo poliedrico." e adesso il terminale è acceso e adesso il nucleo è nell'arca della memoria.
+Invece di usa la taglierina sul terminale se il terminale è spento: dire "È un'idea folle, ma l'unica che hai. Imposti la taglierina al plasma sulla massima potenza e, per una frazione di secondo, dirigi il getto sul pannello di bypass. Il terminale sfrigola, un odore acre di metallo fuso... poi lo schermo si accende con un'unica parola aliena e un piccolo scomparto si apre alla base, rivelando un cristallo poliedrico." e adesso il terminale è acceso e adesso il nucleo è nell'arca della memoria.
 Invece di prendi il nucleo se il terminale è spento: dire "È sigillato all'interno del terminale.".
 Invece di prendi il nucleo se il giocatore ha il nucleo: dire "Ce l'hai già.".
 Invece di prendi il nucleo se il terminale è acceso: dire "Prendi il Nucleo di Memoria dallo scomparto del terminale. Terza chiave. Le hai tutte e tre." e adesso il nucleo è in inventario.
@@ -82,8 +82,8 @@ Invece di prendi il nucleo se il terminale è acceso: dire "Prendi il Nucleo di 
 # ╚════════════════════════════════════════════════════════════════════════╝
 # Il dispositivo medico risveglia il cristallo opaco; il cristallo attivo
 # alimenta il generatore → energia ripristinata → demone d'ambiente.
-Invece di usa il dispositivo medico su il cristallo se il cristallo è opaco: dire "Con una certa esitazione attivi il dispositivo medico: la punta di cristallo emette un ronzio quasi inudibile e una luce ambrata. La avvicini al cristallo opaco. Appena si toccano, la superficie lattiginosa diventa trasparente: dentro, una matrice di filamenti luminosi pulsa in sincrono, come un cuore che ha ripreso a battere. Ora è tiepido e vibra: sembra fatto per essere inserito in qualcosa." e adesso il cristallo è attivo.
-Invece di usa il cristallo su il generatore se il cristallo è attivo: dire "Inserisci il cristallo pulsante nel nucleo del generatore. Con un rombo crescente, i macchinari si risvegliano dopo secoli di silenzio: archi di elettricità danzano tra le bobine, i monitor si accendono mostrando flussi di energia stabili, reindirizzati verso il Ponte di Comando." e adesso l'energia è ripristinata e adesso il cristallo è nel nulla.
+Invece di usa il dispositivo medico sul cristallo se il cristallo è opaco: dire "Con una certa esitazione attivi il dispositivo medico: la punta di cristallo emette un ronzio quasi inudibile e una luce ambrata. La avvicini al cristallo opaco. Appena si toccano, la superficie lattiginosa diventa trasparente: dentro, una matrice di filamenti luminosi pulsa in sincrono, come un cuore che ha ripreso a battere. Ora è tiepido e vibra: sembra fatto per essere inserito in qualcosa." e adesso il cristallo è attivo.
+Invece di usa il cristallo sul generatore se il cristallo è attivo: dire "Inserisci il cristallo pulsante nel nucleo del generatore. Con un rombo crescente, i macchinari si risvegliano dopo secoli di silenzio: archi di elettricità danzano tra le bobine, i monitor si accendono mostrando flussi di energia stabili, reindirizzati verso il Ponte di Comando." e adesso l'energia è ripristinata e adesso il cristallo è nel nulla.
 
 # ╔════════════════════════════════════════════════════════════════════════╗
 # ║ E. PONTE DI COMANDO — energia → mappa → sistema trino → porta finale     ║
@@ -104,9 +104,9 @@ Invece di tocca le punte se il sistema è ignoto: dire "Le punte luminose attend
 Invece di tocca le punte se la proiezione è attiva e il sistema è noto: dire "Ricordando la mappa stellare — la culla a tre soli — appoggi la mano sul pannello e attivi tre delle punte luminose. Un 'clic' armonioso risuona nel silenzio: la porta circolare si apre con un movimento fluido, rivelando una stanza avvolta in un'oscurità totale e sacra." e adesso la porta circolare è aperta.
 
 # Posizionare le chiavi sulla Grande Porta (il demone in relitto.fav apre a 3).
-Invece di usa il seme vivente su la grande porta se il giocatore ha il seme vivente: dire "Avvicini il Seme Vivente all'incavo ovoidale: viene attratto e si incastra con un 'clic' delicato. Una linea di luce verde smeraldo si traccia lungo il bordo della porta." e adesso il seme vivente è nel nulla e adesso aumenta le chiavi.
-Invece di usa la stele su la grande porta se il giocatore ha la stele: dire "Inserisci la Stele del Ricordo nell'incavo rettangolare: si adatta perfettamente. Una linea di luce bianca e pura si aggiunge, solenne." e adesso la stele è nel nulla e adesso aumenta le chiavi.
-Invece di usa il nucleo su la grande porta se il giocatore ha il nucleo: dire "Posizioni il Nucleo di Memoria nell'incavo poliedrico: una linea di luce ambrata completa il circuito. Un ronzio profondo e armonico riempie il corridoio." e adesso il nucleo è nel nulla e adesso aumenta le chiavi.
+Invece di usa il seme vivente sulla grande porta se il giocatore ha il seme vivente: dire "Avvicini il Seme Vivente all'incavo ovoidale: viene attratto e si incastra con un 'clic' delicato. Una linea di luce verde smeraldo si traccia lungo il bordo della porta." e adesso il seme vivente è nel nulla e adesso aumenta le chiavi.
+Invece di usa la stele sulla grande porta se il giocatore ha la stele: dire "Inserisci la Stele del Ricordo nell'incavo rettangolare: si adatta perfettamente. Una linea di luce bianca e pura si aggiunge, solenne." e adesso la stele è nel nulla e adesso aumenta le chiavi.
+Invece di usa il nucleo sulla grande porta se il giocatore ha il nucleo: dire "Posizioni il Nucleo di Memoria nell'incavo poliedrico: una linea di luce ambrata completa il circuito. Un ronzio profondo e armonico riempie il corridoio." e adesso il nucleo è nel nulla e adesso aumenta le chiavi.
 
 # NOTA DI DESIGN: 'le chiavi' conta i DEPOSITI sulla Grande Porta (3 → il demone
 # in relitto.fav la apre). La presa di seme/stele/nucleo NON incrementa il
