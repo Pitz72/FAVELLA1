@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.14.0)
+# Interprete Interattivo per FAVELLA 1 (v0.15.0)
 
 import sys
 import traceback
@@ -103,14 +103,41 @@ def partita_finita(mondo: Mondo) -> bool:
 
 def avanza_turno_e_processa(mondo: Mondo) -> bool:
     """[Livello 3] Avanza il contatore dei turni di un'unità e attiva gli eventi
-    temporali che scattano a quel turno. Restituisce True se un evento ha
-    terminato la partita (il loop deve fermarsi)."""
+    temporali che scattano a quel turno. [Livello 8] Poi valuta i DEMONI (eventi
+    condizionali). Restituisce True se un evento/demone ha terminato la partita
+    (il loop deve fermarsi)."""
     mondo.turno_corrente += 1
     t = mondo.turno_corrente
+    # Prima gli eventi a TEMPO: così un 'Ogni turno: aumenta tensione' è già
+    # applicato quando i demoni valutano le loro condizioni in questo stesso turno.
     for evento in mondo.eventi:
         if evento.scatta_a(t):
             print(rendi_testo(mondo, evento.risposta))
             evento.esegui_conseguenze(mondo)
+            if partita_finita(mondo):
+                return True
+    return _processa_demoni(mondo)
+
+
+def _processa_demoni(mondo: Mondo) -> bool:
+    """[Livello 8] Valuta i demoni (eventi condizionali) UNA volta per turno, in
+    un SOLO passaggio in ordine di dichiarazione. Un demone che scatta può mutare
+    lo stato e quindi influenzare i demoni SUCCESSIVI nello stesso passaggio
+    (cascata deterministica e utile), ma nessuno viene ri-valutato: i loop infiniti
+    sono impossibili per costruzione («un demone, una valutazione per turno»).
+    Restituisce True se un demone ha terminato la partita."""
+    for demone in mondo.demoni:
+        ora_vera = demone.condizione.valuta(mondo)
+        if demone.tipo == "ogni_turno":
+            # A LIVELLO: scatta a OGNI turno in cui la condizione è vera.
+            scatta = ora_vera
+        else:
+            # 'quando': sul FRONTE di salita (falso -> vero), una sola volta.
+            scatta = ora_vera and not demone.era_vera
+        demone.era_vera = ora_vera
+        if scatta:
+            print(rendi_testo(mondo, demone.risposta))
+            demone.esegui_conseguenze(mondo)
             if partita_finita(mondo):
                 return True
     return False

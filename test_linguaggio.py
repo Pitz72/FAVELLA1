@@ -1125,6 +1125,129 @@ def test_runtime_eventi_a_turni():
     _check("HAI PERSO" in out, "l'evento terminale al turno 3 chiude la partita")
 
 
+# --- Test: DEMONI / EVENTI CONDIZIONALI [Livello 8] --------------------------
+
+def test_demone_compila():
+    print("[demone: le due forme compilano e popolano mondo.demoni]")
+    src = (
+        "La cripta è una stanza.\n"
+        "Il giocatore comincia in cripta.\n"
+        "La tensione è un contatore.\n"
+        "L'allarme è uno stato.\nL'allarme è spento.\n"
+        'Ogni turno se la tensione è almeno 5: dire "Trema."'
+        " e adesso aumenta la tensione.\n"
+        'Quando l\'allarme è acceso diventa vera: dire "SCATTA!" e adesso perdi.\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "il sorgente con due demoni compila senza errori")
+    _check(len(mondo.demoni) == 2, "entrambi i demoni sono registrati in mondo.demoni")
+    tipi = {d.tipo for d in mondo.demoni}
+    _check(tipi == {"ogni_turno", "quando"},
+           "i tipi 'ogni_turno' (a livello) e 'quando' (fronte) sono distinti")
+
+
+def test_demone_quando_fronte_di_salita():
+    print("[demone: 'Quando ... diventa vera' scatta sulla soglia (esempio bersaglio)]")
+    # Esempio bersaglio: tensione che sale ogni turno + scadenza autonoma a 8.
+    src = (
+        "Il rituale è una stanza.\n"
+        "Il giocatore comincia in rituale.\n"
+        "La tensione è un contatore.\n"
+        'Ogni 1 turno: dire "La tensione cresce." e adesso aumenta la tensione di 2.\n'
+        'Quando la tensione è almeno 8: dire "Il portale ti risucchia."'
+        " e adesso perdi.\n"
+    )
+    mondo = runtime(src)
+    out = ""
+    for _ in range(3):                 # turni 1..3: tensione 2,4,6 -> non scatta
+        out += esegui(mondo, "guarda")
+    _check("portale ti risucchia" not in out,
+           "finché la tensione è sotto 8 il demone non scatta")
+    _check(mondo.stato_partita == "in_corso", "la partita è ancora in corso a tensione 6")
+    out_t4 = esegui(mondo, "guarda")   # turno 4: tensione 8 -> scatta -> perdi
+    _check("portale ti risucchia" in out_t4,
+           "quando la tensione raggiunge 8 il demone scatta da solo")
+    _check(mondo.stato_partita == "persa", "il demone ha terminato la partita autonomamente")
+
+
+def test_demone_quando_baseline_niente_falso_fronte():
+    print("[demone: una condizione GIÀ vera all'avvio non genera un falso fronte]")
+    src = (
+        "La torre è una stanza.\n"
+        "Il giocatore comincia in torre.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"   # vero fin dalla partenza
+        'Quando l\'allarme è attivo diventa vera: dire "FALSO FRONTE." e adesso perdi.\n'
+    )
+    mondo = runtime(src)
+    # Baseline calcolato a compile-time: era_vera deve essere già True.
+    demone = mondo.demoni[0]
+    _check(demone.era_vera is True, "il baseline registra la condizione come già vera")
+    out = esegui(mondo, "guarda")
+    _check("FALSO FRONTE" not in out,
+           "nessun fronte di salita: l'allarme era già attivo all'avvio")
+    _check(mondo.stato_partita == "in_corso", "la partita non viene chiusa per un falso fronte")
+
+
+def test_demone_quando_scatta_una_sola_volta():
+    print("[demone: 'Quando' scatta UNA sola volta, non a ogni turno in cui resta vera]")
+    src = (
+        "La sala è una stanza.\n"
+        "Il giocatore comincia in sala.\n"
+        "Il portale è uno stato.\nIl portale è chiuso.\n"
+        "Il varchi è un contatore.\n"
+        'Al turno 2: dire "Si apre." e adesso il portale è aperto.\n'
+        'Quando il portale è aperto diventa vera: dire "VARCO." e adesso aumenta il varchi.\n'
+    )
+    mondo = runtime(src)
+    out = ""
+    for _ in range(4):                 # turni 1..4 (apertura al 2, resta aperto)
+        out += esegui(mondo, "guarda")
+    _check(out.count("VARCO.") == 1, "il fronte di salita produce esattamente uno scatto")
+    _check(mondo.variabili["varchi"] == 1,
+           "la conseguenza del demone è applicata una sola volta")
+
+
+def test_demone_ogni_turno_a_livello():
+    print("[demone: 'Ogni turno se ...' ri-scatta a ogni turno in cui la condizione è vera]")
+    src = (
+        "La palude è una stanza.\n"
+        "Il giocatore comincia in palude.\n"
+        "Il veleno è uno stato.\nIl veleno è attivo.\n"
+        "La vita è un contatore.\n"
+        'Ogni turno se il veleno è attivo: dire "Bruci." e adesso diminuisci la vita.\n'
+    )
+    mondo = runtime(src)
+    out = ""
+    for _ in range(3):
+        out += esegui(mondo, "guarda")
+    _check(out.count("Bruci.") == 3, "il demone a livello scatta a ognuno dei 3 turni")
+    _check(mondo.variabili["vita"] == -3,
+           "la conseguenza continua si accumula (vita scesa di 3)")
+
+
+def test_demone_cascata_un_solo_passaggio():
+    print("[demone: una cascata si risolve in un solo passaggio, senza loop]")
+    # Demone A (leva) dichiarato PRIMA di B (portale): A apre il portale e, nello
+    # stesso passaggio, B vede il nuovo stato e scatta -> entrambi in un turno.
+    src = (
+        "Il quadro è una stanza.\n"
+        "Il giocatore comincia in quadro.\n"
+        "La leva è uno stato.\nLa leva è giu.\n"
+        "Il portale è uno stato.\nIl portale è chiuso.\n"
+        "Il punteggio è un contatore.\n"
+        'Al turno 2: dire "Click." e adesso la leva è su.\n'
+        'Quando la leva è su diventa vera: dire "Leva su." e adesso il portale è aperto.\n'
+        'Quando il portale è aperto diventa vera: dire "Portale aperto." e adesso aumenta il punteggio.\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "guarda")            # turno 1: nulla
+    out_t2 = esegui(mondo, "guarda")   # turno 2: click -> A scatta -> B scatta
+    _check("Leva su." in out_t2 and "Portale aperto." in out_t2,
+           "nello stesso turno la cascata A->B scatta entrambi i demoni")
+    _check(mondo.variabili["punteggio"] == 1,
+           "il demone a valle ha applicato la sua conseguenza nel medesimo passaggio")
+
+
 def test_scanner_raccoglie_variabili():
     print("[scanner: 'X è uno stato' popola le variabili, non le entità]")
     src = (
@@ -1235,6 +1358,10 @@ _CORPUS_GUARDIA = (
     'e adesso la chiave è nel nulla e adesso l\'allarme è spento.\n'  # cons_variabile
     'Al turno 3: dire "Ticchettio." e adesso aumenta il punteggio.\n'  # evento_al [Livello 3]
     'Ogni 5 turni: dire "Rintocco.".\n'               # evento_ogni
+    # [Livello 8] Demoni: 'Ogni turno se ...' (a livello, distinto da 'Ogni N
+    # turni' sul lookahead NUMERO vs "turno") e 'Quando ... diventa vera' (fronte).
+    'Ogni turno se il punteggio è almeno 3: dire "Pressione." e adesso aumenta il punteggio.\n'  # demone_ogni
+    'Quando l\'allarme non è attivo diventa vera: dire "Silenzio." e adesso vinci.\n'  # demone_quando + cond_variabile_neg
     # [Livello 5] Interpolazione [var]: vive DENTRO le virgolette, dunque non
     # deve introdurre alcuna ambiguità grammaticale (segnaposto su contatore e
     # oggetto, entrambi dichiarati sopra).
@@ -2185,7 +2312,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.13.0.md")
+                          "grammatica-0.15.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2202,7 +2329,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.13.0.md è presente")
+           "documentazione/grammatica-0.15.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -2389,6 +2516,13 @@ def main():
         test_evento_ogni_turni,
         test_evento_numero_invalido_warning,
         test_runtime_eventi_a_turni,
+        # Livello 8 — demoni / eventi condizionali
+        test_demone_compila,
+        test_demone_quando_fronte_di_salita,
+        test_demone_quando_baseline_niente_falso_fronte,
+        test_demone_quando_scatta_una_sola_volta,
+        test_demone_ogni_turno_a_livello,
+        test_demone_cascata_un_solo_passaggio,
         # Livello 2.5 — Passata 1 (scanner symbol-table) e parole riservate
         test_scanner_raccoglie_stanze_e_oggetti,
         test_scanner_nomi_multiparola,

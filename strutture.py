@@ -1,5 +1,5 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.14.0)
+# Modulo per le strutture dati di base di FAVELLA 1 (v0.15.0)
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
@@ -249,6 +249,33 @@ class Evento:
         for conseguenza in self.conseguenze:
             conseguenza.esegui(mondo)
 
+class Demone:
+    """[Livello 8] Evento CONDIZIONALE (un 'demone'/sentinella): sorveglia una
+    CONDIZIONE a ogni turno e scatta da solo quando è soddisfatta, senza essere
+    legato a un'azione del giocatore né a un turno fisso. Due tipi:
+      - 'ogni_turno' (a LIVELLO): 'Ogni turno se [cond]: ...' — scatta a OGNI turno
+        in cui la condizione è vera (effetti continui; può ri-scattare).
+      - 'quando' (sul FRONTE di salita): 'Quando [cond] diventa vera: ...' — scatta
+        UNA volta nel turno in cui la condizione passa da falsa a vera. Richiede di
+        ricordare il valore precedente (`era_vera`).
+    Riusa l'albero `Condizione` completo e la stessa coda di conseguenze delle
+    regole e degli eventi a tempo."""
+    def __init__(self, tipo: str, condizione: 'Condizione', risposta: str,
+                 conseguenze: Optional[List[Conseguenza]] = None):
+        self.tipo = tipo            # 'ogni_turno' oppure 'quando'
+        self.condizione = condizione
+        self.risposta = risposta
+        self.conseguenze: List[Conseguenza] = conseguenze or []
+        # [Fronte di salita] Valore della condizione all'ultima valutazione. Per i
+        # demoni 'quando' è inizializzato a fine compilazione sul mondo iniziale
+        # (vedi compilatore.inizializza_demoni): così una condizione già vera alla
+        # partenza NON genera un falso fronte. Irrilevante per i demoni 'ogni_turno'.
+        self.era_vera: bool = False
+
+    def esegui_conseguenze(self, mondo: 'Mondo'):
+        for conseguenza in self.conseguenze:
+            conseguenza.esegui(mondo)
+
 def _descrizione_attuale(entita, mondo: 'Mondo') -> str:
     """[Livello 5] Sceglie la descrizione da mostrare: la prima descrizione
     condizionale la cui condizione è vera (in ordine di dichiarazione), altrimenti
@@ -367,6 +394,9 @@ class Mondo:
         # [Livello 3] Eventi temporali e contatore dei turni di gioco.
         self.eventi: List['Evento'] = []
         self.turno_corrente: int = 0
+        # [Livello 8] Demoni: eventi CONDIZIONALI (sentinelle reattive). Lista
+        # distinta dagli eventi a tempo per non intaccarne la serializzazione.
+        self.demoni: List['Demone'] = []
         # [Livello 3 / G3] Stato astratto del mondo: variabili con nome ('stati')
         # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
@@ -519,6 +549,9 @@ class Mondo:
     def aggiungi_evento(self, evento: 'Evento'):
         self.eventi.append(evento)
 
+    def aggiungi_demone(self, demone: 'Demone'):
+        self.demoni.append(demone)
+
     def aggiungi_stanza(self, stanza: Stanza):
         self.stanze[stanza.nome] = stanza
 
@@ -623,13 +656,14 @@ class Mondo:
     def __str__(self) -> str:
         n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.14.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v0.15.0):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"
             f"  - Stati: {len(self.variabili)}\n"
             f"  - Regole: {len(self.regole)}\n"
             f"  - Eventi: {len(self.eventi)}\n"
+            f"  - Demoni: {len(self.demoni)}\n"
         )
         if self.posizione_giocatore:
             report += f"  - Posizione iniziale: '{self.posizione_giocatore}'"

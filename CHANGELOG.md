@@ -4,6 +4,49 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.15.0] - 2026-06-03
+### Roadmap del Linguaggio — Livello 8: REATTIVITÀ / DEMONI 👁️
+L'ultima capacità mancante del linguaggio: gli **eventi condizionali** (i
+«demoni»). Finora un *if-then* in FAVELLA era sempre ancorato a qualcosa — a un
+verbo del giocatore (`Invece di …`) o a un turno fisso (`Al turno N` / `Ogni N
+turni`, timer **senza** `se`). Mancava la sentinella **autonoma**: qualcosa che
+sorveglia una condizione a ogni turno e scatta da sola quando si avvera.
+
+Due forme nuove, entrambe **additive** e **LALR(1) 0-ambigue** per costruzione:
+
+- **A livello** — `Ogni turno se [condizione]: dire "…" e adesso […].`
+  Scatta a **ogni** turno in cui la condizione è vera (effetti continui: veleno,
+  fame, un allarme che pulsa). Si distingue da `Ogni N turni` sul primo token dopo
+  «Ogni» (un numero = timer, la parola «turno» = demone).
+- **Sul fronte di salita** — `Quando [condizione] (diventa vera)?: dire "…" e adesso […].`
+  Scatta **una sola volta**, nel turno in cui la condizione passa da falsa a vera
+  (soglie, scadenze, punti di non ritorno). La chiusura `diventa vera` è
+  **opzionale**: `Quando X:` e `Quando X diventa vera:` sono sinonimi.
+
+L'esempio prima impossibile, ora nativo:
+
+    La tensione è un contatore.
+    Ogni 1 turno: dire "La tensione cresce." e adesso aumenta la tensione di 2.
+    Quando la tensione è almeno 8: dire "Il portale ti risucchia." e adesso perdi.
+
+- **Riusano tutto il già esistente**: l'albero `condizione` completo
+  (proprietà/stati/contatori + AND/OR/NOT/parentesi) e la coda di conseguenze
+  `e adesso …`.
+- **Anti-loop per costruzione**: i demoni sono valutati **una volta per turno**,
+  in un solo passaggio in ordine di dichiarazione, **dopo** gli eventi a tempo. Un
+  demone può innescare a cascata i demoni *successivi* nello stesso passaggio, ma
+  nessuno viene ri-valutato → loop infiniti impossibili.
+- **Fronte di salita corretto**: ogni demone `Quando` ricorda il valore precedente
+  (`Demone.era_vera`), inizializzato a fine compilazione sul mondo iniziale → una
+  condizione già vera alla partenza non genera un falso fronte.
+- **Byte-stabile**: classe `Demone` e lista `Mondo.demoni` distinte dagli eventi a
+  tempo (la serializzazione degli eventi resta intatta). Nuove riservate: `quando`,
+  `vera` (`diventa` era già riservata). `analizza_file` invariata.
+- Suite linguaggio: **360 asserzioni** (era 344), tutte verdi; guardia
+  anti-ambiguità estesa a entrambe le forme. Spec EBNF
+  `documentazione/grammatica-0.15.0.md`. Sidecar `VERSIONE_MOTORE` → 0.15.0.
+  Dettaglio in `documentazione/0.15.0.md`.
+
 ## [0.14.0] - 2026-06-03
 ### Concordanza di genere/numero sulle proprietà di stato 🇮🇹
 In un linguaggio d'autore italiano, `aperto` e `aperta` devono valere uguale.

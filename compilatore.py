@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.14.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.15.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -7,7 +7,7 @@ import difflib
 from lark import Lark, Transformer, v_args, Token, Tree
 from lark.exceptions import UnexpectedInput
 from strutture import (
-    Mondo, Stanza, Oggetto, Regola, Evento,
+    Mondo, Stanza, Oggetto, Regola, Evento, Demone,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
     CondizioneContatore,
@@ -55,6 +55,9 @@ PAROLE_RISERVATE = frozenset({
     "aumenta", "diminuisci", "diventa",
     # eventi a turni (Livello 3)
     "al", "turno", "turni", "ogni",
+    # demoni / eventi condizionali (Livello 8): 'Ogni turno se ...' /
+    # 'Quando ... diventa vera: ...' ('diventa' è già riservata sopra).
+    "quando", "vera",
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
@@ -263,6 +266,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_opzione
                   | def_direzioni
                   | def_evento
+                  | def_demone
                   | def_giocatore_capacita
                   | def_capacita_oggetto
 
@@ -332,6 +336,25 @@ _GRAMMAR_TEMPLATE = r"""
     // multiplo di N. Riusano la stessa coda di conseguenze delle regole.
     def_evento: "Al" "turno" NUMERO ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_al
               | "Ogni" NUMERO ( "turno" | "turni" ) ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_ogni
+
+    // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
+    // Un 'demone' sorveglia una CONDIZIONE a ogni turno e scatta da solo, senza
+    // dipendere da un'azione del giocatore né da un turno fisso (il buco lasciato
+    // da eventi=timer-senza-se e regole=sempre-con-verbo). Due forme:
+    //   (a) 'Ogni turno se [cond]: ...' — a LIVELLO, scatta a ogni turno in cui la
+    //       condizione è vera (effetti continui). Inizia con "Ogni" come
+    //       evento_ogni; il lookahead distingue NUMERO (timer) dalla keyword
+    //       "turno" (demone) SUBITO dopo "Ogni" → LALR(1) 0-ambiguo.
+    //   (b) 'Quando [cond] (diventa vera)?: ...' — sul FRONTE di salita, scatta una
+    //       sola volta quando la condizione passa da falsa a vera. Inizia con la
+    //       riservata "Quando" (nessun'altra frase parte così) → distinta al
+    //       primo token. La chiusura 'diventa vera' è OPZIONALE (zucchero esplicito,
+    //       stessa semantica): dopo la condizione il lookahead "diventa" vs ":"
+    //       decide l'opzionale, entrambi NON continuatori di condizione (solo
+    //       "oppure"/"e"/")") → reduce deterministico, LALR(1) 0-ambiguo.
+    // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
+    def_demone: "Ogni" "turno" "se" condizione ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> demone_ogni
+              | "Quando" condizione ( "diventa" "vera" )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> demone_quando
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -1074,6 +1097,23 @@ class FavellaTransformer(Transformer):
     def evento_ogni(self, *args):
         return self._crea_evento("ogni", args)
 
+    # --- I Demoni (eventi condizionali, Livello 8) ---
+
+    def _crea_demone(self, tipo, args):
+        # args: (condizione, TESTO_QUOTATO, conseguenza*)
+        condizione = args[0]
+        risposta = args[1]
+        conseguenze = [a for a in args[2:] if isinstance(a, Conseguenza)]
+        self._valida_conseguenze(conseguenze)
+        self.mondo.aggiungi_demone(Demone(tipo, condizione, risposta, conseguenze))
+        return None
+
+    def demone_ogni(self, *args):
+        return self._crea_demone("ogni_turno", args)
+
+    def demone_quando(self, *args):
+        return self._crea_demone("quando", args)
+
     # --- La Regola Complessa ---
 
     def regola_target(self, bersaglio, *resto):
@@ -1308,6 +1348,16 @@ class FavellaTransformer(Transformer):
         # sul mondo compilato (vedi sotto). Eseguita in coda alla validazione, sul
         # canale 'warnings' già esistente: zero modifiche alla grammatica.
         self.analisi_statica()
+
+        # [Livello 8] BASELINE dei demoni sul fronte di salita: la condizione di
+        # un demone 'Quando ... diventa vera' va confrontata col suo valore
+        # PRECEDENTE; qui registriamo il valore iniziale (mondo appena compilato,
+        # stato vergine) così una condizione GIÀ vera alla partenza non genera un
+        # falso fronte al primo turno. Per i demoni 'ogni_turno' (a livello) il
+        # campo è irrilevante. Il deepcopy dell'IDE preserva questo baseline.
+        for demone in m.demoni:
+            if demone.tipo == "quando":
+                demone.era_vera = demone.condizione.valuta(m)
 
     # ==========================================================================
     # LINTER SEMANTICO (Livello 6 / patch 0.11.1)
