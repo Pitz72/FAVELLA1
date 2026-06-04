@@ -43,7 +43,7 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Suite di test (`test_linguaggio.py`) | **0.18.0** | 446 test verdi |
 | Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 0.18.0 | — |
 
-> Le etichette di versione più vecchie che compaiono nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** delle tappe e non riflettono lo stato attuale, che è **v0.18.0** su tutta la linea. Il manuale d'autore (`documentazione/manuale/`) sarà rigenerato sulla v0.18.0 in una prossima iterazione.
+> Le etichette di versione più vecchie che compaiono nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** delle tappe e non riflettono lo stato attuale, che è **v0.18.0** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)).
 
 ---
 
@@ -161,7 +161,8 @@ e nei documenti per-versione in [`documentazione/`](documentazione/).
 Le prossime tappe non riguardano nuove primitive del linguaggio, ma il suo
 contorno:
 
--   **Manuale d'autore completo**, rigenerato sulla v0.18.0 (con la demo come guida).
+-   ✅ **Manuale d'autore completo**, in PDF tipografico, allineato alla v0.18.0 e
+    con «La Casa di Via Stradivari» come esempio guida: [`documentazione/manuale/`](documentazione/manuale/).
 -   **Eventuale internazionalizzazione** e valutazione di una **1.0.0** «linguaggio
     maturo» quando l'esperienza d'uso lo confermerà.
 

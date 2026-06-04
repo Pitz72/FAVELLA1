@@ -1,0 +1,28 @@
+FONT — ATTRIBUZIONE E LICENZA
+=============================
+
+I caratteri inclusi in questa cartella sono distribuiti con la
+SIL Open Font License, Version 1.1.
+
+Testo ufficiale della licenza:
+  https://openfontlicense.org
+  (oppure https://scripts.sil.org/OFL)
+
+--------------------------------------------------------------------
+Sora  (Sora-Regular.ttf, Sora-SemiBold.ttf, Sora-Bold.ttf, Sora-ExtraBold.ttf)
+  Copyright The Sora Project Authors (https://github.com/SoraFoundation/Sora)
+  "Sora" è un Reserved Font Name ai sensi della OFL 1.1.
+
+Source Code Pro  (SourceCodePro-Regular.ttf, SourceCodePro-SemiBold.ttf)
+  Copyright Adobe (https://github.com/adobe-fonts/source-code-pro)
+  "Source Code Pro" e "Source" sono Reserved Font Name ai sensi della OFL 1.1.
+--------------------------------------------------------------------
+
+In sintesi, la OFL 1.1 consente di usare, includere e ridistribuire questi
+font (anche in un PDF) liberamente, a condizione di non venderli da soli,
+di mantenere questa nota di copyright e licenza, e di non usare i Reserved
+Font Name per opere derivate modificate. Il testo integrale e vincolante
+della licenza è quello reperibile all'indirizzo indicato sopra.
+
+Il corpo del testo del manuale usa il font "Inter" di sistema; il codice
+ripiega su "Consolas" se "Source Code Pro" non è disponibile.

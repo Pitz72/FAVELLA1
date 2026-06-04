@@ -158,6 +158,10 @@ Thumbs.db
 # Brand kit 2026: fonte locale (master + derivati + archivio); in pubblico vanno solo gli asset in assets/
 /Branding2026/
 
-# Manuale d'autore: escluso temporaneamente dalla repo pubblica (datato, da rigenerare sulla v0.18.0).
-# Resta in locale; verrà reintegrato dopo la riscrittura completa.
-/documentazione/manuale/
+# Artefatti di anteprima del manuale (le pagine PNG di lavorazione)
+/documentazione/manuale/pag-*.png
+
+# Eccezione: la cartella lib/ del manuale è SORGENTE Typst (template + evidenziatore),
+# non un artefatto Python. La regola generica «lib/» qui sopra la escluderebbe.
+!/documentazione/manuale/lib/
+!/documentazione/manuale/lib/**

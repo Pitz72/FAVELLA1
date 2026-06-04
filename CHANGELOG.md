@@ -4,6 +4,21 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Manuale] - 2026-06-04
+### Manuale d'autore completo — PDF tipografico 📖
+Riscritto da zero il **Manuale di Programmazione** (`documentazione/manuale/`),
+allineato alla **v0.18.0** e focalizzato esclusivamente sul linguaggio. 17
+capitoli (dalle stanze ai personaggi, ai demoni, ai moduli) più appendici, con
+**ogni costrutto illustrato da esempi reali** presi parola per parola da «La Casa
+di Via Stradivari» (`esempi/materiale-didattico/`).
+- Composto con **Typst**: copertina di marca, dedica, indice, colophon, e un
+  evidenziatore di sintassi `.fav` dedicato. Sorgente modulare (un file per
+  capitolo) + `build.ps1` + `README`.
+- Font di marca (Sora, Source Code Pro) inclusi sotto licenza SIL OFL 1.1.
+- Sostituisce il vecchio `manuale.md` (datato ≈0.0.9.2), ora rimosso.
+
+---
+
 ## [0.18.0] - 2026-06-03
 ### Consolidamento del linguaggio — «linguaggio al massimo» 🏁
 Sessione dedicata a **colmare ogni buco e asimmetria** emersi scrivendo le demo,
