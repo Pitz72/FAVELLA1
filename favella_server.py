@@ -37,7 +37,8 @@ _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
                              compila_mondo, analizza_outline, analizza_regole,
-                             analizza_variabili, serializza_frase, VERBI_VALIDI,
+                             analizza_variabili, analizza_dialoghi,
+                             serializza_frase, VERBI_VALIDI,
                              PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
@@ -48,7 +49,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.18.0"
-VERSIONE_SIDECAR = "0.9.5"  # Consolidamento linguaggio 0.18.0 (A1-A5 + B1-B7)
+VERSIONE_SIDECAR = "0.9.6"  # Fase 6b: editor dialoghi/NPC (world.dialogues)
 
 
 # ==============================================================================
@@ -450,6 +451,26 @@ def rpc_world_variables(params):
     return analizza_variabili(percorso, sorgente)
 
 
+def rpc_world_dialogues(params):
+    """[Fase 6b] Modello editabile di NPC e DIALOGHI con lo span sorgente di ogni
+    frase, per l'editor visuale dei dialoghi. Stessa risoluzione di world.outline:
+    senza 'path' usa la partita attiva; con 'path' (+ 'source') legge il buffer."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    if not percorso:
+        return {"ok": False, "npcs": [], "nodes": [],
+                "menu": {"npcs": [], "nodeLabels": [], "objects": [], "rooms": [],
+                         "directions": [], "states": [], "counters": [],
+                         "stateValues": {}},
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return analizza_dialoghi(percorso, sorgente)
+
+
 def rpc_outline_serialize(params):
     """[Fase 6a] Genera la frase .fav canonica da una specifica strutturata
     (op + campi), per il round-trip in SCRITTURA degli editor visuali. L'IDE
@@ -481,6 +502,7 @@ _METODI = {
     "world.outline": rpc_world_outline,
     "world.rules": rpc_world_rules,
     "world.variables": rpc_world_variables,
+    "world.dialogues": rpc_world_dialogues,
     "outline.serialize": rpc_outline_serialize,
     "session.history": rpc_session_history,
     "session.save": rpc_session_save,

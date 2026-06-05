@@ -2941,6 +2941,186 @@ def analizza_variabili(percorso_file, sorgente=None):
     return {"ok": True, "states": states, "counters": counters, "errors": []}
 
 
+def analizza_dialoghi(percorso_file, sorgente=None):
+    """[Favella Studio / Fase 6b] Modello editabile di NPC e DIALOGHI con lo span
+    sorgente di ogni frase, per l'editor visuale dei dialoghi (round-trip
+    testo↔visuale). Ritorna:
+      {ok,
+       npcs[{id, name, startNode|None, defSpan|None, startSpan|None}],
+       nodes[{label, speaker{id,name}|None, line, lineSpan|None,
+              options[{text, span|None, condition|None, outcome:'conduce'|'chiude',
+                        dest|None(etichetta nodo), consequences[]}]}],
+       menu{npcs[{id,name}], nodeLabels[], objects, rooms, directions, states,
+            counters, stateValues},
+       errors[]}
+    condizione/conseguenze usano la shape JSON di analizza_regole
+    (_cond_to_json/_conseq_to_json). Difensiva: su errore ritorna ok=False."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    vuoto_menu = {"npcs": [], "nodeLabels": [], "objects": [], "rooms": [],
+                  "directions": [], "states": [], "counters": [], "stateValues": {}}
+    if not diag.get("ok"):
+        return {"ok": False, "npcs": [], "nodes": [], "menu": vuoto_menu,
+                "errors": diag.get("errors", [])}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "npcs": [], "nodes": [], "menu": vuoto_menu,
+                "errors": diag.get("errors", [])}
+
+    # Span: secondo parse posizionato (come analizza_regole/analizza_variabili).
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi)
+        tree = parser.parse(testo)
+    except Exception:
+        tree, mappa_righe, testo = None, [], ""
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1]
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp=None):
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
+
+    # Indicizza le frasi di dialogo con il loro span e i token utili al match.
+    def_npc, start_npc = {}, {}      # npc_id -> span
+    node_speaker = {}                # etichetta nodo -> npc_id (chi vi parla)
+    frasi_battuta = []               # {span, etichetta, battuta}
+    frasi_opzione = []               # {span, etichetta, testo}
+    if tree is not None:
+        for nodo in tree.children:
+            if not isinstance(nodo, Tree):
+                continue
+            meta = getattr(nodo, "meta", None)
+            line = getattr(meta, "line", None) if meta else None
+            end = getattr(meta, "end_line", line) if meta else None
+            span = _span(line, end)
+            tok = _tokens_per_tipo(nodo)
+            ent = tok.get("ENTITA", [])
+            quotati = tok.get("TESTO_QUOTATO", [])
+            if nodo.data == "def_personaggio" and ent:
+                def_npc[normalizza_nome(str(ent[0]))] = span
+            elif nodo.data == "def_dialogo_inizio" and ent:
+                start_npc[normalizza_nome(str(ent[0]))] = span
+            elif nodo.data == "def_battuta" and ent and len(quotati) >= 2:
+                etich = _spoglia_quotato(str(quotati[0]))
+                battuta = _spoglia_quotato(str(quotati[1]))
+                node_speaker[etich] = normalizza_nome(str(ent[0]))
+                frasi_battuta.append({"span": span, "etichetta": etich, "battuta": battuta})
+            elif nodo.data == "def_opzione" and len(quotati) >= 2:
+                etich = _spoglia_quotato(str(quotati[0]))
+                testo_opz = _spoglia_quotato(str(quotati[1]))
+                frasi_opzione.append({"span": span, "etichetta": etich, "testo": testo_opz})
+
+    def _span_battuta(etichetta, battuta, usate):
+        for i, f in enumerate(frasi_battuta):
+            if i in usate:
+                continue
+            if f["etichetta"] == etichetta and f["battuta"] == battuta:
+                usate.add(i)
+                return f["span"]
+        return None
+
+    def _span_opzione(etichetta, testo_opz, usate):
+        for i, f in enumerate(frasi_opzione):
+            if i in usate:
+                continue
+            if f["etichetta"] == etichetta and f["testo"] == testo_opz:
+                usate.add(i)
+                return f["span"]
+        return None
+
+    # NPC compilati → JSON.
+    npcs = []
+    for oid, o in mondo.oggetti.items():
+        if not getattr(o, "is_personaggio", False):
+            continue
+        npcs.append({
+            "id": oid,
+            "name": o.nome_visualizzato,
+            "startNode": getattr(o, "dialogo_iniziale", None),
+            "defSpan": def_npc.get(oid),
+            "startSpan": start_npc.get(oid),
+        })
+
+    # NODI di dialogo compilati → JSON (struttura autorevole dal mondo).
+    nodes = []
+    usate_b, usate_o = set(), set()
+    for etichetta, nodo in mondo.dialogo_nodi.items():
+        options = []
+        for opz in nodo.opzioni:
+            options.append({
+                "text": opz.testo,
+                "span": _span_opzione(etichetta, opz.testo, usate_o),
+                "condition": _cond_to_json(getattr(opz, "condizione", None), mondo),
+                "outcome": "chiude" if opz.chiude else "conduce",
+                "dest": opz.destinazione,
+                "consequences": [_conseq_to_json(c, mondo)
+                                 for c in getattr(opz, "conseguenze", [])],
+            })
+        sp_id = node_speaker.get(etichetta)
+        nodes.append({
+            "label": etichetta,
+            "speaker": ({"id": sp_id, "name": _nome_entita(mondo, sp_id)}
+                        if sp_id else None),
+            "line": nodo.battuta,
+            "lineSpan": _span_battuta(etichetta, nodo.battuta, usate_b),
+            "options": options,
+        })
+
+    # Menu per i costruttori (6b.2+): NPC, etichette nodi, entità, stanze, direzioni,
+    # stati e contatori (per condizioni/conseguenze delle opzioni).
+    states, counters = [], []
+    for nome in mondo.variabili:
+        (counters if _kind_variabile(mondo, nome) == "contatore" else states).append(nome)
+
+    valori_acc = {}
+    for nome in states:
+        iniziale = mondo.variabili.get(nome)
+        if isinstance(iniziale, str) and iniziale:
+            valori_acc.setdefault(nome, set()).add(iniziale)
+    for nd in nodes:
+        for opz in nd["options"]:
+            _raccogli_valori_cond(opz.get("condition"), valori_acc)
+            _raccogli_valori_conseq(opz.get("consequences"), valori_acc)
+    set_states = set(states)
+    for nome_grezzo, valori_c, _linea in _valori_commento(testo if tree is not None else ""):
+        nid = normalizza_nome(nome_grezzo)
+        if nid in set_states:
+            valori_acc.setdefault(nid, set()).update(valori_c)
+    state_values = {nome: sorted(valori_acc.get(nome, set())) for nome in states}
+
+    menu = {
+        "npcs": [{"id": n["id"], "name": n["name"]} for n in npcs],
+        "nodeLabels": [nd["label"] for nd in nodes],
+        "objects": [{"id": oid, "name": o.nome_visualizzato,
+                     "kind": ("personaggio" if getattr(o, "is_personaggio", False)
+                              else "contenitore" if getattr(o, "is_contenitore", False)
+                              else "supporto" if getattr(o, "is_supporto", False)
+                              else "oggetto")}
+                    for oid, o in mondo.oggetti.items()],
+        "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
+        "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
+        "states": sorted(states),
+        "counters": sorted(counters),
+        "stateValues": state_values,
+    }
+
+    return {"ok": True, "npcs": npcs, "nodes": nodes, "menu": menu, "errors": []}
+
+
 # ==============================================================================
 # SERIALIZZATORE CANONICO PER-FRASE (Favella Studio — Fase 6a, scrittura)
 # ------------------------------------------------------------------------------
@@ -2983,6 +3163,41 @@ def _frase_descrizione(nome_visualizzato: str, testo: str) -> str:
     else:
         testa = f"di {nome_visualizzato}"
     return f"La descrizione {testa} è {_quota(testo)}."
+
+
+def _frase_dialogo_inizio(nome_visualizzato: str, etichetta: str) -> str:
+    """[Fase 6b] «Il dialogo <di articolata><npc> comincia con "<etichetta>".» con
+    la preposizione concordata sull'articolo dell'NPC (del mercante, dell'anziano).
+    Stesso schema di _frase_descrizione; ripiego su «di <nome>» se l'articolo è ignoto."""
+    art, nucleo = _scomponi_articolo(nome_visualizzato)
+    info = _PREP_DI.get(art) if art else None
+    if info and nucleo:
+        prep, attaccata = info
+        testa = f"{prep}{nucleo}" if attaccata else f"{prep} {nucleo}"
+    else:
+        testa = f"di {nome_visualizzato}"
+    return f"Il dialogo {testa} comincia con {_quota(etichetta)}."
+
+
+def _serializza_opzione(spec) -> str:
+    """[Fase 6b] Opzione di dialogo JSON → «Al nodo "N" l'opzione "T" [se COND]
+    (conduce al nodo "D" | chiude il dialogo) [e adesso …].». L'ordine dei
+    costituenti rispetta la grammatica def_opzione (testo · se-cond · esito · e adesso)."""
+    parti = [f"Al nodo {_quota(spec['node'])} l'opzione {_quota(spec['text'])}"]
+    cond = spec.get("condition")
+    if cond:
+        parti.append(" se " + _serializza_condizione(cond))
+    if spec.get("outcome") == "chiude":
+        parti.append(" chiude il dialogo")
+    else:
+        dest = spec.get("dest")
+        if not dest:
+            raise ValueError("L'opzione che «conduce» richiede un nodo di destinazione.")
+        parti.append(f" conduce al nodo {_quota(dest)}")
+    for c in spec.get("consequences", []):
+        parti.append(" e adesso " + _serializza_conseguenza(c))
+    parti.append(".")
+    return "".join(parti)
 
 
 def _frase_posizione(nome: str, prep: str, luogo: str) -> str:
@@ -3145,6 +3360,11 @@ def serializza_frase(spec):
       state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
+      npc_decl       {name}                  → 'X è un personaggio.'
+      dialogue_start {name, node}            → 'Il dialogo di X comincia con "n".'
+      node_line      {speaker, node, line}   → 'X al nodo "n" dice "battuta".'
+      dialogue_option {node, text, condition?, outcome:'conduce'|'chiude', dest?,
+                       consequences[]}        → 'Al nodo "n" l'opzione "t" …'
     'name'/'from'/'to'/'place' sono nomi VISUALIZZATI (con articolo); condizione e
     conseguenze usano la shape JSON di analizza_regole."""
     try:
@@ -3209,6 +3429,21 @@ def serializza_frase(spec):
             return {"ok": True, "text": _serializza_regola(spec)}
         if op == "event":
             return {"ok": True, "text": _serializza_evento(spec)}
+        if op == "npc_decl":
+            # [Fase 6b] 'X è un personaggio.' — promuove un oggetto a NPC.
+            return {"ok": True, "text": f"{spec['name']} è un personaggio."}
+        if op == "dialogue_start":
+            # [Fase 6b] 'Il dialogo di X comincia con "nodo".' — nodo d'ingresso.
+            return {"ok": True,
+                    "text": _frase_dialogo_inizio(spec["name"], spec["node"])}
+        if op == "node_line":
+            # [Fase 6b] 'X al nodo "n" dice "battuta".' — battuta dell'NPC al nodo.
+            return {"ok": True,
+                    "text": f"{spec['speaker']} al nodo {_quota(spec['node'])} "
+                            f"dice {_quota(spec.get('line', ''))}."}
+        if op == "dialogue_option":
+            # [Fase 6b] 'Al nodo "n" l'opzione "t" [se …] conduce/chiude […].'
+            return {"ok": True, "text": _serializza_opzione(spec)}
         return {"ok": False, "error": f"Operazione di serializzazione sconosciuta: {op!r}."}
     except KeyError as e:
         return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}
