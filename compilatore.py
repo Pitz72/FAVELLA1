@@ -3447,8 +3447,10 @@ def esporta_html(percorso_file, sorgente=None, titolo=None):
             testo, _mappa, _err = espandi_inclusioni(percorso_file)
     except Exception as e:
         return {"ok": False, "reason": f"Appiattimento non riuscito: {e}"}
-    # Moduli del motore (stessa cartella di questo file).
-    base = os.path.dirname(os.path.abspath(__file__))
+    # Moduli del motore: stessa cartella di questo file in sviluppo, oppure la
+    # cartella di estrazione di PyInstaller (_MEIPASS) nell'IDE pacchettizzato (i .py
+    # sorgenti vanno inclusi come 'datas' nello spec, vedi documentazione/PACKAGING.md).
+    base = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file__))
     engine = {}
     for nome in _ENGINE_FILES:
         try:
