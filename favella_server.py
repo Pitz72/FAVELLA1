@@ -425,7 +425,7 @@ def rpc_world_rules(params):
     else:
         sorgente = params.get("source")
     if not percorso:
-        return {"ok": False, "rules": [], "events": [],
+        return {"ok": False, "rules": [], "events": [], "demons": [],
                 "menu": {"verbs": [], "objects": [], "rooms": [],
                          "directions": [], "states": [], "counters": []},
                 "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "

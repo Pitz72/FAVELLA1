@@ -2700,11 +2700,11 @@ def analizza_regole(percorso_file, sorgente=None):
     vuoto_menu = {"verbs": [], "objects": [], "rooms": [],
                   "directions": [], "states": [], "counters": []}
     if not diag.get("ok"):
-        return {"ok": False, "rules": [], "events": [], "menu": vuoto_menu,
+        return {"ok": False, "rules": [], "events": [], "demons": [], "menu": vuoto_menu,
                 "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
-        return {"ok": False, "rules": [], "events": [], "menu": vuoto_menu,
+        return {"ok": False, "rules": [], "events": [], "demons": [], "menu": vuoto_menu,
                 "errors": diag.get("errors", [])}
 
     # Span: secondo parse posizionato (come analizza_outline).
@@ -2738,6 +2738,7 @@ def analizza_regole(percorso_file, sorgente=None):
     # Indicizza le frasi-regola/evento con il loro span e i token utili al match.
     frasi_regola = []   # {span, verbo, risposta}
     frasi_evento = []   # {span, tipo, n, risposta}
+    frasi_demone = []   # {span, mode, risposta}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -2764,6 +2765,13 @@ def analizza_regole(percorso_file, sorgente=None):
                     "n": int(str(numeri[0])) if numeri else None,
                     "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
                 })
+            elif nodo.data in ("demone_ogni", "demone_quando"):
+                quotati = tok.get("TESTO_QUOTATO", [])
+                frasi_demone.append({
+                    "span": span,
+                    "mode": "ogni" if nodo.data == "demone_ogni" else "quando",
+                    "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
+                })
 
     def _span_regola(verbo, risposta, usate):
         for i, f in enumerate(frasi_regola):
@@ -2779,6 +2787,15 @@ def analizza_regole(percorso_file, sorgente=None):
             if i in usate:
                 continue
             if f["tipo"] == tipo and f["n"] == n and f["risposta"] == risposta:
+                usate.add(i)
+                return f["span"]
+        return None
+
+    def _span_demone(mode, risposta, usate):
+        for i, f in enumerate(frasi_demone):
+            if i in usate:
+                continue
+            if f["mode"] == mode and f["risposta"] == risposta:
                 usate.add(i)
                 return f["span"]
         return None
@@ -2818,6 +2835,19 @@ def analizza_regole(percorso_file, sorgente=None):
             "n": e.n,
             "response": e.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(e, "conseguenze", [])],
+        })
+
+    # DEMONI compilati → JSON (Livello 8: 'Ogni turno se …' / 'Quando … diventa vera').
+    demons = []
+    usate_d = set()
+    for d in getattr(mondo, "demoni", []):
+        mode = "ogni" if d.tipo == "ogni_turno" else "quando"
+        demons.append({
+            "span": _span_demone(mode, d.risposta, usate_d),
+            "mode": mode,
+            "condition": _cond_to_json(getattr(d, "condizione", None), mondo),
+            "response": d.risposta,
+            "consequences": [_conseq_to_json(c, mondo) for c in getattr(d, "conseguenze", [])],
         })
 
     # Menu per i costruttori (6c.2+): verbi validi, entità, stanze, direzioni,
@@ -2861,7 +2891,7 @@ def analizza_regole(percorso_file, sorgente=None):
         "stateValues": state_values,
     }
 
-    return {"ok": True, "rules": rules, "events": events, "menu": menu, "errors": []}
+    return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
 
 
 def analizza_variabili(percorso_file, sorgente=None):
@@ -3392,6 +3422,24 @@ def _serializza_evento(spec):
     return "".join(parti)
 
 
+def _serializza_demone(spec):
+    """[Livello 8] Demone JSON → «Ogni turno se [cond]: dire "…" […].» (a livello)
+    oppure «Quando [cond] diventa vera: dire "…" […].» (fronte di salita). La
+    condizione è obbligatoria (un demone sorveglia sempre una condizione)."""
+    cond = spec.get("condition")
+    if not cond:
+        raise ValueError("Un demone richiede una condizione.")
+    if spec["mode"] == "ogni":
+        testa = "Ogni turno se " + _serializza_condizione(cond)
+    else:
+        testa = "Quando " + _serializza_condizione(cond) + " diventa vera"
+    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]
+    for c in spec.get("consequences", []):
+        parti.append(" e adesso " + _serializza_conseguenza(c))
+    parti.append(".")
+    return "".join(parti)
+
+
 def serializza_frase(spec):
     """[Favella Studio / Fase 6a] Genera la frase .fav canonica da una specifica
     strutturata. Ritorna {ok, text} oppure {ok:False, error}. Le op supportate:
@@ -3485,6 +3533,8 @@ def serializza_frase(spec):
             return {"ok": True, "text": _serializza_regola(spec)}
         if op == "event":
             return {"ok": True, "text": _serializza_evento(spec)}
+        if op == "demon":
+            return {"ok": True, "text": _serializza_demone(spec)}
         if op == "npc_decl":
             # [Fase 6b] 'X è un personaggio.' — promuove un oggetto a NPC.
             return {"ok": True, "text": f"{spec['name']} è un personaggio."}
