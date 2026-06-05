@@ -3459,13 +3459,16 @@ def esporta_html(percorso_file, sorgente=None, titolo=None):
         except OSError as e:
             return {"ok": False, "reason": f"Modulo del motore mancante ({nome}): {e}"}
     tit = (titolo or os.path.splitext(os.path.basename(percorso_file))[0] or "Avventura FAVELLA")
+    # Il driver Python va incorporato nel JSON dei DATI (non in un template literal
+    # JS): json.dumps fa l'escaping corretto di \n, \\, " — in un backtick JS invece
+    # «\n» diventerebbe un a-capo reale e spezzerebbe le stringhe Python del driver.
     # NB: il motore incorporato contiene letteralmente «</script>» (in questo stesso
     # template) → va neutralizzato, altrimenti chiuderebbe il blocco <script> dell'HTML.
     # «<\/» è equivalente in JSON/JS e innocuo per il parser HTML.
-    dati = json.dumps({"engine": engine, "story": testo, "title": tit},
+    dati = json.dumps({"engine": engine, "story": testo, "title": tit,
+                       "driver": _EXPORT_DRIVER_PY},
                       ensure_ascii=False).replace("</", "<\\/")
     html = _HTML_EXPORT_TEMPLATE.replace("/*__TITLE__*/", _escape_html(tit))
-    html = html.replace("/*__DRIVER__*/", _EXPORT_DRIVER_PY)
     html = html.replace("/*__DATA__*/", dati)
     return {"ok": True, "html": html, "title": tit}
 
@@ -3512,7 +3515,7 @@ _HTML_EXPORT_TEMPLATE = r"""<!DOCTYPE html>
 </div>
 <script>
 const DATA = /*__DATA__*/;
-const DRIVER = `/*__DRIVER__*/`;
+const DRIVER = DATA.driver;
 const PYBASE = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
 const out = document.getElementById("out");
 const inp = document.getElementById("in");
