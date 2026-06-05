@@ -2299,11 +2299,13 @@ def analizza_outline(percorso_file, sorgente=None):
     if not diag.get("ok"):
         return {"ok": False, "rooms": [], "objects": [],
                 "directions": [], "opposites": [], "startSpan": None,
+                "carryBase": None, "carryBaseSpan": None,
                 "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
         return {"ok": False, "rooms": [], "objects": [],
                 "directions": [], "opposites": [], "startSpan": None,
+                "carryBase": None, "carryBaseSpan": None,
                 "errors": diag.get("errors", [])}
 
     # 2. Posizioni: secondo parse con propagate_positions, mappa riga→(file, riga).
@@ -2476,11 +2478,22 @@ def analizza_outline(percorso_file, sorgente=None):
                           else mondo.oggetti[pos].nome_visualizzato if pos in mondo.oggetti
                           else pos)
             location = {"id": pos, "name": nome_luogo, "prep": prep, "span": span}
+        # [Livello 7] Bonus di capacità: 'X dà N spazi.' (0 = nessuno).
+        carry_bonus_span = None
+        for f in frasi:
+            if f["data"] != "def_capacita_oggetto":
+                continue
+            ents = f["tok"].get("ENTITA", [])
+            if ents and _norm_token(ents[0]) == oid:
+                carry_bonus_span = f["span"]
+                break
         objects.append({
             "id": oid,
             "name": o.nome_visualizzato,
             "kind": kind,
             "prendibile": getattr(o, "prendibile", False),
+            "carryBonus": getattr(o, "bonus_capacita", 0),
+            "carryBonusSpan": carry_bonus_span,
             "defSpan": _prima(_DEF_PER_KIND[kind], oid),
             "descSpan": _prima("def_descrizione", oid),
             "descConditional": _ha_descr_condizionale(frasi, oid),
@@ -2515,9 +2528,17 @@ def analizza_outline(percorso_file, sorgente=None):
     # permette all'editor stanze di SOSTITUIRLA (non accumularne di nuove).
     start_span = next((f["span"] for f in frasi if f["data"] == "def_giocatore"), None)
 
+    # [Livello 7] Capacità di trasporto BASE del giocatore ('Il giocatore può
+    # portare N oggetti.'). None = illimitata (default storico).
+    carry_base = getattr(mondo, "capacita_base", None)
+    carry_base_span = next(
+        (f["span"] for f in frasi if f["data"] == "def_giocatore_capacita"), None)
+
     return {"ok": True, "rooms": rooms, "objects": objects,
             "directions": directions, "opposites": opposites,
-            "startSpan": start_span, "errors": []}
+            "startSpan": start_span,
+            "carryBase": carry_base, "carryBaseSpan": carry_base_span,
+            "errors": []}
 
 
 def _ha_descr_condizionale(frasi, id_entita) -> bool:
@@ -3487,6 +3508,14 @@ def serializza_frase(spec):
             return {"ok": True, "text": f"{spec['name']} è {spec['property']}."}
         if op == "prendibile":
             return {"ok": True, "text": f"{spec['name']} è prendibile."}
+        if op == "carry_base":
+            # [Livello 7] 'Il giocatore può portare N oggetti.' — limite base globale.
+            return {"ok": True,
+                    "text": f"Il giocatore può portare {int(spec['value'])} oggetti."}
+        if op == "carry_bonus":
+            # [Livello 7] 'X dà N spazi.' — bonus di capacità dell'oggetto.
+            return {"ok": True,
+                    "text": f"{spec['name']} dà {int(spec['value'])} spazi."}
         if op == "alias":
             return {"ok": True,
                     "text": f"{spec['name']} si chiama anche {_quota(spec['alias'])}."}
