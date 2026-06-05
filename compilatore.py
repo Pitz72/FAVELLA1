@@ -3209,6 +3209,180 @@ def analizza_dialoghi(percorso_file, sorgente=None):
 
 
 # ==============================================================================
+# AUTOFORMAT / RIORDINO CANONICO (Favella Studio — blocco C)
+# ------------------------------------------------------------------------------
+# riordina_sorgente riorganizza le frasi del file in un ordine canonico leggibile
+# (impostazioni → stanze → oggetti → stati → regole/eventi/demoni → dialoghi),
+# RAGGRUPPANDO le frasi di ogni entità. NON rigenera nulla: sposta blocchi di TESTO
+# VERBATIM (commenti adiacenti inclusi), così niente — regole, dialoghi, prosa — va
+# perso. Solo file SINGOLI (senza Includi): l'ordine d'un file con riferimenti a
+# entità di altri file non è parsabile in isolamento. ADDITIVA: motore intatto.
+# ==============================================================================
+
+_RE_HA_INCLUDI = re.compile(r"(?im)^\s*Includi\s")
+
+
+def _autoformat_classifica(data, tok, mondo):
+    """(categoria, gruppo, ordine-interno) di una frase top-level. La categoria
+    dà l'ordine macro; il gruppo raccoglie le frasi della stessa entità; l'ordine
+    interno mette la definizione prima dei dettagli."""
+    ents = tok.get("ENTITA", [])
+    eid = normalizza_nome(str(ents[0])) if ents else None
+    vs = tok.get("VARIABILE", [])
+    vid = normalizza_nome(str(vs[0])) if vs else None
+    # 0 — impostazioni globali
+    if data == "def_direzioni":
+        return (0, "", 0)
+    if data == "def_opposti":
+        return (0, "", 1)
+    if data == "def_giocatore":
+        return (0, "", 2)
+    if data == "def_giocatore_capacita":
+        return (0, "", 3)
+    if data == "def_verbo":
+        return (0, "", 4)
+    # 1 — stanze (raggruppate per stanza)
+    if data == "def_stanza":
+        return (1, "r:" + (eid or ""), 0)
+    if data == "def_connessione":
+        return (1, "r:" + (eid or ""), 2)
+    # 2 — oggetti (raggruppati per oggetto)
+    if data in ("def_oggetto", "def_contenitore", "def_supporto", "def_personaggio"):
+        return (2, "o:" + (eid or ""), 0)
+    if data == "def_posizione":
+        return (2, "o:" + (eid or ""), 2)
+    if data == "def_proprieta":
+        return (2, "o:" + (eid or ""), 3)
+    if data == "def_capacita_oggetto":
+        return (2, "o:" + (eid or ""), 4)
+    if data == "def_alias":
+        return (2, "o:" + (eid or ""), 5)
+    # descrizione: appartiene alla stanza o all'oggetto omonimo
+    if data == "def_descrizione":
+        if eid and eid in mondo.stanze:
+            return (1, "r:" + eid, 1)
+        return (2, "o:" + (eid or ""), 1)
+    # 3 — stati e contatori (raggruppati per variabile)
+    if data in ("def_stato", "def_contatore"):
+        return (3, "v:" + (vid or ""), 0)
+    if data in ("def_stato_valore", "def_contatore_iniziale"):
+        return (3, "v:" + (vid or ""), 1)
+    # 4 — logica
+    if data == "def_regola":
+        return (4, "", 0)
+    if data in ("evento_al", "evento_ogni"):
+        return (4, "", 1)
+    if data in ("demone_ogni", "demone_quando"):
+        return (4, "", 2)
+    # 5 — dialoghi
+    if data in ("def_dialogo_inizio", "def_battuta", "def_opzione"):
+        return (5, "", 0)
+    return (8, "", 0)  # sconosciuto → verso il fondo, mai perso
+
+
+def riordina_sorgente(percorso_file, sorgente=None):
+    """[Autoformat] Riordino canonico del file. Ritorna {ok, text} o
+    {ok:False, reason}. Idempotente, byte-safe (sposta testo verbatim)."""
+    if sorgente is None:
+        try:
+            with open(percorso_file, encoding="utf-8") as f:
+                sorgente = f.read()
+        except OSError as e:
+            return {"ok": False, "reason": f"Impossibile leggere il file: {e}"}
+    if _RE_HA_INCLUDI.search(sorgente):
+        return {"ok": False,
+                "reason": "Il riordino è disponibile solo per file singoli (senza «Includi»)."}
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "reason": "Correggi gli errori del file prima di riordinare."}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "reason": "Il file non compila."}
+    try:
+        simboli = costruisci_symbol_table(sorgente)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True, verbi_multi=simboli.verbi_multi)
+        tree = parser.parse(sorgente)
+    except Exception as e:  # pragma: no cover - difensivo
+        return {"ok": False, "reason": f"Riordino non riuscito: {e}"}
+
+    # Frasi top-level ordinate per riga, con la chiave di ordinamento.
+    frasi = []
+    for nodo in tree.children:
+        if not isinstance(nodo, Tree):
+            continue
+        meta = getattr(nodo, "meta", None)
+        line = getattr(meta, "line", None) if meta else None
+        if line is None:
+            continue
+        end = getattr(meta, "end_line", line) if meta else line
+        frasi.append({"start": int(line), "end": int(end or line),
+                      "cls": _autoformat_classifica(nodo.data, _tokens_per_tipo(nodo), mondo)})
+    if not frasi:
+        return {"ok": True, "text": sorgente}
+    frasi.sort(key=lambda f: f["start"])
+
+    # I gruppi (entità) si ordinano per PRIMA apparizione, non alfabeticamente.
+    group_order = {}
+    for f in frasi:
+        grp = f["cls"][1]
+        if grp and grp not in group_order:
+            group_order[grp] = len(group_order)
+
+    righe = sorgente.split("\n")
+    n = len(righe)
+    by_start = {f["start"]: i for i, f in enumerate(frasi)}
+
+    def _trim(blocco):
+        b = blocco[:]
+        while b and b[0].strip() == "":
+            b.pop(0)
+        while b and b[-1].strip() == "":
+            b.pop()
+        return b
+
+    # Costruisce i BLOCCHI: ogni frase con i commenti/righe adiacenti che la
+    # precedono (le righe non-frase si attaccano alla frase seguente).
+    blocchi = []
+    pending = []
+    i = 1
+    while i <= n:
+        if i in by_start:
+            f = frasi[by_start[i]]
+            lead = _trim(pending)
+            body = righe[f["start"] - 1:f["end"]]
+            cat, grp, wi = f["cls"]
+            go = group_order.get(grp, -1) if grp else -1
+            blocchi.append({"text": lead + body,
+                            "key": (cat, go, wi, by_start[i])})
+            pending = []
+            i = f["end"] + 1
+        else:
+            pending.append(righe[i - 1])
+            i += 1
+    coda = _trim(pending)
+    if coda:
+        blocchi.append({"text": coda, "key": (9, 9, 9, 10 ** 9)})
+
+    blocchi.sort(key=lambda b: b["key"])  # stabile, chiave totale
+
+    # Riassembla: una riga vuota fra entità/categorie diverse, frasi tight dentro.
+    out = []
+    prev_sig = None
+    for b in blocchi:
+        sig = (b["key"][0], b["key"][1])
+        if out and sig != prev_sig:
+            out.append("")
+        out.extend(b["text"])
+        prev_sig = sig
+    testo = "\n".join(out)
+    if not testo.endswith("\n"):
+        testo += "\n"
+    return {"ok": True, "text": testo}
+
+
+# ==============================================================================
 # SERIALIZZATORE CANONICO PER-FRASE (Favella Studio — Fase 6a, scrittura)
 # ------------------------------------------------------------------------------
 # serializza_frase è la metà in SCRITTURA del round-trip: data una specifica
