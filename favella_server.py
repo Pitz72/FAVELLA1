@@ -38,7 +38,8 @@ try:
     from compilatore import (analizza_file, analizza_file_strutturato,
                              compila_mondo, analizza_outline, analizza_regole,
                              analizza_variabili, analizza_dialoghi,
-                             riordina_sorgente, serializza_frase, VERBI_VALIDI,
+                             riordina_sorgente, esporta_html,
+                             serializza_frase, VERBI_VALIDI,
                              PAROLE_RISERVATE)
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
@@ -49,7 +50,7 @@ except Exception as _e:  # pragma: no cover - solo ambiente rotto
 
 # Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
 VERSIONE_MOTORE = "0.18.0"
-VERSIONE_SIDECAR = "0.9.7"  # Autoformat: source.reorder (riordino canonico)
+VERSIONE_SIDECAR = "0.9.8"  # Fase 7: game.exportHtml (export HTML autoportante)
 
 
 # ==============================================================================
@@ -481,6 +482,16 @@ def rpc_source_reorder(params):
     return riordina_sorgente(percorso, params.get("source"))
 
 
+def rpc_game_export_html(params):
+    """[Fase 7 / packaging] Esporta la storia come HTML autoportante (motore +
+    storia appiattita, giocabile nel browser via Pyodide). Ritorna {ok, html,
+    title} o {ok:False, reason}."""
+    percorso = params.get("path")
+    if not percorso:
+        return {"ok": False, "reason": "Apri un file .fav per esportarlo."}
+    return esporta_html(percorso, params.get("source"))
+
+
 def rpc_outline_serialize(params):
     """[Fase 6a] Genera la frase .fav canonica da una specifica strutturata
     (op + campi), per il round-trip in SCRITTURA degli editor visuali. L'IDE
@@ -514,6 +525,7 @@ _METODI = {
     "world.variables": rpc_world_variables,
     "world.dialogues": rpc_world_dialogues,
     "source.reorder": rpc_source_reorder,
+    "game.exportHtml": rpc_game_export_html,
     "outline.serialize": rpc_outline_serialize,
     "session.history": rpc_session_history,
     "session.save": rpc_session_save,

@@ -23,6 +23,7 @@ from utils import (
 )
 import os
 import sys
+import json
 
 # Vocabolario chiuso dei verbi riconosciuti dal motore di gioco. Serve per
 # validare a compile-time i verbi delle regole "Invece di" (un verbo non in
@@ -3380,6 +3381,195 @@ def riordina_sorgente(percorso_file, sorgente=None):
     if not testo.endswith("\n"):
         testo += "\n"
     return {"ok": True, "text": testo}
+
+
+# ==============================================================================
+# ESPORTAZIONE DEL GIOCO — HTML AUTOPORTANTE (Favella Studio — Fase 7, packaging)
+# ------------------------------------------------------------------------------
+# esporta_html produce UN file .html che gioca l'avventura nel browser, col motore
+# FAVELLA VERO eseguito via Pyodide (stesso contratto headless del sidecar e delle
+# cassette-gioco della landing page). Incorpora i 5 moduli del motore + la storia
+# APPIATTITA (Includi risolti) + un terminale retrò. Il giocatore non installa
+# nulla (serve solo un browser e, al primo avvio, la rete per scaricare Pyodide).
+# ==============================================================================
+
+_ENGINE_FILES = ["utils.py", "strutture.py", "libreria_azioni.py", "compilatore.py", "gioco.py"]
+
+_EXPORT_DRIVER_PY = r'''
+import io, contextlib, json, sys
+if '/engine' not in sys.path:
+    sys.path.insert(0, '/engine')
+from compilatore import compila_mondo
+from gioco import elabora_comando, mostra_stanza
+from libreria_azioni import LIBRERIA_AZIONI
+_mondo = None
+def fav_boot(entry):
+    global _mondo
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            _mondo = compila_mondo(entry)
+            _mondo.carica_azioni(LIBRERIA_AZIONI)
+            _mondo.imposta_posizione_iniziale()
+            mostra_stanza(_mondo)
+    except Exception as e:
+        return json.dumps({"text": buf.getvalue() + "\n[ERRORE DI COMPILAZIONE] " + str(e),
+                           "continua": False, "stato": "errore"})
+    return json.dumps({"text": buf.getvalue(), "continua": True,
+                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+def fav_step(cmd):
+    if _mondo is None:
+        return json.dumps({"text": "", "continua": False, "stato": "errore"})
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            continua = elabora_comando(_mondo, cmd)
+    except Exception as e:
+        return json.dumps({"text": buf.getvalue() + "\n[ERRORE] " + str(e),
+                           "continua": True, "stato": getattr(_mondo, "stato_partita", "in_corso")})
+    return json.dumps({"text": buf.getvalue(), "continua": bool(continua),
+                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+'''
+
+
+def esporta_html(percorso_file, sorgente=None, titolo=None):
+    """[Fase 7] Genera un HTML autoportante che gioca la storia via Pyodide.
+    Ritorna {ok, html, title} oppure {ok:False, reason}. La storia viene
+    APPIATTITA (Includi risolti) e incorporata col motore. Richiede che compili."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "reason": "La storia non compila: correggi gli errori prima di esportare."}
+    # Storia appiattita (Includi risolti in un unico .fav).
+    try:
+        if sorgente is not None:
+            testo, _mappa, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, _mappa, _err = espandi_inclusioni(percorso_file)
+    except Exception as e:
+        return {"ok": False, "reason": f"Appiattimento non riuscito: {e}"}
+    # Moduli del motore (stessa cartella di questo file).
+    base = os.path.dirname(os.path.abspath(__file__))
+    engine = {}
+    for nome in _ENGINE_FILES:
+        try:
+            with open(os.path.join(base, nome), encoding="utf-8") as f:
+                engine[nome] = f.read()
+        except OSError as e:
+            return {"ok": False, "reason": f"Modulo del motore mancante ({nome}): {e}"}
+    tit = (titolo or os.path.splitext(os.path.basename(percorso_file))[0] or "Avventura FAVELLA")
+    # NB: il motore incorporato contiene letteralmente «</script>» (in questo stesso
+    # template) → va neutralizzato, altrimenti chiuderebbe il blocco <script> dell'HTML.
+    # «<\/» è equivalente in JSON/JS e innocuo per il parser HTML.
+    dati = json.dumps({"engine": engine, "story": testo, "title": tit},
+                      ensure_ascii=False).replace("</", "<\\/")
+    html = _HTML_EXPORT_TEMPLATE.replace("/*__TITLE__*/", _escape_html(tit))
+    html = html.replace("/*__DRIVER__*/", _EXPORT_DRIVER_PY)
+    html = html.replace("/*__DATA__*/", dati)
+    return {"ok": True, "html": html, "title": tit}
+
+
+def _escape_html(s):
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+_HTML_EXPORT_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>/*__TITLE__*/ — FAVELLA</title>
+<style>
+  :root { --bg:#0c1018; --fg:#cfe3ff; --dim:#5b6b85; --accent:#7ad0ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family:"Cascadia Code","Consolas",ui-monospace,monospace; }
+  #wrap { max-width:820px; margin:0 auto; height:100%; display:flex; flex-direction:column; padding:16px; }
+  h1 { font-size:15px; color:var(--accent); font-weight:600; margin:0 0 10px; letter-spacing:.04em; }
+  #out { flex:1; overflow:auto; white-space:pre-wrap; line-height:1.5; font-size:14.5px;
+    border:1px solid #1d2740; border-radius:8px; padding:14px; background:#0a0e16; }
+  #out .cmd { color:var(--accent); }
+  #out .sys { color:var(--dim); }
+  #bar { display:flex; gap:8px; margin-top:10px; }
+  #bar input { flex:1; background:#0a0e16; border:1px solid #1d2740; color:var(--fg);
+    padding:9px 12px; border-radius:8px; font:inherit; }
+  #bar button { background:#15233e; color:var(--fg); border:1px solid #2a3a5c;
+    border-radius:8px; padding:9px 16px; font:inherit; cursor:pointer; }
+  #bar button:disabled { opacity:.5; cursor:default; }
+  .foot { color:var(--dim); font-size:11px; margin-top:8px; text-align:center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>/*__TITLE__*/</h1>
+  <div id="out"><span class="sys">Caricamento del motore FAVELLA…</span></div>
+  <div id="bar">
+    <input id="in" type="text" placeholder="Scrivi un comando… (es. guarda, nord, prendi …)" disabled autocomplete="off">
+    <button id="send" disabled>Invio</button>
+  </div>
+  <div class="foot">Motore FAVELLA in esecuzione nel browser (Pyodide). Una creazione con Favella Studio.</div>
+</div>
+<script>
+const DATA = /*__DATA__*/;
+const DRIVER = `/*__DRIVER__*/`;
+const PYBASE = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
+const out = document.getElementById("out");
+const inp = document.getElementById("in");
+const send = document.getElementById("send");
+let py = null, running = false;
+function append(text, cls) {
+  if (!text) return;
+  const span = document.createElement("span");
+  if (cls) span.className = cls;
+  span.textContent = text.endsWith("\n") ? text : text + "\n";
+  out.appendChild(span); out.scrollTop = out.scrollHeight;
+}
+function setStatus(t){ out.innerHTML = '<span class="sys">'+t+'</span>'; }
+async function boot() {
+  try {
+    setStatus("Avvio dell'interprete…");
+    await new Promise((res, rej) => { const s=document.createElement("script"); s.src=PYBASE+"pyodide.js"; s.onload=res; s.onerror=()=>rej(new Error("Pyodide non raggiungibile (serve la rete al primo avvio).")); document.head.appendChild(s); });
+    py = await loadPyodide({ indexURL: PYBASE });
+    setStatus("Installazione di Lark…");
+    await py.loadPackage("micropip");
+    await py.pyimport("micropip").install("lark");
+    setStatus("Caricamento dell'avventura…");
+    py.FS.mkdirTree("/engine");
+    for (const [n, src] of Object.entries(DATA.engine)) py.FS.writeFile("/engine/"+n, src);
+    py.FS.mkdirTree("/game");
+    py.FS.writeFile("/game/storia.fav", DATA.story);
+    py.runPython(DRIVER);
+    py.globals.set("_entry", "/game/storia.fav");
+    const r = JSON.parse(py.runPython("fav_boot(_entry)"));
+    out.innerHTML = "";
+    append(r.text);
+    running = r.continua;
+    inp.disabled = !running; send.disabled = !running;
+    if (running) inp.focus();
+  } catch (e) {
+    setStatus("Errore: " + e.message);
+  }
+}
+function step() {
+  if (!running) return;
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  append("> " + cmd, "cmd");
+  inp.value = "";
+  try {
+    py.globals.set("_cmd", cmd);
+    const r = JSON.parse(py.runPython("fav_step(_cmd)"));
+    append(r.text);
+    running = r.continua;
+    if (!running) { inp.disabled = true; send.disabled = true; append("\n— Fine —", "sys"); }
+  } catch (e) { append("[errore] " + e.message, "sys"); }
+}
+send.addEventListener("click", step);
+inp.addEventListener("keydown", (e) => { if (e.key === "Enter") step(); });
+boot();
+</script>
+</body>
+</html>
+"""
 
 
 # ==============================================================================
