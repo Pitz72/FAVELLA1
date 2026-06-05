@@ -2616,12 +2616,29 @@ def _valori_commento(testo):
     return fuori
 
 
+def _nome_stanza(mondo, sid):
+    """Nome visualizzato di una stanza (con articolo), o l'id se assente."""
+    st = mondo.stanze.get(sid) if mondo else None
+    return st.nome_visualizzato if st else sid
+
+
+def _nucleo_nome(nome):
+    """Nucleo del nome senza articolo iniziale (per «in cucina», non «in la cucina»)."""
+    _art, nucleo = _scomponi_articolo(nome or "")
+    return nucleo or nome
+
+
 def _cond_to_json(c, mondo):
     """Serializza una Condizione (albero) in JSON ricorsivo. None → None."""
     if c is None:
         return None
     if isinstance(c, CondizioneNot):
-        return {"op": "not", "term": _cond_to_json(c.condizione, mondo)}
+        # [0.18.0 / B5] '≠ N' sul contatore è modellato come NOT(== N): lo ripresento
+        # come un confronto count con cmp '!=' (round-trip pulito col builder).
+        inner = c.condizione
+        if isinstance(inner, CondizioneContatore) and inner.operatore == "==":
+            return {"op": "count", "name": inner.nome, "cmp": "!=", "value": inner.valore}
+        return {"op": "not", "term": _cond_to_json(inner, mondo)}
     if isinstance(c, CondizioneAnd):
         return {"op": "and", "terms": [_cond_to_json(x, mondo) for x in c.condizioni]}
     if isinstance(c, CondizioneOr):
@@ -2636,6 +2653,9 @@ def _cond_to_json(c, mondo):
                 "kind": _kind_variabile(mondo, c.nome)}
     if isinstance(c, CondizioneContatore):
         return {"op": "count", "name": c.nome, "cmp": c.operatore, "value": c.valore}
+    if isinstance(c, CondizionePosizioneGiocatore):
+        # [0.18.0 / B1] 'se il giocatore è in [stanza]'.
+        return {"op": "playerIn", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
     return {"op": "unknown"}
 
 
@@ -2655,9 +2675,14 @@ def _conseq_to_json(c, mondo):
         return {"op": "move", "id": c.id_oggetto,
                 "name": _nome_entita(mondo, c.id_oggetto),
                 "dest": dest, "destName": dest_name}
+    if isinstance(c, ConseguenzaSpostamentoGiocatore):
+        # [0.18.0 / B2] Teletrasporto: 'e adesso il giocatore è in [stanza]'.
+        return {"op": "teleport", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
     if isinstance(c, ConseguenzaFinePartita):
         _esiti = {"vinta": "vinci", "persa": "perdi", "terminata": "termina"}
-        return {"op": "end", "outcome": _esiti.get(c.esito, c.esito)}
+        # [0.18.0 / B3] Testo d'esito opzionale (None se non personalizzato).
+        return {"op": "end", "outcome": _esiti.get(c.esito, c.esito),
+                "message": getattr(c, "messaggio", None)}
     return {"op": "unknown"}
 
 
@@ -2887,7 +2912,7 @@ def analizza_variabili(percorso_file, sorgente=None):
         return {"file": f_o, "line": r_o, "endLine": r_end}
 
     # Indicizza le frasi di dichiarazione/valore-iniziale con il loro span.
-    decl_stato, decl_cont, init_stato = {}, {}, {}
+    decl_stato, decl_cont, init_stato, init_cont = {}, {}, {}, {}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -2909,6 +2934,10 @@ def analizza_variabili(percorso_file, sorgente=None):
                 props = tok.get("PROPRIETA", [])
                 valore = normalizza_nome(str(props[0])) if props else None
                 init_stato[nome] = (valore, span)  # l'ultima vince (come il motore)
+            elif nodo.data == "def_contatore_iniziale":
+                # [0.16.0] 'La forza parte da N.' — valore iniziale del contatore.
+                nums = tok.get("NUMERO", [])
+                init_cont[nome] = (int(str(nums[0])) if nums else None, span)
 
     # Commenti '# valori di X: …' → mappa id-stato -> (valori, span). Ultima vince.
     commenti = {}
@@ -2919,7 +2948,14 @@ def analizza_variabili(percorso_file, sorgente=None):
     states, counters = [], []
     for nome in mondo.variabili:
         if _kind_variabile(mondo, nome) == "contatore":
-            counters.append({"name": nome, "declSpan": decl_cont.get(nome)})
+            val = mondo.variabili.get(nome)
+            counters.append({
+                "name": nome,
+                "declSpan": decl_cont.get(nome),
+                # [0.16.0 / B.2] valore iniziale (default 0) + span della frase 'parte da'.
+                "initial": val if isinstance(val, int) else 0,
+                "initialSpan": (init_cont.get(nome) or (None, None))[1],
+            })
             continue
         iniziale = mondo.variabili.get(nome)
         iniziale = iniziale if isinstance(iniziale, str) and iniziale else None
@@ -3233,16 +3269,23 @@ def _serializza_condizione(c):
         return f"{c['name']} è {c['prop']}"
     if op == "var":
         return f"{c['name']} è {c['value']}"
+    if op == "playerIn":
+        # [0.18.0 / B1] 'il giocatore è in [stanza]' (prep nuda + nucleo).
+        return f"il giocatore è in {_nucleo_nome(c['name'])}"
     if op == "count":
         cmp, v = c["cmp"], c["value"]
         if cmp == "==":
             return f"{c['name']} è {v}"
+        if cmp == "!=":  # [0.18.0 / B5] ≠
+            return f"{c['name']} non è {v}"
         if cmp == ">=":
             return f"{c['name']} è almeno {v}"
         if cmp == ">":
             return f"{c['name']} è più di {v}"
         if cmp == "<":
             return f"{c['name']} è meno di {v}"
+        if cmp == "<=":  # [0.18.0 / B4] ≤
+            return f"{c['name']} è al massimo {v}"
         raise ValueError(f"Confronto contatore sconosciuto: {cmp!r}.")
     if op == "not":
         t = c["term"]
@@ -3252,7 +3295,9 @@ def _serializza_condizione(c):
             return f"{t['name']} non è {t['prop']}"
         if t["op"] == "var":
             return f"{t['name']} non è {t['value']}"
-        raise ValueError("La negazione è ammessa solo su possesso, proprietà o stato.")
+        if t["op"] == "playerIn":
+            return f"il giocatore non è in {_nucleo_nome(t['name'])}"
+        raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato o posizione.")
     if op in ("and", "or"):
         sep = " e " if op == "and" else " oppure "
         def _grp(x):
@@ -3276,10 +3321,17 @@ def _serializza_conseguenza(c):
             return f"{c['name']} diventa {v}"
         base = "aumenta" if mode == "aumenta" else "diminuisci"
         return f"{base} {c['name']}" + (f" di {v}" if v != 1 else "")
+    if op == "playerIn" or op == "teleport":
+        # [0.18.0 / B2] Teletrasporto del giocatore: 'il giocatore è in [stanza]'.
+        return f"il giocatore è in {_nucleo_nome(c['name'])}"
     if op == "end":
         esiti = {"vinci": "vinci", "perdi": "perdi", "termina": "termina"}
         if c["outcome"] not in esiti:
             raise ValueError(f"Esito di fine partita sconosciuto: {c['outcome']!r}.")
+        # [0.18.0 / B3] Testo d'esito opzionale: 'vinci "..."'.
+        msg = c.get("message")
+        if msg:
+            return f"{esiti[c['outcome']]} {_quota(msg)}"
         return esiti[c["outcome"]]
     if op == "move":
         # [Fase 6c.3] Spostamento: «<oggetto> è <prep_luogo> <dest>» (stessa forma
@@ -3417,6 +3469,10 @@ def serializza_frase(spec):
         if op == "counter_decl":
             # 'X è un contatore.' — contatore numerico (valore iniziale 0).
             return {"ok": True, "text": f"{str(spec['name']).strip()} è un contatore."}
+        if op == "counter_init":
+            # [0.16.0 / B.2] 'X parte da N.' — valore iniziale di un contatore.
+            return {"ok": True,
+                    "text": f"{str(spec['name']).strip()} parte da {int(spec['value'])}."}
         if op == "state_values_comment":
             # Commento canonico per persistere l'elenco dei valori ammessi di uno
             # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo
