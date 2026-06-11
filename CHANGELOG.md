@@ -4,6 +4,35 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Manutenzione] - 2026-06-11
+### Pulizia interna del motore 🧹
+Nessun cambiamento al linguaggio. Suite sempre a **446 test** verdi.
+- **Versione in un punto solo:** nuova costante `VERSIONE_MOTORE` in
+  `strutture.py`; il sidecar e il report di compilazione (`Mondo.__str__`) la
+  importano invece di cablare il numero in proprio.
+- **Deduplicato il preprocessore:** `espandi_inclusioni` ora accetta un
+  `sorgente_radice` opzionale (il buffer in memoria dell'IDE) e la copia
+  parallela `_espandi_inclusioni_seedable` è diventata un semplice alias.
+- **Diagnostica dei crash:** un errore interno del compilatore ora stampa lo
+  stack trace completo (prima solo il messaggio), per individuare il punto
+  esatto del bug.
+
+---
+
+## [Export HTML] - 2026-06-05
+### Esporta il gioco come pagina HTML autoportante 📦
+Nuova funzione `esporta_html` nel compilatore (op `game.exportHtml` del
+sidecar): impacchetta una storia `.fav` in **un singolo file HTML giocabile nel
+browser**, con il motore Python eseguito via **Pyodide** (nessuna installazione
+per chi gioca).
+- Sorgente espanso (inclusioni risolte) e moduli del motore incapsulati nel
+  JSON dei dati; il driver Python vive nel JSON, non in un template literal
+  (robusto rispetto a backtick e `${}` nei testi delle storie).
+- Robusto al bundle congelato di PyInstaller (`_MEIPASS`): i sorgenti del
+  motore vengono letti dal bundle quando il sidecar gira impacchettato.
+
+---
+
 ## [Manuale] - 2026-06-04
 ### Manuale d'autore completo — PDF tipografico 📖
 Riscritto da zero il **Manuale di Programmazione** (`documentazione/manuale/`),

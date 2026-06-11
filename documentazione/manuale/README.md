@@ -27,16 +27,18 @@ typst compile --font-path fonts manuale.typ manuale.pdf
 | Percorso | Ruolo |
 |---|---|
 | `manuale.typ` | Documento principale: fronte del libro + capitoli. |
+| `capitoli/` | I 17 capitoli, un file `.typ` ciascuno. |
 | `lib/manuale-template.typ` | Identità tipografica: palette di marca, font, copertina, impaginazione, titoli, box (`sintassi`, `tranello`, `prova`, `nota`, `esempio`). |
 | `lib/fav.typ` | Evidenziatore di sintassi `.fav` (`#fav(...)`, `#fav-inline(...)`). |
 | `assets/logo.png` | Marchio `{F1}` ufficiale. |
 | `fonts/` | Font di marca **statici** (Sora, Source Code Pro — licenza OFL). |
-| `manuale.md` | **Vecchio** manuale (≈0.0.9.2), conservato come riferimento storico. Sarà rimosso a riscrittura completata. |
+| `manuale.pdf` | Il manuale compilato, tracciato nel repo per il download diretto. |
 
 ## Stato
 
-In riscrittura sulla v0.18.0. Capitolo campione disponibile: **9 — «Le regole
-`Invece di`»**. Indice completo previsto: 17 capitoli + appendici (vedi roadmap).
+**Completo** (2026-06-04): **17 capitoli + appendici**, copertina, dedica e
+colophon — circa 59 pagine. Allineato alla **v0.18.0**. Il vecchio `manuale.md`
+(≈0.0.9.2) è stato rimosso.
 
 ## Font e licenze
 
