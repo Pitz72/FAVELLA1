@@ -44,12 +44,10 @@ try:
     from utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
-    from strutture import Mondo
+    from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
-
-# Versione del motore FAVELLA (fonte: header dei moduli + ultimo rilascio).
-VERSIONE_MOTORE = "0.18.0"
+    VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
 VERSIONE_SIDECAR = "0.9.8"  # Fase 7: game.exportHtml (export HTML autoportante)
 
 

@@ -1812,7 +1812,7 @@ def _aggiorna_stato_stringa(linea: str, dentro: bool) -> bool:
     return dentro
 
 
-def espandi_inclusioni(percorso_radice: str):
+def espandi_inclusioni(percorso_radice: str, sorgente_radice: str | None = None):
     """PASSATA 0 — Espande ricorsivamente le direttive 'Includi "...".'.
 
     Restituisce (testo_espanso, mappa_righe, errori):
@@ -1822,13 +1822,17 @@ def espandi_inclusioni(percorso_radice: str):
       - errori: messaggi bloccanti (cicli di inclusione, file inclusi mancanti).
     La normalizzazione tipografica [L2] è applicata per-file qui. Una
     FileNotFoundError sul file RADICE viene propagata (la gestisce analizza_file,
-    come in precedenza)."""
+    come in precedenza).
+
+    'sorgente_radice' (opzionale) è il testo del file RADICE già in memoria: se
+    presente, il file radice non viene letto da disco (l'IDE compila il buffer
+    non ancora salvato), mentre gli 'Includi' restano risolti dal disco."""
     righe_out = []
     mappa = []
     errori = []
     gia_inclusi = set()
 
-    def _espandi(percorso, catena, is_root):
+    def _espandi(percorso, catena, is_root, seed=None):
         # 'catena' = stack dei realpath in corso di inclusione (per i cicli).
         real = os.path.realpath(percorso)
         if real in catena:
@@ -1837,14 +1841,17 @@ def espandi_inclusioni(percorso_radice: str):
             return
         if real in gia_inclusi:
             return  # già incluso altrove: deduplica (diamante)
-        try:
-            with open(percorso, "r", encoding="utf-8") as f:
-                testo = normalizza_tipografia(f.read())
-        except FileNotFoundError:
-            if is_root:
-                raise
-            errori.append(f"File incluso non trovato: '{percorso}'.")
-            return
+        if seed is not None:
+            testo = normalizza_tipografia(seed)
+        else:
+            try:
+                with open(percorso, "r", encoding="utf-8") as f:
+                    testo = normalizza_tipografia(f.read())
+            except FileNotFoundError:
+                if is_root:
+                    raise
+                errori.append(f"File incluso non trovato: '{percorso}'.")
+                return
         gia_inclusi.add(real)
         base = os.path.dirname(os.path.abspath(percorso))
         dentro_stringa = False
@@ -1858,7 +1865,7 @@ def espandi_inclusioni(percorso_radice: str):
             mappa.append((percorso, n))
             dentro_stringa = _aggiorna_stato_stringa(linea, dentro_stringa)
 
-    _espandi(percorso_radice, [], True)
+    _espandi(percorso_radice, [], True, seed=sorgente_radice)
     return "\n".join(righe_out), mappa, errori
 
 
@@ -1975,6 +1982,10 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         return None
         
     except Exception as ex:
+        # Bug del compilatore (non un errore dell'autore): lo stack trace serve
+        # a chi sviluppa il motore per individuare il punto esatto del crash.
+        import traceback
+        traceback.print_exc()
         print(f"[ERRORE INTERNO] Crash durante la compilazione: {ex}")
         return None
 
@@ -1988,53 +1999,10 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 # di stamparle, così l'IDE può popolare il pannello Problemi e i marker di Monaco.
 # ==============================================================================
 
-def _espandi_inclusioni_seedable(percorso_radice, sorgente_radice=None):
-    """[Favella Studio / Fase 2] Variante di espandi_inclusioni che può partire da
-    un sorgente IN MEMORIA per il file radice (così l'IDE compila il buffer non
-    ancora salvato), risolvendo gli 'Includi' dal disco. È una COPIA DELIBERATA e
-    parallela di espandi_inclusioni: l'originale resta byte-stabile per il motore e
-    i test, questa vive solo nel percorso additivo dell'IDE. Stessa firma di
-    ritorno: (testo_espanso, mappa_righe, errori). Se sorgente_radice è None il
-    comportamento coincide con espandi_inclusioni."""
-    righe_out = []
-    mappa = []
-    errori = []
-    gia_inclusi = set()
-
-    def _espandi(percorso, catena, is_root, seed=None):
-        real = os.path.realpath(percorso)
-        if real in catena:
-            nomi = " -> ".join(os.path.basename(p) for p in catena + [real])
-            errori.append(f"Ciclo di inclusione rilevato: {nomi}.")
-            return
-        if real in gia_inclusi:
-            return
-        if seed is not None:
-            testo = normalizza_tipografia(seed)
-        else:
-            try:
-                with open(percorso, "r", encoding="utf-8") as f:
-                    testo = normalizza_tipografia(f.read())
-            except FileNotFoundError:
-                if is_root:
-                    raise
-                errori.append(f"File incluso non trovato: '{percorso}'.")
-                return
-        gia_inclusi.add(real)
-        base = os.path.dirname(os.path.abspath(percorso))
-        dentro_stringa = False
-        for n, linea in enumerate(testo.split("\n"), 1):
-            if not dentro_stringa:
-                m = _RE_INCLUDI.match(linea)
-                if m:
-                    _espandi(os.path.join(base, m.group(1)), catena + [real], False)
-                    continue
-            righe_out.append(linea)
-            mappa.append((percorso, n))
-            dentro_stringa = _aggiorna_stato_stringa(linea, dentro_stringa)
-
-    _espandi(percorso_radice, [], True, seed=sorgente_radice)
-    return "\n".join(righe_out), mappa, errori
+# La capacità "seedable" (compilare un buffer in memoria) è stata assorbita da
+# espandi_inclusioni tramite il parametro opzionale 'sorgente_radice'; l'alias
+# resta per i chiamanti del percorso IDE.
+_espandi_inclusioni_seedable = espandi_inclusioni
 
 
 def _riassunto_mondo(mondo):

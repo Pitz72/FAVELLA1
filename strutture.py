@@ -1,7 +1,11 @@
 # strutture.py
-# Modulo per le strutture dati di base di FAVELLA 1 (v0.18.0)
+# Modulo per le strutture dati di base di FAVELLA 1
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
+
+# Unico punto di verità della versione del motore: gli altri moduli (sidecar,
+# report di compilazione) la importano da qui invece di cablarla in proprio.
+VERSIONE_MOTORE = "0.18.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -691,7 +695,7 @@ class Mondo:
     def __str__(self) -> str:
         n_personaggi = sum(1 for o in self.oggetti.values() if o.is_personaggio)
         report = (
-            f"[FAVELLA 1] Report di compilazione (v0.18.0):\n"
+            f"[FAVELLA 1] Report di compilazione (v{VERSIONE_MOTORE}):\n"
             f"  - Stanze: {len(self.stanze)}\n"
             f"  - Oggetti: {len(self.oggetti)}\n"
             f"  - Personaggi: {n_personaggi} (nodi di dialogo: {len(self.dialogo_nodi)})\n"
