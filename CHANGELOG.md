@@ -4,6 +4,45 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.23.0] - 2026-06-13
+### Il collaudatore automatico di storie — `collaudo.py` (B1.1) 🤖
+Prima voce dell'**Asse B** di `progettazione-oltre-0.18.md`: «il differenziatore».
+Verificare che una storia sia **vincibile** e che il contenuto sia
+**raggiungibile** senza playthrough manuali. Questa release implementa il
+**Livello 1 — analisi statica** (la «catena della vittoria»); il robot dinamico
+(BFS sullo spazio degli stati) è la fase B1.2, successiva. Spec completa in
+`documentazione/progettazione-collaudo.md`.
+
+- **Nuovo modulo `collaudo.py`**, *consumatore* del Mondo compilato: **non tocca
+  la grammatica né il loop di gioco** (la grammatica resta `grammatica-0.22.0.md`).
+  - `analizza_vincibilita(mondo)` → report **strutturato (dict)** riusabile dal
+    sidecar/IDE; `rendi_report_testuale(report)` → resa leggibile per la CLI.
+  - CLI: `python collaudo.py storia.fav`.
+- **Catena della vittoria (a ritroso)**: raccoglie ogni conseguenza «vinci»
+  (in regole, eventi, demoni, opzioni di dialogo) e risale i prerequisiti fino
+  allo stato iniziale, scomponendo le condizioni in atomi (possesso, proprietà,
+  stato, contatore, posizione) e trovando, per ciascuno, **quale conseguenza —
+  o quale azione standard (`prendi`) o movimento (`collega`) — lo rende vero**.
+  Esito: `vincibile-staticamente` / `ostruzione-possibile` / `nessuna-vittoria`.
+- **Diagnostica**: riusa il **linter del compilatore** (`analisi_statica`) per
+  stanze isolate, oggetti orfani, regole morte e stati/contatori inutilizzati —
+  niente reinvenzione; aggiunge le **regole potenzialmente irraggiungibili**
+  (condizione mai soddisfacibile), controllo distinto dal «regola morta».
+- **Limite onesto dichiarato nel report**: l'analisi dà condizioni *necessarie*
+  ed *euristiche* (le strutture e/oppure/non sono appiattite, l'aritmetica dei
+  contatori è approssimata), **non una prova** di vincibilità: quella spetta al
+  robot della fase B1.2.
+- **Test**: nuova suite **`test_collaudo.py`** (33 asserzioni) — catena su una
+  storia vincibile, rilevamenti su una storia rotta, ostruzione su una vittoria
+  irraggiungibile, e verifica end-to-end sulle tre demo reali (La Casa, Il
+  Relitto Silente, Salerno-Reggio), tutte `vincibile-staticamente`.
+
+Suite del linguaggio invariata a **492 asserzioni** verdi (nessuna regressione:
+collaudo è additivo). Versione-ombrello del progetto a **0.23.0**; la grammatica
+del sorgente resta `grammatica-0.22.0.md`.
+
+---
+
 ## [0.22.0] - 2026-06-13
 ### Varietà nelle risposte: descrizioni alternate 🎲
 Una descrizione può ora avere **più varianti**, così il mondo non si ripete
