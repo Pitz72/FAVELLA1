@@ -6,15 +6,15 @@
 > **v0.19.0**: **A7** verbi intransitivi (`"…" è un comando senza oggetto.`),
 > **A8** inventario iniziale (`Il giocatore ha X.`), **A9** «tick» silenziosi
 > (`dire` opzionale in eventi/demoni). Vedi CHANGELOG e `grammatica-0.19.0.md`.
-> **Aggiornamento 2026-06-13 (2) — A1 pronomi FATTO in v0.20.0** e **A3
-> ANNULLA/ANCORA/TRASCRIZIONE FATTO in v0.21.0**. Le prime due voci dell'Asse A
-> sono implementate (entrambe solo runtime, grammatica invariata): A1 = clitici
-> (`prendila`), tonici (`prendi quella`), concordanza genere/numero, «Non la vedi
-> più»; A3 = annulla (istantanee di stato, time-machine fedele), ancora,
-> trascrizione. Suite 484. Restano dell'Asse A: **A2** varietà (col seed) — che è
-> anche prerequisito di **B1** il giocatore-robot — poi A4 buio / A5 NPC / A6
-> sinonimi. **Meta-lezione adottata:** costruire una fetta verticale di un genere
-> «non-Favella» è un metodo ricorrente per trovare primitive mancanti.
+> **Aggiornamento 2026-06-13 (2) — Asse A: A1, A3, A2 FATTI.** Le prime tre voci
+> sono implementate: **A1 pronomi** (v0.20.0, runtime), **A3 ANNULLA/ANCORA/
+> TRASCRIZIONE** (v0.21.0, runtime), **A2 varietà nelle risposte** (v0.22.0,
+> grammatica: `è una di:`/`è in sequenza:` + RNG seedato riproducibile che ANNULLA
+> riavvolge). Suite 492. Il **seed di A2 è già pronto per B1** (il giocatore-robot,
+> sotto). Restano dell'Asse A: A4 buio, A5 movimento NPC, A6 sinonimi; e l'Asse B
+> con **B1 il robot** come pezzo forte. **Meta-lezione adottata:** costruire una
+> fetta verticale di un genere «non-Favella» è un metodo ricorrente per trovare
+> primitive mancanti.
 
 > Documento di progettazione, 2026-06-11. Stato del motore alla stesura:
 > **v0.18.0, 446 test verdi**, linguaggio completo rispetto al design (Livelli

@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.21.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.22.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1580,6 +1580,10 @@ _CORPUS_GUARDIA = (
     'Invece di guarda se il punteggio è almeno 3: dire "Una luce pulsa.".\n'
     # [Livello 5] Descrizione CONDIZIONALE: clausola 'se' tra ENTITA e "è".
     'La descrizione della porta di ferro se l\'allarme è attivo è "Sigillata.".\n'
+    # [0.22.0 / A2] Descrizioni a VARIANTI: 'è una di: …' (casuale) e 'è in
+    # sequenza: …' (rotazione). Dopo "è" il lookahead TESTO_QUOTATO|"una"|"in".
+    'La descrizione dell\'anello è una di: "Un anello d\'oro.", "Un cerchio lucente.".\n'
+    'La descrizione del tavolo è in sequenza: "Un tavolo grezzo.", "Un tavolo segnato.".\n'
     # [Livello 5b] NPC e dialoghi: personaggio, nodo d'ingresso, battuta (con
     # interpolazione), opzione di uscita. Etichette/testi quotati: 0 ambiguità.
     "Il mercante è un personaggio.\nIl mercante è in cella.\n"
@@ -2522,7 +2526,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.19.0.md")
+                          "grammatica-0.22.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2539,7 +2543,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.19.0.md è presente")
+           "documentazione/grammatica-0.22.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -3398,6 +3402,109 @@ def test_ancora_niente_da_ripetere():
            "'ancora' senza comandi precedenti avvisa")
 
 
+# --- Test: 0.22.0 — A2 varietà nelle risposte (descrizioni alternate) --------
+
+def test_descrizione_sequenza():
+    print("[A2: 'in sequenza' ruota le varianti e si ferma sull'ultima]")
+    src = (
+        "La torre è una stanza.\nIl giocatore comincia in torre.\n"
+        "Un faro è una cosa.\nIl faro è in torre.\n"
+        'La descrizione del faro è in sequenza: "FARO-UNO.", "FARO-DUE.", "FARO-TRE.".\n'
+    )
+    mondo = runtime(src)
+    o = [esegui(mondo, "esamina faro") for _ in range(4)]
+    _check("FARO-UNO." in o[0] and "FARO-DUE." in o[1] and "FARO-TRE." in o[2],
+           "le varianti si susseguono in ordine")
+    _check("FARO-TRE." in o[3], "raggiunta l'ultima variante, vi resta")
+
+
+def test_descrizione_casuale_niente_ripetizione_immediata():
+    print("[A2: 'una di' non ripete mai due volte di fila la stessa variante]")
+    src = (
+        "Il molo è una stanza.\nIl giocatore comincia in molo.\n"
+        'La descrizione del molo è una di: "MARE-A.", "MARE-B.", "MARE-C.".\n'
+    )
+    mondo = runtime(src)
+    scelte = []
+    for _ in range(12):
+        out = esegui(mondo, "guarda")
+        for etichetta in ("MARE-A.", "MARE-B.", "MARE-C."):
+            if etichetta in out:
+                scelte.append(etichetta)
+                break
+    ripetute = any(scelte[i] == scelte[i + 1] for i in range(len(scelte) - 1))
+    _check(len(scelte) == 12 and not ripetute,
+           "12 estrazioni, mai due uguali consecutive")
+
+
+def test_descrizione_casuale_deterministica():
+    print("[A2: il seme fisso rende le scelte casuali RIPRODUCIBILI]")
+    src = (
+        "Il molo è una stanza.\nIl giocatore comincia in molo.\n"
+        'La descrizione del molo è una di: "MARE-A.", "MARE-B.", "MARE-C.".\n'
+    )
+    def sequenza():
+        mondo = runtime(src)
+        return [esegui(mondo, "guarda") for _ in range(8)]
+    _check(sequenza() == sequenza(),
+           "due partite con lo stesso seme danno la stessa sequenza casuale")
+
+
+def test_descrizione_varianti_annulla_riavvolge():
+    print("[A2: 'annulla' riavvolge anche lo stato delle varianti]")
+    src = (
+        "La torre è una stanza.\nIl giocatore comincia in torre.\n"
+        "Un faro è una cosa.\nIl faro è in torre.\n"
+        'La descrizione del faro è in sequenza: "FARO-UNO.", "FARO-DUE.", "FARO-TRE.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "esamina faro")           # FARO-UNO (indice -> DUE)
+    esegui(mondo, "esamina faro")           # FARO-DUE (indice -> TRE)
+    esegui(mondo, "annulla")                # disfa: indice torna a DUE
+    out = esegui(mondo, "esamina faro")
+    _check("FARO-DUE." in out,
+           "dopo 'annulla' la sequenza riparte dalla variante precedente")
+
+
+def test_descrizione_varianti_interpolano():
+    print("[A2: i segnaposto [var] funzionano dentro le varianti]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il punteggio è un contatore.\nIl punteggio parte da 7.\n"
+        'La descrizione della cella è una di: "Hai [punteggio] punti.", "Punti: [punteggio].".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("7" in out and "[punteggio]" not in out,
+           "la variante scelta interpola il contatore")
+
+
+def test_descrizione_singola_resta_valida():
+    print("[A2: la descrizione a stringa singola continua a funzionare]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        'La descrizione dell\'atrio è "Un atrio semplice.".\n'
+    )
+    mondo = runtime(src)
+    _check("Un atrio semplice." in esegui(mondo, "guarda"),
+           "la forma storica (una sola stringa) è preservata")
+
+
+def test_descrizione_condizionale_a_varianti():
+    print("[A2: una variante condizionale può a sua volta essere a varianti]")
+    src = (
+        "La sala è una stanza.\nIl giocatore comincia in sala.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        'La descrizione della sala è "Tutto tranquillo.".\n'
+        'La descrizione della sala se l\'allarme è attivo è in sequenza: "ALL-UNO.", "ALL-DUE.".\n'
+    )
+    mondo = runtime(src)
+    o1 = esegui(mondo, "guarda")
+    o2 = esegui(mondo, "guarda")
+    _check("ALL-UNO." in o1 and "ALL-DUE." in o2,
+           "la descrizione condizionale vera pesca le sue varianti in sequenza")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -3658,9 +3765,17 @@ def main():
         test_annulla_niente_da_annullare,
         test_ancora_ripete_ultimo_comando,
         test_ancora_niente_da_ripetere,
+        # 0.22.0 — A2: varietà nelle risposte (descrizioni alternate)
+        test_descrizione_sequenza,
+        test_descrizione_casuale_niente_ripetizione_immediata,
+        test_descrizione_casuale_deterministica,
+        test_descrizione_varianti_annulla_riavvolge,
+        test_descrizione_varianti_interpolano,
+        test_descrizione_singola_resta_valida,
+        test_descrizione_condizionale_a_varianti,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.21.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.22.0)")
     print("=" * 60)
     for t in tests:
         t()

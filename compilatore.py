@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.21.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.22.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -14,7 +14,7 @@ from strutture import (
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
-    OpzioneDialogo,
+    OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
@@ -63,6 +63,9 @@ PAROLE_RISERVATE = frozenset({
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
+    # [0.22.0 / A2] descrizioni a varianti: 'è una di: …' / 'è in sequenza: …'
+    # ('una', 'di', 'in' sono già riservate; manca 'sequenza').
+    "sequenza",
     # preposizioni di luogo
     "in", "nel", "nella", "negli", "nelle", "nell'",
     "sul", "sulla", "sullo", "sui", "sugli", "sulle",
@@ -332,7 +335,15 @@ _GRAMMAR_TEMPLATE = r"""
     // si applica solo quando la condizione è vera (più dichiarazioni = varianti
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
     // lookahead distingue nettamente "se" da "è": LALR(1) resta 0-ambiguo.
-    def_descrizione: "La" "descrizione" _PREP_DESCR ENTITA ( "se" condizione )? "è" TESTO_QUOTATO "."
+    // [0.22.0 / A2] Il valore di una descrizione può essere una stringa singola
+    // (storico) OPPURE più varianti, con politica 'una di' (casuale) o 'in
+    // sequenza' (rotazione). Dopo "è" il lookahead distingue: TESTO_QUOTATO
+    // (singola) | "una" (casuale) | "in" (sequenza) → LALR(1) 0-ambiguo. Vale
+    // sia per la descrizione di base sia per le varianti condizionali ('se …').
+    def_descrizione: "La" "descrizione" _PREP_DESCR ENTITA ( "se" condizione )? "è" descr_valore "."
+    descr_valore: TESTO_QUOTATO                                            -> descr_singola
+                | "una" "di" ":" TESTO_QUOTATO ( "," TESTO_QUOTATO )*      -> descr_casuale
+                | "in" "sequenza" ":" TESTO_QUOTATO ( "," TESTO_QUOTATO )* -> descr_sequenza
     def_posizione: ENTITA _copula PREP_LUOGO ENTITA "."
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
@@ -942,11 +953,21 @@ class FavellaTransformer(Transformer):
     def verbo_senza_oggetto(self, testo_quotato):
         return self._registra_verbo(testo_quotato, intransitivo=True)
 
+    # [0.22.0 / A2] Valore di una descrizione: stringa singola o più varianti.
+    def descr_singola(self, testo):
+        return testo
+
+    def descr_casuale(self, *testi):
+        return VariantiDescrizione(testi, "casuale")
+
+    def descr_sequenza(self, *testi):
+        return VariantiDescrizione(testi, "sequenza")
+
     def def_descrizione(self, *tokens):
         # tokens (le preposizioni articolate sono filtrate da Lark): l'entità è
-        # sempre il primo, il testo l'ultimo; [Livello 5] una clausola 'se' inserisce
-        # in mezzo un oggetto Condizione. Entità e testo sono entrambi str, quindi
-        # li si individua per POSIZIONE (la condizione invece per tipo).
+        # sempre il primo, il valore-descrizione l'ultimo; [Livello 5] una clausola
+        # 'se' inserisce in mezzo un oggetto Condizione. [0.22.0/A2] il valore può
+        # essere una stringa o una VariantiDescrizione (entrambi gestiti a valle).
         nome_grezzo = tokens[0]
         testo = tokens[-1]
         condizione = None
@@ -1515,13 +1536,15 @@ class FavellaTransformer(Transformer):
         #    gli 'stati'/contatori (m.variabili) e gli oggetti (m.oggetti); le
         #    stanze NON sono interpolabili (non hanno un valore testuale da rendere).
         nomi_interpolabili = set(m.variabili.keys()) | set(m.oggetti.keys())
-        testi_autore = [s.descrizione for s in m.stanze.values()]
-        testi_autore += [o.descrizione for o in m.oggetti.values()]
+        # [0.22.0/A2] Una descrizione può avere più varianti: si ispeziona OGNI
+        # variante (testi_di_descrizione appiattisce stringa e VariantiDescrizione).
+        testi_autore = []
+        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
+            testi_autore += testi_di_descrizione(ent.descrizione)
+            for _, t in ent.descrizioni_condizionali:
+                testi_autore += testi_di_descrizione(t)
         testi_autore += [r.risposta for r in m.regole]
         testi_autore += [e.risposta for e in m.eventi]
-        # [Livello 5] Anche i testi delle descrizioni condizionali.
-        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
-            testi_autore += [t for _, t in ent.descrizioni_condizionali]
         segnaposto_sconosciuti = set()
         for testo in testi_autore:
             for ph in estrai_placeholder(testo):
@@ -1754,8 +1777,10 @@ class FavellaTransformer(Transformer):
         m = self.mondo
         testi = []
         for ent in list(m.stanze.values()) + list(m.oggetti.values()):
-            testi.append(ent.descrizione)
-            testi += [t for _, t in ent.descrizioni_condizionali]
+            # [0.22.0/A2] Appiattisce le varianti (stringa o VariantiDescrizione).
+            testi += testi_di_descrizione(ent.descrizione)
+            for _, t in ent.descrizioni_condizionali:
+                testi += testi_di_descrizione(t)
         testi += [r.risposta for r in m.regole]
         testi += [e.risposta for e in m.eventi]
         testi += [d.risposta for d in m.demoni]   # [Livello 8]
@@ -2442,7 +2467,7 @@ def analizza_outline(percorso_file, sorgente=None):
             "defSpan": _prima("def_stanza", rid),
             "descSpan": _prima("def_descrizione", rid),
             "descConditional": _ha_descr_condizionale(frasi, rid),
-            "description": st.descrizione,
+            "description": descrizione_display(st.descrizione),
             "exits": exits,
         })
 
@@ -2520,7 +2545,7 @@ def analizza_outline(percorso_file, sorgente=None):
             "defSpan": _prima(_DEF_PER_KIND[kind], oid),
             "descSpan": _prima("def_descrizione", oid),
             "descConditional": _ha_descr_condizionale(frasi, oid),
-            "description": o.descrizione,
+            "description": descrizione_display(o.descrizione),
             "location": location,
             "properties": properties,
             "aliases": aliases,

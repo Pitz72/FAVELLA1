@@ -4,6 +4,35 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.22.0] - 2026-06-13
+### Varietà nelle risposte: descrizioni alternate 🎲
+Una descrizione può ora avere **più varianti**, così il mondo non si ripete
+identico a ogni sguardo — la cosa che più «data» un gioco testuale. Terza voce
+dell'Asse A di `progettazione-oltre-0.18.md`. Suite del linguaggio: **492
+asserzioni** (era 484), tutte verdi; invariante LALR(1) 0-ambiguo intatto.
+
+- **Due politiche dichiarabili**:
+  - `La descrizione del mare è una di: "…", "…", "…".` — **casuale**, senza
+    ripetere mai due volte di fila la stessa variante.
+  - `La descrizione del faro è in sequenza: "…", "…".` — **rotazione**: le
+    varianti si susseguono e l'ultima resta (descrizioni che «si consumano»).
+- Vale sia per la descrizione di base sia per le varianti condizionali (`se …`),
+  e i segnaposto `[var]` continuano a funzionare dentro ogni variante.
+- **Casualità riproducibile**: il mondo ha un generatore con **seme fisso**
+  (`Mondo.rng`, `SEME_CASUALE_DEFAULT`). Le partite sono deterministiche e —
+  punto chiave — **ANNULLA riavvolge anche la casualità** (il generatore e gli
+  indici delle varianti sono catturati dalle istantanee di stato). Pronto per il
+  futuro giocatore-robot (B1).
+
+**Modifica di grammatica** (la prima dalla 0.19.0; 0.20.0 e 0.21.0 erano solo
+runtime): `def_descrizione` delega a `descr_valore`
+(`descr_singola`/`descr_casuale`/`descr_sequenza`). Nuova classe
+`strutture.VariantiDescrizione`. Riservata aggiunta: `sequenza`. Spec EBNF
+**`grammatica-0.22.0.md`** (puntatore test 0.19.0→0.22.0). Validazione segnaposto,
+linter e serializzazione IDE aggiornati per ispezionare ogni variante.
+
+---
+
 ## [0.21.0] - 2026-06-13
 ### Comandi di servizio: ANNULLA, ANCORA, TRASCRIZIONE ↩️
 Le tre comodità standard dell'interactive fiction dal 1985 (Infocom). Seconda

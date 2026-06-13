@@ -1,12 +1,18 @@
 # strutture.py
 # Modulo per le strutture dati di base di FAVELLA 1
 import copy
+import random
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
+# [0.22.0 / A2] Seme predefinito del generatore casuale del mondo. Fisso: le
+# partite sono riproducibili di default (utile per i test, per il futuro
+# giocatore-robot e perché ANNULLA possa riavvolgere anche la casualità).
+SEME_CASUALE_DEFAULT = 1972
+
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.21.0"
+VERSIONE_MOTORE = "0.22.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -313,14 +319,68 @@ class Demone:
         for conseguenza in self.conseguenze:
             conseguenza.esegui(mondo)
 
+class VariantiDescrizione:
+    """[0.22.0 / A2] Una descrizione con PIÙ varianti, scelta secondo una politica:
+    - 'casuale' ('è una di: …'): a ogni richiesta una variante a caso, mai due
+      volte di fila la stessa (se ce n'è più d'una); usa il generatore del mondo;
+    - 'sequenza' ('è in sequenza: …'): le varianti si susseguono in ordine a ogni
+      richiesta; raggiunta l'ultima, vi resta (descrizioni che «si consumano»).
+    Lo stato di avanzamento vive nell'istanza → è catturato e ripristinato da
+    ANNULLA insieme al resto del mondo."""
+    def __init__(self, testi, politica: str):
+        self.testi: List[str] = [t for t in testi]
+        self.politica = politica          # 'casuale' | 'sequenza'
+        self._indice = 0                  # 'sequenza': prossima variante da mostrare
+        self._ultima = -1                 # 'casuale': ultima mostrata (anti-ripetizione)
+
+    def scegli(self, mondo: 'Mondo') -> str:
+        if not self.testi:
+            return ""
+        if len(self.testi) == 1:
+            return self.testi[0]
+        if self.politica == "sequenza":
+            testo = self.testi[self._indice]
+            if self._indice < len(self.testi) - 1:
+                self._indice += 1
+            return testo
+        # 'casuale': evita di ripetere subito la stessa variante.
+        rng = getattr(mondo, "rng", None) or random
+        candidati = [i for i in range(len(self.testi)) if i != self._ultima]
+        i = rng.choice(candidati)
+        self._ultima = i
+        return self.testi[i]
+
+
+def testi_di_descrizione(valore) -> List[str]:
+    """[0.22.0 / A2] Tutte le stringhe-variante di un valore-descrizione (sia una
+    stringa semplice sia una VariantiDescrizione). Usato dalla validazione dei
+    segnaposto e dal linter, che devono ispezionare OGNI variante senza
+    «consumarla»."""
+    if isinstance(valore, VariantiDescrizione):
+        return list(valore.testi)
+    return [valore] if valore else []
+
+
+def descrizione_display(valore) -> str:
+    """[0.22.0 / A2] Una stringa rappresentativa di un valore-descrizione, per la
+    serializzazione (snapshot del mondo per l'IDE): la prima variante, o la
+    stringa stessa."""
+    if isinstance(valore, VariantiDescrizione):
+        return valore.testi[0] if valore.testi else ""
+    return valore
+
+
 def _descrizione_attuale(entita, mondo: 'Mondo') -> str:
     """[Livello 5] Sceglie la descrizione da mostrare: la prima descrizione
     condizionale la cui condizione è vera (in ordine di dichiarazione), altrimenti
-    la descrizione di base (fallback). Condiviso da Stanza e Oggetto."""
+    la descrizione di base (fallback). [0.22.0 / A2] Il valore scelto può essere
+    una VariantiDescrizione: in tal caso si pesca la variante secondo la politica.
+    Condiviso da Stanza e Oggetto."""
     for condizione, testo in entita.descrizioni_condizionali:
         if condizione.valuta(mondo):
-            return testo
-    return entita.descrizione
+            return testo.scegli(mondo) if isinstance(testo, VariantiDescrizione) else testo
+    base = entita.descrizione
+    return base.scegli(mondo) if isinstance(base, VariantiDescrizione) else base
 
 # --- [Livello 5b] NPC e dialoghi ramificati ---
 #
@@ -495,6 +555,11 @@ class Mondo:
         # Entrambi sono stato di sessione (esclusi dalle istantanee).
         self.ultimo_comando: Optional[str] = None
         self._storia_stati: List[dict] = []
+        # [0.22.0 / A2] Generatore casuale del mondo, con seme fisso: alimenta le
+        # descrizioni 'è una di: …' in modo RIPRODUCIBILE. È stato del mondo →
+        # catturato/ripristinato dalle istantanee di ANNULLA (l'undo riavvolge
+        # anche la casualità) e pronto per il giocatore-robot (B1).
+        self.rng = random.Random(SEME_CASUALE_DEFAULT)
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
