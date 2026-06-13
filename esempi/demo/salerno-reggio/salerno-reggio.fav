@@ -1,0 +1,89 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  SALERNO-REGGIO CALABRIA — un simulatore di guida testuale                ║
+# ║  Demo "fuori dagli schemi" per FAVELLA 1 (motore v0.18.0)                 ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Non un'avventura nel solito senso: un viaggio in macchina lungo la vecchia
+# A3, dal casello di Salerno fino allo Stretto. Si guida AVANTI di tratto in
+# tratto; ogni tratto si racconta. Ma la strada è anche un nastro di memoria:
+# col comando RICORDA lo stesso luogo si rivive nell'infanzia, sul sedile di
+# dietro, con papà alla guida. Due tempi sovrapposti sullo stesso asfalto.
+#
+# SCOPO: arrivare a Reggio prima che finisca la benzina o ti chiuda gli occhi
+# la stanchezza. Fermati all'autogrill di Lagonegro per fare benzina e tirare
+# il fiato.
+#
+# Questa demo dimostra che il modello di Favella — "ci si sposta tra luoghi,
+# ogni luogo si racconta secondo lo stato del mondo" — regge un genere che a
+# prima vista non è "da Favella". Esercita: direzioni custom, stati,
+# descrizioni condizionali, contatori con valore iniziale, verbi (anche
+# multi-parola), regole globali condizionali, eventi a tempo e demoni.
+
+# ============================================================================
+# 1. LO STATO DEL TEMPO  [Livello 3] — il cuore concettuale della demo
+# ============================================================================
+# Una sola variabile decide in che epoca "vivi" il tratto che stai guidando.
+# Tutte le descrizioni della strada hanno due varianti, scelte da questo stato.
+L'epoca è uno stato.
+L'epoca è oggi.
+
+# ============================================================================
+# 2. LE RISORSE DEL VIAGGIO  [Livello 3 + valore iniziale 0.16.0]
+# ============================================================================
+Il carburante è un contatore.
+Il carburante parte da 8.
+
+La stanchezza è un contatore.
+La stanchezza parte da 0.
+
+# ============================================================================
+# 3. LA DIREZIONE DEL VIAGGIO  [Livello 4]
+# ============================================================================
+# Una strada è (quasi) una linea: una sola coppia di direzioni basta.
+Avanti e indietro sono direzioni opposte.
+
+# ============================================================================
+# 4. LA STRADA  [Livello 1] — sei tratti, da Salerno allo Stretto
+# ============================================================================
+Il casello di Salerno collega avanti a il viadotto Italia.
+Il viadotto Italia collega avanti a lo svincolo di Lagonegro.
+Lo svincolo di Lagonegro collega avanti a la galleria dell'Appennino.
+La galleria dell'Appennino collega avanti a lo svincolo di Bagnara.
+Lo svincolo di Bagnara collega avanti a lo Stretto di Reggio.
+
+# ============================================================================
+# 5. PARTENZA
+# ============================================================================
+Il giocatore comincia in il casello di Salerno.
+# [0.19.0 / A8] Inventario iniziale dichiarativo: lo specchietto è subito a bordo.
+Il giocatore ha lo specchietto.
+
+# ============================================================================
+# 6. MODULI  [Livello 6]
+# ============================================================================
+Includi "strada.fav".
+Includi "oggetti.fav".
+Includi "guida.fav".
+
+# ============================================================================
+# 7. IL VIAGGIO CONSUMA  [Livello 3] — eventi a tempo
+# ============================================================================
+# [0.19.0 / A9] Il viaggio consuma in SILENZIO: «tick» senza testo (niente più
+# riga d'ambiente forzata a ogni consumo). Ogni 3 turni un filo di benzina in
+# meno; ogni 2 turni un grado di stanchezza in più.
+Ogni 3 turni: diminuisci il carburante.
+Ogni 2 turni: aumenta la stanchezza.
+
+# ============================================================================
+# 8. CIO' CHE VEGLIA SULLA STRADA  [Livello 8] — demoni
+# ============================================================================
+# (a) Spia della benzina: avverte a ogni turno finché sei in riserva.
+Ogni turno se il carburante è al massimo 1: dire "Sul cruscotto si accende la spia della benzina: un piccolo distributore arancione che pulsa nell'angolo dell'occhio.".
+
+# (b) Fine corsa per benzina esaurita (fronte di salita: scatta una volta).
+Quando il carburante è 0: dire "Il motore perde colpi, tossisce due volte e si spegne. Scivoli in folle sulla corsia d'emergenza, dentro un silenzio improvviso e totale." e adesso perdi "Senza benzina, fermo in mezzo all'Appennino. Certi viaggi finiscono prima di arrivare.".
+
+# (c) Fine corsa per sonno (fronte di salita).
+Quando la stanchezza è almeno 9: dire "Le palpebre pesano come saracinesche. La striscia bianca della carreggiata si sdoppia, ondeggia, ti viene incontro dolce come un invito..." e adesso perdi "Ti si sono chiusi gli occhi al volante. Non tutti i viaggi arrivano a destinazione.".
+
+# (d) ARRIVO: scatta nell'istante in cui entri nell'ultimo tratto (fronte di salita).
+Quando il giocatore è in lo Stretto di Reggio: dire "Spegni il motore. Il ticchettio del metallo che si raffredda, e poi il rumore del mare. Sei arrivato." e adesso vinci "Salerno-Reggio Calabria. L'hai percorsa tutta, ancora una volta.".

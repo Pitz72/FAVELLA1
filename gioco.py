@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.18.0)
+# Interprete Interattivo per FAVELLA 1 (v0.19.0)
 
 import sys
 import traceback
@@ -141,7 +141,10 @@ def avanza_turno_e_processa(mondo: Mondo) -> bool:
     # applicato quando i demoni valutano le loro condizioni in questo stesso turno.
     for evento in mondo.eventi:
         if evento.scatta_a(t):
-            print(rendi_testo(mondo, evento.risposta))
+            # [0.19.0 / A9] La battuta è opzionale (tick silenzioso): stampa solo
+            # se c'è del testo, poi applica comunque le conseguenze.
+            if evento.risposta:
+                print(rendi_testo(mondo, evento.risposta))
             evento.esegui_conseguenze(mondo)
             if partita_finita(mondo):
                 return True
@@ -165,7 +168,9 @@ def _processa_demoni(mondo: Mondo) -> bool:
             scatta = ora_vera and not demone.era_vera
         demone.era_vera = ora_vera
         if scatta:
-            print(rendi_testo(mondo, demone.risposta))
+            # [0.19.0 / A9] Battuta opzionale (tick silenzioso).
+            if demone.risposta:
+                print(rendi_testo(mondo, demone.risposta))
             demone.esegui_conseguenze(mondo)
             if partita_finita(mondo):
                 return True
@@ -566,7 +571,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         
         # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata", "mettere"]:
+        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata", "_personalizzata_intransitiva", "mettere"]:
             mostra_stanza(mondo)
         
         return True

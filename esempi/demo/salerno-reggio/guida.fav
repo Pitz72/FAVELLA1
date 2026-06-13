@@ -1,0 +1,37 @@
+# ============================================================================
+# guida.fav — I GESTI DI GUIDA (le regole)
+# Demo «Salerno-Reggio Calabria» — FAVELLA 1 v0.19.0
+# ----------------------------------------------------------------------------
+# Dalla 0.19.0 i comandi di guida sono VERBI INTRANSITIVI [A7]: il giocatore li
+# digita da soli ('ricorda', 'accelera', 'fai benzina'), senza oggetto-pretesto.
+# Ogni gesto è una regola GLOBALE 'Invece di [verbo]: …', spesso condizionale
+# sullo stato del mondo o sulla posizione del giocatore [B1].
+# Incluso da salerno-reggio.fav.
+# ============================================================================
+
+# --- VOCABOLARIO DI GUIDA (tutti intransitivi)  [A7] ------------------------
+"ricorda" è un comando senza oggetto.
+"accelera" è un comando senza oggetto.
+"rallenta" è un comando senza oggetto.
+"accosta" è un comando senza oggetto.
+"fai benzina" è un comando senza oggetto.
+
+# --- RICORDARE  [il comando-cardine: scivola tra le epoche] -----------------
+# Non consuma benzina né stanchezza: è un battito di ciglia. Dopo, fai GUARDA
+# per rivedere il tratto nell'altra epoca.
+Invece di ricorda se l'epoca è oggi: dire "Le mani sul volante, per un istante, diventano più piccole e qualcun altro guida al posto tuo. Hai di nuovo otto anni e il mondo intero è là fuori. (Fai GUARDA per rivedere dove sei.)" e adesso l'epoca è infanzia.
+Invece di ricorda se l'epoca è infanzia: dire "Il presente ti riprende piano. Le mani sul volante tornano le tue, segnate dagli anni, e la strada davanti è di nuovo quella di oggi. (Fai GUARDA per rivedere dove sei.)" e adesso l'epoca è oggi.
+
+# --- ACCELERARE / RALLENTARE  [narrazione: ma ogni gesto è un turno, e ogni
+#     turno costa benzina e stanchezza — il tempo è la vera risorsa] ----------
+Invece di accelera: dire "Premi sull'acceleratore. Il motore prende fiato, i birilli e i guardrail si fanno strisce, il paesaggio scivola via più veloce e più sfocato.".
+Invece di rallenta: dire "Sollevi il piede. La macchina si distende, il respiro si allarga, il mondo torna a fuoco. Non sempre conviene avere fretta.".
+
+# --- ACCOSTARE  [tirare il fiato: scarica un po' di stanchezza] -------------
+Invece di accosta: dire "Metti la freccia, accosti sulla piazzola. Spegni, abbassi il finestrino. Un minuto di niente: il vento, un uccello, il sangue che rallenta. Riparti più lucido." e adesso diminuisci la stanchezza di 3.
+
+# --- FARE BENZINA  [verbo intransitivo MULTI-PAROLA, gated per posizione B1]
+#     utile SOLO all'autogrill di Lagonegro: la regola specifica vince sulla
+#     generica di ripiego. -------------------------------------------------
+Invece di fai benzina se il giocatore è in lo svincolo di Lagonegro: dire "Accosti alle pompe. Il pieno gorgoglia nel serbatoio, l'odore acre della benzina, lo scontrino che vola via nel vento di montagna. Pronti a ripartire." e adesso il carburante diventa 8.
+Invece di fai benzina: dire "Non c'è nessun distributore, qui. Solo asfalto, guardrail e chilometri. La prossima occasione è l'autogrill di Lagonegro.".

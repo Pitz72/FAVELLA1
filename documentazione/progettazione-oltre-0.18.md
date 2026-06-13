@@ -1,5 +1,17 @@
 # FAVELLA 1 — Progettazione «oltre la 0.18»
 
+> **Aggiornamento 2026-06-13 — la 0.19.0 è già uscita, ma con altro contenuto.**
+> Uno *stress-test di genere* (la demo simulatore di guida `esempi/demo/salerno-reggio/`)
+> ha scoperto tre buchi non previsti da questo documento, integrati nella
+> **v0.19.0**: **A7** verbi intransitivi (`"…" è un comando senza oggetto.`),
+> **A8** inventario iniziale (`Il giocatore ha X.`), **A9** «tick» silenziosi
+> (`dire` opzionale in eventi/demoni). Vedi CHANGELOG e `grammatica-0.19.0.md`.
+> Le proposte qui sotto (A1 pronomi, A3 ANNULLA, A2 varietà, B1 robot…) restano
+> **tutte da fare** e valide: la numerazione di release va perciò riletta (questo
+> ciclo A7-A9 era additivo e non pianificato qui). **Meta-lezione adottata:** costruire una
+> fetta verticale di un genere «non-Favella» è un metodo ricorrente per trovare
+> primitive mancanti.
+
 > Documento di progettazione, 2026-06-11. Stato del motore alla stesura:
 > **v0.18.0, 446 test verdi**, linguaggio completo rispetto al design (Livelli
 > 1–8 + consolidamento). Questo documento NON descrive buchi da chiudere: il

@@ -4,6 +4,36 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.19.0] - 2026-06-13
+### Lezioni dallo stress-test di genere 🚗
+Tre integrazioni al linguaggio nate costruendo un genere fuori dall'asse del
+design originale — un **simulatore di guida testuale** («Salerno-Reggio
+Calabria», in `esempi/demo/salerno-reggio/`). I punti d'attrito incontrati sono
+diventati primitive. Suite del linguaggio: **467 asserzioni** (era 446), tutte
+verdi; invariante LALR(1) 0-ambiguo intatto (guardia estesa ai tre costrutti);
+`analizza_file` invariata.
+
+- **A7 — Verbi intransitivi.** `"accelera" è un comando senza oggetto.` dichiara
+  un comando che il giocatore digita da solo, gestito da una regola GLOBALE
+  `Invece di accelera: …` (con condizioni e conseguenze, incluso `vinci`/`perdi`;
+  vale anche multi-parola). La dichiarazione si sdoppia in `verbo_con_oggetto`
+  (storico) e `verbo_senza_oggetto`; in `carica_azioni` i verbi custom si dividono
+  fra `_personalizzata` (transitivi) e `_personalizzata_intransitiva`.
+- **A8 — Inventario iniziale.** `Il giocatore ha la torcia.` mette l'oggetto in
+  inventario all'avvio (`def_giocatore_inventario`, applicato in `valida_post`,
+  order-independent). Un oggetto per frase; oggetto inesistente = errore bloccante.
+- **A9 — «Tick» silenziosi.** La battuta `dire "…"` di eventi e demoni è ora
+  **opzionale**, purché ci sia almeno una conseguenza:
+  `Ogni 3 turni: diminuisci il carburante.` muta lo stato senza stampare nulla
+  (regola inline `_esito_temporale`).
+
+Nuove riservate: `senza`, `oggetto`. Spec EBNF `documentazione/grammatica-0.19.0.md`.
+Versioni allineate a **0.19.0** (header core, suite, `VERSIONE_MOTORE`). La demo
+di guida è inclusa in due tempi: la sfida (fattibilità sul motore 0.18.0) e la
+riscrittura idiomatica resa possibile da A7/A8/A9.
+
+---
+
 ## [Manutenzione] - 2026-06-11
 ### Pulizia interna del motore 🧹
 Nessun cambiamento al linguaggio. Suite sempre a **446 test** verdi.

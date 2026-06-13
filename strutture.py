@@ -5,7 +5,7 @@ from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.18.0"
+VERSIONE_MOTORE = "0.19.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -460,6 +460,10 @@ class Mondo:
         # e usare nelle regole 'Invece di'; agiscono su un oggetto bersaglio come
         # gli altri verbi. carica_azioni() li instrada a un'azione generica.
         self.verbi_personalizzati: Set[str] = set()
+        # [0.19.0 / A7] Sottoinsieme dei verbi personalizzati dichiarati
+        # INTRANSITIVI ('"accelera" è un comando senza oggetto.'): non richiedono
+        # un oggetto bersaglio; li gestisce una regola globale 'Invece di [verbo]:'.
+        self.verbi_intransitivi: Set[str] = set()
         # [Livello 4 / L1] Topologia data-driven. 'direzioni' mappa ogni FORMA
         # accettata (canonica o abbreviazione) -> direzione canonica;
         # 'opposte_direzioni' mappa canonica -> canonica opposta (per l'auto-
@@ -525,9 +529,12 @@ class Mondo:
         argomenti sono già normalizzati. L'ultimo che vince in caso di collisione."""
         self.alias[alias] = id_canonico
 
-    def dichiara_verbo(self, verbo: str):
-        """[Livello 4] Registra un verbo personalizzato (parola-comando)."""
+    def dichiara_verbo(self, verbo: str, intransitivo: bool = False):
+        """[Livello 4] Registra un verbo personalizzato (parola-comando).
+        [0.19.0 / A7] Se intransitivo, il verbo non richiede un oggetto bersaglio."""
         self.verbi_personalizzati.add(verbo)
+        if intransitivo:
+            self.verbi_intransitivi.add(verbo)
 
     def _inizializza_direzioni_base(self):
         """[Livello 4 / L1] Precarica le direzioni di base (fonte unica in utils)."""
@@ -575,12 +582,21 @@ class Mondo:
         # di logica di default (logica=None): il runtime, se nessuna regola
         # 'Invece di' si attiva, stampa un messaggio neutro. setdefault: un verbo
         # custom non scavalca mai un verbo della libreria standard.
-        if self.verbi_personalizzati:
+        # [0.19.0 / A7] I verbi custom si dividono in TRANSITIVI (richiedono un
+        # oggetto: '_personalizzata') e INTRANSITIVI (nessun oggetto: la fase
+        # globale di gioco.py li gestisce via 'Invece di [verbo]:').
+        transitivi = sorted(self.verbi_personalizzati - self.verbi_intransitivi)
+        intransitivi = sorted(self.verbi_intransitivi & self.verbi_personalizzati)
+        if transitivi:
             self.azioni["_personalizzata"] = Azione(
-                nomi=sorted(self.verbi_personalizzati),
-                logica=None, richiede_oggetto=True)
-            for verbo in self.verbi_personalizzati:
+                nomi=transitivi, logica=None, richiede_oggetto=True)
+            for verbo in transitivi:
                 self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata")
+        if intransitivi:
+            self.azioni["_personalizzata_intransitiva"] = Azione(
+                nomi=intransitivi, logica=None, richiede_oggetto=False)
+            for verbo in intransitivi:
+                self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata_intransitiva")
 
     def aggiungi_regola(self, regola: Regola):
         self.regole.append(regola)

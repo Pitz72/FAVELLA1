@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.18.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.19.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1565,6 +1565,13 @@ _CORPUS_GUARDIA = (
     # turni' sul lookahead NUMERO vs "turno") e 'Quando ... diventa vera' (fronte).
     'Ogni turno se il punteggio è almeno 3: dire "Pressione." e adesso aumenta il punteggio.\n'  # demone_ogni
     'Quando l\'allarme non è attivo diventa vera: dire "Silenzio." e adesso vinci.\n'  # demone_quando + cond_variabile_neg
+    # [0.19.0] A7 verbo intransitivo + regola globale senza oggetto; A8 inventario
+    # iniziale; A9 «tick» silenzioso (evento e demone senza 'dire').
+    '"medita" è un comando senza oggetto.\n'                # verbo_senza_oggetto [A7]
+    'Invece di medita: dire "Respiri a fondo.".\n'          # regola globale su verbo intransitivo
+    "Il giocatore ha la chiave.\n"                          # def_giocatore_inventario [A8]
+    'Al turno 7: aumenta il punteggio.\n'                   # evento_al senza dire [A9]
+    'Ogni turno se il punteggio è al massimo 1: aumenta il punteggio.\n'  # demone_ogni senza dire [A9]
     # [Livello 5] Interpolazione [var]: vive DENTRO le virgolette, dunque non
     # deve introdurre alcuna ambiguità grammaticale (segnaposto su contatore e
     # oggetto, entrambi dichiarati sopra).
@@ -2515,7 +2522,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.18.0.md")
+                          "grammatica-0.19.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2532,7 +2539,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.18.0.md è presente")
+           "documentazione/grammatica-0.19.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -3068,6 +3075,147 @@ def test_verbo_monoparola_resta_valido():
            "il verbo monoparola 'spingi' funziona come prima")
 
 
+# --- Test: 0.19.0 — A7 verbi intransitivi -----------------------------------
+
+def test_verbo_intransitivo_scatta_senza_oggetto():
+    print("[A7: verbo intransitivo + regola globale, digitato da solo]")
+    src = (
+        "La strada è una stanza.\nIl giocatore comincia in strada.\n"
+        '"accelera" è un comando senza oggetto.\n'
+        'Invece di accelera: dire "Vroom!".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "il sorgente con verbo intransitivo compila")
+    _check(mondo and "accelera" in mondo.verbi_intransitivi,
+           "'accelera' è registrato come intransitivo")
+    out = esegui(mondo, "accelera")
+    _check("Vroom!" in out, "'accelera' (da solo) attiva la regola globale")
+    _check("Cosa vorresti" not in out,
+           "il motore NON chiede un oggetto per un verbo intransitivo")
+
+
+def test_verbo_intransitivo_con_conseguenza():
+    print("[A7: un verbo intransitivo può cambiare lo stato del mondo]")
+    src = (
+        "L'auto è una stanza.\nIl giocatore comincia in auto.\n"
+        "Il motore è uno stato.\nIl motore è spento.\n"
+        '"avvia" è un comando senza oggetto.\n'
+        'Invece di avvia se il motore è spento: dire "Brum." e adesso il motore è acceso.\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "avvia")
+    _check(mondo and mondo.variabili.get("motore") == "acceso",
+           "la conseguenza del verbo intransitivo ha acceso il motore")
+
+
+def test_verbo_transitivo_resta_default():
+    print("[A7: senza 'senza oggetto' un comando resta transitivo]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La leva è una cosa.\nLa leva è in cella.\n"
+        '"spingi" è un comando.\n'
+        'Invece di spingi la leva: dire "Spinta.".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo and "spingi" not in mondo.verbi_intransitivi,
+           "'spingi' NON è intransitivo")
+    _check("Cosa vorresti" in esegui(mondo, "spingi"),
+           "'spingi' da solo chiede ancora un oggetto (transitivo)")
+
+
+# --- Test: 0.19.0 — A8 inventario iniziale ----------------------------------
+
+def test_inventario_iniziale():
+    print("[A8: 'Il giocatore ha X' mette X in inventario all'avvio]")
+    src = (
+        "Il vicolo è una stanza.\nIl giocatore comincia in vicolo.\n"
+        "Una torcia è una cosa.\n"
+        "Il giocatore ha la torcia.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "il sorgente con inventario iniziale compila")
+    _check(mondo and "torcia" in mondo.inventario,
+           "la torcia parte nell'inventario")
+    _check("torcia" in esegui(mondo, "inventario").lower(),
+           "l'inventario di partenza elenca la torcia")
+
+
+def test_inventario_iniziale_oggetto_inesistente_e_errore():
+    print("[A8: dare un oggetto inesistente è un errore bloccante]")
+    src = (
+        "Il vicolo è una stanza.\nIl giocatore comincia in vicolo.\n"
+        "Il giocatore ha la spada.\n"   # 'spada' mai dichiarata come cosa
+    )
+    mondo, _ = compila(src)
+    _check(mondo is None,
+           "dare un oggetto inesistente fa fallire la compilazione")
+
+
+def test_inventario_iniziale_order_independent():
+    print("[A8: l'oggetto può essere dichiarato DOPO 'Il giocatore ha …']")
+    src = (
+        "Il molo è una stanza.\nIl giocatore comincia in molo.\n"
+        "Il giocatore ha la mappa.\n"
+        "Una mappa è una cosa.\n"     # dichiarata DOPO
+    )
+    mondo = runtime(src)
+    _check(mondo and "mappa" in mondo.inventario,
+           "la mappa è in inventario anche se dichiarata dopo")
+
+
+# --- Test: 0.19.0 — A9 tick silenzioso (dire opzionale) ---------------------
+
+def test_evento_silenzioso():
+    print("[A9: un evento può non avere 'dire' (solo conseguenze)]")
+    src = (
+        "Il deserto è una stanza.\nIl giocatore comincia in deserto.\n"
+        "L'acqua è un contatore.\nL'acqua parte da 3.\n"
+        "Ogni 1 turno: diminuisci l'acqua.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "l'evento senza 'dire' compila")
+    _check(mondo and mondo.eventi and mondo.eventi[0].risposta == "",
+           "l'evento ha risposta vuota")
+    _check(mondo and mondo.eventi and len(mondo.eventi[0].conseguenze) == 1,
+           "l'evento porta comunque la sua conseguenza")
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")   # un turno
+    _check(mondo.variabili.get("acqua") == 2,
+           "il tick silenzioso ha decrementato il contatore")
+    _check("None" not in out,
+           "il tick silenzioso non stampa testo spurio")
+
+
+def test_demone_silenzioso():
+    print("[A9: un demone può non avere 'dire' (solo conseguenze)]")
+    src = (
+        "La cripta è una stanza.\nIl giocatore comincia in cripta.\n"
+        "Il veleno è un contatore.\nIl veleno parte da 0.\n"
+        "La vita è un contatore.\nLa vita parte da 5.\n"
+        "Ogni turno se il veleno è 0: diminuisci la vita.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo and mondo.demoni and mondo.demoni[0].risposta == "",
+           "il demone ha risposta vuota")
+    mondo = runtime(src)
+    esegui(mondo, "guarda")
+    _check(mondo.variabili.get("vita") == 4,
+           "il demone silenzioso ha applicato la sua conseguenza")
+
+
+def test_evento_con_dire_resta_valido():
+    print("[A9: la forma con 'dire' resta valida (regressione)]")
+    src = (
+        "L'aula è una stanza.\nIl giocatore comincia in aula.\n"
+        "Il conto è un contatore.\n"
+        'Al turno 1: dire "Squilla la campanella." e adesso aumenta il conto.\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("Squilla la campanella." in out, "la battuta dell'evento è stampata")
+    _check(mondo.variabili.get("conto") == 1, "la conseguenza è applicata")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -3301,9 +3449,21 @@ def main():
         test_verbo_multiparola_dichiarazione_e_regola,
         test_verbo_multiparola_runtime,
         test_verbo_monoparola_resta_valido,
+        # 0.19.0 — A7: verbi intransitivi
+        test_verbo_intransitivo_scatta_senza_oggetto,
+        test_verbo_intransitivo_con_conseguenza,
+        test_verbo_transitivo_resta_default,
+        # 0.19.0 — A8: inventario iniziale del giocatore
+        test_inventario_iniziale,
+        test_inventario_iniziale_oggetto_inesistente_e_errore,
+        test_inventario_iniziale_order_independent,
+        # 0.19.0 — A9: tick silenzioso (dire opzionale in eventi/demoni)
+        test_evento_silenzioso,
+        test_demone_silenzioso,
+        test_evento_con_dire_resta_valido,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.18.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.19.0)")
     print("=" * 60)
     for t in tests:
         t()

@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.18.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.19.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -76,8 +76,9 @@ PAROLE_RISERVATE = frozenset({
     "sono", "opposte",
     # alias/sinonimi di oggetti (Livello 4)
     "si", "chiama", "anche",
-    # verbi personalizzati (Livello 4 / M1)
-    "comando",
+    # verbi personalizzati (Livello 4 / M1); [0.19.0 / A7] 'senza oggetto' marca
+    # un comando INTRANSITIVO ('"accelera" è un comando senza oggetto.').
+    "comando", "senza", "oggetto",
     # direzioni personalizzate (Livello 4 / L1)
     "direzioni",
     # contenitori e supporti (Livello 4 / M1)
@@ -293,6 +294,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_evento
                   | def_demone
                   | def_giocatore_capacita
+                  | def_giocatore_inventario
                   | def_capacita_oggetto
 
     // --- DEFINIZIONI BASE ---
@@ -320,7 +322,12 @@ _GRAMMAR_TEMPLATE = r"""
     // gli alias: vocabolario nuovo, non ancora un token noto), così non collide
     // con ENTITA al primo token di una dichiarazione. Nessun'altra dichiarazione
     // inizia con TESTO_QUOTATO: LALR la distingue subito.
-    def_verbo: TESTO_QUOTATO "è" "un" "comando" "."
+    // [0.19.0 / A7] Un comando può essere dichiarato INTRANSITIVO ('senza
+    // oggetto'): il giocatore lo digita da solo ('accelera') e una regola
+    // GLOBALE 'Invece di accelera: …' lo gestisce. Dopo "comando" il lookahead
+    // distingue "." (transitivo, storico) da "senza" (intransitivo) → 0-ambiguo.
+    def_verbo: TESTO_QUOTATO "è" "un" "comando" "senza" "oggetto" "." -> verbo_senza_oggetto
+             | TESTO_QUOTATO "è" "un" "comando" "."                   -> verbo_con_oggetto
     // [Livello 5] La descrizione può essere CONDIZIONALE: con una clausola 'se',
     // si applica solo quando la condizione è vera (più dichiarazioni = varianti
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
@@ -347,6 +354,12 @@ _GRAMMAR_TEMPLATE = r"""
     // di un oggetto: 'Lo zaino dà N spazi.' — inizia con ENTITA; dopo l'entità il
     // lookahead "dà" la distingue da è/si/collega/al (unico costrutto ENTITA "dà").
     def_giocatore_capacita: "Il" "giocatore" "può" "portare" NUMERO "oggetti" "."
+    // [0.19.0 / A8] Inventario iniziale del giocatore: 'Il giocatore ha la
+    // torcia.'. Inizia come def_giocatore con "Il giocatore"; dopo, il lookahead
+    // distingue "ha" da "comincia/inizia/parte" (posizione) e "può" (capacità) →
+    // LALR(1) 0-ambiguo. Un oggetto per frase (più oggetti = più frasi), come da
+    // stile «un fatto, una frase» del linguaggio. ('ha' è già riservata: cond_possesso.)
+    def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
     def_capacita_oggetto: ENTITA "dà" NUMERO "spazi" "."
 
     // --- STATO ASTRATTO (Livello 3 / G3) ---
@@ -375,8 +388,17 @@ _GRAMMAR_TEMPLATE = r"""
     // --- EVENTI A TURNI (Livello 3) ---
     // 'Al turno N: ...' scatta una sola volta; 'Ogni N turni: ...' a ogni
     // multiplo di N. Riusano la stessa coda di conseguenze delle regole.
-    def_evento: "Al" "turno" NUMERO ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_al
-              | "Ogni" NUMERO ( "turno" | "turni" ) ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> evento_ogni
+    // [0.19.0 / A9] L'esito (di evento o demone) può essere una battuta 'dire
+    // "…"' con conseguenze in coda, OPPURE direttamente una o più conseguenze
+    // SENZA testo: un «tick» silenzioso ('Ogni 3 turni: diminuisci il carburante.').
+    // Regola INLINE (prefisso '_'): i figli salgono al genitore, così i metodi
+    // evento_*/demone_* ricevono gli stessi tipi (testo str opzionale + conseguenze).
+    // Dopo ':' il lookahead distingue "dire" dal primo token di una conseguenza
+    // (ENTITA/VARIABILE/"il"/"aumenta"/"diminuisci"/"vinci"/"perdi"/"termina") → 0-ambiguo.
+    _esito_temporale: "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )?
+                    | conseguenza ( "e" "adesso"? conseguenza )*
+    def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
+              | "Ogni" NUMERO ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
 
     // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
     // Un 'demone' sorveglia una CONDIZIONE a ogni turno e scatta da solo, senza
@@ -394,8 +416,8 @@ _GRAMMAR_TEMPLATE = r"""
     //       decide l'opzionale, entrambi NON continuatori di condizione (solo
     //       "oppure"/"e"/")") → reduce deterministico, LALR(1) 0-ambiguo.
     // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
-    def_demone: "Ogni" "turno" "se" condizione ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> demone_ogni
-              | "Quando" condizione ( "diventa" "vera" )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "." -> demone_quando
+    def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
+              | "Quando" condizione ( "diventa" "vera" )? ":" _esito_temporale "." -> demone_quando
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -753,6 +775,7 @@ class FavellaTransformer(Transformer):
         self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
         self._pending_conseguenze = []   # liste di Conseguenza da validare
         self._pending_regole_target = [] # (id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo)
+        self._pending_inventario_iniziale = []  # [0.19.0/A8] ogg_grezzo da mettere in inventario all'avvio
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -900,18 +923,24 @@ class FavellaTransformer(Transformer):
         self.mondo.nodo_dialogo_di(etichetta).opzioni.append(opz)
         return None
 
-    def def_verbo(self, testo_quotato):
-        # [Livello 4 / M1] '"spingi" è un comando.'. [0.18.0 / B6] Ora è ammesso
-        # anche un comando MULTI-PAROLA ('"fai scattare" è un comando.'): la
-        # grammatica lo riconosce via il terminale chiuso VERBO_MULTI e il parser
-        # runtime lo individua per longest-match all'inizio del comando del
-        # giocatore. Normalizziamo gli spazi interni a uno singolo.
+    def _registra_verbo(self, testo_quotato, intransitivo):
+        # [Livello 4 / M1] '"spingi" è un comando.'. [0.18.0 / B6] Ammesso anche un
+        # comando MULTI-PAROLA ('"fai scattare" è un comando.'). [0.19.0 / A7] Un
+        # comando può essere INTRANSITIVO ('senza oggetto'): non richiede un
+        # bersaglio, lo gestisce una regola globale 'Invece di [verbo]: …'.
+        # Normalizziamo gli spazi interni a uno singolo.
         verbo = " ".join(testo_quotato.lower().split())
         if not verbo:
             self.warnings.append("Comando vuoto ignorato.")
             return None
-        self.mondo.dichiara_verbo(verbo)
+        self.mondo.dichiara_verbo(verbo, intransitivo=intransitivo)
         return None
+
+    def verbo_con_oggetto(self, testo_quotato):
+        return self._registra_verbo(testo_quotato, intransitivo=False)
+
+    def verbo_senza_oggetto(self, testo_quotato):
+        return self._registra_verbo(testo_quotato, intransitivo=True)
 
     def def_descrizione(self, *tokens):
         # tokens (le preposizioni articolate sono filtrate da Lark): l'entità è
@@ -1106,6 +1135,13 @@ class FavellaTransformer(Transformer):
         self.mondo.capacita_base = numero
         return None
 
+    def def_giocatore_inventario(self, ent_grezzo):
+        # [0.19.0 / A8] 'Il giocatore ha la torcia.': l'oggetto parte
+        # nell'inventario. L'oggetto potrebbe essere dichiarato DOPO: la
+        # collocazione è differita a valida_post (come le posizioni).
+        self._pending_inventario_iniziale.append(ent_grezzo)
+        return None
+
     def def_capacita_oggetto(self, ent_grezzo, numero):
         # [Livello 7] 'Lo zaino dà N spazi.': l'oggetto, mentre è nell'inventario,
         # aumenta la capacità di N. _crea_o_trova_oggetto tollera l'ordine delle
@@ -1243,10 +1279,12 @@ class FavellaTransformer(Transformer):
                     f"Stanza inesistente nel teletrasporto del giocatore: '{c.id_stanza}'")
 
     def _crea_evento(self, tipo, args):
-        # args: (NUMERO, TESTO_QUOTATO, conseguenza*)
-        numero = args[0]
-        risposta = args[1]
-        conseguenze = [a for a in args[2:] if isinstance(a, Conseguenza)]
+        # args: (NUMERO, [TESTO_QUOTATO], conseguenza*). [0.19.0/A9] La battuta
+        # 'dire "…"' è OPZIONALE (tick silenzioso): si estrae per TIPO, non per
+        # posizione. NUMERO è l'unico int; la risposta l'unica str (se assente, "").
+        numero = next(a for a in args if isinstance(a, int))
+        risposta = next((a for a in args if isinstance(a, str)), "")
+        conseguenze = [a for a in args if isinstance(a, Conseguenza)]
         if numero < 1:
             self.warnings.append(
                 f"Evento '{tipo} ... {numero}': il numero di turni deve essere "
@@ -1266,10 +1304,12 @@ class FavellaTransformer(Transformer):
     # --- I Demoni (eventi condizionali, Livello 8) ---
 
     def _crea_demone(self, tipo, args):
-        # args: (condizione, TESTO_QUOTATO, conseguenza*)
-        condizione = args[0]
-        risposta = args[1]
-        conseguenze = [a for a in args[2:] if isinstance(a, Conseguenza)]
+        # args: (condizione, [TESTO_QUOTATO], conseguenza*). [0.19.0/A9] La battuta
+        # 'dire "…"' è OPZIONALE (tick silenzioso): estrazione per TIPO. La
+        # condizione è l'unica Condizione; la risposta l'unica str (se assente, "").
+        condizione = next(a for a in args if isinstance(a, Condizione))
+        risposta = next((a for a in args if isinstance(a, str)), "")
+        conseguenze = [a for a in args if isinstance(a, Conseguenza)]
         self._pending_conseguenze.append(conseguenze)
         self.mondo.aggiungi_demone(Demone(tipo, condizione, risposta, conseguenze))
         return None
@@ -1387,6 +1427,20 @@ class FavellaTransformer(Transformer):
                 self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
             elif id_ogg2 and not m.trova_oggetto(id_ogg2):
                 self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
+        # [0.19.0 / A8] Inventario iniziale: dopo le posizioni (un oggetto può
+        # essere stato collocato in una stanza e poi spostato in inventario qui;
+        # vince l'ultima dichiarazione). Oggetto inesistente = errore bloccante.
+        for ogg_grezzo in self._pending_inventario_iniziale:
+            id_ogg = normalizza_nome(ogg_grezzo)
+            oggetto = m.trova_oggetto(id_ogg)
+            if not oggetto:
+                self.errori.append(
+                    f"Inventario iniziale: oggetto inesistente '{ogg_grezzo}' "
+                    f"('Il giocatore ha {ogg_grezzo}.')")
+                continue
+            m.rimuovi_da_posizione(oggetto)
+            oggetto.posizione = "inventario"
+            m.inventario.add(id_ogg)
 
         # 1. [GG1] La stanza di partenza dichiarata deve esistere.
         if self.start_dichiarato_raw is not None:
