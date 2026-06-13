@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.20.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.21.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -3318,6 +3318,86 @@ def test_anafora_nessun_falso_positivo():
            "'esamina la candela' resta un comando esplicito sull'oggetto")
 
 
+# --- Test: 0.21.0 — A3 comandi di servizio (ANNULLA / ANCORA) ---------------
+
+def _src_atrio_torcia():
+    return (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una torcia è una cosa.\nLa torcia è in atrio.\nLa torcia è prendibile.\n"
+    )
+
+
+def test_annulla_disfa_ultimo_turno():
+    print("[A3: 'annulla' disfa l'ultima azione]")
+    mondo = runtime(_src_atrio_torcia())
+    esegui(mondo, "prendi la torcia")
+    _check("torcia" in mondo.inventario, "(precondizione) la torcia è stata presa")
+    out = esegui(mondo, "annulla")
+    _check("torcia" not in mondo.inventario,
+           "'annulla' rimette la torcia fuori dall'inventario")
+    _check("annullato" in out.lower(), "'annulla' conferma a video")
+
+
+def test_annulla_ripristina_contatore_e_turno():
+    print("[A3: 'annulla' riavvolge anche contatori e turni]")
+    src = (
+        "L'aula è una stanza.\nIl giocatore comincia in aula.\n"
+        "Il passi è un contatore.\n"
+        "Ogni 1 turno: aumenta il passi.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "guarda")   # turno 1 -> passi 1
+    esegui(mondo, "guarda")   # turno 2 -> passi 2
+    esegui(mondo, "annulla")  # disfa il turno 2
+    _check(mondo.variabili.get("passi") == 1,
+           "'annulla' riporta il contatore al valore del turno precedente")
+    _check(mondo.turno_corrente == 1,
+           "'annulla' riporta indietro il contatore dei turni")
+
+
+def test_annulla_multiplo():
+    print("[A3: 'annulla' ripetuto disfa piu turni in pila]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una torcia è una cosa.\nLa torcia è in atrio.\nLa torcia è prendibile.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "prendi la torcia")
+    esegui(mondo, "prendi la mela")
+    esegui(mondo, "annulla")   # disfa 'prendi la mela'
+    _check("mela" not in mondo.inventario and "torcia" in mondo.inventario,
+           "il primo 'annulla' disfa solo l'ultima presa")
+    esegui(mondo, "annulla")   # disfa 'prendi la torcia'
+    _check("torcia" not in mondo.inventario,
+           "il secondo 'annulla' disfa anche la presa precedente")
+
+
+def test_annulla_niente_da_annullare():
+    print("[A3: 'annulla' all'inizio non ha nulla da disfare]")
+    mondo = runtime(_src_atrio_torcia())
+    out = esegui(mondo, "annulla")
+    _check("niente da annullare" in out.lower(),
+           "'annulla' senza storia avvisa che non c'è nulla da disfare")
+
+
+def test_ancora_ripete_ultimo_comando():
+    print("[A3: 'ancora' ripete l'ultimo comando]")
+    mondo = runtime(_src_atrio_torcia())
+    esegui(mondo, "prendi la torcia")    # Preso
+    out = esegui(mondo, "ancora")        # ripete 'prendi la torcia'
+    _check("hai gi" in out.lower() or "ce l'hai" in out.lower(),
+           "'ancora' rigioca 'prendi la torcia' (stavolta gia' in mano)")
+
+
+def test_ancora_niente_da_ripetere():
+    print("[A3: 'ancora' all'inizio non ha nulla da ripetere]")
+    mondo = runtime(_src_atrio_torcia())
+    out = esegui(mondo, "ancora")
+    _check("nulla da ripetere" in out.lower(),
+           "'ancora' senza comandi precedenti avvisa")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -3571,9 +3651,16 @@ def main():
         test_anafora_pronome_tonico,
         test_anafora_plurale,
         test_anafora_nessun_falso_positivo,
+        # 0.21.0 — A3: comandi di servizio (annulla / ancora)
+        test_annulla_disfa_ultimo_turno,
+        test_annulla_ripristina_contatore_e_turno,
+        test_annulla_multiplo,
+        test_annulla_niente_da_annullare,
+        test_ancora_ripete_ultimo_comando,
+        test_ancora_niente_da_ripetere,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.20.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.21.0)")
     print("=" * 60)
     for t in tests:
         t()

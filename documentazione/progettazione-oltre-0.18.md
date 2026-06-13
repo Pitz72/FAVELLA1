@@ -6,14 +6,15 @@
 > **v0.19.0**: **A7** verbi intransitivi (`"…" è un comando senza oggetto.`),
 > **A8** inventario iniziale (`Il giocatore ha X.`), **A9** «tick» silenziosi
 > (`dire` opzionale in eventi/demoni). Vedi CHANGELOG e `grammatica-0.19.0.md`.
-> **Aggiornamento 2026-06-13 (2) — A1 pronomi FATTO in v0.20.0.** La prima voce
-> dell'Asse A (sotto, ⭐ priorità massima) è stata implementata: clitici
-> (`prendila`), tonici (`prendi quella`), concordanza di genere/numero, riferito
-> = ultima azione o ultimo nominato, «Non la vedi più». Solo runtime, grammatica
-> invariata, suite 474. Restano da fare **A3** ANNULLA/ANCORA, **A2** varietà (col
-> seed), **B1** robot, e il resto. **Meta-lezione adottata:** costruire una fetta
-> verticale di un genere «non-Favella» è un metodo ricorrente per trovare
-> primitive mancanti.
+> **Aggiornamento 2026-06-13 (2) — A1 pronomi FATTO in v0.20.0** e **A3
+> ANNULLA/ANCORA/TRASCRIZIONE FATTO in v0.21.0**. Le prime due voci dell'Asse A
+> sono implementate (entrambe solo runtime, grammatica invariata): A1 = clitici
+> (`prendila`), tonici (`prendi quella`), concordanza genere/numero, «Non la vedi
+> più»; A3 = annulla (istantanee di stato, time-machine fedele), ancora,
+> trascrizione. Suite 484. Restano dell'Asse A: **A2** varietà (col seed) — che è
+> anche prerequisito di **B1** il giocatore-robot — poi A4 buio / A5 NPC / A6
+> sinonimi. **Meta-lezione adottata:** costruire una fetta verticale di un genere
+> «non-Favella» è un metodo ricorrente per trovare primitive mancanti.
 
 > Documento di progettazione, 2026-06-11. Stato del motore alla stesura:
 > **v0.18.0, 446 test verdi**, linguaggio completo rispetto al design (Livelli

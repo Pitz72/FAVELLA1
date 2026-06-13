@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.20.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.21.0)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo, frase_indeterminativa
@@ -145,6 +145,8 @@ def aiuto_logica_default(mondo: Mondo):
     print("  - Movimento: nord, sud, est, ovest (o n, s, e, o)")
     print("  - Interazione: esamina <oggetto>, prendi <oggetto>, lascia <oggetto>")
     print("  - Informazioni: inventario (o i, zaino), guarda, aiuto")
+    print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'…")
+    print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), trascrizione")
     print("  - Sistema: esci")
     print("\nCerca di usare verbi semplici e nomi di oggetti.")
 

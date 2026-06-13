@@ -4,6 +4,30 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.21.0] - 2026-06-13
+### Comandi di servizio: ANNULLA, ANCORA, TRASCRIZIONE ↩️
+Le tre comodità standard dell'interactive fiction dal 1985 (Infocom). Seconda
+voce dell'Asse A di `progettazione-oltre-0.18.md`. **Solo runtime: grammatica
+del sorgente invariata** (spec EBNF resta `grammatica-0.19.0.md`). Suite del
+linguaggio: **484 asserzioni** (era 474), tutte verdi.
+
+- **ANNULLA** (anche `disfa`): disfa l'ultimo turno. Implementato con istantanee
+  profonde dello stato del mondo prima di ogni turno (`Mondo.cattura_stato` /
+  `ripristina_stato`): un «time-machine» fedele che riavvolge posizioni,
+  inventario, stati, contatori, turni ed eventi/demoni — niente replay. Pila
+  fino a `_MAX_ANNULLA` (100) turni. «Non c'è niente da annullare.» quando vuota.
+- **ANCORA** (anche `ripeti`, `g`): ripete l'ultimo comando che ha consumato un
+  turno (`Mondo.ultimo_comando`).
+- **TRASCRIZIONE**: avvia/ferma il salvataggio della partita su
+  `trascrizione-favella.txt` (comandi del giocatore + output del motore). È una
+  funzione della sessione da riga di comando (un `_Tee` su `sys.stdout` nel loop
+  di `gioca`); non disponibile nei driver headless/web.
+
+I comandi di servizio NON consumano un turno. `aiuto` ora li elenca, insieme ai
+pronomi (0.20.0). Versioni core e suite a **0.21.0**.
+
+---
+
 ## [0.20.0] - 2026-06-13
 ### Pronomi e anafora 🗣️
 Il giocatore può ora usare i **pronomi** per riferirsi all'ultimo oggetto

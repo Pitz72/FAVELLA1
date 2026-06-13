@@ -1,11 +1,12 @@
 # strutture.py
 # Modulo per le strutture dati di base di FAVELLA 1
+import copy
 from typing import Callable, List, Dict, Set, Optional
 from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.20.0"
+VERSIONE_MOTORE = "0.21.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -488,6 +489,12 @@ class Mondo:
         # quando il motore lo nomina (elenco della stanza). Stato RUNTIME.
         self.ultimo_riferito: Dict[str, Optional[str]] = {
             "m_sing": None, "f_sing": None, "m_plur": None, "f_plur": None}
+        # [0.21.0 / A3] Comandi di servizio. 'ultimo_comando' = ultimo comando
+        # del giocatore che ha consumato un turno (per ANCORA); '_storia_stati' =
+        # pila di istantanee profonde dello stato PRIMA di ogni turno (per ANNULLA).
+        # Entrambi sono stato di sessione (esclusi dalle istantanee).
+        self.ultimo_comando: Optional[str] = None
+        self._storia_stati: List[dict] = []
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
@@ -535,6 +542,31 @@ class Mondo:
         """[Livello 4] Registra un nome alternativo per un oggetto. Entrambi gli
         argomenti sono già normalizzati. L'ultimo che vince in caso di collisione."""
         self.alias[alias] = id_canonico
+
+    # [0.21.0 / A3] Campi ESCLUSI dalle istantanee di ANNULLA: i riferimenti
+    # statici (azioni/mappe, immutabili dopo la compilazione) e lo stato di
+    # sessione (la cronologia stessa, l'ultimo comando). Tutto il resto — stanze,
+    # oggetti, inventario, variabili, demoni, posizione, turno — è stato mutabile
+    # e viene catturato/ripristinato fedelmente.
+    _CAMPI_VOLATILI = ("_storia_stati", "ultimo_comando", "azioni",
+                       "mappa_verbi_giocatore")
+
+    def cattura_stato(self) -> dict:
+        """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
+        l'ANNULLA. Un'unica deepcopy preserva l'identità condivisa fra gli oggetti
+        (es. lo stesso Oggetto in mondo.oggetti e in stanza.oggetti)."""
+        salvati = {k: self.__dict__.pop(k)
+                   for k in self._CAMPI_VOLATILI if k in self.__dict__}
+        try:
+            return copy.deepcopy(self.__dict__)
+        finally:
+            self.__dict__.update(salvati)
+
+    def ripristina_stato(self, snap: dict):
+        """[0.21.0 / A3] Ripristina lo stato catturato da cattura_stato(). I campi
+        volatili (azioni, mappe, cronologia) non sono nell'istantanea e restano
+        intatti: il mondo torna indietro nel tempo senza perdere le sue azioni."""
+        self.__dict__.update(snap)
 
     def registra_riferito(self, id_oggetto: str):
         """[0.20.0 / A1] Registra l'oggetto come ULTIMO RIFERITO del suo

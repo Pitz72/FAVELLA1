@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.20.0)
+# Interprete Interattivo per FAVELLA 1 (v0.21.0)
 
 import sys
 import traceback
@@ -248,6 +248,25 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         print("A presto!")
         return False
 
+    # [0.21.0 / A3] Comandi di SERVIZIO (fuori dialogo): non sono azioni sul
+    # mondo, agiscono sulla sessione e NON consumano un turno.
+    if not era_in_dialogo:
+        if comando_pulito in ("annulla", "disfa"):
+            _gestisci_annulla(mondo)
+            return True
+        if comando_pulito in ("ancora", "ripeti", "g"):
+            if not mondo.ultimo_comando:
+                print("Non hai ancora fatto nulla da ripetere.")
+                return True
+            # Si rigioca l'ultimo comando come se il giocatore l'avesse ridigitato.
+            comando_grezzo = mondo.ultimo_comando
+            comando_pulito = comando_grezzo.strip().lower()
+
+    # [0.21.0 / A3] Istantanea PRIMA del turno, per l'ANNULLA. Si cattura solo
+    # fuori dialogo (le interazioni di dialogo non consumano un turno); l'istantanea
+    # è conservata solo se il comando effettivamente avanza il tempo.
+    snap = mondo.cattura_stato() if not era_in_dialogo else None
+
     continua = _esegui_comando(mondo, comando_grezzo)
     if not continua:
         return False
@@ -255,9 +274,30 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     # un turno di gioco: il tempo del mondo non avanza mentre si conversa.
     if era_in_dialogo or mondo.in_dialogo():
         return True
+    # Turno consumato: registra l'istantanea (per ANNULLA) e il comando (per ANCORA).
+    if snap is not None:
+        mondo._storia_stati.append(snap)
+        if len(mondo._storia_stati) > _MAX_ANNULLA:
+            mondo._storia_stati.pop(0)   # tetto di memoria: si scorda il più vecchio
+        mondo.ultimo_comando = comando_grezzo
     if avanza_turno_e_processa(mondo):
         return False
     return True
+
+
+# [0.21.0 / A3] Profondità massima della pila di ANNULLA: si possono disfare
+# fino a N turni. Tetto di memoria (ogni passo è un'istantanea del mondo).
+_MAX_ANNULLA = 100
+
+
+def _gestisci_annulla(mondo: Mondo):
+    """[0.21.0 / A3] Riporta il mondo allo stato precedente l'ultimo turno."""
+    if not mondo._storia_stati:
+        print("Non c'è niente da annullare.")
+        return
+    mondo.ripristina_stato(mondo._storia_stati.pop())
+    print("(Hai annullato l'ultimo turno.)")
+    mostra_stanza(mondo)
 
 
 # [Livello 5b] Parole che, durante una conversazione, la concludono comunque.
@@ -649,28 +689,74 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         return True # Non crashare il gioco, continua
 
 
+# [0.21.0 / A3] TRASCRIZIONE: duplica l'output del gioco su un file di testo,
+# così il giocatore può conservare il resoconto della partita. È una funzione
+# della SESSIONE da riga di comando (vive nel loop, non nel mondo): scrive sia
+# l'output del motore sia i comandi digitati.
+class _Tee:
+    """Scrive su due flussi (lo schermo e il file della trascrizione)."""
+    def __init__(self, primario, secondario):
+        self._primario = primario
+        self._secondario = secondario
+
+    def write(self, testo):
+        self._primario.write(testo)
+        self._secondario.write(testo)
+        return len(testo)
+
+    def flush(self):
+        self._primario.flush()
+        self._secondario.flush()
+
+
 def gioca(mondo: Mondo):
     """Avvia il ciclo di gioco interattivo."""
     mondo.carica_azioni(LIBRERIA_AZIONI)
     mondo.imposta_posizione_iniziale()
-    
+
     if not mondo.posizione_giocatore:
         print("[ERRORE FATALE] Nessuna stanza definita. Impossibile avviare il gioco.")
         return
 
     print("\n--- BENVENUTO IN FAVELLA 1 ---")
-    print("Scrivi 'esci' per terminare.")
+    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, TRASCRIZIONE.")
     mostra_stanza(mondo)
-    
-    while True:
-        print("")
-        try:
-            comando_grezzo = input("> ")
-        except EOFError:
-            print("\nA presto!"); break
-            
-        if not elabora_comando(mondo, comando_grezzo):
-            break
+
+    trascrizione = None   # file aperto della trascrizione, o None
+    try:
+        while True:
+            print("")
+            try:
+                comando_grezzo = input("> ")
+            except EOFError:
+                print("\nA presto!"); break
+
+            # [0.21.0 / A3] TRASCRIZIONE: comando di sessione, gestito qui nel loop.
+            if comando_grezzo.strip().lower() == "trascrizione":
+                if trascrizione is None:
+                    trascrizione = open("trascrizione-favella.txt", "w", encoding="utf-8")
+                    sys.stdout = _Tee(sys.__stdout__, trascrizione)
+                    print("(Trascrizione AVVIATA: la partita viene salvata in "
+                          "'trascrizione-favella.txt'.)")
+                else:
+                    print("(Trascrizione TERMINATA.)")
+                    sys.stdout = sys.__stdout__
+                    trascrizione.close()
+                    trascrizione = None
+                continue
+
+            if trascrizione is not None:
+                # Il prompt '> ' è già finito nel file (scritto da input() via Tee);
+                # qui si aggiunge solo il comando digitato (l'eco del terminale non
+                # passa da stdout).
+                trascrizione.write(f"{comando_grezzo}\n")
+
+            if not elabora_comando(mondo, comando_grezzo):
+                break
+    finally:
+        if trascrizione is not None:
+            sys.stdout = sys.__stdout__
+            trascrizione.close()
 
 
 def main():
