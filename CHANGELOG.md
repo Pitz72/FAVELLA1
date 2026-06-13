@@ -4,6 +4,33 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.20.0] - 2026-06-13
+### Pronomi e anafora 🗣️
+Il giocatore può ora usare i **pronomi** per riferirsi all'ultimo oggetto
+nominato — la singola cosa che più fa sembrare «sveglio» un parser italiano.
+Prima voce dell'Asse A del documento `progettazione-oltre-0.18.md` (era marcata
+⭐ priorità massima). **Solo runtime: la grammatica del sorgente NON cambia**
+(la spec EBNF resta `grammatica-0.19.0.md`), quindi l'invariante LALR(1) non è
+nemmeno sfiorato. Suite del linguaggio: **474 asserzioni** (era 467), tutte verdi.
+
+- **Clitici suffissi**: `esamina la torcia` → `prendila`; `aprilo`, `esaminale`,
+  `usali`. Il clitico si stacca dal verbo se il resto è un comando noto.
+- **Pronomi tonici / nudi**: `prendi quella`, `apri quello`, `usa lo`.
+- **Concordanza di genere e numero**: il riferito è indicizzato per
+  `m_sing`/`f_sing`/`m_plur`/`f_plur` (dedotto dall'articolo del nome). Un
+  pronome del genere sbagliato non trova riferente: «Cosa vorresti prendere?».
+- **Riferito = ultima azione *o* ultimo nominato**: vale sia l'oggetto su cui hai
+  appena agito (`esamina la torcia`), sia un oggetto elencato dalla stanza
+  (`entri… → prendila`).
+- **Riferito non più raggiungibile**: se l'oggetto è stato preso da altri o
+  lasciato indietro, «Non la vedi più.».
+
+Implementazione in `gioco.py` (`_risolvi_anafora`) + `strutture.Mondo`
+(`ultimo_riferito`, `registra_riferito`/`registra_riferiti_da_stanza`) +
+`utils.chiave_genere_numero`. Versioni core e suite a **0.20.0**.
+
+---
+
 ## [0.19.0] - 2026-06-13
 ### Lezioni dallo stress-test di genere 🚗
 Tre integrazioni al linguaggio nate costruendo un genere fuori dall'asse del

@@ -120,6 +120,17 @@ def genere_numero(nome_visualizzato: str):
     return _ARTICOLO_GN.get(art, (None, None))
 
 
+def chiave_genere_numero(nome_visualizzato: str):
+    """[0.20.0 / A1] Restituisce la chiave 'm_sing'/'f_sing'/'m_plur'/'f_plur'
+    dedotta dall'articolo del nome, o None se genere o numero non sono inferibili
+    (nome senza articolo, o 'l'…' ambiguo). Serve a indicizzare l'ultimo oggetto
+    riferito per la risoluzione dei pronomi anaforici ('prendila', 'aprilo')."""
+    g, n = genere_numero(nome_visualizzato)
+    if g in ("m", "f") and n in ("s", "p"):
+        return f"{g}_{'sing' if n == 's' else 'plur'}"
+    return None
+
+
 def frase_indeterminativa(nome_visualizzato: str) -> str:
     """[Livello 5] Restituisce il nome introdotto dall'articolo INDETERMINATIVO
     concordato ('una torcia', 'un tavolo', 'uno specchio', 'un'ascia') o, al

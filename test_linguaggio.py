@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.19.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.20.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -3216,6 +3216,108 @@ def test_evento_con_dire_resta_valido():
     _check(mondo.variabili.get("conto") == 1, "la conseguenza è applicata")
 
 
+# --- Test: 0.20.0 — A1 pronomi e anafora ------------------------------------
+
+def test_anafora_clitico_femminile():
+    print("[A1: 'esamina la torcia' poi 'prendila']")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una torcia è una cosa.\nLa torcia è in atrio.\nLa torcia è prendibile.\n"
+        'La descrizione della torcia è "Una torcia di ottone.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "esamina la torcia")
+    out = esegui(mondo, "prendila")
+    _check("torcia" in out.lower() and "torcia" in mondo.inventario,
+           "'prendila' prende la torcia (clitico f.sing.)")
+
+
+def test_anafora_clitico_maschile_da_elenco_stanza():
+    print("[A1: un oggetto elencato dalla stanza è riferibile: 'esaminalo']")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Uno scrigno è una cosa.\nLo scrigno è in atrio.\n"
+        'La descrizione dello scrigno è "Pesante e chiuso.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "guarda")   # la stanza «nomina» lo scrigno (m.sing.)
+    out = esegui(mondo, "esaminalo")
+    _check("Pesante e chiuso." in out,
+           "'esaminalo' trova lo scrigno nominato dall'elenco della stanza")
+
+
+def test_anafora_mismatch_genere():
+    print("[A1: un pronome di genere sbagliato non ha riferente]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una collana è una cosa.\nLa collana è in atrio.\nLa collana è prendibile.\n"
+        'La descrizione della collana è "D\'argento.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "esamina la collana")   # solo f.sing. è riferito
+    out = esegui(mondo, "prendilo")       # m.sing. → nessun riferente
+    _check("Cosa vorresti" in out and "collana" not in mondo.inventario,
+           "'prendilo' senza riferente maschile non prende nulla")
+
+
+def test_anafora_riferito_non_raggiungibile():
+    print("[A1: un riferito lasciato indietro -> 'Non la vedi piu']")
+    src = (
+        "L'atrio è una stanza.\nIl corridoio è una stanza.\n"
+        "L'atrio collega nord a corridoio.\n"
+        "Il giocatore comincia in atrio.\n"
+        "Una collana è una cosa.\nLa collana è in atrio.\nLa collana è prendibile.\n"
+        'La descrizione della collana è "D\'argento.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "esamina la collana")
+    esegui(mondo, "nord")     # la collana resta in atrio, irraggiungibile
+    out = esegui(mondo, "prendila")
+    _check("Non la vedi" in out,
+           "'prendila' su un riferito non più raggiungibile avvisa")
+
+
+def test_anafora_pronome_tonico():
+    print("[A1: pronome tonico 'prendi quella']")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una collana è una cosa.\nLa collana è in atrio.\nLa collana è prendibile.\n"
+        'La descrizione della collana è "D\'argento.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "esamina la collana")
+    esegui(mondo, "prendi quella")
+    _check("collana" in mondo.inventario,
+           "'prendi quella' (tonico f.sing.) prende la collana")
+
+
+def test_anafora_plurale():
+    print("[A1: pronome plurale 'esaminale']")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Le chiavi sono una cosa.\nLe chiavi sono in atrio.\n"
+        'La descrizione delle chiavi è "Un mazzo di chiavi.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "guarda")   # nomina le chiavi (f.plur.)
+    out = esegui(mondo, "esaminale")
+    _check("mazzo di chiavi" in out, "'esaminale' (f.plur.) trova le chiavi")
+
+
+def test_anafora_nessun_falso_positivo():
+    print("[A1: un comando esplicito che 'sembra' un pronome resta esplicito]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Una candela è una cosa.\nLa candela è in atrio.\nLa candela è prendibile.\n"
+        'La descrizione della candela è "Una candela di cera.".\n'
+    )
+    mondo = runtime(src)
+    # 'esamina la candela': 'la' è articolo, NON pronome (segue il nome).
+    out = esegui(mondo, "esamina la candela")
+    _check("Una candela di cera." in out,
+           "'esamina la candela' resta un comando esplicito sull'oggetto")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -3461,9 +3563,17 @@ def main():
         test_evento_silenzioso,
         test_demone_silenzioso,
         test_evento_con_dire_resta_valido,
+        # 0.20.0 — A1: pronomi e anafora
+        test_anafora_clitico_femminile,
+        test_anafora_clitico_maschile_da_elenco_stanza,
+        test_anafora_mismatch_genere,
+        test_anafora_riferito_non_raggiungibile,
+        test_anafora_pronome_tonico,
+        test_anafora_plurale,
+        test_anafora_nessun_falso_positivo,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.19.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.20.0)")
     print("=" * 60)
     for t in tests:
         t()

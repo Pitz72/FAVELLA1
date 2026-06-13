@@ -5,7 +5,7 @@ from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.19.0"
+VERSIONE_MOTORE = "0.20.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -481,6 +481,13 @@ class Mondo:
         self.dialogo_nodi: Dict[str, 'NodoDialogo'] = {}
         self.dialogo_attivo: Optional[str] = None
         self.nodo_dialogo: Optional[str] = None
+        # [0.20.0 / A1] Anafora: l'ULTIMO oggetto riferito, indicizzato per
+        # genere/numero, così 'prendila' (f.sing.) e 'aprilo' (m.sing.) rimandano
+        # all'oggetto giusto anche se ne sono stati nominati di generi diversi. Un
+        # oggetto «diventa riferito» quando il giocatore vi agisce con successo o
+        # quando il motore lo nomina (elenco della stanza). Stato RUNTIME.
+        self.ultimo_riferito: Dict[str, Optional[str]] = {
+            "m_sing": None, "f_sing": None, "m_plur": None, "f_plur": None}
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
@@ -528,6 +535,29 @@ class Mondo:
         """[Livello 4] Registra un nome alternativo per un oggetto. Entrambi gli
         argomenti sono già normalizzati. L'ultimo che vince in caso di collisione."""
         self.alias[alias] = id_canonico
+
+    def registra_riferito(self, id_oggetto: str):
+        """[0.20.0 / A1] Registra l'oggetto come ULTIMO RIFERITO del suo
+        genere/numero, per risolvere i pronomi anaforici ('prendila'). Gli oggetti
+        senza genere/numero inferibile (nome senza articolo) sono ignorati: non
+        sono raggiungibili da un pronome, ma il loro nome resta sempre usabile."""
+        from utils import chiave_genere_numero
+        oggetto = self.trova_oggetto(id_oggetto)
+        if not oggetto:
+            return
+        chiave = chiave_genere_numero(oggetto.nome_visualizzato)
+        if chiave:
+            self.ultimo_riferito[chiave] = id_oggetto
+
+    def registra_riferiti_da_stanza(self):
+        """[0.20.0 / A1] Registra come riferibili dai pronomi gli oggetti visibili
+        nella stanza corrente, nell'ordine di dichiarazione: l'ultimo di ogni
+        genere/numero vince. Chiamato quando il motore mostra/elenca la stanza."""
+        stanza = self.trova_stanza(self.posizione_giocatore)
+        if not stanza:
+            return
+        for id_ogg in stanza.oggetti:
+            self.registra_riferito(id_ogg)
 
     def dichiara_verbo(self, verbo: str, intransitivo: bool = False):
         """[Livello 4] Registra un verbo personalizzato (parola-comando).

@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.19.0)
+# Interprete Interattivo per FAVELLA 1 (v0.20.0)
 
 import sys
 import traceback
@@ -24,6 +24,10 @@ def mostra_stanza(mondo: Mondo):
         # dal nome dichiarato): "Puoi vedere qui: una torcia, un tavolo.".
         nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
+
+    # [0.20.0 / A1] Gli oggetti elencati sono ora «nominati»: diventano riferibili
+    # dai pronomi ('entri… → prendila').
+    mondo.registra_riferiti_da_stanza()
 
     # Mostra le uscite disponibili
     if stanza_corrente.uscite:
@@ -108,6 +112,50 @@ def _match_verbo_multiparola(mondo: Mondo, parole) -> str | None:
         if len(parole) >= n and " ".join(parole[:n]) == v:
             return v
     return None
+
+
+# [0.20.0 / A1] Pronomi anaforici. I clitici si attaccano al verbo ('prendiLA');
+# i pronomi tonici e i clitici nudi sono un argomento a sé ('prendi quella').
+_PRON_GN = {  # forma del pronome -> chiave genere/numero in mondo.ultimo_riferito
+    "lo": "m_sing", "la": "f_sing", "li": "m_plur", "le": "f_plur",
+    "quello": "m_sing", "quella": "f_sing", "quelli": "m_plur", "quelle": "f_plur",
+}
+_CLITICI = ("lo", "la", "li", "le")
+_PRON_DISPLAY = {"m_sing": "lo", "f_sing": "la", "m_plur": "li", "f_plur": "le"}
+
+
+def _risolvi_anafora(mondo: Mondo, verbo: str, argomento: str):
+    """[0.20.0 / A1] Risolve un eventuale pronome anaforico nel comando.
+
+    Restituisce ('ok', verbo, id_oggetto) col riferito risolto; ('vuoto', verbo,
+    None) se il pronome non ha un riferente di quel genere/numero o non è più
+    raggiungibile (il messaggio è già stampato); None se non c'è alcun pronome.
+    Il riferito è l'ultimo oggetto di quel genere/numero su cui il giocatore ha
+    agito o che il motore ha nominato (vedi mondo.ultimo_riferito)."""
+    gn = None
+    nuovo_verbo = verbo
+    noto = mondo.mappa_verbi_giocatore
+    # (a) clitico suffisso: 'prendila' = verbo noto + clitico, senza altri argomenti.
+    if not argomento and verbo not in noto and verbo not in mondo.direzioni:
+        for cl in _CLITICI:
+            if verbo.endswith(cl) and len(verbo) > len(cl) and verbo[:-len(cl)] in noto:
+                gn = _PRON_GN[cl]
+                nuovo_verbo = verbo[:-len(cl)]
+                break
+    # (b) pronome (tonico o clitico) come argomento intero: 'prendi quella', 'usa lo'.
+    if gn is None and argomento in _PRON_GN:
+        gn = _PRON_GN[argomento]
+    if gn is None:
+        return None
+    rif = mondo.ultimo_riferito.get(gn)
+    if not rif:
+        # Nessun riferente di quel genere/numero (anche per mismatch di genere).
+        print(f"Cosa vorresti {nuovo_verbo}?")
+        return ("vuoto", nuovo_verbo, None)
+    if rif not in mondo.oggetti_raggiungibili():
+        print(f"Non {_PRON_DISPLAY[gn]} vedi più.")
+        return ("vuoto", nuovo_verbo, None)
+    return ("ok", nuovo_verbo, rif)
 
 
 def partita_finita(mondo: Mondo) -> bool:
@@ -384,6 +432,19 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             # Parsing classico SVO (Verbo + Oggetto)
             argomento_sx = " ".join(parole[1:])
 
+        # [0.20.0 / A1] ANAFORA: 'prendila', 'aprilo', 'esaminale', 'prendi quella'
+        # → l'ultimo oggetto riferito (del genere/numero giusto). Riscrive il verbo
+        # (clitico staccato) e sostituisce l'argomento con l'id risolto, così il
+        # resto del flusso prosegue come per un comando esplicito. Non si applica ai
+        # comandi a due oggetti (con preposizione).
+        if not preposizione_trovata:
+            anafora = _risolvi_anafora(mondo, verbo_giocatore, argomento_sx)
+            if anafora is not None:
+                esito, verbo_giocatore, rif = anafora
+                if esito == "vuoto":
+                    return True
+                argomento_sx = rif
+
         # --- Gestione Movimento ---
         # [Livello 4 / L1] La mappa forma->canonica vive sul mondo (base + custom).
         direzione_normalizzata = mondo.direzioni.get(verbo_giocatore)
@@ -449,6 +510,13 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                     if id_oggetto2 is None:
                         print(f"Non vedo '{argomento_dx}' qui.")
                     return True
+
+            # [0.20.0 / A1] Gli oggetti effettivamente nominati diventano i riferiti
+            # per i pronomi successivi ('esamina la torcia' → 'prendila'). L'ultimo
+            # nominato vince il proprio slot (qui ogg2 dopo ogg1).
+            mondo.registra_riferito(id_oggetto1)
+            if id_oggetto2:
+                mondo.registra_riferito(id_oggetto2)
 
         # --- MOTORE DI GIOCO (Supporto 2 Oggetti; il 'se' è valutato, 0.18.0/A1) ---
         regola_applicata = False

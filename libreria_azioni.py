@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.18.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.20.0)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo, frase_indeterminativa
@@ -134,6 +134,9 @@ def guarda_logica_default(mondo: Mondo):
         # [Livello 5] Articolo indeterminativo concordato (vedi gioco.mostra_stanza).
         nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
         print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
+
+    # [0.20.0 / A1] Gli oggetti elencati diventano riferibili dai pronomi.
+    mondo.registra_riferiti_da_stanza()
 
 def aiuto_logica_default(mondo: Mondo):
     """Logica di default per l'azione AIUTO."""

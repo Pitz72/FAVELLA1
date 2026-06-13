@@ -6,10 +6,13 @@
 > **v0.19.0**: **A7** verbi intransitivi (`"…" è un comando senza oggetto.`),
 > **A8** inventario iniziale (`Il giocatore ha X.`), **A9** «tick» silenziosi
 > (`dire` opzionale in eventi/demoni). Vedi CHANGELOG e `grammatica-0.19.0.md`.
-> Le proposte qui sotto (A1 pronomi, A3 ANNULLA, A2 varietà, B1 robot…) restano
-> **tutte da fare** e valide: la numerazione di release va perciò riletta (questo
-> ciclo A7-A9 era additivo e non pianificato qui). **Meta-lezione adottata:** costruire una
-> fetta verticale di un genere «non-Favella» è un metodo ricorrente per trovare
+> **Aggiornamento 2026-06-13 (2) — A1 pronomi FATTO in v0.20.0.** La prima voce
+> dell'Asse A (sotto, ⭐ priorità massima) è stata implementata: clitici
+> (`prendila`), tonici (`prendi quella`), concordanza di genere/numero, riferito
+> = ultima azione o ultimo nominato, «Non la vedi più». Solo runtime, grammatica
+> invariata, suite 474. Restano da fare **A3** ANNULLA/ANCORA, **A2** varietà (col
+> seed), **B1** robot, e il resto. **Meta-lezione adottata:** costruire una fetta
+> verticale di un genere «non-Favella» è un metodo ricorrente per trovare
 > primitive mancanti.
 
 > Documento di progettazione, 2026-06-11. Stato del motore alla stesura:
