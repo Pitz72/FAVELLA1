@@ -183,6 +183,12 @@ ricorrente. ~6 test.
 
 ### B1. Il giocatore-robot (playtester automatico) — ⭐ il differenziatore
 
+> **Spec di progetto dettagliata: `documentazione/progettazione-collaudo.md`**
+> (2026-06-13). Architettura concordata: chiave di stato con firma temporale,
+> enumerazione ibrida (regole + esaustiva), Livello 1 statico prima del robot.
+> Le fondamenta (snapshot di stato da A3, seme deterministico da A2) sono già nel
+> motore. Pronto per la sessione di implementazione dedicata.
+
 **Problema.** Verificare che una storia sia vincibile e che tutto il contenuto
 sia raggiungibile oggi richiede playthrough manuali (fatti a mano per
 entrambe le demo). Nessun motore IF amatoriale offre questo: è il
