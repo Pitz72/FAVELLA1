@@ -20,7 +20,7 @@ Unicode true
 !define APPNAME "FAVELLA 1"
 !define COMPANY "Simone Pizzi"
 !define SOURCE_DIR "..\..\dist\favella1"
-!define ICON "..\..\Branding2026\derivati\favicon\favicon.ico"
+!define ICON "..\icons\favella1.ico"
 
 Name "${APPNAME} ${VERSION}"
 OutFile "..\..\dist\favella1-setup-${VERSION}-windows-x64.exe"

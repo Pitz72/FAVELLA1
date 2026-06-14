@@ -86,7 +86,7 @@ jobs:
           cp -r dist/favella1 "$APPDIR/usr/bin/favella1"
           install -m 755 packaging/linux/AppRun "$APPDIR/AppRun"
           cp packaging/linux/favella1.desktop "$APPDIR/favella1.desktop"
-          cp Branding2026/derivati/favicon/favicon-256.png "$APPDIR/favella1.png"
+          cp packaging/icons/favella1.png "$APPDIR/favella1.png"
           wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APPDIR" \

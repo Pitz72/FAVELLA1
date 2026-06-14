@@ -14,7 +14,7 @@ from PyInstaller.utils.hooks import collect_all
 
 # Icona dell'eseguibile: .ico su Windows; altrove PyInstaller la ignora (serve
 # .icns per il .app macOS, che non produciamo: è una CLI).
-_ICON = "Branding2026/derivati/favicon/favicon.ico" if sys.platform == "win32" else None
+_ICON = "packaging/icons/favella1.ico" if sys.platform == "win32" else None
 
 # lark è una dipendenza con file di dati (grammatiche interne): --collect-all
 # garantisce che moduli, binari e datas finiscano nel bundle.
