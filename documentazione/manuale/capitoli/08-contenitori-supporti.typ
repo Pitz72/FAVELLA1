@@ -95,7 +95,7 @@ L'atto di vendita si chiama anche "carte".
 ]
 
 #nota[
-  Gli alias servono solo l'input del giocatore. Nelle *tue* regole continui a
+  Gli alias valgono solo per l'input del giocatore. Nelle *tue* regole continui a
   usare il nome canonico (`la torcia`, non «pila»): l'alias è una cortesia verso
   chi gioca, non un secondo nome per te.
 ]

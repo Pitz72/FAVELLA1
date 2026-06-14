@@ -39,7 +39,7 @@
 // =============================================================================
 // COPERTINA — pagina a vivo, navy, fedele al mockup originale
 // =============================================================================
-#let copertina(versione: "v0.18.0", autore: "Simone Pizzi") = page(
+#let copertina(versione: "v0.18.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = page(
   margin: 0pt,
   fill: gradient.linear(c.dark, c.surface, c.panel, angle: 145deg),
   header: none,
@@ -74,6 +74,8 @@
       #text(font: font-display, size: 12.5pt, weight: 500, fill: rgb("#cfe0ee"))[#autore]
       #v(2mm)
       #text(font: font-mono, size: 9.5pt, fill: c.cyan-bright, tracking: 1pt)[#versione]
+      #v(1.5mm)
+      #text(font: font-display, size: 8.5pt, weight: 500, fill: c.muted, tracking: 1.2pt)[#upper(edizione)]
     ]
   ]
 ]
@@ -81,7 +83,7 @@
 // =============================================================================
 // FRONTESPIZIO + COLOPHON
 // =============================================================================
-#let frontespizio(versione: "v0.18.0", data: "Edizione 2026", autore: "Simone Pizzi") = {
+#let frontespizio(versione: "v0.18.0", edizione: "Seconda edizione · 2026", autore: "Simone Pizzi") = {
   page(header: none, footer: none)[
     #v(1fr)
     #align(center)[
@@ -97,7 +99,9 @@
     ]
     #v(1fr)
     #align(center)[
-      #text(font: font-mono, size: 9pt, fill: c.ink-soft)[Motore #versione · #data]
+      #text(font: font-display, size: 9.5pt, weight: 600, fill: c.cyan-dark, tracking: 0.5pt)[#edizione]
+      #v(1.5mm)
+      #text(font: font-mono, size: 9pt, fill: c.ink-soft)[Allineato al motore #versione]
     ]
     #v(8mm)
   ]
@@ -118,7 +122,7 @@
 }
 
 // Colophon — chiude il libro: chi, con cosa, con quali caratteri.
-#let colophon(versione: "v0.18.0", autore: "Simone Pizzi") = {
+#let colophon(versione: "v0.18.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = {
   pagebreak(weak: true)
   page(header: none, footer: none)[
     #v(1fr)
@@ -131,7 +135,7 @@
       #v(3mm)
       Linguaggio, motore e manuale ideati e scritti da #text(fill: c.ink, weight: 600)[#autore].
       #linebreak()
-      Allineato al motore #versione.
+      #edizione, allineata al motore #versione.
       #v(4mm)
       Composto con #link("https://typst.app")[Typst]. \
       Titoli in Sora, testo in Inter, codice in Source Code Pro. \
@@ -181,9 +185,11 @@
   set document(title: "FAVELLA 1 — " + titolo, author: autore)
 
   set page(
-    width: 170mm,
-    height: 240mm,
-    margin: (top: 24mm, bottom: 22mm, inside: 23mm, outside: 19mm),
+    // Trim standard KDP 6,69×9,61″ (169,93×244,09 mm). Gutter interno 23 mm
+    // ben oltre il minimo KDP (9,5 mm fino a 150 pp.); margine esterno 18 mm.
+    width: 6.69in,
+    height: 9.61in,
+    margin: (top: 24mm, bottom: 22mm, inside: 23mm, outside: 18mm),
     header: context {
       let pg = here().page()
       let h1 = query(heading.where(level: 1))
@@ -215,7 +221,9 @@
 
   // Titoli
   show heading.where(level: 1): it => {
-    pagebreak(weak: true)
+    // Ogni capitolo apre su pagina dispari (recto, «bella pagina»): se serve,
+    // Typst lascia bianco il verso precedente.
+    pagebreak(to: "odd", weak: true)
     _capnum.step()
     block(above: 0pt, below: 0.9em)[
       #context text(font: font-display, size: 11pt, weight: 700, fill: c.cyan-dark, tracking: 2pt)[

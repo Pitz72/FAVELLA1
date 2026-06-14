@@ -4,6 +4,35 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Manuale] - 2026-06-14
+### Rifinitura editoriale per la stampa (Amazon KDP) 📖
+Lavoro **solo sul manuale** (`documentazione/manuale/`): nessun cambio al motore né
+alla grammatica, suite invariate (**582** linguaggio + **43** collaudo). Gli esempi
+`.fav` restano byte-corretti. Manuale allineato al motore **v0.29.0**.
+
+- **Seconda edizione.** Etichetta «Seconda edizione · 2026» uniforme su copertina,
+  frontespizio e colophon (prima l'edizione era indicata solo nel frontespizio).
+  «Edizione» e «versione del motore» tenute distinte (lockstep su v0.29.0).
+- **Doppia dedica.** Accanto a Bonaventura Di Bello, una dedica a **Pietro Bernasconi**,
+  i cui stress-test di genere hanno ispirato le primitive A7–A9. Due strofe nella stessa
+  pagina, separate da un filetto di marca.
+- **Crismi tipografici di stampa.** Trim portato al formato **standard KDP 6,69×9,61″**
+  (169,93×244,09 mm; prima 170×240, non standard). Capitoli che aprono su **pagina
+  dispari** (recto, `pagebreak(to: "odd")`). Margine di cucitura interno 23 mm, ben
+  oltre il minimo KDP. Interno **84 pagine**, 0 warning.
+- **Doppia tiratura da sorgente unica.** `manuale.pdf` (digitale, con copertina navy a
+  pagina intera) e `manuale-interno-kdp.pdf` (interno di stampa, senza copertina —
+  `typst compile --input kdp=1`).
+- **Copertina KDP integrale** (`copertina-kdp.typ` → `copertina-kdp.pdf`): wrap
+  fronte-retro **351,0×250,4 mm** con bleed 3,175 mm e dorso 4,80 mm (84 pp., carta
+  bianca). Quarta di copertina, marchio, area riservata al codice a barre/ISBN (KDP).
+  Dorso in navy pieno senza testo (sotto 100 pp. KDP non ammette testo sul dorso).
+- **Revisione linguistica integrale** dei 20 capitoli (prosa-italiana + humanizer): la
+  prosa era già di livello, corretti i refusi reali rimasti (`servono`→`valgono`,
+  `dà`→`dài`, `la dita`→`il dito`); nessun pattern LLM da rimuovere.
+
+---
+
 ## [0.29.0] - 2026-06-14
 ### Distribuzione multipiattaforma — installer + CLI unica + playground offline 📦
 Prima release **distribuibile**: un autore (anche non tecnico) installa FAVELLA e la

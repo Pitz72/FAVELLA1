@@ -94,7 +94,7 @@ di un evento — la riporta nel buio.
 ]
 
 #prova[
-  Rendi `buia` la cantina della Casa e dà alla torcia `illumina` e lo stato `spenta`.
+  Rendi `buia` la cantina della Casa e dài alla torcia `illumina` e lo stato `spenta`.
   Scendi in cantina senza accenderla: solo buio. Risali, accendi la torcia con una
   regola, torna giù: adesso la stanza c'è tutta.
 ]

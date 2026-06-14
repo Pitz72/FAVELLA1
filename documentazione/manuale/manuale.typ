@@ -1,10 +1,22 @@
 #import "lib/manuale-template.typ": *
 
+// Versione del motore ed etichetta d'edizione: un solo punto di verità.
+#let MOTORE = "v0.29.0"
+#let EDIZIONE = "Seconda edizione · 2026"
+
+// Due tirature dalla stessa sorgente:
+//  • digitale (default) — include la copertina navy a pagina intera;
+//  • interno KDP (`--input kdp=1`) — parte dal frontespizio, senza copertina,
+//    perché in stampa la copertina è un file a sé (vedi copertina-kdp.typ).
+#let per-kdp = "kdp" in sys.inputs
+
 #show: conf.with(titolo: "Manuale di Programmazione", autore: "Simone Pizzi")
 
 // ---- FRONTE DEL LIBRO -------------------------------------------------------
-#copertina(versione: "v0.29.0", autore: "Simone Pizzi")
-#frontespizio(versione: "v0.29.0", autore: "Simone Pizzi")
+#if not per-kdp {
+  copertina(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)
+}
+#frontespizio(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)
 
 // ---- DEDICA -----------------------------------------------------------------
 #dedica[
@@ -13,6 +25,16 @@
   in quel mondo di mezzo tra computer e fantasia.
   #v(3mm)
   Grazie per tutta l'ispirazione.
+
+  #v(8mm)
+  #box(width: 22mm, line(length: 100%, stroke: 0.8pt + gradient.linear(c.cyan, c.amber)))
+  #v(8mm)
+
+  A Pietro Bernasconi,#linebreak()
+  che ha spinto FAVELLA dove non era stata pensata per andare#linebreak()
+  e così le ha insegnato a fare cose che non sapeva ancora fare.
+  #v(3mm)
+  Alcune di queste pagine esistono per merito suo.
 ]
 
 // ---- INDICE -----------------------------------------------------------------
@@ -47,4 +69,4 @@
 #include "capitoli/20-riepilogo.typ"
 
 // ---- COLOPHON ---------------------------------------------------------------
-#colophon(versione: "v0.29.0", autore: "Simone Pizzi")
+#colophon(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)

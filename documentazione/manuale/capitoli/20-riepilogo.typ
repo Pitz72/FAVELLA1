@@ -5,7 +5,7 @@
 
 = Riepilogo del linguaggio
 
-Questo capitolo è da consultazione, non da lettura. Tieni la dita qui quando
+Questo capitolo è da consultazione, non da lettura. Tieni il dito qui quando
 scrivi: trovi le parole che FAVELLA si tiene per sé, tutti i costrutti in una
 pagina, e i comandi che il giocatore ha a disposizione.
 
