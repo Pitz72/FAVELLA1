@@ -167,6 +167,14 @@ Thumbs.db
 # Artefatti di anteprima del manuale (le pagine PNG di lavorazione)
 /documentazione/manuale/pag-*.png
 
+# File di STAMPA del manuale (KDP): si rigenerano dai sorgenti .typ e non vivono
+# nel repo, dove resta solo l'edizione digitale (manuale.pdf). Interno KDP:
+#   typst compile --input kdp=1 --font-path fonts manuale.typ manuale-interno-kdp.pdf
+# Copertina wrap:
+#   typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
+/documentazione/manuale/manuale-interno-kdp.pdf
+/documentazione/manuale/copertina-kdp.pdf
+
 # Eccezione: la cartella lib/ del manuale è SORGENTE Typst (template + evidenziatore),
 # non un artefatto Python. La regola generica «lib/» qui sopra la escluderebbe.
 !/documentazione/manuale/lib/
