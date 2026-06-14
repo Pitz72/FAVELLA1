@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.23.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.24.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1594,6 +1594,11 @@ _CORPUS_GUARDIA = (
     'Il mercante al nodo "chi" dice "Un mercante.".\n'
     'Al nodo "chi" l\'opzione "Vinci!" chiude il dialogo e adesso vinci.\n'   # conseguenza di fine partita [0.10.3]
     'Al nodo "chi" l\'opzione "Addio." chiude il dialogo.\n'
+    # [0.24.0 / A4] Buio e luce: stanza buia (proprietà speciale via def_proprieta)
+    # e fonte di luce (def_illumina, dopo ENTITA lookahead "illumina").
+    "La cantina è una stanza.\nLa cella collega sud a cantina.\n"
+    "La cantina è buia.\n"                             # proprietà speciale 'buia' su stanza
+    "Una lanterna è una cosa.\nLa lanterna illumina.\nLa lanterna è in cantina.\n"  # def_illumina
 )
 
 
@@ -2526,7 +2531,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.22.0.md")
+                          "grammatica-0.24.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2543,7 +2548,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.22.0.md è presente")
+           "documentazione/grammatica-0.24.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -3505,6 +3510,223 @@ def test_descrizione_condizionale_a_varianti():
            "la descrizione condizionale vera pesca le sue varianti in sequenza")
 
 
+# --- Test: buio e luce [0.24.0 / A4] -----------------------------------------
+
+def test_a4_parsing_buia_e_illumina():
+    print("[A4: 'è buia' marca la stanza, 'illumina' marca la fonte di luce]")
+    src = (
+        "La cantina è una stanza.\nLa cantina è buia.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è in cantina.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "il sorgente con buio/luce compila")
+    _check(mondo and mondo.trova_stanza("cantina").buia is True,
+           "la cantina risulta buia")
+    _check(mondo and mondo.trova_oggetto("torcia").illumina is True,
+           "la torcia risulta fonte di luce")
+
+
+def test_a4_buio_blocca_esamina_e_prendi():
+    print("[A4: in stanza buia senza luce, esamina/prendi sono bloccati]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Un baule è una cosa.\nIl baule è in cantina.\nIl baule è prendibile.\n"
+    )
+    mondo = runtime(src)
+    out_es = esegui(mondo, "esamina baule")
+    out_pr = esegui(mondo, "prendi baule")
+    _check("buio" in out_es.lower(), "esamina al buio risponde col buio")
+    _check("buio" in out_pr.lower(), "prendi al buio risponde col buio")
+    _check("baule" not in mondo.inventario, "l'oggetto NON è stato preso al buio")
+
+
+def test_a4_guarda_mostra_buio_pesto():
+    print("[A4: guarda in stanza buia mostra «È buio pesto.» e nasconde gli oggetti]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        'La descrizione della cantina è "Pareti di pietra umida.".\n'
+        "Un baule è una cosa.\nIl baule è in cantina.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("buio pesto" in out.lower(), "il buio è annunciato")
+    _check("baule" not in out.lower(), "gli oggetti non sono elencati al buio")
+    _check("pietra" not in out.lower(), "la descrizione non è mostrata al buio")
+
+
+def test_a4_torcia_in_inventario_illumina():
+    print("[A4: una fonte di luce in mano rischiara la stanza buia]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\n"
+        "Il giocatore ha la torcia.\n"
+        'La descrizione della cantina è "Pareti di pietra umida.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check(mondo.c_e_luce() is True, "c'è luce con la torcia in mano")
+    _check("pietra" in out.lower(), "la descrizione è visibile con la luce")
+
+
+def test_a4_fonte_a_terra_rischiara():
+    print("[A4: una fonte di luce che brilla a terra rischiara la stanza]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Una lanterna è una cosa.\nLa lanterna illumina.\nLa lanterna è in cantina.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check(mondo.c_e_luce() is True, "c'è luce con la lanterna a terra")
+    _check("lanterna" in out.lower(), "la fonte luminosa a terra è visibile")
+
+
+def test_a4_torcia_spenta_non_illumina():
+    print("[A4: una fonte 'spenta' non illumina (opposte accesa/spenta)]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Accesa e spenta sono opposte.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è spenta.\n"
+        "Il giocatore ha la torcia.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.c_e_luce() is False, "la torcia spenta non fa luce")
+    out = esegui(mondo, "guarda")
+    _check("buio pesto" in out.lower(), "resta buio con la torcia spenta")
+
+
+def test_a4_accendi_la_luce_via_regola():
+    print("[A4: accendere la fonte (regola -> 'accesa') rischiara la stanza]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Accesa e spenta sono opposte.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è spenta.\n"
+        "Il giocatore ha la torcia.\n"
+        'Invece di usa la torcia: dire "Accendi la torcia." e adesso la torcia è accesa.\n'
+    )
+    mondo = runtime(src)
+    _check(mondo.c_e_luce() is False, "all'inizio è buio (torcia spenta)")
+    esegui(mondo, "usa torcia")
+    _check(mondo.c_e_luce() is True, "dopo l'accensione c'è luce")
+
+
+def test_a4_luce_in_contenitore_chiuso_non_illumina():
+    print("[A4: una fonte dentro un contenitore CHIUSO non illumina]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Una cassa è un contenitore.\nLa cassa è in cantina.\nLa cassa è chiusa.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è nella cassa.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.c_e_luce() is False,
+           "la torcia in una cassa chiusa non fa luce")
+
+
+def test_a4_luce_in_contenitore_aperto_illumina():
+    print("[A4: una fonte dentro un contenitore APERTO illumina]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Una cassa è un contenitore.\nLa cassa è in cantina.\n"  # aperta di default
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è nella cassa.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.c_e_luce() is True,
+           "la torcia in una cassa aperta fa luce")
+
+
+def test_a4_stanza_non_buia_sempre_visibile():
+    print("[A4: una stanza NON buia è sempre visibile, senza alcuna luce]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        'La descrizione dell\'atrio è "Un atrio luminoso.".\n'
+        "Un vaso è una cosa.\nIl vaso è in atrio.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check(mondo.c_e_luce() is True, "una stanza non buia ha sempre luce")
+    _check("atrio luminoso" in out.lower() and "vaso" in out.lower(),
+           "descrizione e oggetti sono visibili")
+
+
+def test_a4_uscite_percorribili_al_buio():
+    print("[A4: al buio non si vede, ma le uscite restano percorribili]")
+    src = (
+        "La cantina è una stanza.\nL'atrio è una stanza.\n"
+        "La cantina collega nord a atrio.\n"
+        "Il giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        'La descrizione dell\'atrio è "Un atrio illuminato.".\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "nord")
+    _check(mondo.posizione_giocatore == "atrio",
+           "il giocatore si è mosso al buio verso l'atrio")
+
+
+def test_a4_demone_spegne_la_luce():
+    print("[A4: un demone che spegne la fonte riporta il buio a metà partita]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Accesa e spenta sono opposte.\n"
+        "Una torcia è una cosa.\nLa torcia illumina.\nLa torcia è accesa.\n"
+        "Il giocatore ha la torcia.\n"
+        "Il tempo è un contatore.\n"
+        "Ogni 1 turno: aumenta il tempo.\n"
+        'Quando il tempo è almeno 2: dire "La torcia si spegne." e adesso la torcia è spenta.\n'
+    )
+    mondo = runtime(src)
+    _check(mondo.c_e_luce() is True, "all'inizio la torcia accesa fa luce")
+    esegui(mondo, "guarda")   # turno 1
+    esegui(mondo, "guarda")   # turno 2: il demone spegne la torcia
+    _check(mondo.c_e_luce() is False, "dopo lo spegnimento è di nuovo buio")
+
+
+def test_a4_regola_autore_precede_il_buio():
+    print("[A4: una regola 'Invece di esamina' ha la precedenza anche al buio]")
+    src = (
+        "La cantina è una stanza.\nIl giocatore comincia in cantina.\n"
+        "La cantina è buia.\n"
+        "Un totem è una cosa.\nIl totem è in cantina.\n"
+        'Invece di esamina il totem: dire "Brilla di luce propria.".\n'
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina totem")
+    _check("luce propria" in out.lower(),
+           "la regola d'autore scatta nonostante il buio")
+
+
+def test_a4_concordanza_buio_maschile():
+    print("[A4: 'è buio' (maschile) marca la stanza come 'è buia' (folding radice)]")
+    src = (
+        "Il sottoscala è una stanza.\nIl giocatore comincia in sottoscala.\n"
+        "Il sottoscala è buio.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo.trova_stanza("sottoscala").buia is True,
+           "la forma maschile 'buio' è riconosciuta")
+    _check(mondo.c_e_luce() is False, "il sottoscala è al buio")
+
+
+def test_a4_illumina_prima_della_dichiarazione():
+    print("[A4: 'La torcia illumina.' funziona anche prima di 'è una cosa']")
+    src = (
+        "La cantina è una stanza.\n"
+        "La torcia illumina.\n"            # riferimento prima della dichiarazione
+        "Una torcia è una cosa.\nLa torcia è in cantina.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and mondo.trova_oggetto("torcia").illumina is True,
+           "l'ordine non conta: la torcia illumina")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -3773,9 +3995,25 @@ def main():
         test_descrizione_varianti_interpolano,
         test_descrizione_singola_resta_valida,
         test_descrizione_condizionale_a_varianti,
+        # [0.24.0 / A4] Buio e luce
+        test_a4_parsing_buia_e_illumina,
+        test_a4_buio_blocca_esamina_e_prendi,
+        test_a4_guarda_mostra_buio_pesto,
+        test_a4_torcia_in_inventario_illumina,
+        test_a4_fonte_a_terra_rischiara,
+        test_a4_torcia_spenta_non_illumina,
+        test_a4_accendi_la_luce_via_regola,
+        test_a4_luce_in_contenitore_chiuso_non_illumina,
+        test_a4_luce_in_contenitore_aperto_illumina,
+        test_a4_stanza_non_buia_sempre_visibile,
+        test_a4_uscite_percorribili_al_buio,
+        test_a4_demone_spegne_la_luce,
+        test_a4_regola_autore_precede_il_buio,
+        test_a4_concordanza_buio_maschile,
+        test_a4_illumina_prima_della_dichiarazione,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.23.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.24.0)")
     print("=" * 60)
     for t in tests:
         t()

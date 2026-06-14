@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.23.0)
+# Interprete Interattivo per FAVELLA 1 (v0.24.0)
 
 import sys
 import traceback
@@ -16,6 +16,14 @@ def mostra_stanza(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
+
+    # [0.24.0 / A4] Stanza al buio senza fonte di luce accesa raggiungibile: non si
+    # vede nulla (né descrizione, né oggetti, né uscite). Le uscite restano
+    # comunque percorribili: il giocatore può muoversi alla cieca.
+    if not mondo.c_e_luce():
+        print("È buio pesto.")
+        return
+
     print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())

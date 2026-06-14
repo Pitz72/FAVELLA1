@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.23.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.24.0)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo, frase_indeterminativa
@@ -19,6 +19,11 @@ def _elenca_contenuto(mondo: Mondo, oggetto):
 
 def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione ESAMINARE."""
+    # [0.24.0 / A4] Al buio non si esamina nulla (una regola d'autore 'Invece di
+    # esamina X' ha comunque la precedenza: è valutata prima della logica di default).
+    if not mondo.c_e_luce():
+        print("È troppo buio per vederci.")
+        return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
         print(rendi_testo(mondo, oggetto.descrizione_attuale(mondo)))
@@ -28,6 +33,12 @@ def esamina_logica_default(mondo: Mondo, id_oggetto: str):
 
 def prendi_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione PRENDERE."""
+    # [0.24.0 / A4] Al buio non si raccoglie nulla a tentoni (le regole d'autore
+    # restano prioritarie). Un oggetto luminoso a terra rischiara la stanza, quindi
+    # 'c_e_luce' è già vero in quel caso: lo si può prendere senza problemi.
+    if not mondo.c_e_luce():
+        print("È troppo buio per vederci.")
+        return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto):
         print("Non vedi nulla del genere qui.")
@@ -54,6 +65,10 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str):
 
 def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """[Livello 4 / M1] Logica di default per METTERE [ogg1] in/su [ogg2]."""
+    # [0.24.0 / A4] Al buio non si manipola nulla.
+    if not mondo.c_e_luce():
+        print("È troppo buio per vederci.")
+        return
     if not id_oggetto2:
         print("Dove vuoi metterlo?")
         return
@@ -127,6 +142,12 @@ def guarda_logica_default(mondo: Mondo):
         return
 
     print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
+
+    # [0.24.0 / A4] Buio: nessuna descrizione né elenco oggetti (vedi gioco.mostra_stanza).
+    if not mondo.c_e_luce():
+        print("È buio pesto.")
+        return
+
     print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
 
     oggetti_nella_stanza = list(stanza_corrente.oggetti.values())

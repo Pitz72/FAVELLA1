@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.23.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.24.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -86,6 +86,9 @@ PAROLE_RISERVATE = frozenset({
     "direzioni",
     # contenitori e supporti (Livello 4 / M1)
     "contenitore", "supporto",
+    # [0.24.0 / A4] buio e luce: 'La cantina è buia.' (proprietà speciale della
+    # stanza, riconosciuta per radice) / 'La torcia illumina.' (fonte di luce).
+    "buia", "buio", "illumina",
     # NPC e dialoghi (Livello 5b). NB: si evitano di proposito 'porta' e 'parla'
     # come keyword (collidono con nomi-oggetto comuni: "la porta"); la transizione
     # tra nodi usa 'conduce' (vedi 0.10.2).
@@ -299,6 +302,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_giocatore_capacita
                   | def_giocatore_inventario
                   | def_capacita_oggetto
+                  | def_illumina
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -348,6 +352,13 @@ _GRAMMAR_TEMPLATE = r"""
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
     def_proprieta: ENTITA _copula PROPRIETA "."
+    // [0.24.0 / A4] Fonte di luce: 'La torcia illumina.'. È una dichiarazione di
+    // CAPACITÀ (analoga a 'dà N spazi'): inizia con ENTITA e dopo l'entità il
+    // lookahead "illumina" la distingue da è/sono/si/collega/dà/al → LALR(1)
+    // 0-ambiguo ("illumina" è riservata: PROPRIETA, a priorità bassa, non la cattura).
+    // Il buio della stanza ('La cantina è buia.') NON ha una regola dedicata: è una
+    // proprietà speciale gestita nel transformer (def_proprieta), come 'prendibile'.
+    def_illumina: ENTITA "illumina" "."
     // [Livello 3 / M5] Dichiarazione di proprietà opposte (mutuamente esclusive).
     // Inizia con PROPRIETA (priorità bassa): nessun'altra dichiarazione parte con
     // PROPRIETA, quindi LALR distingue questo costrutto al primo token.
@@ -883,6 +894,13 @@ class FavellaTransformer(Transformer):
         self._crea_o_trova_oggetto(nome_grezzo).is_personaggio = True
         return None
 
+    def def_illumina(self, nome_grezzo):
+        # [0.24.0 / A4] 'La torcia illumina.': l'oggetto è una fonte di luce. È una
+        # capacità additiva (come 'dà N spazi'); crea-su-riferimento per non
+        # dipendere dall'ordine ('illumina' può precedere 'è una cosa').
+        self._crea_o_trova_oggetto(nome_grezzo).illumina = True
+        return None
+
     # --- Dialoghi (Livello 5b) ---
 
     def def_dialogo_inizio(self, npc_grezzo, etichetta):
@@ -1039,6 +1057,14 @@ class FavellaTransformer(Transformer):
         proprieta = normalizza_nome(proprieta_grezzo)
         oggetto = self.mondo.trova_oggetto(id_ogg)
         if not oggetto:
+            # [0.24.0 / A4] 'La cantina è buia.': il buio è una proprietà speciale
+            # della STANZA (le stanze non hanno altre proprietà di stato). La
+            # riconosciamo per radice ('bui-' → buia/buio/buie); ogni altra
+            # proprietà su una stanza resta un errore.
+            stanza = self.mondo.trova_stanza(id_ogg)
+            if stanza is not None and radice_proprieta(proprieta) == radice_proprieta("buia"):
+                stanza.buia = True
+                return
             self.errori.append(f"Proprietà '{proprieta_grezzo}' per oggetto inesistente: '{ogg_grezzo}'")
             return
         if proprieta == "prendibile":

@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.23.0"
+VERSIONE_MOTORE = "0.24.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -421,6 +421,11 @@ class Stanza:
         # [Livello 5] Descrizioni condizionali: lista di (Condizione, testo)
         # valutate in ordine; la prima vera vince, altrimenti vale 'descrizione'.
         self.descrizioni_condizionali: List = []
+        # [0.24.0 / A4] Stanza al buio: dichiarata con 'La cantina è buia.'. Finché
+        # nessuna fonte di luce accesa è raggiungibile, il motore mostra «È buio
+        # pesto.» e blocca esamina/prendi (le uscite restano percorribili). Vedi
+        # Mondo.c_e_luce().
+        self.buia: bool = False
         self.oggetti: Dict[str, 'Oggetto'] = {}
         self.uscite: Dict[str, str] = {}
 
@@ -453,6 +458,11 @@ class Oggetto:
         # aumenta di 'bonus_capacita' il numero di oggetti che il giocatore può
         # portare (es. uno zaino 'dà 15 spazi'). 0 = nessun bonus (default).
         self.bonus_capacita: int = 0
+        # [0.24.0 / A4] Fonte di luce: dichiarata con 'La torcia illumina.'. Un
+        # oggetto che illumina rischiara una stanza buia se è raggiungibile e non è
+        # «spento» (interagisce con le opposte accesa/spenta: una torcia spenta non
+        # illumina). Vedi Mondo.c_e_luce().
+        self.illumina: bool = False
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -763,6 +773,34 @@ class Mondo:
         dichiarata è sempre vero (illimitato)."""
         cap = self.capacita_attuale()
         return cap is None or len(self.inventario) < cap
+
+    # --- [0.24.0 / A4] Buio e luce ---
+
+    def _fonte_di_luce_accesa(self, oggetto: 'Oggetto') -> bool:
+        """Vero se l'oggetto è una fonte di luce attiva: ha la capacità 'illumina'
+        e non è «spento». L'interazione con le opposte accesa/spenta è per RADICE
+        (folding 'spent-'), così 'spenta'/'spento'/'spenti' contano tutte; una
+        torcia senza stato accesa/spenta illumina sempre."""
+        if not getattr(oggetto, "illumina", False):
+            return False
+        r_spenta = radice_proprieta("spenta")
+        return not any(radice_proprieta(p) == r_spenta for p in oggetto.proprieta)
+
+    def c_e_luce(self) -> bool:
+        """Vero se il giocatore può vedere nella stanza corrente: la stanza non è
+        buia, OPPURE è raggiungibile una fonte di luce accesa (in mano, nella
+        stanza, o dentro un contenitore aperto / su un supporto). Un oggetto
+        luminoso è di per sé visibile (rischiara), quindi conta anche se è a terra
+        in una stanza buia; una fonte dentro un contenitore CHIUSO non illumina
+        (oggetti_raggiungibili la esclude già)."""
+        stanza = self.trova_stanza(self.posizione_giocatore)
+        if stanza is None or not getattr(stanza, "buia", False):
+            return True
+        for id_ogg in self.oggetti_raggiungibili():
+            oggetto = self.trova_oggetto(id_ogg)
+            if oggetto and self._fonte_di_luce_accesa(oggetto):
+                return True
+        return False
 
     # --- [Livello 4 / M1] Contenitori e supporti: raggiungibilità ---
 

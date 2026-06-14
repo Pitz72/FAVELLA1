@@ -4,6 +4,45 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.24.0] - 2026-06-14
+### Buio e luce come primitiva (Asse A — A4) 🔦
+Quarta voce dell'**Asse A** di `progettazione-oltre-0.18.md` (la prima del gruppo
+«Il mondo vivo»). Il pattern «stanza buia finché non hai una luce», universale
+nell'interactive fiction, diventa una primitiva del motore invece di un esercizio
+di regole.
+
+- **Stanza al buio**: `La cantina è buia.` — `buia` è una **proprietà speciale**
+  della stanza (come `prendibile`), riconosciuta nel transformer per **radice**
+  (`bui-` → buia/buio/buie), che imposta `Stanza.buia`. **Nessuna nuova regola di
+  grammatica** per questa forma.
+- **Fonte di luce**: `La torcia illumina.` — nuova regola di capacità
+  **`def_illumina`** (`ENTITA "illumina" "."`), additiva e order-independent
+  (crea-su-riferimento), che imposta `Oggetto.illumina`. Riservate aggiunte:
+  `buia`, `buio`, `illumina`.
+- **Visibilità centralizzata**: `Mondo.c_e_luce()` — vero se la stanza non è buia
+  **oppure** è raggiungibile una fonte `illumina` **accesa** (`illumina` e non
+  «spenta», folding per radice `spent-`: l'interazione con le opposte accesa/spenta
+  è automatica; una torcia senza stato illumina sempre). Riusa
+  `oggetti_raggiungibili()`: una fonte in un **contenitore chiuso** non illumina;
+  una in mano o che brilla a terra sì.
+- **Runtime**: in una stanza buia senza luce, `guarda`/`mostra_stanza` stampano
+  «È buio pesto.» (niente descrizione/oggetti/uscite) ed `esamina`/`prendi`/`metti`
+  rispondono «È troppo buio per vederci.». Le **uscite restano percorribili** (si
+  cammina alla cieca). Le regole d'autore (`Invece di esamina X`) mantengono la
+  precedenza sulla logica di default: si può rendere qualcosa percepibile al buio.
+- **LALR(1) 0-ambiguo** per costruzione (`def_illumina` distinta dopo ENTITA sul
+  lookahead `illumina`). Spec EBNF aggiornata: **`grammatica-0.24.0.md`** (§10);
+  puntatore test `_SPEC_EBNF` da 0.22.0 → 0.24.0.
+- **Test**: **+28 asserzioni** (15 test dedicati: buio blocca esamina/prendi,
+  luce in mano / a terra rischiara, spenta non illumina, contenitore chiuso vs
+  aperto, demone che spegne la luce, uscite percorribili, regola d'autore
+  prioritaria, concordanza `buio`/`buia`, order-independence). Suite del linguaggio
+  a **520** (era 492); collaudatore invariato a **33**; le demo restano
+  `vincibile-staticamente`. Versioni allineate a **0.24.0** (header core, suite,
+  `Mondo.__str__`, sidecar `VERSIONE_MOTORE`).
+
+---
+
 ## [0.23.0] - 2026-06-13
 ### Il collaudatore automatico di storie — `collaudo.py` (B1.1) 🤖
 Prima voce dell'**Asse B** di `progettazione-oltre-0.18.md`: «il differenziatore».
