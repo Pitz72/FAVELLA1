@@ -51,6 +51,28 @@ Tre righe sullo stesso portaombrelli: cos'è, dove si trova, com'è fatto. Le pu
 scrivere in qualunque ordine (te lo ricordi dal capitolo sull'anatomia della
 frase), ma raggrupparle per oggetto rende il file molto più leggibile.
 
+== Cominciare con qualcosa in tasca
+
+A volte il giocatore non deve trovare un oggetto: ce l'ha già dall'inizio. Un mazzo
+di chiavi, un taccuino, la torcia che si è portato da casa. Invece di collocarlo in
+una stanza, lo metti direttamente nell'inventario.
+
+#sintassi[
+  `Il giocatore ha [oggetto].`
+]
+
+#esempio[
+#fav(```
+# Forma disponibile:
+La torcia è una cosa.
+La torcia è prendibile.
+Il giocatore ha la torcia.
+```)
+]
+
+L'oggetto dev'essere già dichiarato (se citi una cosa che non esiste, FAVELLA te lo
+segnala) e la frase, come le altre, la puoi scrivere dove preferisci nel file.
+
 == Prendere o non prendere
 
 C'è una riga che merita attenzione: `è prendibile`. Di norma gli oggetti *non*

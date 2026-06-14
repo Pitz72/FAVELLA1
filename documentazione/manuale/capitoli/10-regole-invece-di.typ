@@ -112,6 +112,46 @@ di`, esattamente come i verbi predefiniti. Un comando può anche essere di *più
 parole*: in quel caso si dichiara `"fai scattare" è un comando.` e il motore
 riconosce l'intera espressione all'inizio del comando.
 
+== Comandi senza oggetto
+
+Alcuni verbi non reggono un oggetto: si #emph[accelera], si #emph[aspetta], si
+#emph[salta], e basta. Per questi dichiari il comando come *senza oggetto*, così la
+regola globale scatta anche quando il giocatore digita il verbo da solo.
+
+#sintassi[
+  `"[verbo]" è un comando senza oggetto.`
+]
+
+#esempio[
+#fav(```
+# Forma disponibile:
+"accelera" è un comando senza oggetto.
+Invece di accelera: dire "Premi a fondo. Il motore sale di giri, il paesaggio si fa liquido ai lati.".
+```)
+]
+
+== Sinonimi di un verbo
+
+Chi gioca non indovina sempre la tua parola. Dove tu hai previsto `prendi`, qualcuno
+scriverà `afferra` o `raccogli`. Invece di duplicare le regole, dichiari che una
+parola nuova vale *come* un verbo che FAVELLA conosce già: ne eredita tutto — il
+comportamento di default, le tue regole `Invece di`, perfino i pronomi.
+
+#sintassi[
+  `"[parola nuova]" è come [verbo].`
+]
+
+#esempio[
+#fav(```
+# Forma disponibile:
+"ghermisci" è come prendi.
+```)
+]
+
+Da qui `ghermisci la torcia` fa esattamente quel che farebbe `prendi la torcia`. Il
+verbo a destra dev'essere uno di quelli che il motore riconosce; se non lo è,
+FAVELLA te lo segnala con un avviso.
+
 == Regole a due oggetti
 
 Molti enigmi nascono dall'incontro di due cose: una chiave e una porta, una leva

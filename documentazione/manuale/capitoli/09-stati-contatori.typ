@@ -67,9 +67,10 @@ La calma parte da 3.
 ]
 
 #nota[
-  Nota la copula nel dichiarare uno stato o un contatore: resta sempre `è`, anche
-  con un nome plurale come «gli indizi» (`Gli indizi è un contatore.`). La forma
-  plurale `sono` vale per gli oggetti, non per questa dichiarazione.
+  Se il nome è plurale, concorda pure il verbo: `Le vite sono un contatore.` e `Le
+  vite partono da 3.` sono forme valide quanto il singolare. Scrivi quella che suona
+  naturale — `Gli indizi è un contatore.` o `Gli indizi sono un contatore.`: FAVELLA
+  accetta entrambe.
 ]
 
 == Confrontare un contatore

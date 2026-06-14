@@ -131,6 +131,33 @@ comparire solo quando la storia è pronta a lasciartela scegliere. Le battute, c
 ogni testo, possono contenere interpolazioni `[indizi]` per riflettere ciò che hai
 raccolto.
 
+== Personaggi che si muovono
+
+Il notaio e la vicina restano dove sono, ma un personaggio non è inchiodato alla
+sua stanza. Una conseguenza può spostarlo — dentro una regola, un evento o un
+demone — e così la guardia fa il giro di ronda, il gatto vaga per la casa.
+
+#sintassi[
+  `[personaggio] va nel/in [stanza]` — verso una stanza precisa \
+  `[personaggio] cambia stanza` — a caso, fra le uscite di dov'è
+]
+
+Con `va` decidi tu la destinazione; con `cambia stanza` il personaggio prende
+un'uscita a caso, e — come per le descrizioni a varietà — il caso è riproducibile,
+così l'`annulla` lo riavvolge.
+
+#esempio[
+#fav(```
+# Forma disponibile:
+Al turno 3: la guardia va nel corridoio.
+Ogni turno se il gatto è irrequieto: il gatto cambia stanza.
+```)
+]
+
+Quando il movimento avviene dove il giocatore può vederlo, FAVELLA lo annuncia da
+sé — «La guardia se ne va verso nord.», «Il gatto arriva.» — così l'andirivieni si
+sente senza che tu debba descriverlo a mano.
+
 #tranello[
   Etichette dei nodi e testi delle opzioni vanno sempre tra virgolette. Se scrivi
   `conduce al nodo "valigia"` ma non hai mai definito una battuta `al nodo

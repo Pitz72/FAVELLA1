@@ -91,6 +91,32 @@ La descrizione del salotto se la verita è svelata è "Le stesse poltrone, la st
 ```)
 ]
 
+== Descrizioni che variano
+
+Un dettaglio che si ripete identico a ogni `guarda` tradisce il meccanismo dietro
+la storia. Per evitarlo puoi dare a una descrizione più versioni, e lasciare che
+FAVELLA ne scelga una di volta in volta. Le politiche sono due.
+
+#sintassi[
+  `La descrizione di [stanza] è una di: "[testo]", "[testo]", ...`
+]
+
+Con `è una di` la scelta è *casuale*, e la stessa versione non esce mai due volte
+di fila. Con `è in sequenza` le versioni si presentano in ordine, una a ogni
+sguardo, e l'ultima resta finché qualcosa non cambia.
+
+#esempio[
+#fav(```
+# Forma disponibile:
+La descrizione del giardino è una di: "Il vento muove i rami del melo.", "Una gazza ti studia dal muretto, poi vola via.", "L'erba alta ondeggia, non c'è nessuno.".
+```)
+]
+
+Le varianti valgono anche per le descrizioni condizionali, e dentro ognuna puoi
+interpolare i valori del gioco con `[...]`, come fra poco vedremo. La scelta
+casuale è *riproducibile*: la stessa partita rivista dà sempre la stessa sequenza,
+e l'`annulla` riavvolge anche il caso.
+
 #nota[
   Dentro una descrizione puoi anche inserire valori vivi del gioco, scrivendo il
   nome di uno stato o di un contatore fra parentesi quadre: `[indizi]` diventerà

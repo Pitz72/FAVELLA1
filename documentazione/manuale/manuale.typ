@@ -3,8 +3,8 @@
 #show: conf.with(titolo: "Manuale di Programmazione", autore: "Simone Pizzi")
 
 // ---- FRONTE DEL LIBRO -------------------------------------------------------
-#copertina(versione: "v0.18.0", autore: "Simone Pizzi")
-#frontespizio(versione: "v0.18.0", autore: "Simone Pizzi")
+#copertina(versione: "v0.29.0", autore: "Simone Pizzi")
+#frontespizio(versione: "v0.29.0", autore: "Simone Pizzi")
 
 // ---- DEDICA -----------------------------------------------------------------
 #dedica[
@@ -26,22 +26,25 @@
 
 // ---- CAPITOLI (in ordine) ---------------------------------------------------
 #include "capitoli/01-introduzione.typ"
-#include "capitoli/02-anatomia-frase.typ"
-#include "capitoli/03-stanze.typ"
-#include "capitoli/04-topologia.typ"
-#include "capitoli/05-oggetti.typ"
-#include "capitoli/06-proprieta.typ"
-#include "capitoli/07-contenitori-supporti.typ"
-#include "capitoli/08-stati-contatori.typ"
-#include "capitoli/09-regole-invece-di.typ"
-#include "capitoli/10-logica-conseguenze.typ"
-#include "capitoli/11-fine-partita.typ"
-#include "capitoli/12-eventi-turni.typ"
-#include "capitoli/13-demoni.typ"
-#include "capitoli/14-personaggi-dialoghi.typ"
-#include "capitoli/15-trasporto.typ"
-#include "capitoli/16-moduli.typ"
-#include "capitoli/17-riepilogo.typ"
+#include "capitoli/02-installazione.typ"
+#include "capitoli/03-anatomia-frase.typ"
+#include "capitoli/04-stanze.typ"
+#include "capitoli/05-topologia.typ"
+#include "capitoli/06-oggetti.typ"
+#include "capitoli/07-proprieta.typ"
+#include "capitoli/08-contenitori-supporti.typ"
+#include "capitoli/09-stati-contatori.typ"
+#include "capitoli/10-regole-invece-di.typ"
+#include "capitoli/11-logica-conseguenze.typ"
+#include "capitoli/12-fine-partita.typ"
+#include "capitoli/13-eventi-turni.typ"
+#include "capitoli/14-demoni.typ"
+#include "capitoli/15-buio-luce.typ"
+#include "capitoli/16-personaggi-dialoghi.typ"
+#include "capitoli/17-trasporto.typ"
+#include "capitoli/18-moduli.typ"
+#include "capitoli/19-comandi-giocatore.typ"
+#include "capitoli/20-riepilogo.typ"
 
 // ---- COLOPHON ---------------------------------------------------------------
-#colophon(versione: "v0.18.0", autore: "Simone Pizzi")
+#colophon(versione: "v0.29.0", autore: "Simone Pizzi")

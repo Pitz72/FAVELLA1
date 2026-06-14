@@ -222,7 +222,7 @@
         #upper("Capitolo " + str(_capnum.get().first()))
       ]
       #v(1mm)
-      #text(font: font-display, size: 27pt, weight: 800, fill: c.ink)[#it.body]
+      #text(font: font-display, size: 27pt, weight: 800, fill: c.ink, hyphenate: false)[#it.body]
       #v(2mm)
       #box(width: 38mm, line(length: 100%, stroke: 2.5pt + gradient.linear(c.cyan, c.emerald)))
     ]

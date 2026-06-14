@@ -24,10 +24,11 @@ potrà entrare.
 
 == Di cosa parla questo manuale
 
-Di una cosa sola: il *linguaggio*. Qui non troverai come si installa lo strumento
-né come si distribuisce il gioco finito; troverai ogni parola che FAVELLA capisce
-e ogni frase che puoi scriverle, dalla prima stanza fino ai personaggi che
-rispondono e ai meccanismi che scattano da soli.
+Di una cosa sola: il *linguaggio*. Il prossimo capitolo ti mette in condizione di
+lavorare — dove prendere FAVELLA e come aprire il laboratorio; da lì in poi tutto
+quello che leggerai è la lingua: ogni parola che FAVELLA capisce e ogni frase che
+puoi scriverle, dalla prima stanza fino ai personaggi che rispondono e ai
+meccanismi che scattano da soli.
 
 Il percorso è progressivo. Si parte dalle stanze e dagli oggetti, si arriva alle
 regole, agli stati, ai dialoghi. Ogni capitolo aggiunge un mattone al

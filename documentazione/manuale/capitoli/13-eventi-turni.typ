@@ -45,6 +45,17 @@ Ogni 5 turni: dire "L'orologio batte ma il pendolo no: si è fermato alle quattr
 Anche senza conseguenze, come qui, un evento ripetuto fa atmosfera: tiene presente
 che il tempo scorre e che la casa, intorno a te, non è immobile.
 
+#nota[
+  Vale anche il contrario: se c'è una conseguenza, puoi *omettere* il `dire`. È il
+  caso del battito silenzioso — un conteggio che scende senza dirlo a nessuno:
+  #fav(```
+# Forma disponibile:
+Ogni 3 turni: diminuisci il carburante.
+```)
+  L'unica regola è che qualcosa ci sia: una battuta, una conseguenza, o entrambe. Lo
+  stesso vale per i demoni del prossimo capitolo.
+]
+
 #tranello[
   `Al turno N` e `Ogni N turni` si somigliano ma sono opposti: il primo accade una
   volta, il secondo a ripetizione. Attento a non scrivere `Ogni 8 turni` quando

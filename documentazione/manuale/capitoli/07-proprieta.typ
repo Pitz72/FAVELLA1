@@ -29,6 +29,13 @@ Da quel momento puoi chiedere al gioco se quella proprietà vale — `se la torc
 spenta` — e una conseguenza potrà cambiarla. Per ora teniamo a mente che lo stato
 iniziale si dichiara così.
 
+#nota[
+  Va bene anche un aggettivo che *comincia* come una preposizione: `La lapide è
+  incisa.`, `L'aria è sulfurea.`, `La benda è insanguinata.` FAVELLA capisce che
+  `incisa` è una proprietà e non legge `in` come l'inizio di un complemento di
+  luogo. Vale per qualunque aggettivo: scrivilo come ti viene naturale.
+]
+
 == Le coppie di opposti
 
 Quasi sempre una proprietà ha il suo contrario, e i due si escludono: una torcia

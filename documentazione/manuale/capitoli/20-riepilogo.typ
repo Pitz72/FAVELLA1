@@ -21,17 +21,18 @@ porta a est` è un nome valido, anche se `est` è riservata).
   inset: 6pt,
   align: (left + top, left + top),
   table.header([*Categoria*], [*Parole*]),
-  [Definizioni], [#kw[è · sono · una · un · uno · stanza · cosa · contenitore · supporto · personaggio · comando · stato · contatore · prendibile]],
+  [Definizioni], [#kw[è · sono · una · un · uno · stanza · cosa · contenitore · supporto · personaggio · comando · senza · oggetto · stato · contatore · prendibile]],
   [Articoli], [#kw[il · lo · la · i · gli · le · l' · un']],
   [Preposizioni], [#kw[di · del · dei · della · dell' · degli · delle · dello · in · nel · nella · nello · negli · nelle · nell' · su · sul · sulla · sullo · sui · sugli · sulle · con · contro · a]],
-  [Mondo], [#kw[descrizione · collega · giocatore · comincia · inizia · parte]],
+  [Mondo], [#kw[descrizione · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza]],
+  [Buio e luce], [#kw[buia · buio · illumina]],
   [Trasporto], [#kw[può · portare · oggetti · dà · spazi]],
-  [Regole e logica], [#kw[Invece · se · dire · e · adesso · oppure · non · ha]],
-  [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · almeno · massimo · meno · più]],
+  [Regole e logica], [#kw[Invece · se · dire · e · adesso · oppure · non · ha · come]],
+  [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · partono · almeno · massimo · meno · più]],
   [Fine partita], [#kw[vinci · perdi · termina]],
-  [Opposte e alias], [#kw[opposte · direzioni · si · chiama · anche]],
+  [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · anche · come]],
   [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera]],
-  [Dialoghi], [#kw[dialogo · nodo · dice · opzione · conduce · chiude]],
+  [Personaggi e dialoghi], [#kw[dialogo · nodo · dice · opzione · conduce · chiude · va · cambia]],
   [Moduli], [#kw[Includi]],
   [Nomi speciali], [#kw[nulla · inventario]],
   [Direzioni di base], [#kw[nord · sud · est · ovest · n · s · e · o]],
@@ -50,8 +51,11 @@ porta a est` è un nome valido, anche se `est` è riservata).
 La cucina è una stanza.
 La descrizione della cucina è "...".
 La descrizione della cucina se [condizione] è "...".
+La descrizione della cucina è una di: "...", "...".
+La descrizione della cucina è in sequenza: "...", "...".
 La cucina collega est a il giardino.
 Alto e basso sono direzioni opposte.
+La cantina è buia.
 Il giocatore comincia in ingresso.
 ```)
 
@@ -61,11 +65,15 @@ La torcia è una cosa.
 La torcia è prendibile.
 La torcia è sul tavolino.
 La torcia è spenta.
+La torcia illumina.
 La torcia si chiama anche "pila".
+Il giocatore ha la torcia.
 Accesa e spenta sono opposte.
 La credenza è un contenitore.
 Il tavolino è un supporto.
 "accendi" è un comando.
+"accelera" è un comando senza oggetto.
+"ghermisci" è come prendi.
 ```)
 
 *Stati e contatori*
@@ -74,6 +82,8 @@ La verita è uno stato.
 La verita è ignota.
 Gli indizi è un contatore.
 La calma parte da 3.
+Le vite sono un contatore.
+Le vite partono da 3.
 ```)
 
 *Regole e conseguenze*
@@ -83,6 +93,7 @@ Invece di usa [ogg1] su [ogg2] se [condizione]: dire "...".
 # conseguenze: [ogg] è [proprietà] · [ogg] è in [luogo] · [ogg] è nel nulla ·
 #              aumenta/diminuisci [contatore] · [contatore] diventa N ·
 #              [stato] è [valore] · il giocatore è in [stanza] ·
+#              [personaggio] va nel [stanza] · [personaggio] cambia stanza ·
 #              vinci/perdi/termina "...".
 # condizioni:  il giocatore ha [ogg] · [ogg] è [proprietà] · [stato] è [valore] ·
 #              [contatore] è almeno/al massimo/più di/meno di/non è N ·
@@ -93,6 +104,7 @@ Invece di usa [ogg1] su [ogg2] se [condizione]: dire "...".
 #fav(```
 Al turno 8: dire "..." e adesso [conseguenza].
 Ogni 5 turni: dire "...".
+Ogni 3 turni: diminuisci il carburante.
 Ogni turno se [condizione]: dire "..." e adesso [conseguenza].
 Quando [condizione] diventa vera: dire "...".
 Il notaio è un personaggio.
@@ -105,7 +117,8 @@ Includi "oggetti.fav".
 == I comandi del giocatore
 
 Sono i verbi che chi gioca può digitare. Molti hanno sinonimi, e ai loro effetti
-puoi sovrapporti con le regole `Invece di`.
+puoi sovrapporti con le regole `Invece di`. Il capitolo «I comandi del giocatore»
+li racconta per esteso; qui sono raccolti per consultazione.
 
 #table(
   columns: (auto, 1fr),
@@ -113,7 +126,7 @@ puoi sovrapporti con le regole `Invece di`.
   inset: 6pt,
   align: (left + top, left + top),
   table.header([*Comando*], [*Effetto*]),
-  [#rip[nord, sud, est, ovest]], [Spostarsi (anche `n`, `s`, `e`, `o`, e le direzioni personalizzate).],
+  [#rip[nord, sud, est, ovest]], [Spostarsi (anche `n`, `s`, `e`, `o`, le direzioni personalizzate, `vai nord`).],
   [#rip[prendi / lascia]], [Raccogliere o posare un oggetto prendibile.],
   [#rip[esamina]], [Guardare da vicino un oggetto e leggerne la descrizione.],
   [#rip[guarda]], [Rivedere la descrizione della stanza e cosa c'è.],
@@ -121,6 +134,10 @@ puoi sovrapporti con le regole `Invece di`.
   [#rip[usa X con Y]], [Far interagire due oggetti.],
   [#rip[metti X in/su Y]], [Posare un oggetto dentro un contenitore o su un supporto.],
   [#rip[parla con X]], [Avviare il dialogo con un personaggio.],
+  [#rip[prendila, aprilo, ...]], [Pronomi: si riferiscono all'ultima cosa nominata (anche `prendi quella`).],
+  [#rip[annulla]], [Disfare l'ultimo turno (anche `disfa`).],
+  [#rip[ancora]], [Ripetere l'ultimo comando (anche `ripeti`, `g`).],
+  [#rip[trascrizione]], [Avviare o fermare il salvataggio della partita su file.],
   [#rip[aiuto]], [Elenco dei comandi disponibili.],
   [#rip[esci]], [Chiudere il dialogo in corso, o uscire dal gioco.],
 )

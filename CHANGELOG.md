@@ -32,6 +32,15 @@ collaudo, tutte verdi). Tutto il nuovo codice è additivo e fuori dal motore.
   tag→Release); `packaging/` con script NSIS e file AppImage.
 - Versioni in lockstep su **0.29.0** (`VERSIONE_MOTORE` fonte di verità). La firma del
   codice è assente per ora: al primo avvio Gatekeeper/SmartScreen mostrano un avviso atteso.
+- **Manuale tipografico aggiornato a 0.29.0** (Typst, da 17 a **20 capitoli**, 72 pp.):
+  copre tutta l'evoluzione dalla v0.18.0 a oggi. Tre capitoli nuovi — «Installare e
+  avviare FAVELLA» (installer/CLI/playground), «Buio e luce» (`è buia`/`illumina`),
+  «I comandi del giocatore» (pronomi/anafora, ANNULLA/ANCORA/TRASCRIZIONE) — e inserti
+  nei capitoli esistenti: descrizioni a varietà (`è una di`/`è in sequenza`), inventario
+  iniziale (`Il giocatore ha …`), copula plurale su stati/contatori (`Le vite sono un
+  contatore`/`partono da`), verbi intransitivi (`comando senza oggetto`) e sinonimi di
+  verbo (`… è come prendi`), tick silenziosi, movimento NPC (`va`/`cambia stanza`),
+  aggettivi con prefisso-preposizione (`è incisa`). Riepilogo e parole riservate estesi.
 
 ---
 
