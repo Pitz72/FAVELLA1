@@ -4,6 +4,37 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.29.0] - 2026-06-14
+### Distribuzione multipiattaforma — installer + CLI unica + playground offline 📦
+Prima release **distribuibile**: un autore (anche non tecnico) installa FAVELLA e la
+usa **senza clonare il repo né installare Python**. **Nessun cambio al motore**: la
+grammatica resta `grammatica-0.28.0.md`, le suite invariate (**582** linguaggio + **43**
+collaudo, tutte verdi). Tutto il nuovo codice è additivo e fuori dal motore.
+
+- **Entry-point unico `favella1`** (`favella.py`): strato sottile (argparse) sopra i
+  moduli esistenti, con sottocomandi `gioca` / `compila` / `collaudo` / `playground` /
+  `esporta` / `versione` (alias inglesi: `play`/`check`/`test`/`export`/`version`).
+  Console riconfigurata a UTF-8 per sicurezza sulle console legacy.
+- **Playground locale offline** (`favella_playground.py`): `favella1 playground` avvia
+  un mini-server (sola libreria standard, nessuna dipendenza nuova) su `127.0.0.1` e
+  apre un editor + terminale nel browser, collegato al **motore nativo** — completamente
+  offline, con la diagnostica reale del compilatore. (Diverso da `esporta`, che usa
+  Pyodide e richiede la rete.)
+- **Freeze PyInstaller** (`favella1.spec`, build *one-dir*): `--collect-all lark`, i 5
+  moduli del motore inclusi anche come sorgente (servono a `esporta` via `sys._MEIPASS`),
+  demo ufficiali nel bundle, icona di marca.
+- **CI multipiattaforma** (`.github/workflows/release.yml`): build matrix
+  Windows/macOS/Linux con PyInstaller; impacchettamento per-OS in **installer NSIS**
+  (`.exe`), **`.dmg`** (Apple Silicon) e **AppImage**; smoke su ogni bundle; al push di
+  un tag `v*` pubblica una **GitHub Release** con i tre installer. La suite del motore
+  gira in CI e blocca eventuali regressioni.
+- **Doc**: `PACKAGING.md` (architettura del pacchetto + procedura di rilascio
+  tag→Release); `packaging/` con script NSIS e file AppImage.
+- Versioni in lockstep su **0.29.0** (`VERSIONE_MOTORE` fonte di verità). La firma del
+  codice è assente per ora: al primo avvio Gatekeeper/SmartScreen mostrano un avviso atteso.
+
+---
+
 ## [0.28.1] - 2026-06-14
 ### Revisione totale del linguaggio — Lotto 3 (performance, documentazione, pulizia) 🧹
 Patch di chiusura della revisione: nessun cambio di grammatica (la spec EBNF resta

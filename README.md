@@ -18,7 +18,31 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.28.1 — Asse A completo + Revisione totale di solidità
+## 📦 Installazione
+
+Dalla **v0.29.0** FAVELLA è distribuita come **installer multipiattaforma**: scarica quello del tuo sistema dall'ultima [Release](https://github.com/Pitz72/FAVELLA1/releases) — **non serve clonare il repo né installare Python**.
+
+| Sistema | File | Note |
+|---------|------|------|
+| Windows | `favella1-setup-*-windows-x64.exe` | installer; crea le scorciatoie nel Menu Start |
+| macOS (Apple Silicon) | `favella1-*-macos-arm64.dmg` | trascina la cartella in Applicazioni |
+| Linux | `favella1-*-linux-x86_64.AppImage` | rendi eseguibile e lancia |
+
+Dopo l'installazione:
+
+```sh
+favella1 gioca storia.fav        # gioca una storia
+favella1 playground              # editor + motore nel browser (offline)
+favella1 collaudo storia.fav     # collaudatore statico
+favella1 compila storia.fav      # solo diagnostica
+favella1 esporta storia.fav      # genera un .html giocabile e condivisibile
+```
+
+> Gli eseguibili non sono firmati: al primo avvio accetta l'avviso di SmartScreen (Windows) o Gatekeeper (macOS). Dettagli e procedura di rilascio in [PACKAGING.md](PACKAGING.md).
+
+---
+
+## 🚀 Stato Attuale: v0.29.0 — Distribuzione multipiattaforma (Asse A completo + Revisione totale)
 
 Il linguaggio FAVELLA è **completo ed eccellente allo stato attuale**. Sono chiusi i Livelli 1-8 della roadmap, il **Consolidamento** (v0.18.0) e l'intero **Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0: pronomi/anafora, ANNULLA/ANCORA, varietà nelle descrizioni, buio e luce, movimento degli NPC, sinonimi di verbo, verbi intransitivi, inventario iniziale, tick silenziosi). Le versioni **v0.27.0 e v0.28.0** sono una **revisione totale di solidità** (caccia a difetti e debiti, non nuove feature) prima del manuale.
 

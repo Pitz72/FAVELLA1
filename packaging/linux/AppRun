@@ -1,0 +1,5 @@
+#!/bin/sh
+# AppRun — punto d'ingresso dell'AppImage di FAVELLA 1.
+# Inoltra tutti gli argomenti all'eseguibile PyInstaller nella AppDir.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/favella1/favella1" "$@"

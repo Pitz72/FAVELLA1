@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Script che girano su Linux/macOS: SEMPRE fine-riga LF (CRLF rompe lo shebang)
+*.sh            text eol=lf
+*.desktop       text eol=lf
+packaging/linux/AppRun text eol=lf

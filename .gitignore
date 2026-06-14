@@ -31,6 +31,12 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# favella1.spec è lo spec di distribuzione: sorgente versionato, non generato
+!favella1.spec
+
+# Artefatti runtime della CLI (creati nella cartella di lavoro dell'autore)
+trascrizione-favella.txt
+/AppDir/
 
 # Installer logs
 pip-log.txt

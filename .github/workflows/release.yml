@@ -1,0 +1,134 @@
+name: Release multipiattaforma
+
+# Build matrix su Windows/macOS/Linux con PyInstaller. Al push di un tag `v*`
+# gli installer vengono pubblicati come asset di una GitHub Release. Si può
+# lanciare anche a mano (workflow_dispatch) per produrre solo gli artifact,
+# senza pubblicare una Release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: windows-x64
+          - os: macos-latest
+            artifact: macos-arm64
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installa dipendenze
+        run: python -m pip install --upgrade pip lark pyinstaller
+
+      - name: Suite del motore (blocca le regressioni)
+        run: |
+          python test_linguaggio.py
+          python test_collaudo.py
+
+      - name: Ricava la versione del motore
+        id: ver
+        shell: bash
+        run: echo "version=$(python -c 'from strutture import VERSIONE_MOTORE; print(VERSIONE_MOTORE)')" >> "$GITHUB_OUTPUT"
+
+      - name: Build PyInstaller
+        run: pyinstaller --noconfirm --clean favella1.spec
+
+      - name: Smoke del bundle
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then EXE="dist/favella1/favella1.exe"; else EXE="dist/favella1/favella1"; fi
+          "$EXE" versione
+          "$EXE" compila esempi/demo/relitto-silente/relitto.fav
+          "$EXE" collaudo esempi/demo/relitto-silente/relitto.fav > /dev/null
+
+      # ----------------------------------------------------------------------
+      # Packaging per-OS
+      # ----------------------------------------------------------------------
+      - name: Installer Windows (NSIS)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          & $makensis "/DVERSION=${{ steps.ver.outputs.version }}" packaging\windows\installer.nsi
+
+      - name: Immagine disco macOS (.dmg)
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil create -volname "FAVELLA 1" \
+            -srcfolder dist/favella1 -ov -format UDZO \
+            "dist/favella1-${{ steps.ver.outputs.version }}-macos-arm64.dmg"
+
+      - name: AppImage Linux
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          APPDIR=AppDir
+          mkdir -p "$APPDIR/usr/bin"
+          cp -r dist/favella1 "$APPDIR/usr/bin/favella1"
+          install -m 755 packaging/linux/AppRun "$APPDIR/AppRun"
+          cp packaging/linux/favella1.desktop "$APPDIR/favella1.desktop"
+          cp Branding2026/derivati/favicon/favicon-256.png "$APPDIR/favella1.png"
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APPDIR" \
+            "dist/favella1-${{ steps.ver.outputs.version }}-linux-x86_64.AppImage"
+
+      - name: Carica artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: favella1-${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            dist/favella1-setup-*.exe
+            dist/favella1-*.dmg
+            dist/favella1-*.AppImage
+
+  release:
+    name: Pubblica la Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica tutti gli artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Crea la GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          body: |
+            Installer multipiattaforma di **FAVELLA 1** (il linguaggio).
+
+            | Sistema | File |
+            |--------|------|
+            | Windows | `favella1-setup-*-windows-x64.exe` |
+            | macOS (Apple Silicon) | `favella1-*-macos-arm64.dmg` |
+            | Linux  | `favella1-*-linux-x86_64.AppImage` |
+
+            Dopo l'installazione: `favella1 gioca storia.fav`, `favella1 playground`,
+            `favella1 collaudo storia.fav`. Vedi `PACKAGING.md` per i dettagli.
+
+            > macOS/Windows non sono firmati: al primo avvio accetta l'avviso di
+            > Gatekeeper / SmartScreen (è atteso).

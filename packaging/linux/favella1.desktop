@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=FAVELLA 1
+Comment=L'italiano come linguaggio di programmazione narrativa
+Exec=favella1 playground
+Icon=favella1
+Categories=Development;Education;
+Terminal=true
