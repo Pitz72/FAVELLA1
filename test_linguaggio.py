@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.25.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.26.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1603,6 +1603,8 @@ _CORPUS_GUARDIA = (
     # (cons_png_cambia). Dopo ENTITA il lookahead "va"/"cambia" vs _copula.
     "Ogni 6 turni: il mercante cambia stanza.\n"        # cons_png_cambia
     "Quando il punteggio è almeno 4: il mercante va nel corridoio.\n"  # cons_png_va
+    # [0.26.0 / A6] Sinonimo di verbo: dopo '"…" è' il lookahead "come" vs "un".
+    '"ghermisci" è come prendi.\n'                       # def_sinonimo
 )
 
 
@@ -2535,7 +2537,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.25.0.md")
+                          "grammatica-0.26.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2552,7 +2554,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.25.0.md è presente")
+           "documentazione/grammatica-0.26.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -3884,6 +3886,87 @@ def test_a5_destinazione_inesistente_errore():
            "l'errore segnala la destinazione non-stanza")
 
 
+# --- Test: sinonimi di verbo [0.26.0 / A6] ----------------------------------
+
+def test_a6_parsing_e_registrazione():
+    print("[A6: '\"ghermisci\" è come prendi.' registra il sinonimo]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        '"ghermisci" è come prendi.\n')
+    mondo, log = compila(src)
+    _check(mondo is not None, "il sorgente con sinonimo compila")
+    _check(mondo and mondo.sinonimi_verbo.get("ghermisci") == "prendi",
+           "il sinonimo rimanda al verbo canonico 'prendi'")
+
+
+def test_a6_sinonimo_si_comporta_come_il_verbo():
+    print("[A6: il sinonimo prende l'oggetto come farebbe il verbo bersaglio]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è in cella.\nLa gemma è prendibile.\n"
+        '"ghermisci" è come prendi.\n')
+    mondo = runtime(src)
+    out = esegui(mondo, "ghermisci gemma")
+    _check("gemma" in mondo.inventario, "la gemma è stata presa col sinonimo")
+    _check("preso" in out.lower(), "la risposta è quella del verbo 'prendi'")
+
+
+def test_a6_sinonimo_attiva_le_regole_del_canonico():
+    print("[A6: il sinonimo attiva le regole 'Invece di [canonico]']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
+        '"ghermisci" è come prendi.\n'
+        'Invece di prendi la chiave: dire "Una scossa ti ferma.".\n')
+    mondo = runtime(src)
+    out = esegui(mondo, "ghermisci chiave")
+    _check("scossa" in out.lower(),
+           "la regola sul verbo canonico scatta anche col sinonimo")
+    _check("chiave" not in mondo.inventario,
+           "la regola sostituisce la presa (oggetto non raccolto)")
+
+
+def test_a6_il_canonico_continua_a_funzionare():
+    print("[A6: dichiarare un sinonimo non disturba il verbo originale]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è in cella.\nLa gemma è prendibile.\n"
+        '"ghermisci" è come prendi.\n')
+    mondo = runtime(src)
+    esegui(mondo, "prendi gemma")
+    _check("gemma" in mondo.inventario, "il verbo originale 'prendi' funziona ancora")
+
+
+def test_a6_bersaglio_sconosciuto_warning():
+    print("[A6: un sinonimo verso un verbo ignoto è un avviso (non bloccante)]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        '"svolazza" è come volare.\n')   # 'volare' non è un verbo del motore
+    mondo, log = compila(src)
+    _check(mondo is not None, "la compilazione riesce (warning non bloccante)")
+    _check("volare" in log.lower() and ("non è un verbo" in log.lower()
+           or "non fa" in log.lower()),
+           "il log avverte che il bersaglio non è un verbo noto")
+    _check(mondo and "svolazza" not in mondo.sinonimi_verbo,
+           "il sinonimo morto non è registrato")
+
+
+def test_a6_piu_sinonimi():
+    print("[A6: più sinonimi per verbi diversi convivono]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Una gemma è una cosa.\nLa gemma è in cella.\nLa gemma è prendibile.\n"
+        '"ghermisci" è come prendi.\n'
+        '"scruta" è come esamina.\n')
+    mondo = runtime(src)
+    _check(mondo.sinonimi_verbo.get("ghermisci") == "prendi"
+           and mondo.sinonimi_verbo.get("scruta") == "esamina",
+           "entrambi i sinonimi sono registrati")
+    out = esegui(mondo, "scruta gemma")
+    _check("non vedi nulla del genere" not in out.lower(),
+           "'scruta' esamina la gemma come 'esamina'")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -4179,9 +4262,16 @@ def main():
         test_a5_movimento_via_regola_giocatore,
         test_a5_cambia_stanza_senza_uscite_no_op,
         test_a5_destinazione_inesistente_errore,
+        # [0.26.0 / A6] Sinonimi di verbo
+        test_a6_parsing_e_registrazione,
+        test_a6_sinonimo_si_comporta_come_il_verbo,
+        test_a6_sinonimo_attiva_le_regole_del_canonico,
+        test_a6_il_canonico_continua_a_funzionare,
+        test_a6_bersaglio_sconosciuto_warning,
+        test_a6_piu_sinonimi,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.25.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.26.0)")
     print("=" * 60)
     for t in tests:
         t()

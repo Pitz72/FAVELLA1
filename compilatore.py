@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.25.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.26.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -82,6 +82,8 @@ PAROLE_RISERVATE = frozenset({
     # verbi personalizzati (Livello 4 / M1); [0.19.0 / A7] 'senza oggetto' marca
     # un comando INTRANSITIVO ('"accelera" è un comando senza oggetto.').
     "comando", "senza", "oggetto",
+    # [0.26.0 / A6] sinonimi di verbo: '"ghermisci" è come prendi.'
+    "come",
     # direzioni personalizzate (Livello 4 / L1)
     "direzioni",
     # contenitori e supporti (Livello 4 / M1)
@@ -306,6 +308,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_giocatore_inventario
                   | def_capacita_oggetto
                   | def_illumina
+                  | def_sinonimo
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -338,6 +341,12 @@ _GRAMMAR_TEMPLATE = r"""
     // distingue "." (transitivo, storico) da "senza" (intransitivo) → 0-ambiguo.
     def_verbo: TESTO_QUOTATO "è" "un" "comando" "senza" "oggetto" "." -> verbo_senza_oggetto
              | TESTO_QUOTATO "è" "un" "comando" "."                   -> verbo_con_oggetto
+    // [0.26.0 / A6] Sinonimo di verbo: '"ghermisci" è come prendi.' rimappa una
+    // parola-nuova (quotata, come i verbi custom) a un verbo di libreria, così si
+    // comporta IDENTICAMENTE senza una regola per ogni oggetto. Inizia con
+    // TESTO_QUOTATO come def_verbo; dopo '"…" è' il lookahead "come" la distingue
+    // da "un" (comando) → LALR(1) 0-ambiguo.
+    def_sinonimo: TESTO_QUOTATO "è" "come" VERBO "."
     // [Livello 5] La descrizione può essere CONDIZIONALE: con una clausola 'se',
     // si applica solo quando la condizione è vera (più dichiarazioni = varianti
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
@@ -982,6 +991,30 @@ class FavellaTransformer(Transformer):
 
     def verbo_senza_oggetto(self, testo_quotato):
         return self._registra_verbo(testo_quotato, intransitivo=True)
+
+    def def_sinonimo(self, sinonimo_testo, verbo_canonico):
+        # [0.26.0 / A6] '"ghermisci" è come prendi.': la parola-nuova (quotata)
+        # rimappa al verbo di libreria 'verbo_canonico'. Il verbo bersaglio dev'essere
+        # noto al motore, altrimenti il sinonimo è morto (warning non bloccante).
+        sinonimo = " ".join(sinonimo_testo.lower().split())
+        canonico = verbo_canonico  # già lowercase (metodo VERBO)
+        if not sinonimo:
+            self.warnings.append("Sinonimo di verbo vuoto ignorato.")
+            return None
+        if canonico not in VERBI_VALIDI:
+            self.warnings.append(
+                f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' non è "
+                f"un verbo noto al motore: il sinonimo non farà nulla. Usa un verbo "
+                f"di libreria (es. prendi, esamina, usa, apri, vai)."
+            )
+            return None
+        if sinonimo in VERBI_VALIDI:
+            self.warnings.append(
+                f"Il sinonimo '{sinonimo}' è già un verbo del motore: la "
+                f"dichiarazione è superflua."
+            )
+        self.mondo.dichiara_sinonimo(sinonimo, canonico)
+        return None
 
     # [0.22.0 / A2] Valore di una descrizione: stringa singola o più varianti.
     def descr_singola(self, testo):

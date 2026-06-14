@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.25.0)
+# Interprete Interattivo per FAVELLA 1 (v0.26.0)
 
 import sys
 import traceback
@@ -475,6 +475,14 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             parole = [verbo_multi] + parole[n:]
 
         verbo_giocatore = parole[0]
+
+        # [0.26.0 / A6] Sinonimo di verbo dichiarato ('"ghermisci" è come prendi.'):
+        # lo riscriviamo nel verbo di libreria canonico PRIMA di ogni altro
+        # trattamento, così si comporta IDENTICAMENTE al verbo bersaglio (regole
+        # 'Invece di prendi …', anafora, logica di default comprese).
+        sinonimi = getattr(mondo, "sinonimi_verbo", None)
+        if sinonimi and verbo_giocatore in sinonimi:
+            verbo_giocatore = sinonimi[verbo_giocatore]
 
         # [Livello 5b] 'parla con X' (o 'parla X') avvia un dialogo con un NPC.
         if verbo_giocatore in ("parla", "parlare", "conversa", "conversare"):

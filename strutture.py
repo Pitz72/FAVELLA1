@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.25.0"
+VERSIONE_MOTORE = "0.26.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -591,6 +591,14 @@ class Mondo:
         # INTRANSITIVI ('"accelera" è un comando senza oggetto.'): non richiedono
         # un oggetto bersaglio; li gestisce una regola globale 'Invece di [verbo]:'.
         self.verbi_intransitivi: Set[str] = set()
+        # [0.26.0 / A6] Sinonimi di verbo: mappa parola-nuova -> verbo di libreria
+        # canonico ('"ghermisci" è come prendi.'). A differenza di un verbo
+        # personalizzato (che richiede una regola per ogni oggetto), un sinonimo
+        # RIMAPPA al verbo di libreria: a runtime il parser lo riscrive nel
+        # canonico, così si comporta identicamente (regole 'Invece di prendi …'
+        # incluse). Serve l'input del giocatore; nelle regole d'autore vale il
+        # canonico (come per gli alias di oggetto).
+        self.sinonimi_verbo: Dict[str, str] = {}
         # [Livello 4 / L1] Topologia data-driven. 'direzioni' mappa ogni FORMA
         # accettata (canonica o abbreviazione) -> direzione canonica;
         # 'opposte_direzioni' mappa canonica -> canonica opposta (per l'auto-
@@ -734,6 +742,11 @@ class Mondo:
         self.verbi_personalizzati.add(verbo)
         if intransitivo:
             self.verbi_intransitivi.add(verbo)
+
+    def dichiara_sinonimo(self, sinonimo: str, verbo_canonico: str):
+        """[0.26.0 / A6] Registra un sinonimo di verbo: la parola-nuova rimanda a
+        un verbo di libreria. Entrambi già normalizzati (lowercase)."""
+        self.sinonimi_verbo[sinonimo] = verbo_canonico
 
     def _inizializza_direzioni_base(self):
         """[Livello 4 / L1] Precarica le direzioni di base (fonte unica in utils)."""

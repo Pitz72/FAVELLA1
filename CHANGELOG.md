@@ -4,6 +4,37 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.26.0] - 2026-06-14
+### Sinonimi di verbo (Asse A — A6) 🗣️
+Sesta e ultima voce dell'**Asse A** di `progettazione-oltre-0.18.md`: con questa il
+linguaggio chiude il gruppo «Il mondo vivo» (A4+A5+A6).
+
+- **Sinonimo di verbo**: `"ghermisci" è come prendi.` (`def_sinonimo`,
+  `TESTO_QUOTATO "è" "come" VERBO "."`) — rimappa una parola-nuova (quotata, come
+  i verbi custom e gli alias) a un **verbo di libreria**. A differenza di un verbo
+  personalizzato (che richiede una regola `Invece di` per ogni oggetto), il
+  sinonimo eredita tutto il comportamento del bersaglio: il parser dei comandi lo
+  **riscrive nel canonico** prima di ogni trattamento, così funzionano regole
+  `Invece di prendi …`, anafora e logica di default.
+- **Modello**: `Mondo.sinonimi_verbo` (parola → verbo canonico). Serve l'input del
+  giocatore; nelle regole d'autore vale il canonico (come per gli alias di oggetto).
+  Il bersaglio dev'essere un verbo noto (`VERBI_VALIDI`): altrimenti il sinonimo è
+  morto e si emette un **warning non bloccante** (e non viene registrato).
+- **LALR(1) 0-ambiguo**: `def_sinonimo` è distinta da `def_verbo` sul lookahead
+  `come` vs `un` (dopo `"…" è`). Riservata aggiunta: `come`.
+- **Test**: **+12 asserzioni** (6 test: registrazione, comportamento identico al
+  verbo bersaglio, attivazione delle regole del canonico, coesistenza col verbo
+  originale, warning su bersaglio ignoto, più sinonimi). Suite del linguaggio a
+  **549** (era 537); collaudatore invariato a **33**; demo `vincibile-staticamente`.
+  Spec EBNF **`grammatica-0.26.0.md`** (§12); puntatore `_SPEC_EBNF` 0.25.0 → 0.26.0.
+  Versioni allineate a **0.26.0**.
+
+> **Asse A completato.** Con A6 il linguaggio FAVELLA chiude l'Asse A di
+> `progettazione-oltre-0.18.md` (A1–A9). Prossimo passo della roadmap: il
+> **manuale completo** rigenerato sul linguaggio finale.
+
+---
+
 ## [0.25.0] - 2026-06-14
 ### Movimento degli NPC (Asse A — A5) 🚶
 Quinta voce dell'**Asse A** di `progettazione-oltre-0.18.md`. I personaggi erano
