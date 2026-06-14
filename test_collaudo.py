@@ -2,8 +2,8 @@
 # Suite di test del COLLAUDATORE automatico (B1, Fase B1.1: analisi statica).
 #
 # Separata da test_linguaggio.py di proposito: collaudo.py e un CONSUMATORE del
-# Mondo compilato e non tocca grammatica ne loop, quindi i 492 test del
-# linguaggio restano per costruzione intatti.
+# Mondo compilato e non tocca grammatica ne loop, quindi i test del linguaggio
+# restano per costruzione intatti.
 #
 # Esecuzione:  python test_collaudo.py
 # Niente caratteri non-cp1252 nei print (vincolo d'ambiente Windows/PowerShell).
@@ -157,6 +157,46 @@ def test_ostruzione_possibile():
            "il requisito bloccante 'dorata' e elencato")
 
 
+# --- Vittoria via EVENTO e via DEMONE [0.27.0 / revisione G] ------------------
+# Prima coperti solo dalle 3 demo: i rami 'evento' e 'demone' di analizza_vincibilita
+# non erano mai esercitati in isolamento.
+
+def test_vittoria_via_evento():
+    print("[catena della vittoria: sorgente di tipo EVENTO]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        'Al turno 3: dire "Esplosione!" e adesso vinci.\n'
+    )
+    mondo = compila(src)
+    _check(mondo is not None, "la storia compila")
+    vitt = analizza_vincibilita(mondo)["vittoria"]
+    _check(vitt["esito"] == "vincibile-staticamente", "esito: vincibile-staticamente")
+    _check(vitt["n_sorgenti"] == 1, "una sola sorgente di vittoria")
+    _check(vitt["sorgenti"][0]["tipo"] == "evento", "la sorgente e un evento a tempo")
+    _check(not vitt["sorgenti"][0]["ostruzione_sospetta"],
+           "un evento a tempo incondizionato non e mai ostruito")
+
+
+def test_vittoria_via_demone():
+    print("[catena della vittoria: sorgente di tipo DEMONE]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "Il timer è un contatore.\n"
+        "Ogni 1 turno: aumenta il timer.\n"
+        'Quando il timer è almeno 3: dire "Tempo scaduto." e adesso vinci.\n'
+    )
+    mondo = compila(src)
+    _check(mondo is not None, "la storia compila")
+    vitt = analizza_vincibilita(mondo)["vittoria"]
+    _check(vitt["esito"] == "vincibile-staticamente", "esito: vincibile-staticamente")
+    _check(vitt["n_sorgenti"] == 1, "una sola sorgente di vittoria")
+    _check(vitt["sorgenti"][0]["tipo"] == "demone", "la sorgente e un demone (fronte di salita)")
+    _check(not vitt["sorgenti"][0]["ostruzione_sospetta"],
+           "il timer e prodotto da 'aumenta', quindi nessuna ostruzione")
+
+
 # --- Verifica sulle DEMO REALI ------------------------------------------------
 
 def _analizza_demo(percorso_relativo):
@@ -193,6 +233,8 @@ def main():
         test_catena_vittoria_vincibile,
         test_storia_rotta_rilevamenti,
         test_ostruzione_possibile,
+        test_vittoria_via_evento,
+        test_vittoria_via_demone,
         test_demo_reali_vincibili,
     ]
     print("=" * 60)

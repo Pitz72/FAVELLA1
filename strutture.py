@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.27.0"
+VERSIONE_MOTORE = "0.28.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -635,6 +635,11 @@ class Mondo:
         # Entrambi sono stato di sessione (esclusi dalle istantanee).
         self.ultimo_comando: Optional[str] = None
         self._storia_stati: List[dict] = []
+        # [0.27.0 / D-dialogo] Istantanea pre-dialogo messa da parte mentre una
+        # conversazione è in corso: l'INTERA conversazione (con le sue conseguenze
+        # 'e adesso …') è un solo passo di ANNULLA. Stato di sessione, sempre None
+        # tra un turno e l'altro → escluso dalle istantanee.
+        self._snap_dialogo: Optional[dict] = None
         # [0.22.0 / A2] Generatore casuale del mondo, con seme fisso: alimenta le
         # descrizioni 'è una di: …' in modo RIPRODUCIBILE. È stato del mondo →
         # catturato/ripristinato dalle istantanee di ANNULLA (l'undo riavvolge
@@ -700,7 +705,7 @@ class Mondo:
     # oggetti, inventario, variabili, demoni, posizione, turno — è stato mutabile
     # e viene catturato/ripristinato fedelmente.
     _CAMPI_VOLATILI = ("_storia_stati", "ultimo_comando", "azioni",
-                       "mappa_verbi_giocatore", "annunci")
+                       "mappa_verbi_giocatore", "annunci", "_snap_dialogo")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per

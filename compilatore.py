@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.27.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.28.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -586,7 +586,16 @@ _GRAMMAR_TEMPLATE = r"""
                 | "termina" TESTO_QUOTATO?       -> cons_termina
 
     // --- TERMINALI LESSICALI ---
-    PREP_LUOGO: "in" | "nel" | "nella" | "negli" | "nelle" | "nell'" | "sul" | "sulla" | "sullo" | "sui" | "sugli" | "sulle"
+    // [0.27.0 / D] PREP_LUOGO come REGEX con CONFINE DESTRO sulle forme semplici:
+    // 'in'/'nel'/'sul'… non devono più staccarsi dall'inizio di un aggettivo-stato
+    // monoparola (`è incisa` non è più letto 'in'+'cisa'; idem 'sulfurea'→'sul').
+    // Le forme con apostrofo (nell') non portano il lookahead: sono già delimitate
+    // dall'apostrofo e seguite dalla vocale dell'ENTITA ("nell'atrio"). Priorità di
+    // default (0) > PROPRIETA (.-1): 'è in cella' resta posizione, non proprietà.
+    // NB: l'insieme è ora COMPLETO (nello/nei/sull'…): col confine destro 'nel' non
+    // può più scomporsi in 'nel'+'lo' per formare 'nello' (com'era con i terminali
+    // stringa), quindi tutte le forme articolate vanno elencate esplicitamente.
+    PREP_LUOGO: /nell'|sull'|(?:in|nel|nello|nella|nei|negli|nelle|sul|sullo|sulla|sui|sugli|sulle)(?![a-zA-ZÀ-ÿ0-9'])/i
     // [0.18.0 / A4] Preposizioni d'azione (regole a due oggetti: 'usa X PREP Y').
     // Oltre alle forme semplici, ora sono ammesse le forme ARTICOLATE ('usa la
     // batteria SUL pannello', 'metti la spada NELLA teca'), simmetriche a

@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.27.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.28.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1536,6 +1536,7 @@ _CORPUS_GUARDIA = (
     "Una porta di ferro è una cosa.\n"        # nome-entità multiparola
     "La porta di ferro è in cella.\n"          # def_posizione
     "La porta di ferro è chiusa.\n"            # def_proprieta
+    "La porta di ferro è incisa.\n"            # [0.27.0/D] proprietà che inizia con prep ('in')
     "La porta di ferro è prendibile.\n"        # def_prendibile
     "Accesa e spenta sono opposte.\n"          # def_opposti [Livello 3 / M5]
     "Una chiave è una cosa.\nLa chiave è in cella.\nLa chiave è prendibile.\n"
@@ -2540,7 +2541,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.27.0.md")
+                          "grammatica-0.28.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2557,20 +2558,33 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.27.0.md è presente")
+           "documentazione/grammatica-0.28.0.md è presente")
+
+
+def _blocchi_ebnf_della_spec(spec: str) -> str:
+    """[0.27.0 / G] Estrae e concatena SOLO i blocchi ```ebnf della spec. Così
+    l'anti-drift verifica che una regola sia DEFINITA nel listato grammaticale, non
+    soltanto menzionata in una nota in prosa (match per sottostringa sull'intero
+    file = troppo debole)."""
+    return "\n".join(re.findall(r"```ebnf\n(.*?)```", spec, re.DOTALL))
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
-    print("[spec EBNF: cita tutte le regole def_/cond_/cons_ della grammatica]")
+    print("[spec EBNF: definisce tutte le regole def_/cond_/cons_ della grammatica]")
     if not os.path.exists(_SPEC_EBNF):
         _check(False, "spec EBNF mancante")
         return
     with open(_SPEC_EBNF, "r", encoding="utf-8") as f:
         spec = f.read()
+    ebnf = _blocchi_ebnf_della_spec(spec)
+    _check(bool(ebnf.strip()), "la spec contiene almeno un blocco ```ebnf")
+    # Nomi DEFINITI nei blocchi EBNF: 'nome:' / 'nome.prio:' (anche con '?') oppure '-> nome'.
+    definiti = set(re.findall(r"(?m)^\s*\??([A-Za-z_]\w*)(?:\.-?\d+)?:", ebnf))
+    definiti |= set(re.findall(r"->\s*(\w+)", ebnf))
     nomi = _nomi_regole_grammatica()
-    mancanti = sorted(n for n in nomi if n not in spec)
+    mancanti = sorted(n for n in nomi if n not in definiti)
     _check(not mancanti,
-           f"la spec cita tutte le regole def_/cond_/cons_ (mancanti: {mancanti})")
+           f"ogni regola def_/cond_/cons_ è DEFINITA nei blocchi ebnf (mancanti: {mancanti})")
 
 
 def test_spec_ebnf_documenta_terminali_chiusi():
@@ -2923,6 +2937,115 @@ def test_prima_maiuscola_preserva_nomi_propri():
     out = esegui(mondo, "esamina atrio")
     _check("Guardia Reale" in out,
            "l'annuncio mantiene 'Guardia Reale' (non 'guardia reale')")
+
+
+# --- Test: [0.27.0 / D] aggettivi-proprietà che iniziano con una preposizione -
+# Revisione totale 2026-06-14: 'La lapide è incisa.' veniva rifiutato perché il
+# lexer staccava 'in' (PREP_LUOGO) da 'incisa'. Ora PREP_LUOGO ha un confine destro.
+
+def test_proprieta_con_prefisso_preposizione():
+    print("[lexer: proprietà che iniziano con 'in'/'sul'/... sono accettate]")
+    base = "L'atrio è una stanza.\nIl giocatore comincia nell'atrio.\n"
+    for adj in ("incisa", "insanguinata", "informe", "sulfurea"):
+        mondo, _ = compila(
+            base + f"La lapide è una cosa.\nLa lapide è nell'atrio.\nLa lapide è {adj}.\n")
+        ok = mondo is not None and adj in mondo.trova_oggetto("lapide").proprieta
+        _check(ok, f"'La lapide è {adj}.' compila e assegna la proprietà")
+    # La posizione (PREP_LUOGO vero) NON deve regredire.
+    m1, _ = compila("La cella è una stanza.\nLa gemma è una cosa.\nLa gemma è in cella.\n")
+    _check(m1 and m1.trova_oggetto("gemma").posizione == "cella",
+           "'è in cella' resta una posizione (non una proprietà 'in')")
+    m2, _ = compila("L'atrio è una stanza.\nLa gemma è una cosa.\nLa gemma è nell'atrio.\n")
+    _check(m2 and m2.trova_oggetto("gemma").posizione == "atrio",
+           "la forma con apostrofo \"nell'atrio\" resta una posizione")
+    m3, _ = compila(
+        "L'atrio è una stanza.\nLa mensola è un supporto.\nLa mensola è nell'atrio.\n"
+        "La gemma è una cosa.\nLa gemma è sulla mensola.\n")
+    _check(m3 and m3.trova_oggetto("gemma").posizione == "mensola",
+           "'sulla mensola' resta una posizione")
+    # Le forme articolate complete (nello/nei/sullo) devono restare valide: col
+    # confine destro 'nel' non si scompone più in 'nel'+'lo' (regressione vista
+    # nella demo «Il Relitto»: 'è nello scriptorium').
+    m5, _ = compila(
+        "Lo scriptorium è una stanza.\nIl globo è una cosa.\nIl globo è nello scriptorium.\n")
+    _check(m5 and m5.trova_oggetto("globo").posizione == "scriptorium",
+           "'è nello scriptorium' resta una posizione (forma articolata 'nello')")
+    m6, _ = compila(
+        "Lo studio è una stanza.\nLo scaffale è un supporto.\nLo scaffale è nello studio.\n"
+        "Il tomo è una cosa.\nIl tomo è sullo scaffale.\n")
+    _check(m6 and m6.trova_oggetto("tomo").posizione == "scaffale",
+           "'sullo scaffale' resta una posizione (forma articolata 'sullo')")
+    # La proprietà deve funzionare anche in condizione e conseguenza.
+    m4 = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La lapide è una cosa.\nLa lapide è in cella.\nLa lapide è incisa.\n"
+        'Invece di esamina la lapide se la lapide è incisa: dire "Rune.".\n')
+    _check("Rune." in esegui(m4, "esamina lapide"),
+           "la condizione 'se la lapide è incisa' è valutata correttamente")
+
+
+# --- Test: [0.27.0 / E] turno ATOMICO su eccezione in una conseguenza --------
+# Revisione totale 2026-06-14: prima un'eccezione a metà di una conseguenza veniva
+# inghiottita e il turno avanzava su uno stato mutato a metà (snapshot ANNULLA
+# incluso). Ora elabora_comando ripristina l'istantanea pre-turno e il turno è no-op.
+
+def test_turno_atomico_su_eccezione():
+    print("[robustezza: un'eccezione in una conseguenza rende il turno atomico]")
+    import strutture as _s
+    m = runtime(
+        "L'atrio è una stanza.\nIl punteggio è un contatore.\n"
+        "La leva è una cosa.\nLa leva è nell'atrio.\nIl giocatore comincia nell'atrio.\n"
+        'Invece di esamina la leva: dire "Click." e adesso aumenta il punteggio.\n')
+    turno0 = m.turno_corrente
+    orig = _s.ConseguenzaContatore.esegui
+
+    def _boom(self, mondo):
+        mondo.variabili["punteggio"] = 999   # mutazione PARZIALE prima dell'errore
+        raise RuntimeError("boom di test")
+
+    _s.ConseguenzaContatore.esegui = _boom
+    try:
+        out = esegui(m, "esamina leva")
+    finally:
+        _s.ConseguenzaContatore.esegui = orig
+    _check("ERRORE CRITICO" in out, "l'errore è segnalato e il gioco non crasha")
+    _check(m.variabili["punteggio"] == 0,
+           "la mutazione parziale (999) è annullata: rollback all'istantanea pre-turno")
+    _check(m.turno_corrente == turno0, "il turno NON avanza (no-op atomico)")
+    _check(len(m._storia_stati) == 0,
+           "nessuna istantanea ANNULLA accodata per un turno fallito")
+
+
+# --- Test: [0.27.0 / D-dialogo] una conversazione è un solo passo di ANNULLA --
+# Revisione totale 2026-06-14: prima le conseguenze 'e adesso …' nelle opzioni di
+# dialogo mutavano il mondo senza essere annullabili (l'ingresso scartava lo snap).
+
+def test_dialogo_annullabile_come_unita():
+    print("[ANNULLA: l'intera conversazione si annulla in un colpo]")
+    src = (
+        "L'atrio è una stanza.\nIl punteggio è un contatore.\n"
+        "Il mercante è un personaggio.\nIl mercante è nell'atrio.\n"
+        "Il giocatore comincia nell'atrio.\n"
+        'Il dialogo del mercante comincia con "saluto".\n'
+        'Il mercante al nodo "saluto" dice "Hai [punteggio] punti.".\n'
+        'Al nodo "saluto" l\'opzione "Punti" conduce al nodo "saluto" e adesso aumenta il punteggio di 5.\n'
+        'Al nodo "saluto" l\'opzione "Addio" chiude il dialogo.\n'
+    )
+    m = runtime(src)
+    esegui(m, "parla con mercante")
+    _check(m.in_dialogo() and m._snap_dialogo is not None,
+           "all'ingresso l'istantanea pre-dialogo è messa da parte")
+    esegui(m, "1")  # +5
+    esegui(m, "1")  # +5 -> 10
+    _check(m.variabili["punteggio"] == 10, "le scelte mutano il mondo (10 punti)")
+    _check(len(m._storia_stati) == 0,
+           "durante la conversazione non si accodano passi di ANNULLA")
+    esegui(m, "addio")
+    _check(not m.in_dialogo() and len(m._storia_stati) == 1,
+           "all'uscita si registra UN solo passo di ANNULLA per tutta la conversazione")
+    esegui(m, "annulla")
+    _check(m.variabili["punteggio"] == 0 and m.turno_corrente == 0,
+           "un solo ANNULLA riporta a prima di 'parla con …' (punteggio 0)")
 
 
 # --- Test: normalizzazione NFC degli accenti nei nomi [0.18.0 / A3] ---------
@@ -4292,6 +4415,9 @@ def main():
         test_accesa_spenta_opposte_di_default,
         test_lascia_bloccato_al_buio,
         test_prima_maiuscola_preserva_nomi_propri,
+        test_proprieta_con_prefisso_preposizione,
+        test_turno_atomico_su_eccezione,
+        test_dialogo_annullabile_come_unita,
         # 0.18.0 — A3: normalizzazione NFC degli accenti
         test_accenti_nfc_normalizzazione_nome,
         test_accenti_risoluzione_runtime_nfd,
@@ -4384,7 +4510,7 @@ def main():
         test_a6_piu_sinonimi,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.27.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.28.0)")
     print("=" * 60)
     for t in tests:
         t()

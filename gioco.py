@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.27.0)
+# Interprete Interattivo per FAVELLA 1 (v0.28.0)
 
 import sys
 import traceback
@@ -292,18 +292,41 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     # è conservata solo se il comando effettivamente avanza il tempo.
     snap = mondo.cattura_stato() if not era_in_dialogo else None
 
-    continua = _esegui_comando(mondo, comando_grezzo)
+    try:
+        continua = _esegui_comando(mondo, comando_grezzo)
+    except Exception:
+        # [0.27.0 / E] Turno ATOMICO: una conseguenza/azione che solleva a metà
+        # non deve lasciare il mondo a metà strada né far scattare turno/eventi/
+        # demoni su uno stato incoerente. Si ripristina l'istantanea pre-turno (se
+        # c'era; fuori dialogo è sempre presente) e il turno diventa un no-op.
+        # La diagnostica è già stata stampata da _esegui_comando.
+        if snap is not None:
+            mondo.ripristina_stato(snap)
+        return True
     if not continua:
         return False
-    # [Livello 5b] Le interazioni di dialogo (avvio, scelte, uscita) non consumano
-    # un turno di gioco: il tempo del mondo non avanza mentre si conversa.
-    if era_in_dialogo or mondo.in_dialogo():
+    # [Livello 5b] Le interazioni di dialogo non consumano un turno: il tempo del
+    # mondo non avanza mentre si conversa.
+    # [0.27.0 / D-dialogo] Ma le opzioni POSSONO mutare il mondo ('e adesso …'):
+    # per non perdere l'annullabilità, l'INTERA conversazione è un solo passo di
+    # ANNULLA. L'istantanea pre-dialogo si mette da parte all'ingresso e si registra
+    # all'uscita (un solo undo riporta a prima di 'parla con …').
+    appena_entrato = (not era_in_dialogo) and mondo.in_dialogo()
+    appena_uscito = era_in_dialogo and (not mondo.in_dialogo())
+    if appena_entrato:
+        mondo._snap_dialogo = snap
         return True
+    if appena_uscito:
+        if mondo._snap_dialogo is not None:
+            _registra_istantanea(mondo, mondo._snap_dialogo)
+            mondo._snap_dialogo = None
+        # ultimo_comando NON aggiornato: ANCORA non deve ripetere un comando di dialogo.
+        return True
+    if mondo.in_dialogo():
+        return True   # scelta intermedia: ancora in conversazione
     # Turno consumato: registra l'istantanea (per ANNULLA) e il comando (per ANCORA).
     if snap is not None:
-        mondo._storia_stati.append(snap)
-        if len(mondo._storia_stati) > _MAX_ANNULLA:
-            mondo._storia_stati.pop(0)   # tetto di memoria: si scorda il più vecchio
+        _registra_istantanea(mondo, snap)
         mondo.ultimo_comando = comando_grezzo
     if avanza_turno_e_processa(mondo):
         return False
@@ -313,6 +336,15 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
 # [0.21.0 / A3] Profondità massima della pila di ANNULLA: si possono disfare
 # fino a N turni. Tetto di memoria (ogni passo è un'istantanea del mondo).
 _MAX_ANNULLA = 100
+
+
+def _registra_istantanea(mondo: Mondo, snap: dict):
+    """[0.27.0] Mette un'istantanea sulla pila di ANNULLA, rispettando il tetto di
+    memoria (_MAX_ANNULLA): si scorda la più vecchia. Condiviso dal turno normale
+    e dalla chiusura di un dialogo (vedi elabora_comando)."""
+    mondo._storia_stati.append(snap)
+    if len(mondo._storia_stati) > _MAX_ANNULLA:
+        mondo._storia_stati.pop(0)
 
 
 def _gestisci_annulla(mondo: Mondo):
@@ -720,9 +752,13 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         
         return True
     except Exception as e:
+        # [0.27.0 / E] Diagnostica qui, ma l'eccezione RISALE a elabora_comando:
+        # è lì che vive l'istantanea pre-turno, e il chiamante la ripristina per
+        # rendere il turno ATOMICO (niente stato mutato a metà, niente avanzamento
+        # del tempo su uno stato incoerente). Il gioco non crasha comunque.
         print(f"[ERRORE CRITICO] Si è verificato un errore durante l'esecuzione del comando: {e}")
         traceback.print_exc()
-        return True # Non crashare il gioco, continua
+        raise
 
 
 # [0.21.0 / A3] TRASCRIZIONE: duplica l'output del gioco su un file di testo,

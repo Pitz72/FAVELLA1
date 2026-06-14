@@ -4,6 +4,46 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.28.0] - 2026-06-14
+### Revisione totale del linguaggio — Lotto 2 (robustezza) 🧱
+Secondo lotto della revisione di solidità. Una sola modifica di grammatica (D) +
+due rafforzamenti del runtime + rinforzo della rete di test. Tutto verificato
+eseguendo il motore; nessuna regressione (la suite collaudo ha intercettato in
+corsa una regressione su `nello`, poi corretta — vedi sotto).
+
+- **D — Aggettivi-proprietà che iniziano con una preposizione.** `La lapide è
+  incisa.` veniva rifiutato con un errore fuorviante («entità sconosciuta «cisa»»)
+  perché il lexer staccava `in` (PREP_LUOGO) dall'inizio dell'aggettivo. Ora
+  **`PREP_LUOGO` è una regex con confine destro** (`(?![a-zA-ZÀ-ÿ0-9'])`) sulle
+  forme semplici; le forme con apostrofo (`nell'`/`sull'`) ne sono esenti. Poiché
+  `nel` non si scompone più in `nel`+`lo`, l'insieme articolato è ora elencato per
+  intero (`nello`, `nei`, …). `è incisa`/`sulfurea`/`insanguinata`/`informe` ora
+  compilano; le posizioni (`in cella`, `nell'atrio`, `nello scriptorium`, `sullo
+  scaffale`) restano invariate. **Regressione intercettata dal collaudatore**: la
+  prima versione del confine rompeva `è nello scriptorium` (demo «Il Relitto») →
+  corretta completando l'insieme articolato.
+- **E — Turno atomico.** Un'eccezione a metà di una conseguenza veniva inghiottita
+  e il turno avanzava su uno stato mutato a metà (con tanto di istantanea ANNULLA).
+  Ora l'eccezione risale a `elabora_comando`, che **ripristina l'istantanea
+  pre-turno** (rollback) e tratta il turno come no-op: niente stato incoerente,
+  niente avanzamento di turno/eventi/demoni, niente passo di ANNULLA spurio.
+- **D-dialogo — Conversazione annullabile come unità.** Le conseguenze `e adesso …`
+  nelle opzioni di dialogo mutavano il mondo ma non erano annullabili (l'ingresso in
+  dialogo scartava l'istantanea). Ora l'istantanea pre-dialogo è messa da parte
+  all'ingresso (`Mondo._snap_dialogo`) e registrata all'uscita: **un solo ANNULLA
+  riporta a prima di `parla con …`**, con tutte le conseguenze delle scelte.
+- **G — Rete di test rinforzata.** (1) L'anti-drift della spec EBNF ora verifica che
+  ogni regola sia **DEFINITA nei blocchi ```ebnf** della spec, non solo citata in
+  prosa (prima era un match per sottostringa sull'intero file). (2) Il collaudatore
+  ha ora test dedicati per la **vittoria via evento** (`Al turno N: … vinci`) e
+  **via demone** (`Quando … vinci`), rami prima coperti solo dalle demo.
+- **Test**: linguaggio **+28 asserzioni** (D, E, D-dialogo, anti-drift più forte) →
+  **582** (era 549 a inizio revisione); collaudo **+10** → **43** (era 33). Demo
+  `vincibile-staticamente`. Spec EBNF **`grammatica-0.28.0.md`** (§13); puntatore
+  `_SPEC_EBNF` 0.27.0 → 0.28.0. Versioni allineate a **0.28.0**.
+
+---
+
 ## [0.27.0] - 2026-06-14
 ### Revisione totale del linguaggio — Lotto 1 (correttezza) 🛡️
 Sessione di **revisione di solidità** prima del manuale (caccia a difetti/debiti, non
