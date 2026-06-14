@@ -1,11 +1,11 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.26.0)
+# Interprete Interattivo per FAVELLA 1 (v0.27.0)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
-from utils import normalizza_nome, rendi_testo, frase_indeterminativa
+from utils import normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -15,7 +15,7 @@ def mostra_stanza(mondo: Mondo):
         print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
         return
 
-    print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
+    print(f"\n--- {prima_maiuscola(stanza_corrente.nome_visualizzato)} ---")
 
     # [0.24.0 / A4] Stanza al buio senza fonte di luce accesa raggiungibile: non si
     # vede nulla (né descrizione, né oggetti, né uscite). Le uscite restano
@@ -39,7 +39,7 @@ def mostra_stanza(mondo: Mondo):
 
     # Mostra le uscite disponibili
     if stanza_corrente.uscite:
-        uscite_str = ", ".join([f"{d.capitalize()} ({mondo.trova_stanza(id_s).nome_visualizzato.capitalize()})" for d, id_s in stanza_corrente.uscite.items()])
+        uscite_str = ", ".join([f"{prima_maiuscola(d)} ({prima_maiuscola(mondo.trova_stanza(id_s).nome_visualizzato)})" for d, id_s in stanza_corrente.uscite.items()])
         print(f"Uscite: {uscite_str}.")
 
 def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
@@ -342,7 +342,7 @@ def _mostra_nodo(mondo: Mondo):
     if nodo is None:
         mondo.termina_dialogo()
         return
-    nome = npc.nome_visualizzato.capitalize() if npc else "?"
+    nome = prima_maiuscola(npc.nome_visualizzato) if npc else "?"
     if nodo.battuta:
         print(f"\n{nome}: {rendi_testo(mondo, nodo.battuta)}")
     opzioni = _opzioni_disponibili(mondo, nodo)
@@ -370,7 +370,7 @@ def _avvia_dialogo(mondo: Mondo, bersaglio_grezzo: str) -> bool:
         print("Non puoi parlarci.")
         return True
     if not npc.dialogo_iniziale or npc.dialogo_iniziale not in mondo.dialogo_nodi:
-        print(f"{npc.nome_visualizzato.capitalize()} non ha nulla da dire.")
+        print(f"{prima_maiuscola(npc.nome_visualizzato)} non ha nulla da dire.")
         return True
     mondo.dialogo_attivo = id_npc
     mondo.nodo_dialogo = npc.dialogo_iniziale

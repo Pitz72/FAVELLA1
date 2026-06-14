@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.26.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.27.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -70,7 +70,7 @@ PAROLE_RISERVATE = frozenset({
     "in", "nel", "nella", "negli", "nelle", "nell'",
     "sul", "sulla", "sullo", "sui", "sugli", "sulle",
     # connessioni e posizione iniziale del giocatore
-    "collega", "a", "giocatore", "comincia", "inizia", "parte",
+    "collega", "a", "giocatore", "comincia", "inizia", "parte", "partono",
     # valore iniziale dei contatori (0.16.0): 'La forza parte da 3.'
     "da",
     # regole, condizioni, conseguenze
@@ -149,9 +149,12 @@ _COP = r"(?:è|sono)"
 _RE_DEF_STANZA = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+una\s+stanza$", re.IGNORECASE)
 _RE_DEF_OGGETTO = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+una\s+cosa$", re.IGNORECASE)
 # 'X è uno stato' introduce uno 'stato' (variabile globale del mondo). [Livello 3]
-_RE_DEF_FLAG = re.compile(r"^(?P<nome>.+?)\s+è\s+uno\s+stato$", re.IGNORECASE)
+# [0.27.0 / A] La copula plurale 'sono' vale anche qui (es. 'Le luci sono uno
+# stato.'), coerente con stanze/oggetti: i nomi di stato/contatore sono spesso
+# plurali ('le vite', 'i punti', 'le munizioni').
+_RE_DEF_FLAG = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+uno\s+stato$", re.IGNORECASE)
 # 'X è un contatore' introduce un contatore numerico. [Livello 3]
-_RE_DEF_CONTATORE = re.compile(r"^(?P<nome>.+?)\s+è\s+un\s+contatore$", re.IGNORECASE)
+_RE_DEF_CONTATORE = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+contatore$", re.IGNORECASE)
 # 'X è un contenitore' / 'X è un supporto' introducono un OGGETTO. [Livello 4 / M1]
 _RE_DEF_CONTENITORE = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+contenitore$", re.IGNORECASE)
 _RE_DEF_SUPPORTO = re.compile(rf"^(?P<nome>.+?)\s+{_COP}\s+un\s+supporto$", re.IGNORECASE)
@@ -400,17 +403,22 @@ _GRAMMAR_TEMPLATE = r"""
     // 'X è uno stato.' dichiara una variabile globale (uno 'stato'); 'X è valore.'
     // ne imposta il valore iniziale. VARIABILE è un terminale CHIUSO disgiunto da
     // ENTITA: LALR distingue questi costrutti da quelli su oggetti al PRIMO token.
-    def_stato: VARIABILE "è" "uno" "stato" "."
-    def_stato_valore: VARIABILE "è" PROPRIETA "."
+    // [0.27.0 / A] _copula (è|sono): 'Le luci sono uno stato.', 'Le vite sono un
+    // contatore.', 'Le luci sono accese.' — i nomi di stato/contatore sono spesso
+    // plurali. Coerente con stanze/oggetti; VARIABILE resta disgiunto da ENTITA.
+    def_stato: VARIABILE _copula "uno" "stato" "."
+    def_stato_valore: VARIABILE _copula PROPRIETA "."
     // Contatori numerici: 'X è un contatore.' (valore iniziale 0). Distinto da
     // def_stato per il lookahead "un" vs "uno".
-    def_contatore: VARIABILE "è" "un" "contatore" "."
+    def_contatore: VARIABILE _copula "un" "contatore" "."
     // [Livello 8 / 0.16.0] Valore INIZIALE configurabile di un contatore (default
     // 0). 'La forza parte da 3.' — richiede che il contatore sia dichiarato
     // ('X è un contatore.', in qualunque punto del file). Inizia con VARIABILE; il
-    // lookahead "parte" vs "è" la distingue da def_stato*/def_contatore → LALR(1)
+    // lookahead "parte" vs copula la distingue da def_stato*/def_contatore → LALR(1)
     // 0-ambiguo (def_giocatore usa "parte" ma parte da "Il giocatore", non VARIABILE).
-    def_contatore_iniziale: VARIABILE "parte" "da" NUMERO "."
+    // [0.27.0 / A] "partono" plurale per i nomi-contatore plurali ('Le vite
+    // partono da 3.'), coerente con la copula plurale di def_contatore.
+    def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" NUMERO "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni

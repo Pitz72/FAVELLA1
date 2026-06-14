@@ -3,7 +3,7 @@
 import copy
 import random
 from typing import Callable, List, Dict, Set, Optional
-from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta
+from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta, prima_maiuscola
 
 # [0.22.0 / A2] Seme predefinito del generatore casuale del mondo. Fisso: le
 # partite sono riproducibili di default (utile per i test, per il futuro
@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.26.0"
+VERSIONE_MOTORE = "0.27.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -280,7 +280,7 @@ class ConseguenzaMovimentoPNG(Conseguenza):
         if not stanza_dest or destinazione == origine:
             return
         pos_gioc = mondo.posizione_giocatore
-        nome = png.nome_visualizzato.capitalize()
+        nome = prima_maiuscola(png.nome_visualizzato)
         # Annuncio di USCITA: l'NPC lascia la stanza in cui si trova il giocatore.
         if origine == pos_gioc:
             if direzione:
@@ -568,12 +568,18 @@ class Mondo:
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
         self.variabili: Dict[str, Optional[str]] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
-        # Mappa simmetrica proprietà -> insieme delle sue opposte. La coppia
-        # aperta↔chiusa è precaricata come default storico; l'autore può
+        # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
+        # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
         # aggiungerne altre con 'X e Y sono opposte.'.
+        # [0.27.0 / B] accesa↔spenta precaricata: il motore le tratta GIÀ come coppia
+        # per la luce (c_e_luce/fonte_di_luce, confronto per radice spent-), quindi
+        # senza questa coppia 'e adesso la torcia è spenta' lasciava l'oggetto sia
+        # 'accesa' sia 'spenta' (incoerenza: 'se la torcia è accesa' restava vera).
         self.opposti: Dict[str, Set[str]] = {
             "aperta": {"chiusa"},
             "chiusa": {"aperta"},
+            "accesa": {"spenta"},
+            "spenta": {"accesa"},
         }
         # [Livello 4] Alias/sinonimi degli oggetti: mappa nome-alternativo (già
         # normalizzato) -> id canonico dell'oggetto. Dichiarati dall'autore con

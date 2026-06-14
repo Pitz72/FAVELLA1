@@ -1,8 +1,8 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.24.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.27.0)
 
 from strutture import Mondo, Azione
-from utils import rendi_testo, frase_indeterminativa
+from utils import rendi_testo, frase_indeterminativa, prima_maiuscola
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
@@ -87,7 +87,7 @@ def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None
         print(f"In {dest.nome_visualizzato} non ci puoi mettere niente.")
         return
     if dest.is_contenitore and not mondo.contenitore_aperto(dest):
-        print(f"{dest.nome_visualizzato.capitalize()} è chiuso.")
+        print(f"{prima_maiuscola(dest.nome_visualizzato)} è chiuso.")
         return
 
     mondo.rimuovi_da_posizione(oggetto)
@@ -98,6 +98,12 @@ def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None
 
 def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione LASCIARE."""
+    # [0.27.0 / C] Al buio non si manipola nulla, coerente con prendi/metti/esamina
+    # (prima 'lascia' sfuggiva al blocco). Una fonte di luce accesa in mano rende
+    # comunque 'c_e_luce' vero, quindi posarla per illuminare resta possibile.
+    if not mondo.c_e_luce():
+        print("È troppo buio per vederci.")
+        return
     if id_oggetto not in mondo.inventario:
         print("Non ce l'hai.")
         return
@@ -141,7 +147,7 @@ def guarda_logica_default(mondo: Mondo):
         print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
         return
 
-    print(f"\n--- {stanza_corrente.nome_visualizzato.capitalize()} ---")
+    print(f"\n--- {prima_maiuscola(stanza_corrente.nome_visualizzato)} ---")
 
     # [0.24.0 / A4] Buio: nessuna descrizione né elenco oggetti (vedi gioco.mostra_stanza).
     if not mondo.c_e_luce():

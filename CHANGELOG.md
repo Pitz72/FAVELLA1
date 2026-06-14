@@ -4,6 +4,50 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.27.0] - 2026-06-14
+### Revisione totale del linguaggio — Lotto 1 (correttezza) 🛡️
+Sessione di **revisione di solidità** prima del manuale (caccia a difetti/debiti, non
+nuove feature). Quattro correzioni di correttezza, ciascuna verificata eseguendo il
+motore e coperta da un test dedicato. Nessuna regressione.
+
+- **A — Copula plurale `sono` su stati e contatori.** Prima `Le vite sono un
+  contatore.` / `Le luci sono uno stato.` venivano **rifiutati** (scanner e
+  grammatica accettavano solo `è`), benché i nomi di stato/contatore siano spesso
+  plurali (`le vite`, `i punti`, `le munizioni`) — un'asimmetria con stanze/oggetti,
+  che la copula plurale la accettano dalla 0.18.0. Ora `def_stato`,
+  `def_stato_valore` e `def_contatore` usano `_copula`; il valore iniziale accetta
+  `partono` oltre a `parte` (`Le vite partono da 3.`). Aggiornati i due `_RE_DEF_*`
+  dello scanner. **Unica modifica di grammatica**; LALR(1) 0-ambiguo (VARIABILE
+  resta disgiunto da ENTITA). Riservata aggiunta: `partono`.
+- **B — `accesa`↔`spenta` opposte di default.** Il motore le trattava già come
+  coppia per la luce (`c_e_luce`/fonte di luce, confronto per radice), ma senza la
+  coppia precaricata in `Mondo.opposti` una conseguenza `e adesso la torcia è
+  spenta` lasciava l'oggetto **sia `accesa` sia `spenta`** → `se la torcia è accesa`
+  restava vera a luce spenta. Precaricata accanto ad `aperta↔chiusa`.
+- **C — `lascia` bloccato al buio.** Al buio `prendi`/`metti`/`esamina` erano
+  bloccati ma `lascia` no (asimmetria fra canali). Ora `lascia_logica_default`
+  rispetta `c_e_luce()`; una fonte di luce accesa in mano rende comunque la stanza
+  illuminata, quindi posarla per fare luce resta possibile.
+- **M4 — Iniziale maiuscola senza rovinare i nomi propri.** `str.capitalize()`
+  minuscolava il resto del nome (`La Guardia Reale` → `La guardia reale`) in
+  intestazioni di stanza, nomi NPC, uscite e annunci di movimento. Nuovo helper
+  `utils.prima_maiuscola` (maiuscola solo sull'iniziale); sostituite tutte e 7 le
+  occorrenze di `.capitalize()` su `nome_visualizzato`.
+- **Test**: **+13 asserzioni** (5 test nuovi: copula plurale stati/contatori,
+  `partono`, opposte accesa/spenta, `lascia` al buio, `prima_maiuscola`); corpus
+  della guardia anti-ambiguità esteso con le forme plurali. Suite del linguaggio a
+  **562** (era 549); collaudatore invariato a **33**; demo `vincibile-staticamente`.
+  Spec EBNF **`grammatica-0.27.0.md`** (§10); puntatore `_SPEC_EBNF` 0.26.0 → 0.27.0.
+  Versioni allineate a **0.27.0** (incluso l'header di `libreria_azioni.py`, rimasto
+  indietro a 0.24.0).
+
+> **Nota.** Questa release apre la revisione totale post-Asse-A. I lotti successivi
+> (robustezza del turno atomico, aggettivi con prefisso-preposizione `è incisa`,
+> rete di test/anti-drift, README a v0.27.0, performance) sono in valutazione con
+> l'autore.
+
+---
+
 ## [0.26.0] - 2026-06-14
 ### Sinonimi di verbo (Asse A — A6) 🗣️
 Sesta e ultima voce dell'**Asse A** di `progettazione-oltre-0.18.md`: con questa il

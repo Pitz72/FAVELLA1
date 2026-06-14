@@ -9,6 +9,16 @@ import unicodedata
 # della Passata 2 (prefisso opzionale del terminale ENTITA).
 ARTICOLI = ["l'", "un'", "uno", "una", "il", "lo", "la", "i", "gli", "le", "un"]
 
+
+def prima_maiuscola(s: str) -> str:
+    """[0.27.0 / M4] Maiuscola SOLO sull'iniziale, preservando il resto. A
+    differenza di str.capitalize() (che minuscola tutto il resto), non rovina le
+    maiuscole interne dei nomi propri: 'La Guardia Reale' resta tale, non diventa
+    'La guardia reale'. Usata per intestazioni di stanza, nomi NPC e annunci."""
+    if not s:
+        return s
+    return s[:1].upper() + s[1:]
+
 # [Livello 4 / L1] DIREZIONI DI BASE — fonte UNICA condivisa da compilatore e
 # runtime (prima erano cablate in 4 punti). Mappa: direzione canonica -> forme
 # accettate in input (la prima è la canonica, la seconda l'abbreviazione storica).

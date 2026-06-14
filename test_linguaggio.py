@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.26.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.27.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1548,6 +1548,9 @@ _CORPUS_GUARDIA = (
     "L'allarme è uno stato.\nL'allarme è attivo.\n"   # def_stato + def_stato_valore [Livello 3]
     "Il punteggio è un contatore.\n"                   # def_contatore [Livello 3]
     "Il punteggio parte da 2.\n"                        # def_contatore_iniziale [0.16.0]
+    # [0.27.0 / A] Copula plurale 'sono'/'partono' su stati e contatori (nomi plurali).
+    "Le luci sono uno stato.\nLe luci sono accese.\n"  # def_stato + def_stato_valore plurale
+    "Le vite sono un contatore.\nLe vite partono da 5.\n"  # def_contatore + def_contatore_iniziale plurale
     "Il giocatore può portare 4 oggetti.\n"            # def_giocatore_capacita [Livello 7]
     "La chiave dà 2 spazi.\n"                          # def_capacita_oggetto [Livello 7]
     'Invece di esamina la chiave se l\'allarme non è attivo: dire "Quiete.".\n'  # cond_variabile_neg
@@ -2537,7 +2540,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.26.0.md")
+                          "grammatica-0.27.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2554,7 +2557,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.26.0.md è presente")
+           "documentazione/grammatica-0.27.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -2817,6 +2820,109 @@ def test_copula_e_ancora_valida():
     porta = mondo.trova_oggetto("porta") if mondo else None
     _check(porta is not None and "chiusa" in porta.proprieta and porta.posizione == "cella",
            "le dichiarazioni singolari con 'è' restano invariate")
+
+
+# --- Test: [0.27.0 / A] copula plurale su STATI e CONTATORI -----------------
+# Revisione totale 2026-06-14: prima 'Le vite sono un contatore.' veniva rifiutato
+# (lo scanner e la grammatica accettavano solo 'è'), pur essendo i nomi di
+# contatore/stato spesso plurali ('le vite', 'i punti', 'le munizioni').
+
+def test_copula_sono_stato_e_contatore():
+    print("[copula 'sono': stati e contatori con nome plurale]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Le luci sono uno stato.\nLe luci sono accese.\n"
+        "Le vite sono un contatore.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "le dichiarazioni plurali di stato/contatore compilano")
+    _check(mondo and mondo.variabili.get("luci") == "accese",
+           "'Le luci sono uno stato' + 'Le luci sono accese' assegna il valore")
+    _check(mondo and "vite" in mondo.variabili and mondo.variabili["vite"] == 0,
+           "'Le vite sono un contatore' crea il contatore a 0")
+
+
+def test_copula_partono_da_contatore_plurale():
+    print("[copula 'partono': valore iniziale di un contatore plurale]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Le vite sono un contatore.\nLe vite partono da 3.\n"
+        'Invece di guarda se le vite è almeno 3: dire "Vivo.".\n'
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None, "'Le vite partono da 3' compila")
+    _check(mondo and mondo.variabili.get("vite") == 3,
+           "il contatore plurale parte dal valore dichiarato")
+    # E 'parte' singolare resta valido (retro-compat).
+    mondo2, _ = compila(
+        "La cella è una stanza.\nLa forza è un contatore.\nLa forza parte da 5.\n")
+    _check(mondo2 and mondo2.variabili.get("forza") == 5,
+           "'parte da' singolare continua a funzionare")
+
+
+# --- Test: [0.27.0 / B] accesa<->spenta opposte di default -------------------
+# Revisione totale 2026-06-14: il motore tratta già accesa/spenta come coppia per
+# la luce (c_e_luce), ma senza la coppia precaricata 'e adesso X è spenta' lasciava
+# l'oggetto sia 'accesa' sia 'spenta' (condizione 'è accesa' restava vera).
+
+def test_accesa_spenta_opposte_di_default():
+    print("[opposti: accesa<->spenta esclusive senza dichiarazione esplicita]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia nell'atrio.\n"
+        "La torcia è una cosa.\nLa torcia è nell'atrio.\nLa torcia è accesa.\n"
+        '"spegni" è un comando.\n'
+        'Invece di spegni la torcia: dire "Spenta." e adesso la torcia è spenta.\n'
+    )
+    mondo = runtime(src)
+    esegui(mondo, "spegni la torcia")
+    prop = mondo.trova_oggetto("torcia").proprieta
+    _check("spenta" in prop, "dopo 'spenta' l'oggetto è spento")
+    _check("accesa" not in prop,
+           "'accesa' è stata rimossa (le due si escludono senza dichiararle)")
+
+
+# --- Test: [0.27.0 / C] 'lascia' bloccato al buio ---------------------------
+# Revisione totale 2026-06-14: al buio prendi/metti/esamina erano bloccati ma
+# 'lascia' sfuggiva (asimmetria tra canali).
+
+def test_lascia_bloccato_al_buio():
+    print("[buio: 'lascia' è bloccato come prendi/metti/esamina]")
+    src = (
+        "La cantina è una stanza.\nLa cantina è buia.\n"
+        "La moneta è una cosa.\nIl giocatore comincia nella cantina.\n"
+        "Il giocatore ha la moneta.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "lascia la moneta")
+    _check("buio" in out.lower(), "al buio 'lascia' avvisa che non ci si vede")
+    _check("moneta" in mondo.inventario,
+           "al buio l'oggetto NON viene lasciato (resta in inventario)")
+
+
+# --- Test: [0.27.0 / M4] iniziale maiuscola senza rovinare i nomi propri -----
+# Revisione totale 2026-06-14: str.capitalize() minuscolava il resto del nome
+# ('La Guardia Reale' -> 'La guardia reale'). prima_maiuscola() preserva l'interno.
+
+def test_prima_maiuscola_preserva_nomi_propri():
+    print("[concordanza: prima_maiuscola preserva le maiuscole interne]")
+    from utils import prima_maiuscola
+    _check(prima_maiuscola("la Guardia Reale") == "La Guardia Reale",
+           "maiuscola solo sull'iniziale, resto preservato")
+    _check(prima_maiuscola("") == "", "stringa vuota gestita")
+    # Annuncio di movimento NPC: il nome composto non viene storpiato.
+    src = (
+        "L'atrio è una stanza.\nIl corridoio è una stanza.\n"
+        "L'atrio collega nord a corridoio.\n"
+        "La Guardia Reale è un personaggio.\nLa Guardia Reale è nell'atrio.\n"
+        'Il dialogo di Guardia Reale comincia con "x".\n'
+        'La Guardia Reale al nodo "x" dice "...".\n'
+        "Il giocatore comincia nell'atrio.\n"
+        "Ogni 1 turno: la Guardia Reale va nel corridoio.\n"
+    )
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina atrio")
+    _check("Guardia Reale" in out,
+           "l'annuncio mantiene 'Guardia Reale' (non 'guardia reale')")
 
 
 # --- Test: normalizzazione NFC degli accenti nei nomi [0.18.0 / A3] ---------
@@ -4179,6 +4285,13 @@ def main():
         test_copula_sono_proprieta_posizione,
         test_copula_sono_condizioni_e_conseguenze,
         test_copula_e_ancora_valida,
+        # 0.27.0 — Revisione totale (Lotto 1): copula plurale stati/contatori (A),
+        # accesa/spenta opposte di default (B), 'lascia' al buio (C), nomi propri (M4)
+        test_copula_sono_stato_e_contatore,
+        test_copula_partono_da_contatore_plurale,
+        test_accesa_spenta_opposte_di_default,
+        test_lascia_bloccato_al_buio,
+        test_prima_maiuscola_preserva_nomi_propri,
         # 0.18.0 — A3: normalizzazione NFC degli accenti
         test_accenti_nfc_normalizzazione_nome,
         test_accenti_risoluzione_runtime_nfd,
@@ -4271,7 +4384,7 @@ def main():
         test_a6_piu_sinonimi,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.26.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.27.0)")
     print("=" * 60)
     for t in tests:
         t()
