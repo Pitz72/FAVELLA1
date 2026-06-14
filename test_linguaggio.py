@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.28.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.28.1)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -4510,7 +4510,7 @@ def main():
         test_a6_piu_sinonimi,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.28.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.28.1)")
     print("=" * 60)
     for t in tests:
         t()

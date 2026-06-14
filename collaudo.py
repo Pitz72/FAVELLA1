@@ -3,8 +3,10 @@
 #
 # «Il differenziatore»: verificare senza playthrough manuali che una storia sia
 # vincibile e che il contenuto sia raggiungibile. Questa fase implementa SOLO il
-# LIVELLO 1 (analisi statica, «la catena della vittoria»). Il robot dinamico
-# (BFS sullo spazio degli stati) è la Fase B1.2 — sessione successiva.
+# LIVELLO 1 (analisi statica, «la catena della vittoria»). NB: il robot dinamico
+# (BFS sullo spazio degli stati, Fase B1.2) è stato TENTATO e ACCANTONATO il
+# 2026-06-14 (automated planning illimitato e fragile, rischio di falsi «non
+# vincibile»): il valore di collaudo lo dà questa analisi statica di Livello 1.
 #
 # PRINCIPIO ARCHITETTURALE: collaudo.py è un CONSUMATORE del Mondo compilato.
 # Non tocca la grammatica né il loop di gioco; importa le strutture dati da
@@ -42,14 +44,13 @@ MAX_PROFONDITA = 16
 # CONDIZIONI NECESSARIE + EURISTICHE, non una prova di vincibilità: la
 # soddisfacibilità di condizioni AND/OR/NOT su contatori con aritmetica è
 # indecidibile in generale, e qui le strutture And/Or sono appiattite in atomi
-# (si perde la differenza fra «serve A e B» e «basta A o B»). La parola
-# definitiva spetta al robot dinamico (Livello 2 / Fase B1.2).
+# (si perde la differenza fra «serve A e B» e «basta A o B»). Il robot dinamico
+# che darebbe la parola definitiva (Fase B1.2) è stato accantonato: vedi l'header.
 LIMITE_ONESTO = (
     "Analisi STATICA: fornisce condizioni necessarie ed euristiche, non una "
     "prova di vincibilità. La struttura logica delle condizioni (e/oppure/non) "
     "è appiattita in atomi e la soddisfacibilità dei contatori è approssimata. "
-    "Un avviso qui è un INDIZIO da verificare, non una sentenza: la prova "
-    "definitiva spetta al robot dinamico (Livello 2, fase B1.2)."
+    "Un avviso qui è un INDIZIO da verificare, non una sentenza."
 )
 
 
@@ -584,7 +585,7 @@ def main(argv=None):
     if len(argv) != 1 or argv[0] in ("-h", "--help"):
         print("Uso: python collaudo.py storia.fav")
         print("Collauda STATICAMENTE una storia .fav (Livello 1: catena della "
-              "vittoria + avvisi del linter). Il robot dinamico è la fase B1.2.")
+              "vittoria + avvisi del linter).")
         return 1
 
     from compilatore import analizza_file

@@ -1,9 +1,19 @@
 # FAVELLA 1 — Progettazione di «collaudo» (B1: il giocatore-robot)
 
-> Documento di progettazione, 2026-06-13. Spec della feature **B1** dell'Asse B di
-> `progettazione-oltre-0.18.md`: un **collaudatore automatico** di storie `.fav`.
-> Nessun codice ancora: questo file è il piano che la sessione di implementazione
-> dedicata seguirà. Decisioni di architettura concordate con Simone (vedi §4).
+> Documento di progettazione, 2026-06-13.
+>
+> **⚠️ STATO (aggiornato 2026-06-14).** Il **Livello 1 — analisi statica (Fase
+> B1.1)** è stato REALIZZATO: `collaudo.py` (v0.23.0), con suite `test_collaudo.py`.
+> Il **Livello 2 — robot dinamico (Fasi B1.2/B1.3, BFS sullo spazio degli stati)**
+> è stato **TENTATO e ACCANTONATO** il 2026-06-14: è automated planning illimitato e
+> fragile (un'euristica buona per una storia ne regredisce un'altra) con rischio di
+> falsi «non vincibile». **Le sezioni §3 e §6 che pianificano B1.2/B1.3 restano qui
+> come cronaca della progettazione, ma NON vanno implementate.** Il valore di
+> collaudo lo dà già il Livello 1 statico.
+>
+> Spec della feature **B1** dell'Asse B di `progettazione-oltre-0.18.md`: un
+> **collaudatore automatico** di storie `.fav`. Decisioni di architettura
+> concordate con Simone (vedi §4).
 
 ## 1. Obiettivo e contesto
 

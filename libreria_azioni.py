@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v0.28.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v0.28.1)
 
 from strutture import Mondo, Azione
 from utils import rendi_testo, frase_indeterminativa, prima_maiuscola
@@ -141,29 +141,13 @@ def muovi_logica_default(mondo: Mondo, direzione: str):
         print("Non puoi andare in quella direzione.")
 
 def guarda_logica_default(mondo: Mondo):
-    """Logica di default per l'azione GUARDA (ristampa la descrizione della stanza)."""
-    stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
-    if not stanza_corrente:
-        print("[ERRORE INTERNO] La posizione del giocatore non corrisponde a nessuna stanza!")
-        return
-
-    print(f"\n--- {prima_maiuscola(stanza_corrente.nome_visualizzato)} ---")
-
-    # [0.24.0 / A4] Buio: nessuna descrizione né elenco oggetti (vedi gioco.mostra_stanza).
-    if not mondo.c_e_luce():
-        print("È buio pesto.")
-        return
-
-    print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
-
-    oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
-    if oggetti_nella_stanza:
-        # [Livello 5] Articolo indeterminativo concordato (vedi gioco.mostra_stanza).
-        nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
-        print(f"Puoi vedere qui: {', '.join(nomi_oggetti)}.")
-
-    # [0.20.0 / A1] Gli oggetti elencati diventano riferibili dai pronomi.
-    mondo.registra_riferiti_da_stanza()
+    """Logica di default per l'azione GUARDA: ristampa la stanza corrente.
+    [0.29.0] Delega a gioco.mostra_stanza (FONTE UNICA): prima questa funzione ne
+    duplicava intestazione/descrizione/elenco oggetti/buio, ma OMETTEVA le uscite
+    che invece compaiono entrando in una stanza — incoerenza ora risolta. Import
+    differito per evitare il ciclo gioco↔libreria_azioni."""
+    from gioco import mostra_stanza
+    mostra_stanza(mondo)
 
 def aiuto_logica_default(mondo: Mondo):
     """Logica di default per l'azione AIUTO."""
@@ -172,7 +156,7 @@ def aiuto_logica_default(mondo: Mondo):
     print("  - Movimento: nord, sud, est, ovest (o n, s, e, o)")
     print("  - Interazione: esamina <oggetto>, prendi <oggetto>, lascia <oggetto>")
     print("  - Informazioni: inventario (o i, zaino), guarda, aiuto")
-    print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'…")
+    print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'...")
     print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), trascrizione")
     print("  - Sistema: esci")
     print("\nCerca di usare verbi semplici e nomi di oggetti.")

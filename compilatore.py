@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.28.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.28.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -729,19 +729,34 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -
     return grammatica
 
 
+# [0.29.0 / perf] Cache dei parser LALR già costruiti, indicizzati per (grammatica,
+# propagate_positions). Costruire la tabella LALR costa ~40 ms: chiamare più volte
+# il compilatore sullo stesso file (CLI, IDE che rianalizza outline/regole/variabili/
+# dialoghi) ricostruiva ogni volta un parser identico. Un parser Lark è riusabile e
+# senza stato fra una .parse() e l'altra (il Transformer è separato e per-chiamata),
+# quindi cachare per chiave-grammatica è sicuro. Un GrammarError NON viene cachato
+# (si rilancia a ogni build, come prima), così la guardia anti-ambiguità resta valida.
+_CACHE_PARSER: dict = {}
+
+
 def costruisci_parser(simboli, variabili=(), direzioni=(),
                       propagate_positions=False, verbi_multi=()) -> Lark:
-    """Istanzia il parser LALR(1) per i simboli dati. LALR è unambiguo per
-    costruzione: un'eventuale ambiguità grammaticale emergerebbe qui come
-    GrammarError a build-time, non come scelta silenziosa a runtime.
+    """Istanzia (o riusa dalla cache) il parser LALR(1) per i simboli dati. LALR è
+    unambiguo per costruzione: un'eventuale ambiguità grammaticale emergerebbe qui
+    come GrammarError a build-time, non come scelta silenziosa a runtime.
 
     'propagate_positions' (default False, così il percorso del motore e dei test
     resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
     finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
-    return Lark(costruisci_grammatica(simboli, variabili, direzioni, verbi_multi),
-                start="start", parser="lalr",
-                propagate_positions=propagate_positions)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    chiave = (grammatica, propagate_positions)
+    parser = _CACHE_PARSER.get(chiave)
+    if parser is None:
+        parser = Lark(grammatica, start="start", parser="lalr",
+                      propagate_positions=propagate_positions)
+        _CACHE_PARSER[chiave] = parser
+    return parser
 
 
 def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
@@ -2185,7 +2200,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 # COMPILAZIONE STRUTTURATA PER L'IDE (Favella Studio — Fase 2)
 # ------------------------------------------------------------------------------
 # Tutto ciò che segue è ADDITIVO: non tocca analizza_file (che resta byte-stabile
-# per il motore, la CLI e i 321 test). Rispecchia la stessa pipeline ma RACCOGLIE
+# per il motore, la CLI e la suite di test). Rispecchia la stessa pipeline ma RACCOGLIE
 # le diagnostiche in una struttura dati con posizioni (file, riga, colonna) invece
 # di stamparle, così l'IDE può popolare il pannello Problemi e i marker di Monaco.
 # ==============================================================================
@@ -2416,7 +2431,7 @@ def compila_mondo(percorso_file, sorgente=None):
 # buffer usando lo span qui restituito (editing chirurgico per-frase). Tutto il
 # resto del file (commenti, prosa, ordine, altre entità) resta byte-identico.
 #
-# ADDITIVA: non tocca analizza_file/compila_mondo né il motore (334 test salvi).
+# ADDITIVA: non tocca analizza_file/compila_mondo né il motore (suite di test salva).
 # Combina la VERITÀ SEMANTICA (compila_mondo: id normalizzati, nomi visualizzati,
 # uscite con auto-ritorno, proprietà) con le POSIZIONI ricavate da un secondo
 # parse con propagate_positions=True, correlando le frasi alle entità per nome.

@@ -18,32 +18,40 @@
 
 ---
 
-## 🚀 Stato Attuale: v0.18.0 — Consolidamento del linguaggio
+## 🚀 Stato Attuale: v0.28.1 — Asse A completo + Revisione totale di solidità
 
-Il linguaggio FAVELLA è ora **completo ed eccellente allo stato attuale**: i Livelli 1-8 della roadmap sono chiusi e la v0.18.0 ha colmato ogni buco e asimmetria emersi scrivendo le demo, **senza più workaround nelle storie**. La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate: symbol-table → LALR con i nomi come token chiusi). Suite di **446 test** verdi. Spec tecnica: [`documentazione/grammatica-0.18.0.md`](documentazione/grammatica-0.18.0.md).
+Il linguaggio FAVELLA è **completo ed eccellente allo stato attuale**. Sono chiusi i Livelli 1-8 della roadmap, il **Consolidamento** (v0.18.0) e l'intero **Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0: pronomi/anafora, ANNULLA/ANCORA, varietà nelle descrizioni, buio e luce, movimento degli NPC, sinonimi di verbo, verbi intransitivi, inventario iniziale, tick silenziosi). Le versioni **v0.27.0 e v0.28.0** sono una **revisione totale di solidità** (caccia a difetti e debiti, non nuove feature) prima del manuale.
 
-### Novità del Linguaggio (v0.18.0 — Consolidamento)
-- **Regole a due oggetti con `se`:** `Invece di usa X su Y se [condizione]: …` ora valuta davvero la condizione (più esiti per la stessa combinazione).
-- **Italiano più ricco e corretto:** copula plurale (`Le tacche sono una cosa`), genitivo `dei` (`la descrizione dei pilastri`), preposizioni articolate (`usa la batteria sul pannello`), accenti affidabili nei nomi (`comò`).
-- **Più potere espressivo:** condizione e teletrasporto sulla posizione del giocatore (`se il giocatore è in X`, `e adesso il giocatore è in X`); testo d'esito personalizzato (`… e adesso vinci "Sei libero!"`); confronti `al massimo N` (≤) e `non è N` (≠) sui contatori; negazione di gruppi `non ( A e B )`; verbi personalizzati multi-parola (`"fai scattare" è un comando.`).
+La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate: symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità nella suite. Suite di **582 test** del linguaggio + **43 test** del collaudatore statico, tutti verdi. Spec tecnica: [`documentazione/grammatica-0.28.0.md`](documentazione/grammatica-0.28.0.md).
+
+### Novità della Revisione totale (v0.27.0 + v0.28.0)
+- **Correttezza (Lotto 1):** copula plurale sugli stati/contatori (`Le vite sono un contatore`, `Le vite partono da 3`); `accesa`/`spenta` opposte di default; `lascia` bloccato al buio come gli altri verbi; nomi propri preservati negli annunci (`La Guardia Reale` non diventa più `La guardia reale`).
+- **Robustezza (Lotto 2):** aggettivi che iniziano con una preposizione ora ammessi (`La lapide è incisa.`); **turno atomico** (un'eccezione in una conseguenza fa rollback, niente stato a metà); una conversazione è un solo passo di **ANNULLA**; rete di test rinforzata (anti-drift della spec sui blocchi EBNF, collaudo su vittoria via evento/demone).
+- **Perf & pulizia (Lotto 3):** cache dei parser LALR (≈40 ms → trascurabile sulle ricostruzioni identiche); `guarda` e l'ingresso in stanza condividono ora la stessa resa (uscite incluse).
+
+### Capacità del linguaggio (panoramica)
+- **Italiano ricco:** copula plurale, genitivi/partitivi, preposizioni articolate, accenti affidabili (NFC) nei nomi.
+- **Espressività:** condizione e teletrasporto sulla posizione del giocatore; testo d'esito personalizzato (`vinci "Sei libero!"`); confronti sui contatori (`almeno`/`al massimo`/`non è`); negazione di gruppi `non ( A e B )`; verbi personalizzati anche multi-parola; sinonimi di verbo.
+- **Mondo vivo:** stati e contatori, eventi a tempo, **demoni** (if-then autonomi), buio/luce, NPC che si muovono, dialoghi ramificati, pronomi/anafora, ANNULLA/ANCORA.
 
 Storia completa in [CHANGELOG.md](CHANGELOG.md). Le sezioni seguenti documentano le tappe precedenti della roadmap.
 
 ### 📌 Versioni (linea unica)
 
-Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il linguaggio: non esiste più uno schema separato «Grammatica vX». Motore, compilatore e specifica della grammatica avanzano insieme.
+Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il linguaggio: non esiste più uno schema separato «Grammatica vX». Motore, compilatore e specifica della grammatica avanzano insieme (fonte di verità: `strutture.VERSIONE_MOTORE`).
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **0.18.0** | header di modulo |
-| Compilatore (`compilatore.py`) | **0.18.0** | header di modulo |
-| Strutture dati (`strutture.py`) | **0.18.0** | header + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **0.18.0** | header di modulo |
-| Specifica formale della grammatica | **0.18.0** | [`documentazione/grammatica-0.18.0.md`](documentazione/grammatica-0.18.0.md) |
-| Suite di test (`test_linguaggio.py`) | **0.18.0** | 446 test verdi |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 0.18.0 | — |
+| Motore / interprete (`gioco.py`) | **0.28.1** | header di modulo |
+| Compilatore (`compilatore.py`) | **0.28.1** | header di modulo |
+| Strutture dati (`strutture.py`) | **0.28.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **0.28.1** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **0.28.1** | usa `VERSIONE_MOTORE` |
+| Specifica formale della grammatica | **0.28.0** | [`documentazione/grammatica-0.28.0.md`](documentazione/grammatica-0.28.0.md) — *grammatica invariata in 0.28.1* |
+| Suite di test | **0.28.1** | 582 test linguaggio + 43 collaudo |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 0.28.1 | — |
 
-> Le etichette di versione più vecchie che compaiono nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** delle tappe e non riflettono lo stato attuale, che è **v0.18.0** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)).
+> La 0.28.1 è una patch di perf/documentazione/pulizia: la **grammatica è invariata** rispetto alla 0.28.0, quindi la spec EBNF resta `grammatica-0.28.0.md` (come per la v0.14.0, che mantenne la spec 0.13.0). Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale, che è **v0.28.1** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)) — sarà rigenerato sul linguaggio finale.
 
 ---
 
@@ -149,20 +157,23 @@ errore voluto in `esempi/test debug/storia-con-errore.fav`.
 
 ## 🗺️ Roadmap
 
-I **Livelli 1-8** della roadmap del linguaggio sono **chiusi** e la v0.18.0 ha
-consolidato il tutto: il linguaggio FAVELLA è completo ed eccellente allo stato
-attuale delle conoscenze. Sono già disponibili azioni a due oggetti (`usa X su Y`,
-ora con clausola `se`), condizioni composte (AND/OR/NOT con parentesi),
+I **Livelli 1-8**, il **Consolidamento** (v0.18.0) e l'intero **Asse A — «Il mondo
+vivo»** (v0.19.0→v0.26.0) sono **chiusi**; le v0.27.0–v0.28.0 hanno aggiunto una
+**revisione totale di solidità**. Il linguaggio FAVELLA è completo ed eccellente
+allo stato attuale delle conoscenze. Sono disponibili azioni a due oggetti (`usa X
+su Y`, con clausola `se`), condizioni composte (AND/OR/NOT con parentesi),
 contenitori e supporti, modifiche dinamiche del mondo (`e adesso …`), stati e
-contatori, NPC con dialoghi ramificati, eventi a turni e demoni (eventi
-condizionali). Il percorso completo è documentato in [CHANGELOG.md](CHANGELOG.md)
-e nei documenti per-versione in [`documentazione/`](documentazione/).
+contatori, NPC con dialoghi ramificati e movimento, eventi a turni e demoni,
+buio/luce, pronomi/anafora e ANNULLA. Il percorso completo è in
+[CHANGELOG.md](CHANGELOG.md) e nei documenti per-versione in [`documentazione/`](documentazione/).
 
 Le prossime tappe non riguardano nuove primitive del linguaggio, ma il suo
 contorno:
 
--   ✅ **Manuale d'autore completo**, in PDF tipografico, allineato alla v0.18.0 e
-    con «La Casa di Via Stradivari» come esempio guida: [`documentazione/manuale/`](documentazione/manuale/).
+-   📘 **Manuale d'autore completo rigenerato** sul linguaggio finale (Asse A
+    completo + revisione), con «La Casa di Via Stradivari» / «Il Relitto Silente»
+    come esempi guida. Il manuale attuale in PDF è in [`documentazione/manuale/`](documentazione/manuale/)
+    (allineato alla v0.18.0, da aggiornare).
 -   **Eventuale internazionalizzazione** e valutazione di una **1.0.0** «linguaggio
     maturo» quando l'esperienza d'uso lo confermerà.
 

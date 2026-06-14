@@ -4,6 +4,32 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.28.1] - 2026-06-14
+### Revisione totale del linguaggio — Lotto 3 (performance, documentazione, pulizia) 🧹
+Patch di chiusura della revisione: nessun cambio di grammatica (la spec EBNF resta
+`grammatica-0.28.0.md`), nessuna nuova feature. Suite invariate (**582** linguaggio
++ **43** collaudo).
+
+- **Perf — cache dei parser LALR.** Costruire la tabella LALR costa ~40 ms;
+  `costruisci_parser` ora riusa i parser già costruiti, indicizzati per
+  (grammatica, propagate_positions). Una ricostruzione identica passa da ~44 ms a
+  ~0,1 ms (utile a CLI e IDE che rianalizzano lo stesso file più volte). Sicuro: un
+  parser Lark è riusabile e senza stato fra le `.parse()`; un `GrammarError` non
+  viene cachato (la guardia anti-ambiguità resta valida).
+- **Dedup `guarda` / ingresso in stanza.** `guarda_logica_default` ora delega a
+  `gioco.mostra_stanza` (fonte unica): prima ne duplicava la logica ma **ometteva
+  le uscite**; ora `guarda` mostra anche le uscite, coerente con l'ingresso.
+- **cp1252-safety.** Sostituito l'unico `…` (U+2026) in un `print` di runtime
+  (l'aiuto) con `...`: non più a rischio `UnicodeEncodeError` su console Windows
+  legacy.
+- **README allineato a 0.28.1** (stato, tabella versioni, conteggi test, roadmap;
+  era fermo a v0.18.0). **Commenti datati ripuliti**: «PARSING v0.2», conteggi-test
+  fissi nei commenti del compilatore, riferimenti al «robot dinamico B1.2 — sessione
+  successiva» (accantonato) in `collaudo.py` e banner di stato in
+  `documentazione/progettazione-collaudo.md`.
+
+---
+
 ## [0.28.0] - 2026-06-14
 ### Revisione totale del linguaggio — Lotto 2 (robustezza) 🧱
 Secondo lotto della revisione di solidità. Una sola modifica di grammatica (D) +

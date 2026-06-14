@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.28.0)
+# Interprete Interattivo per FAVELLA 1 (v0.28.1)
 
 import sys
 import traceback
@@ -485,7 +485,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             print("A presto!")
             return False
 
-        # --- PARSING INTELLIGENTE v0.2 ---
+        # --- PARSING DEL COMANDO DEL GIOCATORE ---
         # Cerchiamo preposizioni per spezzare il comando
         verbo_giocatore = ""
         argomento_sx = ""
