@@ -4,6 +4,44 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.25.0] - 2026-06-14
+### Movimento degli NPC (Asse A — A5) 🚶
+Quinta voce dell'**Asse A** di `progettazione-oltre-0.18.md`. I personaggi erano
+statici: il mondo sembrava un museo. I demoni (Livello 8) fornivano già il
+*quando*; mancava la conseguenza di *movimento*.
+
+- **Due conseguenze nuove** (classe `ConseguenzaMovimentoPNG`), usabili in regole,
+  eventi, demoni e opzioni di dialogo:
+  - **Deterministica**: `la guardia va nel corridoio` (`cons_png_va`,
+    `ENTITA "va" PREP_LUOGO ENTITA`) — destinazione fissa, validata come stanza
+    esistente a compile-time.
+  - **Casuale**: `il gatto cambia stanza` (`cons_png_cambia`,
+    `ENTITA "cambia" "stanza"`) — una stanza **adiacente** a caso fra le uscite,
+    pescata da `mondo.rng` (riproducibile e ANNULLA-safe, come le varianti A2).
+    Senza uscite, l'NPC resta dov'è.
+- **Annunci**: se la mossa coinvolge la stanza del giocatore, il motore lo segnala
+  — uscita «La guardia se ne va verso nord.» (con la direzione se la destinazione
+  è adiacente) / ingresso «Il gatto arriva.». Le conseguenze restano **pure**:
+  accodano in `Mondo.annunci`, e il loop di gioco (`_stampa_annunci`) svuota la
+  coda dopo ogni blocco di conseguenze (eventi/demoni a fine turno, regole del
+  giocatore, scelte di dialogo). `annunci` è stato di sessione (escluso da ANNULLA).
+- **Scelta di design LALR-safe**: la forma casuale **non** usa `va in una stanza
+  adiacente` (collide col lessico su `PREP_LUOGO` `in`, romperebbe l'invariante
+  0-conflitti); `cambia stanza` è l'equivalente naturale e privo di collisioni.
+  Riservate aggiunte: `va`, `cambia`. **LALR(1) 0-ambiguo** (dopo ENTITA il
+  lookahead `va`/`cambia` vs `_copula`).
+- **Linter**: `_lint_oggetti_orfani` riconosce un NPC introdotto da un movimento
+  deterministico (niente falso «mai collocato»).
+- **Test**: **+17 asserzioni** (10 test: parsing delle due forme, movimento
+  deterministico e casuale-riproducibile, annunci di uscita/ingresso, nessun
+  annuncio fuori scena, movimento via evento e via regola del giocatore, no-op
+  senza uscite, destinazione non-stanza = errore). Suite del linguaggio a **537**
+  (era 520); collaudatore invariato a **33**; le demo restano `vincibile-
+  staticamente`. Spec EBNF **`grammatica-0.25.0.md`** (§11); puntatore `_SPEC_EBNF`
+  0.24.0 → 0.25.0. Versioni allineate a **0.25.0**.
+
+---
+
 ## [0.24.0] - 2026-06-14
 ### Buio e luce come primitiva (Asse A — A4) 🔦
 Quarta voce dell'**Asse A** di `progettazione-oltre-0.18.md` (la prima del gruppo

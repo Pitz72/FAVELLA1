@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.24.0)
+# Interprete Interattivo per FAVELLA 1 (v0.25.0)
 
 import sys
 import traceback
@@ -166,6 +166,18 @@ def _risolvi_anafora(mondo: Mondo, verbo: str, argomento: str):
     return ("ok", nuovo_verbo, rif)
 
 
+def _stampa_annunci(mondo: Mondo):
+    """[0.25.0 / A5] Svuota e stampa la coda degli annunci di movimento degli NPC
+    accumulati dalle conseguenze appena eseguite (le conseguenze restano «pure»:
+    accodano, non stampano). Va chiamato dopo ogni blocco di esecuzione di
+    conseguenze (eventi, demoni, regole)."""
+    annunci = getattr(mondo, "annunci", None)
+    if annunci:
+        for messaggio in annunci:
+            print(rendi_testo(mondo, messaggio))
+        annunci.clear()
+
+
 def partita_finita(mondo: Mondo) -> bool:
     """[Livello 3] Controlla lo stato della partita dopo l'esecuzione delle
     conseguenze. Se una conseguenza di fine partita l'ha terminata, stampa
@@ -203,8 +215,13 @@ def avanza_turno_e_processa(mondo: Mondo) -> bool:
                 print(rendi_testo(mondo, evento.risposta))
             evento.esegui_conseguenze(mondo)
             if partita_finita(mondo):
+                _stampa_annunci(mondo)   # [A5] eventuali movimenti prima della fine
                 return True
-    return _processa_demoni(mondo)
+    finita = _processa_demoni(mondo)
+    # [0.25.0 / A5] Annuncia i movimenti degli NPC avvenuti in eventi e demoni di
+    # questo turno (l'NPC entra/esce dalla stanza del giocatore).
+    _stampa_annunci(mondo)
+    return finita
 
 
 def _processa_demoni(mondo: Mondo) -> bool:
@@ -399,6 +416,7 @@ def _gestisci_scelta_dialogo(mondo: Mondo, comando: str) -> bool:
     # Conseguenze della scelta (riuso della coda del Livello 3), poi transizione.
     for conseguenza in scelta.conseguenze:
         conseguenza.esegui(mondo)
+    _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze di una scelta
     if partita_finita(mondo):
         mondo.termina_dialogo()
         return False
@@ -521,6 +539,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                             break
 
             if regola_movimento_applicata:
+                _stampa_annunci(mondo)   # [A5] movimenti NPC dalle regole 'vai'
                 if partita_finita(mondo):
                     return False
                 return True
@@ -664,6 +683,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 # direzioni), così l'effetto è visibile e non muto.
                 pos_prima = mondo.posizione_giocatore
                 regola_da_eseguire.esegui_conseguenze(mondo)
+                _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
                 if partita_finita(mondo):
                     return False
                 if mondo.posizione_giocatore != pos_prima:

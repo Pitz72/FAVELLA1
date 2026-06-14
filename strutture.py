@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.24.0"
+VERSIONE_MOTORE = "0.25.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -237,6 +237,62 @@ class ConseguenzaSpostamentoGiocatore(Conseguenza):
     def esegui(self, mondo: 'Mondo'):
         if mondo.trova_stanza(self.id_stanza):
             mondo.posizione_giocatore = self.id_stanza
+
+class ConseguenzaMovimentoPNG(Conseguenza):
+    """[0.25.0 / A5] Movimento di un PERSONAGGIO (o altro oggetto) da una stanza a
+    un'altra, così il mondo non sembra un museo. Due modi:
+      - DETERMINISTICO ('la guardia va nel corridoio'): destinazione fissa;
+      - CASUALE ('il gatto cambia stanza'): una stanza adiacente a caso, fra le
+        uscite della stanza in cui si trova, pescata da mondo.rng (riproducibile e
+        ANNULLA-safe, come le varianti A2).
+    Se la mossa coinvolge la stanza del giocatore (l'NPC ne esce o vi entra), il
+    motore accoda un annuncio in mondo.annunci, stampato dal loop di gioco: il
+    movimento è così visibile e non muto. Senza uscite (caso casuale) o con
+    destinazione assente, il personaggio resta dov'è."""
+    def __init__(self, id_png: str, destinazione: Optional[str] = None,
+                 adiacente: bool = False):
+        self.id_png = id_png
+        self.destinazione = destinazione   # id stanza (deterministico) o None
+        self.adiacente = adiacente         # True = una stanza adiacente a caso
+
+    def esegui(self, mondo: 'Mondo'):
+        png = mondo.trova_oggetto(self.id_png)
+        if not png:
+            return
+        origine = png.posizione
+        stanza_orig = mondo.trova_stanza(origine) if origine else None
+        direzione = None
+        if self.adiacente:
+            if not stanza_orig or not stanza_orig.uscite:
+                return  # nessuna uscita: il personaggio non si muove
+            direzione = mondo.rng.choice(sorted(stanza_orig.uscite.keys()))
+            destinazione = stanza_orig.uscite[direzione]
+        else:
+            destinazione = self.destinazione
+            if stanza_orig:
+                # Se la destinazione è adiacente, recuperiamo la direzione per un
+                # annuncio più ricco ('se ne va verso nord').
+                for d, s in stanza_orig.uscite.items():
+                    if s == destinazione:
+                        direzione = d
+                        break
+        stanza_dest = mondo.trova_stanza(destinazione)
+        if not stanza_dest or destinazione == origine:
+            return
+        pos_gioc = mondo.posizione_giocatore
+        nome = png.nome_visualizzato.capitalize()
+        # Annuncio di USCITA: l'NPC lascia la stanza in cui si trova il giocatore.
+        if origine == pos_gioc:
+            if direzione:
+                mondo.annunci.append(f"{nome} se ne va verso {direzione}.")
+            else:
+                mondo.annunci.append(f"{nome} se ne va.")
+        mondo.rimuovi_da_posizione(png)
+        stanza_dest.oggetti[self.id_png] = png
+        png.posizione = destinazione
+        # Annuncio di INGRESSO: l'NPC entra nella stanza del giocatore.
+        if destinazione == pos_gioc:
+            mondo.annunci.append(f"{nome} arriva.")
 
 # --- Classi Esistenti (con modifiche) ---
 
@@ -570,6 +626,12 @@ class Mondo:
         # catturato/ripristinato dalle istantanee di ANNULLA (l'undo riavvolge
         # anche la casualità) e pronto per il giocatore-robot (B1).
         self.rng = random.Random(SEME_CASUALE_DEFAULT)
+        # [0.25.0 / A5] Coda degli annunci di movimento degli NPC visibili al
+        # giocatore (l'NPC esce dalla sua stanza o vi entra). Le conseguenze
+        # restano «pure» (non stampano): il loop di gioco svuota e stampa questa
+        # coda dopo aver eseguito le conseguenze. È stato di sessione, sempre vuoto
+        # fra un turno e l'altro → escluso dalle istantanee di ANNULLA.
+        self.annunci: List[str] = []
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
@@ -624,7 +686,7 @@ class Mondo:
     # oggetti, inventario, variabili, demoni, posizione, turno — è stato mutabile
     # e viene catturato/ripristinato fedelmente.
     _CAMPI_VOLATILI = ("_storia_stati", "ultimo_comando", "azioni",
-                       "mappa_verbi_giocatore")
+                       "mappa_verbi_giocatore", "annunci")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per

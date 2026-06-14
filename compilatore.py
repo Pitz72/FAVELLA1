@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.24.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.25.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -12,7 +12,7 @@ from strutture import (
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
     CondizioneContatore, CondizionePosizioneGiocatore,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
-    ConseguenzaSpostamentoGiocatore,
+    ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
 )
@@ -93,6 +93,9 @@ PAROLE_RISERVATE = frozenset({
     # come keyword (collidono con nomi-oggetto comuni: "la porta"); la transizione
     # tra nodi usa 'conduce' (vedi 0.10.2).
     "personaggio", "dialogo", "nodo", "opzione", "dice", "chiude", "conduce",
+    # [0.25.0 / A5] movimento degli NPC: 'la guardia va nel corridoio' /
+    # 'il gatto cambia stanza' ('stanza' è già riservata sopra).
+    "va", "cambia",
     # fine partita (Livello 3)
     "vinci", "perdi", "termina",
     # capacità di trasporto (Livello 7): 'Il giocatore può portare N oggetti.' /
@@ -546,6 +549,15 @@ _GRAMMAR_TEMPLATE = r"""
                 // (mai un'ENTITA: 'giocatore' è riservata), distinta da
                 // cons_spostamento (che parte da ENTITA) al primo token → 0-ambiguo.
                 | "il" "giocatore" _copula PREP_LUOGO ENTITA -> cons_giocatore_sposta
+                // [0.25.0 / A5] Movimento di un PERSONAGGIO. Deterministico ('la
+                // guardia va nel corridoio') e CASUALE ('il gatto cambia stanza',
+                // una stanza adiacente a caso). Entrambe iniziano con ENTITA: dopo
+                // l'entità il lookahead distingue _copula (spostamento/proprietà)
+                // da "va" e "cambia" → LALR(1) 0-ambiguo. NB: la mossa casuale NON
+                // riusa 'va in …' (collide col lexer su PREP_LUOGO 'in'); usa
+                // 'cambia stanza', equivalente e privo di collisioni.
+                | ENTITA "va" PREP_LUOGO ENTITA  -> cons_png_va
+                | ENTITA "cambia" "stanza"       -> cons_png_cambia
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
                 | "aumenta" VARIABILE ( "di" NUMERO )?    -> cons_aumenta
                 | "diminuisci" VARIABILE ( "di" NUMERO )? -> cons_diminuisci
@@ -1276,6 +1288,16 @@ class FavellaTransformer(Transformer):
         # [0.18.0 / B2] 'e adesso il giocatore è in [stanza]': teletrasporto.
         return ConseguenzaSpostamentoGiocatore(normalizza_nome(stanza_grezzo))
 
+    def cons_png_va(self, png_grezzo, prep, stanza_grezzo):
+        # [0.25.0 / A5] 'la guardia va nel corridoio': movimento deterministico.
+        return ConseguenzaMovimentoPNG(normalizza_nome(png_grezzo),
+                                       destinazione=normalizza_nome(stanza_grezzo))
+
+    def cons_png_cambia(self, png_grezzo):
+        # [0.25.0 / A5] 'il gatto cambia stanza': si sposta in una stanza adiacente
+        # a caso (fra le uscite della sua stanza), pescata da mondo.rng.
+        return ConseguenzaMovimentoPNG(normalizza_nome(png_grezzo), adiacente=True)
+
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
 
@@ -1324,6 +1346,15 @@ class FavellaTransformer(Transformer):
                 # [0.18.0 / B2] Il teletrasporto deve puntare a una stanza esistente.
                 self.errori.append(
                     f"Stanza inesistente nel teletrasporto del giocatore: '{c.id_stanza}'")
+            if isinstance(c, ConseguenzaMovimentoPNG):
+                # [0.25.0 / A5] Il personaggio deve esistere; la destinazione
+                # deterministica dev'essere una stanza (la casuale è risolta a runtime).
+                if not self.mondo.trova_oggetto(c.id_png):
+                    self.errori.append(
+                        f"Personaggio inesistente nel movimento: '{c.id_png}'")
+                if c.destinazione is not None and not self.mondo.trova_stanza(c.destinazione):
+                    self.errori.append(
+                        f"Stanza inesistente nel movimento del personaggio: '{c.destinazione}'")
 
     def _crea_evento(self, tipo, args):
         # args: (NUMERO, [TESTO_QUOTATO], conseguenza*). [0.19.0/A9] La battuta
@@ -1707,6 +1738,11 @@ class FavellaTransformer(Transformer):
         for cons in self._tutte_le_conseguenze():
             if isinstance(cons, ConseguenzaSpostamento) and cons.destinazione != "nulla":
                 introdotti.add(cons.id_oggetto)
+            # [0.25.0 / A5] Un movimento PNG deterministico ('va nel corridoio')
+            # colloca il personaggio in una stanza; la forma casuale ('cambia
+            # stanza') invece presuppone che sia già collocato (lo muove soltanto).
+            elif isinstance(cons, ConseguenzaMovimentoPNG) and cons.destinazione is not None:
+                introdotti.add(cons.id_png)
         for id_ogg, ogg in m.oggetti.items():
             if ogg.posizione is None and id_ogg not in introdotti:
                 self.warnings.append(

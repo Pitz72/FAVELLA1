@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.24.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.25.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1599,6 +1599,10 @@ _CORPUS_GUARDIA = (
     "La cantina è una stanza.\nLa cella collega sud a cantina.\n"
     "La cantina è buia.\n"                             # proprietà speciale 'buia' su stanza
     "Una lanterna è una cosa.\nLa lanterna illumina.\nLa lanterna è in cantina.\n"  # def_illumina
+    # [0.25.0 / A5] Movimento NPC: deterministico (cons_png_va) e casuale
+    # (cons_png_cambia). Dopo ENTITA il lookahead "va"/"cambia" vs _copula.
+    "Ogni 6 turni: il mercante cambia stanza.\n"        # cons_png_cambia
+    "Quando il punteggio è almeno 4: il mercante va nel corridoio.\n"  # cons_png_va
 )
 
 
@@ -2531,7 +2535,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.24.0.md")
+                          "grammatica-0.25.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2548,7 +2552,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.24.0.md è presente")
+           "documentazione/grammatica-0.25.0.md è presente")
 
 
 def test_spec_ebnf_allineata_alla_grammatica():
@@ -3727,6 +3731,159 @@ def test_a4_illumina_prima_della_dichiarazione():
            "l'ordine non conta: la torcia illumina")
 
 
+# --- Test: movimento degli NPC [0.25.0 / A5] --------------------------------
+
+def _src_a5(extra_npc="La guardia è in cella.\n", trigger=""):
+    return (
+        "La cella è una stanza.\nIl corridoio è una stanza.\n"
+        "La cella collega nord a corridoio.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        "Una guardia è un personaggio.\n" + extra_npc + trigger
+    )
+
+
+def test_a5_parsing_due_forme():
+    print("[A5: 'va nel corridoio' e 'cambia stanza' producono un movimento NPC]")
+    src = _src_a5(trigger=(
+        "Il giocatore comincia in cella.\n"
+        "Ogni turno se l'allarme è attivo: la guardia va nel corridoio.\n"
+        "Quando l'allarme non è attivo: la guardia cambia stanza.\n"))
+    mondo, log = compila(src)
+    _check(mondo is not None, "il sorgente con movimento NPC compila")
+    tipi = [c.__class__.__name__ for d in (mondo.demoni if mondo else [])
+            for c in d.conseguenze]
+    _check(tipi.count("ConseguenzaMovimentoPNG") == 2,
+           "entrambe le forme creano una ConseguenzaMovimentoPNG")
+
+
+def test_a5_movimento_deterministico():
+    print("[A5: 'va nel corridoio' sposta l'NPC nella stanza indicata]")
+    src = _src_a5(trigger=(
+        "Il giocatore comincia in corridoio.\n"
+        "Ogni turno se l'allarme è attivo: la guardia va nel corridoio.\n"))
+    mondo = runtime(src)
+    esegui(mondo, "guarda")   # turno 1
+    _check(mondo.trova_oggetto("guardia").posizione == "corridoio",
+           "la guardia è andata nel corridoio")
+
+
+def test_a5_movimento_casuale_deterministico_col_seed():
+    print("[A5: 'cambia stanza' è casuale ma riproducibile (seed di A2)]")
+    src = (
+        "La cella è una stanza.\nIl corridoio è una stanza.\nIl magazzino è una stanza.\n"
+        "La cella collega nord a corridoio.\nLa cella collega est a magazzino.\n"
+        "Il giocatore comincia in corridoio.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        "Una guardia è un personaggio.\nLa guardia è in cella.\n"
+        "Ogni turno se l'allarme è attivo: la guardia cambia stanza.\n")
+    m1 = runtime(src)
+    esegui(m1, "guarda")
+    dest1 = m1.trova_oggetto("guardia").posizione
+    m2 = runtime(src)
+    esegui(m2, "guarda")
+    dest2 = m2.trova_oggetto("guardia").posizione
+    _check(dest1 in ("corridoio", "magazzino"),
+           "la guardia si sposta in una stanza adiacente")
+    _check(dest1 == dest2, "la scelta casuale è riproducibile (stesso seed)")
+
+
+def test_a5_annuncio_uscita_con_direzione():
+    print("[A5: l'NPC che lascia la stanza del giocatore è annunciato (con direzione)]")
+    src = _src_a5(trigger=(
+        "Il giocatore comincia in cella.\n"
+        "Ogni turno se l'allarme è attivo: la guardia cambia stanza.\n"))
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("se ne va" in out.lower(), "l'uscita dell'NPC è annunciata")
+    _check("nord" in out.lower(), "l'annuncio include la direzione")
+
+
+def test_a5_annuncio_ingresso():
+    print("[A5: l'NPC che entra nella stanza del giocatore è annunciato]")
+    src = _src_a5(trigger=(
+        "Il giocatore comincia in corridoio.\n"
+        "Ogni turno se l'allarme è attivo: la guardia va nel corridoio.\n"))
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("arriva" in out.lower(), "l'ingresso dell'NPC è annunciato")
+
+
+def test_a5_nessun_annuncio_altrove():
+    print("[A5: un movimento lontano dal giocatore non è annunciato]")
+    src = (
+        "L'atrio è una stanza.\nLa cella è una stanza.\nIl corridoio è una stanza.\n"
+        "L'atrio collega ovest a cella.\nLa cella collega nord a corridoio.\n"
+        "Il giocatore comincia in atrio.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        "Una guardia è un personaggio.\nLa guardia è in cella.\n"
+        "Ogni turno se l'allarme è attivo: la guardia va nel corridoio.\n")
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("se ne va" not in out.lower() and "arriva" not in out.lower(),
+           "nessun annuncio per un movimento fuori scena")
+
+
+def test_a5_movimento_via_evento():
+    print("[A5: un evento a tempo può muovere un NPC]")
+    src = (
+        "La cella è una stanza.\nIl corridoio è una stanza.\n"
+        "La cella collega nord a corridoio.\n"
+        "Il giocatore comincia in corridoio.\n"
+        "Una guardia è un personaggio.\nLa guardia è in cella.\n"
+        "Al turno 1: la guardia va nel corridoio.\n")
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check(mondo.trova_oggetto("guardia").posizione == "corridoio",
+           "l'evento ha mosso la guardia")
+    _check("arriva" in out.lower(), "l'arrivo è annunciato")
+
+
+def test_a5_movimento_via_regola_giocatore():
+    print("[A5: una regola del giocatore può muovere un NPC, con annuncio]")
+    src = (
+        "La cella è una stanza.\nIl corridoio è una stanza.\n"
+        "La cella collega nord a corridoio.\n"
+        "Il giocatore comincia in corridoio.\n"
+        "Un bottone è una cosa.\nIl bottone è in corridoio.\n"
+        "Una guardia è un personaggio.\nLa guardia è in cella.\n"
+        'Invece di esamina il bottone: dire "Premi il bottone." e adesso la guardia va nel corridoio.\n')
+    mondo = runtime(src)
+    out = esegui(mondo, "esamina bottone")
+    _check("premi il bottone" in out.lower(), "la risposta della regola è mostrata")
+    _check(mondo.trova_oggetto("guardia").posizione == "corridoio",
+           "la regola ha mosso la guardia")
+    _check("arriva" in out.lower(), "l'arrivo è annunciato dopo la regola")
+
+
+def test_a5_cambia_stanza_senza_uscite_no_op():
+    print("[A5: 'cambia stanza' senza uscite lascia l'NPC dov'è]")
+    src = (
+        "La cella è una stanza.\nIl sgabuzzino è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        "Una guardia è un personaggio.\nLa guardia è in sgabuzzino.\n"  # senza uscite
+        "Ogni turno se l'allarme è attivo: la guardia cambia stanza.\n")
+    mondo = runtime(src)
+    esegui(mondo, "guarda")
+    _check(mondo.trova_oggetto("guardia").posizione == "sgabuzzino",
+           "senza uscite l'NPC non si sposta")
+
+
+def test_a5_destinazione_inesistente_errore():
+    print("[A5: 'va' verso una non-stanza è un errore di compilazione]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia in cella.\n"
+        "L'allarme è uno stato.\nL'allarme è attivo.\n"
+        "Una guardia è un personaggio.\nLa guardia è in cella.\n"
+        "Un forziere è una cosa.\nIl forziere è in cella.\n"
+        "Quando l'allarme è attivo: la guardia va nel forziere.\n")  # forziere è un oggetto
+    mondo, log = compila(src)
+    _check(mondo is None, "la compilazione fallisce")
+    _check("inesistente" in log.lower() and "forziere" in log.lower(),
+           "l'errore segnala la destinazione non-stanza")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -4011,9 +4168,20 @@ def main():
         test_a4_regola_autore_precede_il_buio,
         test_a4_concordanza_buio_maschile,
         test_a4_illumina_prima_della_dichiarazione,
+        # [0.25.0 / A5] Movimento degli NPC
+        test_a5_parsing_due_forme,
+        test_a5_movimento_deterministico,
+        test_a5_movimento_casuale_deterministico_col_seed,
+        test_a5_annuncio_uscita_con_direzione,
+        test_a5_annuncio_ingresso,
+        test_a5_nessun_annuncio_altrove,
+        test_a5_movimento_via_evento,
+        test_a5_movimento_via_regola_giocatore,
+        test_a5_cambia_stanza_senza_uscite_no_op,
+        test_a5_destinazione_inesistente_errore,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.24.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.25.0)")
     print("=" * 60)
     for t in tests:
         t()
