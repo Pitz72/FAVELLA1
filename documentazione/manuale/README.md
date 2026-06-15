@@ -38,6 +38,18 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
   84 pp. su carta bianca. **Ricalcolare il dorso** in `copertina-kdp.typ` se cambiano
   il numero di pagine o la carta. Dorso senza testo (regola KDP sotto 100 pp.).
 
+### Da incorporare alla prossima edizione
+
+- **2026-06-15** — Aggiunta nel cap. 3 («Anatomia di una frase», sorgente
+  `.typ`) una `#nota` che rende esplicita la regola *«il punto di fine frase va
+  fuori dalle virgolette»* (`…gancio.".`, non `…gancio."`). Il manuale la mostrava
+  solo per esempio: un autore alle prime armi, mettendo il punto dentro, otteneva
+  un errore «entità sconosciuta» su una riga lontana. La nota è già nella sorgente
+  e nel PDF **digitale**; l'interno di stampa KDP (`manuale-interno-kdp.pdf`, 84 pp.)
+  **non** è stato rigenerato per non alterare l'impaginazione dell'edizione corrente
+  già pronta. Reincorporare alla prossima tiratura (ricontrollare conteggio pagine
+  e dorso).
+
 ## Struttura
 
 | Percorso | Ruolo |

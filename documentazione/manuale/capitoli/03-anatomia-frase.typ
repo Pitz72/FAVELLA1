@@ -19,6 +19,14 @@ La descrizione dell'ingresso è "Anticamera stretta, parquet che scricchiola. So
 ```)
 ]
 
+#nota[
+  Il punto che chiude la frase va *fuori* dalle virgolette, non dentro: scrivi
+  `…al gancio.".`, non `…al gancio."`. È un dettaglio che sfugge, ma conta. Se lo
+  metti dentro, il compilatore non vede più dove finisce la frase, la fonde con
+  quella successiva e l'errore che ti mostra può spuntare righe più in là — su
+  una dichiarazione che a occhio sembra perfetta.
+]
+
 Tutto ciò che segue un cancelletto `#`, fino a fine riga, è un *commento*: serve a
 te, non al compilatore, che lo ignora. Nella Casa i commenti marcano le sezioni e
 spiegano le scelte difficili.
