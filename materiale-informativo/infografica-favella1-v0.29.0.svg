@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
+  <stop offset="0" stop-color="#050a14"/><stop offset="0.5" stop-color="#0b1726"/><stop offset="1" stop-color="#0f2032"/>
+</linearGradient>
+<linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#5cf3ff"/><stop offset="0.5" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/>
+</linearGradient>
+<linearGradient id="ver" x1="0" y1="0" x2="1" y2="0.4">
+  <stop offset="0" stop-color="#5cf3ff"/><stop offset="0.45" stop-color="#22d3ee"/>
+  <stop offset="0.7" stop-color="#f59e0b"/><stop offset="1" stop-color="#fb923c"/>
+</linearGradient>
+<linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/>
+</linearGradient>
+<radialGradient id="glowc" cx="0.5" cy="0.5" r="0.5">
+  <stop offset="0" stop-color="#22d3ee" stop-opacity="0.40"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="glowa" cx="0.5" cy="0.5" r="0.5">
+  <stop offset="0" stop-color="#fb923c" stop-opacity="0.30"/><stop offset="1" stop-color="#fb923c" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0" stop-color="#22d3ee" stop-opacity="0"/><stop offset="0.5" stop-color="#22d3ee" stop-opacity="0.9"/>
+  <stop offset="1" stop-color="#fb923c" stop-opacity="0"/>
+</linearGradient>
+<filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22"/></filter>
+</defs>
+<rect width="1080" height="1920" fill="url(#bg)"/>
+<ellipse cx="540" cy="160" rx="620" ry="420" fill="url(#glowc)"/>
+<ellipse cx="540" cy="560" rx="520" ry="360" fill="url(#glowa)"/>
+<rect x="24" y="24" width="1032" height="1872" rx="40" fill="none" stroke="#1e3a52" stroke-opacity="0.6" stroke-width="2"/>
+<text x="540" y="180" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="26" letter-spacing="8" text-anchor="middle" fill="#62788d">VERSIONE ATTUALE</text>
+<text x="540" y="340" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="178" font-weight="800" letter-spacing="1" text-anchor="middle" fill="url(#ver)">v0.29.0</text>
+<text x="540" y="402" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="27" font-weight="600" text-anchor="middle" fill="#9fb3c8">Installer multipiattaforma · CLI favella1 · playground offline</text>
+<rect x="120" y="478" width="840" height="3" rx="1.5" fill="url(#rule)"/>
+<text x="540" y="534" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="31" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#eaf3fb">DIECI TAPPE CHE HANNO FATTO EVOLVERE FAVELLA</text>
+<rect x="70" y="603" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="652" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">01</text>
+<text x="172" y="631" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Parser LALR(1) non ambiguo</text>
+<text x="172" y="669" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">L&#x27;italiano diventa codice deterministico, per costruzione.</text>
+<rect x="172" y="695" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="719" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="768" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">02</text>
+<text x="172" y="747" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Logica composita</text>
+<text x="172" y="785" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Condizioni con e / oppure / non e conseguenze multiple.</text>
+<rect x="172" y="811" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="835" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="884" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">03</text>
+<text x="172" y="863" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Stati e contatori</text>
+<text x="172" y="901" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">La memoria astratta della storia: variabili e numeri.</text>
+<rect x="172" y="927" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="951" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1000" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">04</text>
+<text x="172" y="979" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Regole «Invece di»</text>
+<text x="172" y="1017" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Intercetta l&#x27;azione e cambia il mondo con «e adesso».</text>
+<rect x="172" y="1043" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1067" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1116" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">05</text>
+<text x="172" y="1095" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Personaggi e dialoghi</text>
+<text x="172" y="1133" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Conversazioni ramificate, opzioni condizionali, conseguenze.</text>
+<rect x="172" y="1159" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1183" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1232" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">06</text>
+<text x="172" y="1211" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Demoni</text>
+<text x="172" y="1249" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Sentinelle che sorvegliano il mondo e scattano da sole.</text>
+<rect x="172" y="1275" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1299" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1348" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">07</text>
+<text x="172" y="1327" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Pronomi e anafora</text>
+<text x="172" y="1365" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">«Esamina la torcia», poi semplicemente «prendila».</text>
+<rect x="172" y="1391" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1415" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1464" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">08</text>
+<text x="172" y="1443" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Buio e luce</text>
+<text x="172" y="1481" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">«La cantina è buia.», «La torcia illumina.»</text>
+<rect x="172" y="1507" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1531" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1580" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">09</text>
+<text x="172" y="1559" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Personaggi che si muovono</text>
+<text x="172" y="1597" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Gli NPC camminano da soli, di stanza in stanza.</text>
+<rect x="172" y="1623" width="838" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="70" y="1647" width="70" height="70" rx="19" fill="url(#chip)"/>
+<text x="105" y="1696" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="#050a14">10</text>
+<text x="172" y="1675" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="34" font-weight="700" fill="#eaf3fb">Distribuzione completa</text>
+<text x="172" y="1713" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" fill="#9fb3c8">Installer Win·macOS·Linux, CLI favella1 e playground.</text>
+<rect x="120" y="1770" width="840" height="3" rx="1.5" fill="url(#rule)"/>
+<text x="540" y="1814" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="25" font-weight="700" text-anchor="middle" fill="#5cf3ff">582 test verdi · 0 ambiguità · 100% italiano · open source</text>
+<text x="540" y="1850" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="22" text-anchor="middle" fill="#9fb3c8">github.com/Pitz72/FAVELLA1</text>
+</svg>
