@@ -2,7 +2,24 @@
 # Modulo per le funzioni di utilità di FAVELLA 1
 
 import re
+import sys
 import unicodedata
+
+
+def assicura_console_utf8():
+    """Riconfigura stdout/stderr a UTF-8 con errors='replace' quando il flusso
+    lo permette. Senza questo, un carattere fuori da Windows-1252 in un testo
+    della storia (es. '★', '─', frecce, emoji) fa terminare il gioco con un
+    UnicodeEncodeError sulla console Windows (cp1252): la logica è corretta, a
+    cadere è solo la stampa. errors='replace' degrada il carattere invece di
+    far crashare la partita. No-op su flussi non riconfigurabili o assenti.
+    Idempotente: chiamarla più volte non fa danni. Fonte unica condivisa da
+    favella.py (CLI) e gioco.py (avvio del ciclo interattivo)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
 
 # Articoli italiani riconosciuti come prefisso opzionale dei nomi-entità.
 # Fonte unica: usata sia da normalizza_nome (rimozione) sia dalla grammatica

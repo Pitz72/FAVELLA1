@@ -4,6 +4,70 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.30.0] - 2026-06-16
+### Cassetto A: robustezza, diagnostica e due piccole simmetrie 🧰
+Prima sessione del **piano di completamento del linguaggio** (`documentazione/espansione-oltre-0.29.md`):
+quattro rifiniture a basso rischio, **additive** (le 4 demo di stress-test e tutte
+le storie esistenti compilano e si comportano identiche). Una sola modifica di
+grammatica (A3) → bump **minor**; spec nuova `documentazione/grammatica-0.30.0.md`.
+
+- **A1 — Diagnostica dei nomi non validi.** Un carattere come `/` in un nome di
+  entità/stato/contatore chiudeva in anticipo il letterale regex del terminale
+  generato per-file, facendo fallire la costruzione del parser con un
+  `GrammarError` interno e incomprensibile (riprodotto da un tester reale). Ora la
+  Passata 1 (`valida_nomi_dichiarati`) lo intercetta **prima** del parser con un
+  errore d'autore **localizzato** (riga, colonna, carattere) e codice
+  `nome-non-valido`. Alfabeto ammesso nei nomi: lettere (anche accentate), cifre,
+  spazi e l'apostrofo — lo stesso del terminale `WORD`.
+- **A3 — `dire` opzionale nelle regole.** Per simmetria con i «tick silenziosi»
+  di eventi e demoni (A9), una regola che muta solo lo stato può ora **omettere il
+  testo**: `Invece di riposa: aumenta la forza.`. `def_regola` riusa lo stesso
+  inline `_esito_temporale` di eventi/demoni; a runtime una regola con risposta
+  vuota **non** stampa una riga vuota. **LALR(1) 0-ambiguo** (guardia anti-ambiguità
+  del corpus estesa al nuovo costrutto).
+- **A4 — Idioma di direzione.** `"sinistra" è come est.` non funziona: `è come`
+  rimappa **solo i verbi**. Si mantiene l'idioma esistente — più pulito —
+  `Sinistra e destra sono direzioni opposte.`, e si **migliora l'avviso**: quando
+  il bersaglio di `è come` è una direzione, il warning lo dice e indica l'idioma
+  corretto, invece del generico «non è un verbo noto».
+- **A2 — Punto dentro le virgolette: RIMANDATO.** Indagine svolta: una diagnostica
+  proattiva in Passata 1 non è perseguibile senza falsi positivi (la continuazione
+  legittima `dire "X."` a capo seguita da `e adesso …` è indistinguibile dall'errore
+  senza il parser, che la Passata 1 deliberatamente non è). La regola d'autore «il
+  punto va fuori dalle virgolette» resta nel manuale. Decisione documentata nella spec.
+- **Test.** Suite **601** asserzioni di linguaggio (era 585) + **43** collaudo, tutte
+  verdi (pytest e runner nativo). Versioni allineate a **0.30.0**; puntatore
+  anti-drift della spec aggiornato.
+
+---
+
+## [0.29.1] - 2026-06-16
+### Robustezza: niente più crash sui caratteri fuori da Windows-1252 🛡️
+Patch di **sola robustezza runtime**: la grammatica è **invariata** (la spec EBNF
+resta valida), nessun cambio di semantica delle storie. Emersa da uno
+**stress-test di genere a tappeto** (quattro demo di generi non nativi — guida,
+sopravvivenza, dating, GDR — in `esempi/demo/`; vedi `documentazione/espansione-oltre-0.29.md`).
+
+- **Fix del crash cp1252.** Un carattere non rappresentabile in Windows-1252
+  (es. `★`, `─`, frecce, emoji) **dentro un testo mostrato al giocatore** faceva
+  terminare il gioco con un `UnicodeEncodeError` fatale sulla console Windows —
+  la logica era corretta, a cadere era solo la stampa. Ora la console viene
+  riconfigurata a UTF-8 con `errors="replace"`: il carattere degrada invece di
+  far crashare la partita. (I caratteri nei **commenti** `#` erano e restano
+  innocui: non vengono mai stampati.)
+- **Fonte unica.** Nuova `utils.assicura_console_utf8()`, condivisa dalla CLI
+  `favella1` (`favella.py`) e dall'avvio del ciclo interattivo (`gioco.py::gioca`),
+  così il fix copre **ogni** modo di lanciare una storia (`python gioco.py`
+  incluso, che prima non riconfigurava nulla). Idempotente.
+- **Bug della trascrizione.** Avviare/chiudere la `TRASCRIZIONE` ripristinava
+  `sys.__stdout__` (il flusso grezzo cp1252), **annullando** la riconfigurazione
+  e facendo riaffiorare il crash. Ora si torna al flusso console già riconfigurato.
+- **Test.** Aggiunta una guardia di regressione deterministica (finta console
+  cp1252) in `test_linguaggio.py`. Suite **585** asserzioni di linguaggio (era
+  582) + 43 collaudo, tutte verdi. Versioni allineate a **0.29.1**.
+
+---
+
 ## [Manuale] - 2026-06-14
 ### Rifinitura editoriale per la stampa (Amazon KDP) 📖
 Lavoro **solo sul manuale** (`documentazione/manuale/`): nessun cambio al motore né

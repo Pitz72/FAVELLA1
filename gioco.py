@@ -1,11 +1,11 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.29.0)
+# Interprete Interattivo per FAVELLA 1 (v0.30.0)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
-from utils import normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola
+from utils import normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola, assicura_console_utf8
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -563,7 +563,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             for regola in mondo.regole:
                 if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                     if regola.condizione and regola.condizione.valuta(mondo):
-                        print(rendi_testo(mondo, regola.risposta))
+                        if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                         regola.esegui_conseguenze(mondo)
                         regola_movimento_applicata = True
                         break
@@ -573,7 +573,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 for regola in mondo.regole:
                     if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
                         if not regola.condizione:
-                            print(rendi_testo(mondo, regola.risposta))
+                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                             regola.esegui_conseguenze(mondo)
                             regola_movimento_applicata = True
                             break
@@ -660,7 +660,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         if (_combacia_due_oggetti(regola, prep_esatta)
                                 and regola.condizione
                                 and regola.condizione.valuta(mondo)):
-                            print(rendi_testo(mondo, regola.risposta))
+                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -668,7 +668,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         break
                     for regola in mondo.regole:  # poi le semplici
                         if _combacia_due_oggetti(regola, prep_esatta) and not regola.condizione:
-                            print(rendi_testo(mondo, regola.risposta))
+                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -681,7 +681,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola.id_oggetto_secondario is None): # Importante: solo regole a 1 oggetto
                         
                         if regola.condizione and regola.condizione.valuta(mondo):
-                            print(rendi_testo(mondo, regola.risposta))
+                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -694,7 +694,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                         regola.id_oggetto_secondario is None):
                         
                         if not regola.condizione:
-                            print(rendi_testo(mondo, regola.risposta))
+                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                             regola_applicata = True
                             regola_da_eseguire = regola
                             break
@@ -711,7 +711,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 if (regola.id_oggetto_bersaglio is None
                         and regola.verbo in verbi_da_controllare):
                     if regola.condizione is None or regola.condizione.valuta(mondo):
-                        print(rendi_testo(mondo, regola.risposta))
+                        if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
                         regola_applicata = True
                         regola_da_eseguire = regola
                         break
@@ -783,6 +783,10 @@ class _Tee:
 
 def gioca(mondo: Mondo):
     """Avvia il ciclo di gioco interattivo."""
+    # Robustezza console: un carattere fuori da cp1252 in un testo della storia
+    # non deve far crashare la partita su Windows. Copre OGNI avvio interattivo
+    # (CLI 'favella1', 'python gioco.py', IDE), idempotente.
+    assicura_console_utf8()
     mondo.carica_azioni(LIBRERIA_AZIONI)
     mondo.imposta_posizione_iniziale()
 
@@ -795,6 +799,10 @@ def gioca(mondo: Mondo):
     mostra_stanza(mondo)
 
     trascrizione = None   # file aperto della trascrizione, o None
+    # Flusso (già riconfigurato a UTF-8) a cui tornare quando la trascrizione si
+    # chiude: NON sys.__stdout__, che è il flusso grezzo cp1252 e farebbe
+    # ricomparire il crash sui caratteri non-Windows-1252.
+    stdout_console = sys.stdout
     try:
         while True:
             print("")
@@ -807,12 +815,12 @@ def gioca(mondo: Mondo):
             if comando_grezzo.strip().lower() == "trascrizione":
                 if trascrizione is None:
                     trascrizione = open("trascrizione-favella.txt", "w", encoding="utf-8")
-                    sys.stdout = _Tee(sys.__stdout__, trascrizione)
+                    sys.stdout = _Tee(stdout_console, trascrizione)
                     print("(Trascrizione AVVIATA: la partita viene salvata in "
                           "'trascrizione-favella.txt'.)")
                 else:
                     print("(Trascrizione TERMINATA.)")
-                    sys.stdout = sys.__stdout__
+                    sys.stdout = stdout_console
                     trascrizione.close()
                     trascrizione = None
                 continue
@@ -827,7 +835,7 @@ def gioca(mondo: Mondo):
                 break
     finally:
         if trascrizione is not None:
-            sys.stdout = sys.__stdout__
+            sys.stdout = stdout_console
             trascrizione.close()
 
 

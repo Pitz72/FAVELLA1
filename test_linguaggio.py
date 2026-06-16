@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.29.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.30.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -62,6 +62,19 @@ def compila(sorgente):
     finally:
         os.unlink(path)
     return mondo, buf.getvalue()
+
+
+def strutturato(src):
+    """Compila via il percorso IDE (analizza_file_strutturato) scrivendo un file
+    temporaneo, e restituisce il dict diagnostico {ok, errors, warnings, ...}."""
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src)
+        path = tmp.name
+    try:
+        return analizza_file_strutturato(path)
+    finally:
+        os.unlink(path)
 
 
 def runtime(src):
@@ -1576,6 +1589,10 @@ _CORPUS_GUARDIA = (
     "Il giocatore ha la chiave.\n"                          # def_giocatore_inventario [A8]
     'Al turno 7: aumenta il punteggio.\n'                   # evento_al senza dire [A9]
     'Ogni turno se il punteggio è al massimo 1: aumenta il punteggio.\n'  # demone_ogni senza dire [A9]
+    # [0.30.0 / A3] 'dire' OPZIONALE anche nelle REGOLE (simmetria con A9): forma
+    # GLOBALE su verbo intransitivo e forma con BERSAGLIO, entrambe a sola conseguenza.
+    'Invece di medita: aumenta il punteggio.\n'             # regola globale senza dire [A3]
+    'Invece di frusta la scatola: aumenta il punteggio.\n'  # regola con bersaglio senza dire [A3]
     # [Livello 5] Interpolazione [var]: vive DENTRO le virgolette, dunque non
     # deve introdurre alcuna ambiguità grammaticale (segnaposto su contatore e
     # oggetto, entrambi dichiarati sopra).
@@ -1658,6 +1675,94 @@ def test_guardia_nome_con_parola_chiave_disambiguato():
     mondo, _ = compila(src)
     _check(mondo is not None and "cosa preziosa" in mondo.oggetti,
            "l'oggetto 'cosa preziosa' è risolto correttamente")
+
+
+# --- Test: Cassetto A [0.30.0] — A1 nomi non validi, A3 'dire' opzionale, A4 idioma direzione
+
+def test_a1_nome_con_carattere_non_valido_errore():
+    print("[A1: un nome con '/' dà un errore d'autore localizzato, non un GrammarError]")
+    src = ("La cella è una stanza.\n"
+           "Il doppio/gioco è uno stato.\n"   # '/' chiuderebbe il regex del terminale
+           "Il giocatore comincia nella cella.\n")
+    # Percorso IDE (strutturato): diagnostica precisa con codice dedicato.
+    r = strutturato(src)
+    _check(not r["ok"], "il file non compila")
+    err = r["errors"][0] if r["errors"] else {}
+    _check(err.get("code") == "nome-non-valido",
+           "l'errore ha codice 'nome-non-valido' (non 'interno'/'sintassi')")
+    _check(err.get("line") == 2 and not err.get("imprecise"),
+           "l'errore è localizzato alla riga 2 (posizione precisa)")
+    _check("/" in err.get("message", ""),
+           "il messaggio cita il carattere incriminato")
+    # Percorso motore/CLI: non solleva, ritorna None segnalando il nome non valido.
+    mondo, log = compila(src)
+    _check(mondo is None and "nome non valido" in log.lower(),
+           "il percorso motore segnala 'nome non valido' senza crashare")
+    _check("GrammarError" not in log and "Traceback" not in log,
+           "nessun GrammarError/traceback grezzo verso l'autore")
+
+
+def test_a1_nome_valido_con_accenti_apostrofo_spazi_ok():
+    print("[A1: accenti, apostrofo e nomi multiparola restano pienamente validi]")
+    src = ("La città vecchia è una stanza.\n"
+           "L'affinità di Anna è un contatore.\n"
+           "Il giocatore comincia nella città vecchia.\n")
+    mondo, log = compila(src)
+    _check(mondo is not None, "un nome con accento/apostrofo/spazi compila (additività)")
+    _check("nome non valido" not in log.lower(),
+           "nessun falso positivo sui nomi italiani leciti")
+
+
+def test_a3_regola_senza_dire_compila_ed_esegue():
+    print("[A3: 'dire' opzionale nelle regole (tick silenzioso come A9)]")
+    src = ('La cella è una stanza.\n'
+           'La forza è un contatore.\n'
+           'La forza parte da 1.\n'
+           '"riposa" è un comando senza oggetto.\n'
+           'Invece di riposa: aumenta la forza di 2.\n'   # nessun 'dire'
+           'Il giocatore comincia nella cella.\n')
+    mondo, log = compila(src)
+    _check(mondo is not None, "una regola senza 'dire' compila")
+    regola = next((r for r in mondo.regole), None) if mondo else None
+    _check(regola is not None and regola.risposta == "" and regola.conseguenze,
+           "la regola ha risposta vuota e mantiene la conseguenza")
+    m = runtime(src)
+    out = esegui(m, "riposa")
+    _check(m.variabili.get("forza") == 3, "la conseguenza si applica (forza 1->3)")
+    _check(out.strip() == "", "una regola muta NON stampa una riga vuota")
+
+
+def test_a3_regola_con_dire_resta_invariata():
+    print("[A3: la forma storica 'dire \"...\"' resta identica (non regredisce)]")
+    m = runtime('La cella è una stanza.\n'
+                'Una pietra è una cosa.\nLa pietra è in cella.\nLa pietra è prendibile.\n'
+                'Invece di esamina la pietra: dire "È liscia.".\n'
+                'Il giocatore comincia nella cella.\n')
+    out = esegui(m, "esamina pietra")
+    _check("liscia" in out.lower(), "la regola con 'dire' stampa ancora il suo testo")
+
+
+def test_a4_sinonimo_direzione_avviso_mirato():
+    print("[A4: '\"x\" è come <direzione>' avvisa con l'idioma corretto, non genericamente]")
+    mondo, log = compila('La cella è una stanza.\n'
+                         '"sinistra" è come est.\n'   # 'est' è una direzione, non un verbo
+                         'Il giocatore comincia nella cella.\n')
+    _check(mondo is not None, "il file compila (l'avviso non è bloccante)")
+    basso = log.lower()
+    _check("direzione" in basso and "opposte" in basso,
+           "l'avviso spiega che 'est' è una direzione e indica 'sono direzioni opposte'")
+
+
+def test_a4_idioma_direzioni_opposte_funziona():
+    print("[A4: l'idioma corretto 'A e B sono direzioni opposte' resta la via giusta]")
+    m = runtime("La cella è una stanza.\n"
+                "Il corridoio è una stanza.\n"
+                "Sinistra e destra sono direzioni opposte.\n"
+                "La cella collega sinistra a corridoio.\n"
+                "Il giocatore comincia nella cella.\n")
+    esegui(m, "sinistra")
+    _check(m.posizione_giocatore == "corridoio",
+           "muoversi con la direzione personalizzata 'sinistra' funziona")
 
 
 # --- Test: errori d'autore migliori [Livello 2.5, beneficio collaterale] -----
@@ -2541,7 +2646,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.28.0.md")
+                          "grammatica-0.30.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2558,7 +2663,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.28.0.md è presente")
+           "documentazione/grammatica-0.30.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -4196,6 +4301,56 @@ def test_a6_piu_sinonimi():
            "'scruta' esamina la gemma come 'esamina'")
 
 
+def test_robustezza_console_cp1252_non_crasha():
+    """Robustezza (debito R8): un carattere fuori da Windows-1252 in un testo
+    stampato non deve far terminare il gioco sulla console Windows. La fonte
+    unica utils.assicura_console_utf8 riconfigura lo stream con
+    errors='replace' (no-op se non riconfigurabile)."""
+    import sys as _sys
+    from utils import assicura_console_utf8
+
+    class _ConsoleCp1252:
+        """Finta console Windows: di default esplode sui caratteri non-cp1252;
+        reconfigure(errors='replace') la rende tollerante, come gli stream
+        reali di Python."""
+        def __init__(self):
+            self.errors = "strict"
+        def reconfigure(self, encoding=None, errors=None):
+            if errors is not None:
+                self.errors = errors
+        def write(self, testo):
+            for ch in testo:
+                try:
+                    ch.encode("cp1252")
+                except UnicodeEncodeError:
+                    if self.errors != "replace":
+                        raise
+            return len(testo)
+        def flush(self):
+            pass
+
+    falso = _ConsoleCp1252()
+    salva_out, salva_err = _sys.stdout, _sys.stderr
+    crashato = False
+    try:
+        _sys.stdout = falso
+        _sys.stderr = falso
+        assicura_console_utf8()
+        try:
+            print("★ stelle ─ frecce → emoji")
+        except UnicodeEncodeError:
+            crashato = True
+    finally:
+        _sys.stdout, _sys.stderr = salva_out, salva_err
+    _check(not crashato,
+           "un carattere fuori da cp1252 non fa crashare la stampa (fix R8)")
+    _check(falso.errors == "replace",
+           "assicura_console_utf8 imposta errors='replace' sullo stream")
+    # Idempotente: una seconda chiamata sugli stream reali non solleva.
+    assicura_console_utf8()
+    _check(True, "assicura_console_utf8 è idempotente")
+
+
 # --- Runner ------------------------------------------------------------------
 
 def main():
@@ -4391,6 +4546,13 @@ def main():
         test_capacita_bonus_additivo,
         test_capacita_illimitata_default,
         test_capacita_zero,
+        # [0.30.0] Cassetto A — A1 nomi non validi, A3 'dire' opzionale, A4 idioma direzione
+        test_a1_nome_con_carattere_non_valido_errore,
+        test_a1_nome_valido_con_accenti_apostrofo_spazi_ok,
+        test_a3_regola_senza_dire_compila_ed_esegue,
+        test_a3_regola_con_dire_resta_invariata,
+        test_a4_sinonimo_direzione_avviso_mirato,
+        test_a4_idioma_direzioni_opposte_funziona,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -4508,9 +4670,11 @@ def main():
         test_a6_il_canonico_continua_a_funzionare,
         test_a6_bersaglio_sconosciuto_warning,
         test_a6_piu_sinonimi,
+        # Robustezza console (debito R8 — fix cp1252)
+        test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.29.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.30.0)")
     print("=" * 60)
     for t in tests:
         t()

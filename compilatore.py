@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.29.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.30.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -174,6 +174,16 @@ _RE_COMMENTO = re.compile(r"#[^\n]*")
 # comando.'. Va cercato PRIMA di azzerare le stringhe quotate (lo scanner le
 # svuota), perché il nome del comando vive proprio dentro le virgolette.
 _RE_DEF_VERBO = re.compile(r'"([^"]+)"\s+è\s+un\s+comando\b', re.IGNORECASE)
+
+# [0.30.0 / A1] Carattere NON consentito in un nome dichiarato. Un nome (di
+# entità, stato/contatore, direzione, verbo multiparola) diventa un TERMINALE
+# CHIUSO della grammatica generata per-file, incassato in un letterale regex
+# '/.../': un carattere come '/' lo chiude in anticipo e corrompe l'intera
+# grammatica (in passato: un 'GrammarError' interno e incomprensibile per
+# l'autore). L'alfabeto ammesso è quello del terminale WORD ([a-zA-ZÀ-ÿ0-9']),
+# più lo spazio (i nomi possono essere multiparola) e l'apostrofo. Vedi
+# valida_nomi_dichiarati.
+_RE_CHAR_NOME_VIETATO = re.compile(r"[^a-zA-ZÀ-ÿ0-9' ]")
 
 
 def costruisci_symbol_table(testo: str) -> TabellaSimboli:
@@ -498,7 +508,16 @@ _GRAMMAR_TEMPLATE = r"""
     // DIREZIONE) con priorità ALTA, così 'fai scattare' vince sul singolo WORD
     // 'fai'. Restano validi i verbi monoparola (VERBO=WORD, aperto: preserva la
     // diagnostica 'verbo non riconosciuto' per i refusi).
-    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )? "."
+    // [0.30.0 / A3] La battuta 'dire "…"' è OPZIONALE anche nelle REGOLE, per
+    // simmetria con i «tick silenziosi» di eventi e demoni (A9, 0.19.0): una
+    // regola che muta solo lo stato può ora omettere il testo
+    // ('Invece di riposa: aumenta la forza.'). Riusa lo STESSO inline _esito_temporale
+    // di def_evento/def_demone: prima alternativa 'dire "…" [e adesso …]', seconda
+    // alternativa solo conseguenze. Dopo ':' il lookahead distingue "dire" dal
+    // primo token di una conseguenza (ENTITA/VARIABILE/"il"/"aumenta"/…) → LALR(1)
+    // 0-ambiguo, identico a eventi/demoni. Il transformer estrae già la risposta
+    // per tipo (str opzionale, default ""): nessuna modifica ai metodi.
+    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale "."
     regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
 
     // --- CONDIZIONI (logica booleana) ---
@@ -1034,6 +1053,22 @@ class FavellaTransformer(Transformer):
             self.warnings.append("Sinonimo di verbo vuoto ignorato.")
             return None
         if canonico not in VERBI_VALIDI:
+            # [0.30.0 / A4] Caso speciale: il bersaglio è una DIREZIONE
+            # ('"sinistra" è come est.'). 'è come' rimappa solo i VERBI; per le
+            # direzioni l'idioma corretto — e più pulito — è dichiarare una coppia
+            # di opposte. Lo si dice esplicitamente invece del generico
+            # 'non è un verbo noto', che disorienterebbe l'autore.
+            forme_direzioni = {f for varianti in DIREZIONI_BASE.values() for f in varianti}
+            forme_direzioni |= set(DIREZIONI_BASE.keys())
+            if canonico in forme_direzioni:
+                self.warnings.append(
+                    f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' è una "
+                    f"DIREZIONE, non un verbo: 'è come' rimappa solo i verbi e il "
+                    f"sinonimo non farà nulla. Per dare un nome a una direzione, "
+                    f"dichiara una coppia di opposte, ad es. "
+                    f"'{sinonimo.capitalize()} e <opposta> sono direzioni opposte.'."
+                )
+                return None
             self.warnings.append(
                 f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' non è "
                 f"un verbo noto al motore: il sinonimo non farà nulla. Usa un verbo "
@@ -1985,6 +2020,60 @@ def valida_direzioni_dichiarate(coppie, simboli):
     return coppie_ok, nomi_extra, errori
 
 
+def _localizza_nome(testo, nome, offset_nel_nome):
+    """[0.30.0 / A1] (riga, colonna) 1-based della prima occorrenza testuale di
+    `nome` nel sorgente, spostata di `offset_nel_nome` per puntare al carattere
+    incriminato. Il nome normalizzato conserva i caratteri originali (cambia solo
+    maiuscole/articolo), quindi la ricerca case-insensitive lo ritrova quasi
+    sempre; in caso contrario ripiega su (1, 1) (posizione imprecisa)."""
+    ago = nome.lower()
+    for n_riga, linea in enumerate(testo.split("\n"), 1):
+        pos = linea.lower().find(ago)
+        if pos != -1:
+            return n_riga, pos + offset_nel_nome + 1
+    return 1, 1
+
+
+def valida_nomi_dichiarati(simboli, testo):
+    """[0.30.0 / A1] Valida i NOMI dichiarati raccolti in Passata 1 (stanze,
+    oggetti, stati/contatori, direzioni personalizzate, verbi multiparola).
+
+    Ognuno di questi diventa un terminale CHIUSO della grammatica generata
+    (ENTITA/VARIABILE/DIREZIONE/VERBO_MULTI), incassato in un letterale regex
+    '/.../': un carattere come '/' lo chiude in anticipo e fa fallire la
+    costruzione del parser con un 'GrammarError' grezzo, su una riga della
+    grammatica GENERATA che all'autore non dice nulla (riprodotto da un tester
+    reale su un nome di stato con '/'). Lo si intercetta QUI, prima di costruire
+    il parser, con un errore d'autore gentile e localizzato.
+
+    Nei nomi sono ammessi solo lettere (anche accentate), cifre, spazi e
+    l'apostrofo — lo stesso alfabeto del terminale WORD. Restituisce una lista di
+    (messaggio, riga, colonna); vuota se tutti i nomi sono validi."""
+    nomi = set(simboli.stanze) | set(simboli.oggetti) | set(simboli.variabili)
+    nomi |= set(simboli.verbi_multi)
+    for dir_a, dir_b in simboli.coppie_direzioni:
+        nomi |= {dir_a, dir_b}
+
+    errori = []
+    for nome in sorted(nomi):
+        if not nome:
+            continue
+        m = _RE_CHAR_NOME_VIETATO.search(nome)
+        if not m:
+            continue
+        ch = m.group(0)
+        riga, colonna = _localizza_nome(testo, nome, m.start())
+        suggerito = _RE_CHAR_NOME_VIETATO.sub("", nome).strip()
+        coda = f" (ad es. «{suggerito}»)" if suggerito and suggerito != nome else ""
+        errori.append((
+            f"Il nome «{nome}» contiene un carattere non consentito: «{ch}». "
+            f"Nei nomi puoi usare soltanto lettere, cifre, spazi e l'apostrofo. "
+            f"Togli o sostituisci «{ch}»{coda}.",
+            riga, colonna,
+        ))
+    return errori
+
+
 # ==============================================================================
 # 0bis. PREPROCESSORE DEGLI IMPORT MULTI-FILE (Passata 0) — Livello 6 / 0.11.2
 # ==============================================================================
@@ -2115,6 +2204,16 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 1. PASSATA 1 — Symbol-table dei nomi dichiarati.
         simboli = costruisci_symbol_table(testo)
+        # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): intercettati QUI,
+        # prima di costruire il parser, con un errore d'autore localizzato (il '/'
+        # corromperebbe la grammatica generata con un GrammarError incomprensibile).
+        nomi_errori = valida_nomi_dichiarati(simboli, testo)
+        if nomi_errori:
+            print("\n[FAVELLA 1] Errore: nome non valido")
+            for msg, riga, _col in nomi_errori:
+                print(f"Riga {riga}{_posizione_origine(mappa_righe, riga)}")
+                print(f" - {msg}")
+            return None
         # [Livello 4 / L1] Direzioni personalizzate: valida le coppie raccolte e
         # ricava i nomi da iniettare nel terminale DIREZIONE. Un conflitto con una
         # parola riservata o un'entità è un errore bloccante: lo segnaliamo qui,
@@ -2302,8 +2401,17 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
             return {"ok": True, "errors": [], "warnings": [],
                     "worldSummary": _riassunto_mondo(Mondo())}
 
-        # PASSATA 1 — symbol-table + validazione direzioni.
+        # PASSATA 1 — symbol-table + validazione nomi e direzioni.
         simboli = costruisci_symbol_table(testo)
+        # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): diagnostica
+        # localizzata invece del GrammarError grezzo che ne deriverebbe.
+        for msg, riga, col in valida_nomi_dichiarati(simboli, testo):
+            f_o, r_o = _posizione_da_linea_espansa(riga)
+            errors.append(_diag(msg, file=f_o, line=r_o, col=col,
+                                code="nome-non-valido"))
+        if errors:
+            return {"ok": False, "errors": errors, "warnings": warnings,
+                    "worldSummary": None}
         coppie_dir, nomi_dir, dir_errori = valida_direzioni_dichiarate(
             simboli.coppie_direzioni, simboli)
         if dir_errori:
