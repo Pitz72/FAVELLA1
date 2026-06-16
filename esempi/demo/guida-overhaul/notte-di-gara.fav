@@ -30,8 +30,9 @@ La lucidità parte da 9.
 L'andatura è uno stato.
 L'andatura è media.
 
-# Il meteo è uno stato: cambia DA SOLO a turni fissi (vedi sezione 6).
-# (ATTRITO: vorrei che cambiasse a CASO, ma non esiste casualità d'autore.)
+# Il meteo è uno stato: cambia DA SOLO, e a CASO (vedi sezione 6).
+# (v0.32.0: la casualità d'autore ESISTE ora — 'càpita (1 su N)' e 'diventa uno
+#  fra …'. L'attrito D1 di questa demo è stato risolto: il meteo è imprevedibile.)
 Il meteo è uno stato.
 Il meteo è sereno.
 
@@ -133,13 +134,16 @@ Ogni turno se il giocatore è in il valico: aumenta il calore di 2.
 Ogni turno se il meteo è pioggia: diminuisci il calore e adesso diminuisci le gomme.
 
 # ============================================================================
-# 6. IL METEO CHE CAMBIA  [eventi a tempo — NON casuali]
+# 6. IL METEO CHE CAMBIA  [casualità d'autore — v0.32.0, Tema 2]
 # ============================================================================
-# (ATTRITO CENTRALE: un meteo "dinamico" vorrebbe essere imprevedibile. Senza
-# casualità d'autore posso solo sceneggiarlo su turni fissi. È deterministico:
-# alla seconda partita sai già quando arriva la pioggia.)
+# Il meteo ora è IMPREVEDIBILE: ogni tanto 'càpita' che il cielo cambi (2c, una
+# condizione probabilistica), e quando càpita 'diventa uno fra' i tre stati (2b,
+# scelta casuale fra valori di stato). Tutto seedato e ANNULLA-safe: disfare un
+# turno riavvolge anche il meteo, e ripeterlo dà lo stesso esito.
+# Per un'apertura forte resta uno scroscio sceneggiato al turno 4; da lì in poi
+# il cielo fa di testa sua.
 Al turno 4: dire "Il cielo si chiude. Le prime gocce esplodono sul parabrezza." e adesso il meteo è pioggia.
-Al turno 9: dire "La pioggia si dirada in una nebbia lattiginosa che mangia i fari." e adesso il meteo è nebbia.
+Ogni turno se càpita (1 su 4): dire "Il cielo cambia umore sopra la statale." e adesso il meteo diventa uno fra sereno, pioggia, nebbia.
 Ogni turno se il meteo è nebbia: aumenta la stanchezza.
 
 # ============================================================================

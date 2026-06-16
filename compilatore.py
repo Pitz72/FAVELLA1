@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.31.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.32.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -10,10 +10,11 @@ from strutture import (
     Mondo, Stanza, Oggetto, Regola, Evento, Demone,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
-    CondizioneContatore, CondizionePosizioneGiocatore,
+    CondizioneContatore, CondizionePosizioneGiocatore, CondizioneProbabilita,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
-    ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
+    ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaSceltaStato,
+    ConseguenzaContatore,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
     Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
 )
@@ -545,6 +546,7 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_contatore_gt
               | cond_contatore_lt
               | cond_contatore_lte
+              | cond_probabilita
               | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
@@ -576,8 +578,17 @@ _GRAMMAR_TEMPLATE = r"""
     // [0.18.0 / B4] '≤' ('al massimo'), simmetrico ad 'almeno' (≥). Dopo
     // 'VARIABILE è' il lookahead "al" distingue dagli altri confronti → 0-ambiguo.
     cond_contatore_lte: VARIABILE "è" "al" "massimo" operando_confronto
+    // [0.32.0 / Tema 2c] Condizione PROBABILISTICA: 'càpita (1 su 4)' è vera con
+    // probabilità N/M, pescata da mondo.rng (seedato, ANNULLA-safe). È l'UNICO
+    // cond_base senza un operando (VARIABILE/ENTITA/"il") a sinistra: parte dalla
+    // keyword dedicata "càpita", disgiunta da ogni altro FIRST di cond_base →
+    // LALR(1) 0-ambiguo. Le parentesi tonde sono già terminali (gruppo booleano);
+    // 'su' è un literal anonimo nel contesto, distinto da PREP_AZIONE (lexer
+    // contestuale). Riservata aggiunta: "càpita".
+    cond_probabilita: "càpita" "(" NUMERO "su" NUMERO ")"
     // [0.18.0 / B7] Negazione di un GRUPPO booleano: 'non ( A e B )'. È l'unico
-    // cond_base che inizia con "non" → distinto al primo token, 0-ambiguo.
+    // cond_base (a parte 'càpita') con un primo token dedicato ("non") →
+    // distinto al primo token, 0-ambiguo.
     cond_non_gruppo: "non" "(" cond_or ")"
 
     // --- CONSEGUENZE ---
@@ -600,6 +611,15 @@ _GRAMMAR_TEMPLATE = r"""
                 | ENTITA "va" PREP_LUOGO ENTITA  -> cons_png_va
                 | ENTITA "cambia" "stanza"       -> cons_png_cambia
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
+                // [0.32.0 / Tema 2b] Scelta casuale fra VALORI DI STATO: 'il meteo
+                // diventa uno fra sereno, pioggia, nebbia'. Pesca una PROPRIETA
+                // dall'elenco con mondo.rng (seedato, ANNULLA-safe). Condivide il
+                // prefisso 'VARIABILE "diventa"' con cons_contatore_set, ma dopo
+                // "diventa" il lookahead "uno" (scelta di stato) è disgiunto da
+                // FIRST(operando)={NUMERO,"[","un"} ("uno"≠"un", maximal-munch) →
+                // LALR(1) 0-ambiguo. Riservata aggiunta: nessuna ("uno"/"fra" già
+                // riservate da def_stato e operando_casuale).
+                | VARIABILE "diventa" "uno" "fra" PROPRIETA ( "," PROPRIETA )* -> cons_scelta_stato
                 // [0.31.0 / Tema 1a + casualità] La QUANTITÀ di 'di …'/'diventa'
                 // è un OPERANDO (vedi sotto): NUMERO letterale, valore di un
                 // contatore '[forza]' o estrazione casuale 'un numero fra A e B'.
@@ -1395,6 +1415,11 @@ class FavellaTransformer(Transformer):
         # [0.18.0 / B7] 'non ( ... )': negazione di un intero gruppo booleano.
         return CondizioneNot(condizione)
 
+    def cond_probabilita(self, numeratore, denominatore):
+        # [0.32.0 / Tema 2c] 'càpita (N su M)': vera con probabilità N/M, pescata
+        # da mondo.rng a runtime. I due token sono NUMERO (interi).
+        return CondizioneProbabilita(int(numeratore), int(denominatore))
+
     def make_and(self, *condizioni):
         return CondizioneAnd(list(condizioni))
 
@@ -1429,6 +1454,13 @@ class FavellaTransformer(Transformer):
 
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
+
+    def cons_scelta_stato(self, var_grezzo, *valori_grezzi):
+        # [0.32.0 / Tema 2b] 'il meteo diventa uno fra sereno, pioggia, nebbia':
+        # assegna allo stato un valore SIMBOLICO scelto a caso fra l'elenco. La
+        # grammatica garantisce >=1 PROPRIETA dopo 'fra'.
+        valori = [normalizza_nome(v) for v in valori_grezzi]
+        return ConseguenzaSceltaStato(normalizza_nome(var_grezzo), valori)
 
     # [0.31.0 / Tema 1a + casualità] La quantità è ora un Operando (vedi
     # operando_*). resto: (Operando,) se è presente 'di …', altrimenti vuoto →
@@ -1933,7 +1965,8 @@ class FavellaTransformer(Transformer):
         for cond in self._tutte_le_condizioni():
             usate |= self._variabili_in_condizione(cond)
         for cons in self._tutte_le_conseguenze():
-            if isinstance(cons, (ConseguenzaVariabile, ConseguenzaContatore)):
+            if isinstance(cons, (ConseguenzaVariabile, ConseguenzaContatore,
+                                 ConseguenzaSceltaStato)):
                 usate.add(cons.nome)
             # [0.31.0 / Tema 1a] Il contatore usato come quantità ('di [forza]')
             # è anch'esso un riferimento: non marcarlo come inutilizzato.
@@ -3034,6 +3067,9 @@ def _cond_to_json(c, mondo):
     if isinstance(c, CondizionePosizioneGiocatore):
         # [0.18.0 / B1] 'se il giocatore è in [stanza]'.
         return {"op": "playerIn", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
+    if isinstance(c, CondizioneProbabilita):
+        # [0.32.0 / Tema 2c] 'càpita (N su M)'.
+        return {"op": "chance", "num": c.numeratore, "den": c.denominatore}
     return {"op": "unknown"}
 
 
@@ -3044,6 +3080,10 @@ def _conseq_to_json(c, mondo):
                 "name": _nome_entita(mondo, c.id_oggetto), "prop": c.proprieta}
     if isinstance(c, ConseguenzaVariabile):
         return {"op": "var", "name": c.nome, "value": c.valore,
+                "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, ConseguenzaSceltaStato):
+        # [0.32.0 / Tema 2b] 'il meteo diventa uno fra sereno, pioggia, nebbia'.
+        return {"op": "pick", "name": c.nome, "values": list(c.valori),
                 "kind": _kind_variabile(mondo, c.nome)}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}

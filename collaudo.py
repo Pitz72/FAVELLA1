@@ -30,7 +30,8 @@ from strutture import (
     Condizione, CondizionePossesso, CondizioneProprieta, CondizioneVariabile,
     CondizioneContatore, CondizionePosizioneGiocatore,
     CondizioneNot, CondizioneAnd, CondizioneOr,
-    Conseguenza, ConseguenzaProprieta, ConseguenzaVariabile, ConseguenzaContatore,
+    Conseguenza, ConseguenzaProprieta, ConseguenzaVariabile, ConseguenzaSceltaStato,
+    ConseguenzaContatore,
     ConseguenzaFinePartita, ConseguenzaSpostamento, ConseguenzaSpostamentoGiocatore,
 )
 from utils import radice_proprieta
@@ -205,6 +206,12 @@ def _produce(cons, atomo, negato: bool, mondo) -> bool:
         # Negato: rende vero «X non è P» chi assegna a X una proprietà OPPOSTA.
         return radice_proprieta(cons.proprieta) in mondo.radici_opposte(atomo.proprieta)
     if isinstance(atomo, CondizioneVariabile):
+        # [0.32.0 / Tema 2b] La scelta casuale fra valori ('il meteo diventa uno
+        # fra sereno, pioggia, nebbia') può produrre QUALUNQUE valore dell'elenco:
+        # se l'atteso vi compare, lo sblocco è (staticamente) possibile.
+        if isinstance(cons, ConseguenzaSceltaStato) and cons.nome == atomo.nome:
+            puo = atomo.valore in cons.valori
+            return (not puo) if negato else puo
         if not isinstance(cons, ConseguenzaVariabile) or cons.nome != atomo.nome:
             return False
         coincide = cons.valore == atomo.valore

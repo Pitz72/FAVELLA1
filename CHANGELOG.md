@@ -4,6 +4,44 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.32.0] - 2026-06-16
+### Tema 2 (resto): casualità d'autore non-numerica 🎲
+Terza sessione del **piano di completamento del linguaggio**
+(`documentazione/espansione-oltre-0.29.md`): il **resto del Tema 2**. L'estrazione
+*numerica* (`un numero fra A e B`) era già entrata in 0.31.0; ora arrivano i due
+costrutti casuali **non numerici**. Entrambi riusano `Mondo.rng` — il generatore
+**seedato** e **ANNULLA-safe** già usato da A2/A5 e dall'estrazione numerica — quindi
+le partite restano riproducibili e disfare un turno riavvolge anche il caso.
+**Additivo** (le 4 demo e tutte le storie esistenti compilano e si comportano
+identiche). Modifica di grammatica → bump **minor**; spec nuova
+`documentazione/grammatica-0.32.0.md`.
+
+- **2b — scelta casuale fra valori di stato.** Una conseguenza nuova
+  (`ConseguenzaSceltaStato`): `e adesso il meteo diventa uno fra sereno, pioggia,
+  nebbia.` assegna allo «stato» un valore *simbolico* pescato a caso dall'elenco.
+  È la casualità simbolica, distinta dall'estrazione numerica (i valori sono
+  parole-stato, non interi). Con un solo valore la scelta è deterministica.
+- **2c — condizione probabilistica.** Un atomo-condizione nuovo
+  (`CondizioneProbabilita`): `Ogni turno se càpita (1 su 4): …` è vero con
+  probabilità N/M (`M su M` sempre, `0 su M` mai). È l'unico `cond_base` senza un
+  operando a sinistra (keyword dedicata `càpita`); componibile con
+  `e`/`oppure`/`non` e usabile in regole, demoni, opzioni e descrizioni.
+- **Grammatica LALR(1) 0-ambigua.** 2b condivide il prefisso `VARIABILE "diventa"`
+  con `cons_contatore_set` ma se ne stacca al token dopo (`"uno"` vs
+  `{NUMERO,"[","un"}` dell'operando; `uno ≠ un`). 2c parte da `càpita`, disgiunto
+  da ogni altro FIRST di `cond_base`. Guardia anti-ambiguità estesa a entrambi.
+  Riservata aggiunta: **`càpita`**.
+- **Diagnostica e IDE.** Uno stato assegnato *solo* via `diventa uno fra …` non è
+  più segnalato «dichiarato ma mai usato». Serializzazione JSON: `{op:"pick",…}`
+  (scelta) e `{op:"chance",num,den}` (probabilità).
+- **Demo.** La guida `notte-di-gara.fav` ora ha un **meteo davvero imprevedibile**
+  (era sceneggiato su turni fissi): risolto l'attrito **D1** del suo stress-test.
+- **Test.** +11 test (2b: pesca/riproducibilità/ANNULLA/valore-singolo/non-collisione/
+  lint; 2c: frequenza/estremi/ANNULLA/in-regola/serializzazione). Suite **642
+  linguaggio + 43 collaudo**, LALR(1) 0-ambiguo.
+
+---
+
 ## [0.31.0] - 2026-06-16
 ### Tema 1: i contatori si parlano (operando-quantità + confronti) 🔢
 Seconda sessione del **piano di completamento del linguaggio**

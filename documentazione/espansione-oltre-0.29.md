@@ -15,9 +15,16 @@
 > la **sola estrazione numerica casuale** del Tema 2 (`di un numero fra A e B`,
 > `il dado diventa un numero fra 1 e 6`) ✅. **1c** («valore successivo» di uno
 > stato ordinato, `sali di una marcia`) **scartato** come previsto: le N regole
-> esplicite sono più leggibili di un nuovo concetto di «scala». Il **resto del Tema
-> 2** (`diventa uno fra X, Y, Z`; `càpita (1 su N)`) e i temi 3–5 restano da pesare
-> (sessione S3+).
+> esplicite sono più leggibili di un nuovo concetto di «scala».
+>
+> **Il TEMA 2 è stato COMPLETATO in v0.32.0** (2026-06-16, sessione S3) → spec
+> `grammatica-0.32.0.md`. Oltre all'estrazione numerica (già 0.31.0), entrano i due
+> costrutti casuali **non numerici**: **2b** scelta casuale fra valori di stato
+> (`il meteo diventa uno fra sereno, pioggia, nebbia`, `ConseguenzaSceltaStato`) ✅
+> e **2c** condizione probabilistica (`Ogni turno se càpita (1 su 4): …`,
+> `CondizioneProbabilita`) ✅. Entrambi riusano `Mondo.rng` (seedato, ANNULLA-safe).
+> La demo di guida ha ora un meteo davvero imprevedibile (attrito D1 risolto). I
+> temi 3–5 restano da pesare (sessioni S4+).
 >
 > Documento di progettazione, **2026-06-16**. Stato del motore alla stesura:
 > **v0.29.0, suite verde** (≈582 asserzioni di linguaggio + 43 di collaudo),
@@ -135,14 +142,17 @@ sono più leggibili di un nuovo concetto di «scala».
 
 ---
 
-# TEMA 2 — Casualità d'autore ⭐ (il secondo grande assente) — ⚙️ PARZIALE (v0.31.0)
+# TEMA 2 — Casualità d'autore ⭐ (il secondo grande assente) — ✅ FATTO (v0.31.0 + v0.32.0)
 
-> **⚙️ Estrazione numerica realizzata in v0.31.0 (S2)**, accorpata al Tema 1a come
-> terzo operando-quantità: `il dado diventa un numero fra 1 e 6.`,
-> `diminuisci la vita di un numero fra 2 e 6.` (RNG seedato e ANNULLA-safe). Il
-> **resto del tema resta da fare** (S3+): scelta fra valori di stato (`diventa uno
-> fra sereno, pioggia, nebbia`) e condizione probabilistica (`càpita (1 su 4)`),
-> costrutti distinti dall'operando numerico.
+> **✅ COMPLETATO.** L'estrazione **numerica** è entrata in v0.31.0 (S2), accorpata
+> al Tema 1a come terzo operando-quantità: `il dado diventa un numero fra 1 e 6.`,
+> `diminuisci la vita di un numero fra 2 e 6.`. Il **resto** è entrato in v0.32.0
+> (S3): **2b** scelta casuale fra valori di stato — `e adesso il meteo diventa uno
+> fra sereno, pioggia, nebbia.` (`ConseguenzaSceltaStato`) — e **2c** condizione
+> probabilistica — `Ogni turno se càpita (1 su 4): …` (`CondizioneProbabilita`,
+> vera con probabilità N/M). Tutti e tre i costrutti pescano da `Mondo.rng`
+> (seedato, riproducibile, ANNULLA-safe). LALR(1) 0-ambiguo; spec
+> `grammatica-0.32.0.md` §15. Riservata aggiunta: `càpita`.
 
 **Emerso in:** guida D1 (meteo/eventi imprevedibili), GDR R1 (danno, critici,
 mancati). I due generi-simulazione lo chiedono a gran voce.

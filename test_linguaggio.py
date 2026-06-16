@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.31.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.32.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1650,6 +1650,15 @@ _CORPUS_GUARDIA = (
     'Quando il punteggio è al massimo [vite] diventa vera: il punteggio diventa un numero fra 1 e 6.\n'  # 1b cond_lte var + diventa casuale
     'Ogni turno se il punteggio è [vite]: aumenta le vite.\n'                       # 1b cond_eq contatore==contatore
     'Quando il punteggio non è [vite] diventa vera: aumenta le vite.\n'             # 1b cond_neq contatore
+    # [0.32.0 / Tema 2] Casualità d'autore non-numerica. 2b: scelta casuale fra
+    # VALORI DI STATO ('… diventa uno fra …'); convive con 'diventa operando'
+    # (cons_contatore_set) — dopo "diventa" il lookahead "uno" vs {NUMERO,"[","un"}
+    # decide. 2c: condizione probabilistica ('càpita (N su M)'), unico cond_base
+    # senza operando a sinistra (keyword dedicata).
+    "Il meteo è uno stato.\nIl meteo è sereno.\n"                                   # stato per 2b
+    'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n'        # 2b cons_scelta_stato
+    'Ogni turno se càpita (1 su 4): aumenta il punteggio.\n'                        # 2c cond_probabilita (demone)
+    'Invece di scruta se càpita (3 su 4) e il meteo è pioggia: dire "Forse.".\n'    # 2c in regola, in AND con cond_variabile
 )
 
 
@@ -1924,6 +1933,172 @@ def test_tema1_strutturato_serializza_operando():
                    and v.get("min") == 1 and v.get("max") == 6 for v in valori)
     _check(var_ref, "l'operando contatore è serializzato come {kind:'var', name:'forza'}")
     _check(rand_ref, "l'estrazione casuale è serializzata come {kind:'rand', min, max}")
+
+
+# --- Test: Tema 2 [0.32.0] — casualità d'autore non-numerica ----------------
+# 2b) scelta casuale fra VALORI DI STATO ('… diventa uno fra X, Y, Z');
+# 2c) condizione PROBABILISTICA ('càpita (N su M)'). Entrambe pescano da
+# mondo.rng (seedato e ANNULLA-safe, come l'estrazione numerica di 0.31.0).
+
+def _src_meteo():
+    """Mondo minimo per il Tema 2b: uno stato 'meteo' e un verbo intransitivo su
+    cui appendere una regola che lo fa cambiare a caso."""
+    return ("Il cielo è una stanza.\nIl giocatore comincia nel cielo.\n"
+            "Il meteo è uno stato.\nIl meteo è sereno.\n"
+            '"osserva" è un comando senza oggetto.\n')
+
+
+def test_tema2b_scelta_stato_pesca_dall_elenco():
+    print("[2b: 'X diventa uno fra A, B, C' assegna a X un valore dell'elenco]")
+    m = runtime(_src_meteo() +
+                'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n')
+    visti = set()
+    for _ in range(20):
+        esegui(m, "osserva")
+        visti.add(m.variabili.get("meteo"))
+    _check(visti <= {"sereno", "pioggia", "nebbia"},
+           "ogni valore estratto appartiene all'elenco dichiarato")
+    _check(len(visti) > 1, "su molte estrazioni l'esito varia (è davvero casuale)")
+
+
+def test_tema2b_scelta_stato_riproducibile():
+    print("[2b: stesso seme -> stessa sequenza di valori di stato]")
+    sorgente = (_src_meteo() +
+                'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n')
+    serie = []
+    for _ in range(2):
+        m = runtime(sorgente)          # ogni partita riparte dallo stesso seme
+        s = []
+        for _ in range(8):
+            esegui(m, "osserva")
+            s.append(m.variabili.get("meteo"))
+        serie.append(s)
+    _check(serie[0] == serie[1], "due partite col seme di default danno la stessa sequenza")
+
+
+def test_tema2b_scelta_stato_annulla_safe():
+    print("[2b: ANNULLA riavvolge la scelta casuale di stato]")
+    m = runtime(_src_meteo() +
+                'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n')
+    esegui(m, "osserva")
+    primo = m.variabili.get("meteo")
+    esegui(m, "osserva")
+    secondo = m.variabili.get("meteo")
+    esegui(m, "annulla")               # disfa la seconda scelta
+    _check(m.variabili.get("meteo") == primo, "ANNULLA riporta il meteo al valore precedente")
+    esegui(m, "osserva")               # ri-pesca dallo stesso stato RNG
+    _check(m.variabili.get("meteo") == secondo,
+           "ripetendo l'azione la scelta è identica (RNG riavvolto)")
+
+
+def test_tema2b_un_solo_valore_e_deterministico():
+    print("[2b: 'diventa uno fra X' (un solo valore) assegna sempre X]")
+    m = runtime(_src_meteo() +
+                'Invece di osserva: il meteo diventa uno fra nebbia.\n')
+    esegui(m, "osserva")
+    _check(m.variabili.get("meteo") == "nebbia", "con un unico valore la scelta è deterministica")
+
+
+def test_tema2b_non_collide_con_diventa_operando():
+    print("[2b: 'diventa uno fra …' (stato) e 'diventa [operando]' (contatore) convivono]")
+    # Stessa testa 'VARIABILE diventa …': lo stato pesca fra parole, il contatore
+    # riceve un numero. Le due forme non si confondono (lookahead 'uno' vs operando).
+    src = (_src_meteo() +
+           "Il punti è un contatore.\nIl punti parte da 0.\n"
+           'Invece di osserva: il meteo diventa uno fra sereno, pioggia e adesso il punti diventa 7.\n')
+    m = runtime(src)
+    esegui(m, "osserva")
+    _check(m.variabili.get("meteo") in ("sereno", "pioggia"), "lo stato riceve un valore dell'elenco")
+    _check(m.variabili.get("punti") == 7, "il contatore riceve l'operando numerico, nella stessa regola")
+
+
+def test_tema2b_stato_solo_scelto_non_e_inutilizzato():
+    print("[2b/lint: uno stato assegnato solo via 'diventa uno fra' NON è 'inutilizzato']")
+    src = (_src_meteo() +
+           'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n')
+    r = strutturato(src)
+    _check(r["ok"], "il file compila")
+    inutil = [w for w in r.get("warnings", []) if "meteo" in str(w) and "mai usato" in str(w)]
+    _check(not inutil, "'meteo' assegnato dalla scelta casuale è considerato usato")
+
+
+def test_tema2c_probabilita_in_intervallo():
+    print("[2c: 'càpita (N su M)' è vera ~N/M delle volte]")
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "Il conta è un contatore.\nIl conta parte da 0.\n"
+           "Ogni turno se càpita (1 su 2): aumenta il conta.\n"
+           '"aspetta" è un comando senza oggetto.\nInvece di aspetta: dire ".".\n')
+    m = runtime(src)
+    for _ in range(400):
+        esegui(m, "aspetta")
+    colpi = m.variabili.get("conta")
+    # 1 su 2 su 400 turni: atteso ~200, con ampio margine statistico.
+    _check(100 < colpi < 300, f"la frequenza dei colpi è plausibile per 1/2 (osservati {colpi}/400)")
+
+
+def test_tema2c_probabilita_estremi():
+    print("[2c: 'càpita (M su M)' sempre vera; 'càpita (0 su M)' mai vera]")
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "Il sempre è un contatore.\nIl sempre parte da 0.\n"
+           "Il mai è un contatore.\nIl mai parte da 0.\n"
+           "Ogni turno se càpita (3 su 3): aumenta il sempre.\n"
+           "Ogni turno se càpita (0 su 5): aumenta il mai.\n"
+           '"aspetta" è un comando senza oggetto.\nInvece di aspetta: dire ".".\n')
+    m = runtime(src)
+    for _ in range(10):
+        esegui(m, "aspetta")
+    _check(m.variabili.get("sempre") == 10, "'3 su 3' scatta a ogni turno (10/10)")
+    _check(m.variabili.get("mai") == 0, "'0 su 5' non scatta mai (0/10)")
+
+
+def test_tema2c_probabilita_annulla_safe():
+    print("[2c: ANNULLA riavvolge l'estrazione della condizione probabilistica]")
+    # Un demone probabilistico fa avanzare l'RNG ogni turno; ANNULLA deve
+    # riportare l'RNG (e quindi l'esito ripetuto) al punto pre-turno.
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "Il conta è un contatore.\nIl conta parte da 0.\n"
+           "Ogni turno se càpita (1 su 2): aumenta il conta.\n"
+           '"aspetta" è un comando senza oggetto.\nInvece di aspetta: dire ".".\n')
+    m = runtime(src)
+    esegui(m, "aspetta")
+    dopo_uno = m.variabili.get("conta")
+    esegui(m, "aspetta")
+    dopo_due = m.variabili.get("conta")
+    esegui(m, "annulla")               # disfa il secondo turno
+    _check(m.variabili.get("conta") == dopo_uno, "ANNULLA riporta il contatore al turno precedente")
+    esegui(m, "aspetta")               # ripete il turno: stesso esito casuale
+    _check(m.variabili.get("conta") == dopo_due,
+           "ripetendo il turno l'esito probabilistico è identico (RNG riavvolto)")
+
+
+def test_tema2c_probabilita_in_regola_e_in_and():
+    print("[2c: 'càpita (N su M)' usabile in una regola e dentro un AND]")
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "Il meteo è uno stato.\nIl meteo è pioggia.\n"
+           "Il conta è un contatore.\nIl conta parte da 0.\n"
+           '"scruta" è un comando senza oggetto.\n'
+           'Invece di scruta se càpita (5 su 5) e il meteo è pioggia: aumenta il conta.\n')
+    m = runtime(src)
+    esegui(m, "scruta")
+    _check(m.variabili.get("conta") == 1,
+           "regola con 'càpita (5 su 5) e il meteo è pioggia' scatta (entrambe vere)")
+
+
+def test_tema2c_serializza_chance_e_2b_pick():
+    print("[2b/2c/IDE: il serializzatore espone 'pick' (scelta) e 'chance' (probabilità)]")
+    src = (_src_meteo() +
+           "Il conta è un contatore.\nIl conta parte da 0.\n"
+           'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n'
+           "Ogni turno se càpita (1 su 4): aumenta il conta.\n")
+    dati = regole_strutturate(src)
+    _check(dati["ok"], "analizza_regole non solleva e ritorna ok")
+    pick = [c for r in dati["rules"] for c in r.get("consequences", []) if c.get("op") == "pick"]
+    _check(any(c.get("name") == "meteo" and c.get("values") == ["sereno", "pioggia", "nebbia"]
+               for c in pick), "la scelta di stato è serializzata come {op:'pick', values:[…]}")
+    cond_dem = [d.get("condition") for d in dati.get("demons", [])]
+    chance = [c for c in cond_dem if isinstance(c, dict) and c.get("op") == "chance"]
+    _check(any(c.get("num") == 1 and c.get("den") == 4 for c in chance),
+           "la condizione probabilistica è serializzata come {op:'chance', num, den}")
 
 
 def test_a4_idioma_direzioni_opposte_funziona():
@@ -2819,7 +2994,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.31.0.md")
+                          "grammatica-0.32.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2836,7 +3011,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.31.0.md è presente")
+           "documentazione/grammatica-0.32.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -4736,6 +4911,18 @@ def main():
         test_tema1b_confronto_letterale_invariato,
         test_tema1_operando_marca_contatore_come_usato,
         test_tema1_strutturato_serializza_operando,
+        # [0.32.0] Tema 2 — casualità d'autore non-numerica (scelta di stato + probabilità)
+        test_tema2b_scelta_stato_pesca_dall_elenco,
+        test_tema2b_scelta_stato_riproducibile,
+        test_tema2b_scelta_stato_annulla_safe,
+        test_tema2b_un_solo_valore_e_deterministico,
+        test_tema2b_non_collide_con_diventa_operando,
+        test_tema2b_stato_solo_scelto_non_e_inutilizzato,
+        test_tema2c_probabilita_in_intervallo,
+        test_tema2c_probabilita_estremi,
+        test_tema2c_probabilita_annulla_safe,
+        test_tema2c_probabilita_in_regola_e_in_and,
+        test_tema2c_serializza_chance_e_2b_pick,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -4857,7 +5044,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.31.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.32.0)")
     print("=" * 60)
     for t in tests:
         t()

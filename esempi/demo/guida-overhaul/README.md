@@ -52,7 +52,7 @@ silenzio: ognuno è marcato come `ATTRITO` nel sorgente.
 
 | # | Attrito incontrato | Workaround usato nella demo | Primitiva che lo sbloccherebbe |
 |---|---|---|---|
-| D1 | **Niente casualità d'autore.** Un meteo «dinamico» vorrebbe essere imprevedibile; alla seconda partita sai già che la pioggia arriva al turno 4. | Meteo sceneggiato con `Al turno N:` (deterministico). | Un'estrazione casuale seedata esposta all'autore: `il meteo diventa uno fra sereno, pioggia, nebbia.` / `quando càpita (1 su 3): …`. |
+| D1 | ✅ **RISOLTO (v0.32.0, Tema 2).** ~~Niente casualità d'autore: un meteo «dinamico» alla seconda partita era un copione.~~ | ~~Meteo sceneggiato con `Al turno N:` (deterministico).~~ Ora il meteo muta a caso: `Ogni turno se càpita (1 su 4): … e adesso il meteo diventa uno fra sereno, pioggia, nebbia.` (seedato, ANNULLA-safe). | Fatto: condizione probabilistica `càpita (N su M)` (2c) + scelta casuale fra valori di stato `diventa uno fra …` (2b). L'estrazione *numerica* `un numero fra A e B` era già in v0.31.0. |
 | D2 | **Il consumo non può dipendere dall'andatura.** Vorrei «più vai forte, più bruci»: `diminuisci il carburante di [andatura]`. Non esiste: `di N` è un numero letterale. | Una **batteria di demoni a soglia**, uno per marcia (`Ogni turno se l'andatura è forte: …`). Verboso e fragile. | Contatore come operando: `aumenta il calore di [intensità]` (un contatore/valore di stato come quantità). |
 | D3 | **I contatori non si parlano.** Non posso confrontare due grandezze: `se il calore è almeno le gomme`. (Verificato: il secondo nome è letto come oggetto.) | Soglie fisse contro numeri letterali. | Confronto grandezza↔grandezza: `se il calore è più di le gomme`. |
 | D4 | **Nessun «valore successivo» di uno stato.** `accelera` richiede una regola per marcia perché non posso dire «sali di una posizione». | Tre regole `Invece di accelera se l'andatura è …`. | Stati ordinati / scala: `L'andatura è una marcia: lenta, media, forte.` + `sali di una marcia`. |
@@ -66,8 +66,10 @@ Tre attriti (**D2, D3, D4**) sono **la stessa lacuna vista da tre lati**:
 FAVELLA tratta i contatori come *celle isolate* su cui si fa aritmetica con
 **costanti**, mai fra di loro. È il limite più strutturale emerso, e tornerà —
 identico — nel GDR (danno che scala con la forza). **D1** (casualità) è l'altro
-grande tema dei simulatori. Entrambi sono **cassetto B** (espressività da pesare
-contro la semplicità del linguaggio): vedi
+grande tema dei simulatori — ed entrambi sono ormai **fatti**: D2/D3 in v0.31.0
+(Tema 1, contatore come operando e confronti) e D1 in v0.32.0 (Tema 2, casualità
+d'autore). Erano **cassetto B** (espressività da pesare contro la semplicità del
+linguaggio): vedi
 [`documentazione/espansione-oltre-0.29.md`](../../../documentazione/espansione-oltre-0.29.md).
 
 ## File

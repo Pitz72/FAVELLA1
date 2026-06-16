@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.31.0"
+VERSIONE_MOTORE = "0.32.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -153,6 +153,29 @@ class CondizioneContatore(Condizione):
             return v <= soglia
         return False
 
+class CondizioneProbabilita(Condizione):
+    """[0.32.0 / Tema 2c] Condizione PROBABILISTICA: vera con probabilità N/M
+    ('càpita (1 su 4)' = una volta su quattro, 'càpita (3 su 4)' = tre volte su
+    quattro). È l'unica condizione senza un operando (VARIABILE/ENTITA) a
+    sinistra: parte dalla keyword dedicata 'càpita', quindi distinguibile dal
+    resto di cond_base al primo token. Pesca da mondo.rng — il generatore seedato
+    e ANNULLA-safe del mondo, come A2/A5/2a — così una partita è riproducibile e
+    l'undo riavvolge anche il caso. Valutata da un demone 'Ogni turno se càpita
+    (…)' ri-pesca a OGNI turno (è il comportamento voluto: un imprevisto a turno).
+    Nota: valutarla AVANZA l'RNG (la condizione è impura), com'è inevitabile per
+    una pesca; lo stato dell'RNG è catturato dalle istantanee, perciò ANNULLA la
+    riavvolge fedelmente."""
+    def __init__(self, numeratore: int, denominatore: int):
+        self.numeratore = int(numeratore)
+        self.denominatore = int(denominatore)
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        if self.denominatore <= 0:
+            return False
+        # randint(1, M) <= N  ->  vera con probabilità N/M (estremi inclusi).
+        # N>=M => sempre vera; N<=0 => mai vera (coerente con il significato).
+        return mondo.rng.randint(1, self.denominatore) <= self.numeratore
+
 class CondizionePosizioneGiocatore(Condizione):
     """[0.18.0 / B1] 'se il giocatore è in [stanza]': vera quando il giocatore si
     trova nella stanza indicata. La negazione si ottiene avvolgendola in
@@ -224,6 +247,24 @@ class ConseguenzaVariabile(Conseguenza):
 
     def esegui(self, mondo: 'Mondo'):
         mondo.variabili[self.nome] = self.valore
+
+class ConseguenzaSceltaStato(Conseguenza):
+    """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso
+    fra un elenco ('e adesso il meteo diventa uno fra sereno, pioggia, nebbia').
+    A differenza di ConseguenzaVariabile (un valore fisso), pesca da mondo.rng —
+    il generatore seedato e ANNULLA-safe del mondo (come A2/A5) — quindi la scelta
+    è riproducibile e l'undo la riavvolge. È casualità SIMBOLICA (un valore di
+    stato), distinta dall'estrazione NUMERICA dell'operando ('un numero fra A e B',
+    già in 0.31.0): qui i valori sono parole-stato, non interi."""
+    def __init__(self, nome: str, valori: List[str]):
+        self.nome = nome
+        self.valori = list(valori)
+
+    def esegui(self, mondo: 'Mondo'):
+        # L'elenco ha sempre >=1 valore (la grammatica richiede almeno una
+        # PROPRIETA dopo 'fra'); la guardia difende comunque da un elenco vuoto.
+        if self.valori:
+            mondo.variabili[self.nome] = mondo.rng.choice(self.valori)
 
 class ConseguenzaContatore(Conseguenza):
     """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
