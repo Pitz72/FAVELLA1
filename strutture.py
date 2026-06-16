@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.33.0"
+VERSIONE_MOTORE = "0.34.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -122,6 +122,22 @@ class CondizioneVariabile(Condizione):
 
     def valuta(self, mondo: 'Mondo') -> bool:
         return mondo.variabili.get(self.nome) == self.valore
+
+class CondizioneVariabileUguali(Condizione):
+    """[0.34.0 / Tema 3] Confronto stato↔stato per INDIREZIONE: 'se il corteggiato
+    è il preferito'. Vera quando i DUE stati contengono lo stesso valore simbolico
+    corrente — non un letterale, ma il contenuto di un'altra cella. Distinta da
+    CondizioneVariabile (confronto con un valore letterale) e da CondizioneContatore
+    (confronto numerico): qui entrambi gli operandi sono nomi di STATO, risolti a
+    runtime. Due stati entrambi non ancora impostati (None) sono considerati uguali.
+    Il confronto numerico fra grandezze resta a CondizioneContatore ('è più di
+    [forza]', Tema 1b); il mismatch stato↔contatore è intercettato a compile-time."""
+    def __init__(self, nome: str, altro: str):
+        self.nome = nome
+        self.altro = altro
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return mondo.variabili.get(self.nome) == mondo.variabili.get(self.altro)
 
 class CondizioneContatore(Condizione):
     """[Livello 3] Confronto numerico su un contatore: 'se [contatore] è almeno
@@ -247,6 +263,23 @@ class ConseguenzaVariabile(Conseguenza):
 
     def esegui(self, mondo: 'Mondo'):
         mondo.variabili[self.nome] = self.valore
+
+class ConseguenzaVariabileCopia(Conseguenza):
+    """[0.34.0 / Tema 3] Copia per INDIREZIONE del valore di uno stato in un altro:
+    'e adesso il corteggiato diventa il preferito'. A differenza di
+    ConseguenzaVariabile (che assegna un valore SIMBOLICO letterale, 'il corteggiato
+    è Anna'), qui il valore copiato è il CONTENUTO CORRENTE di un'altra cella-stato,
+    risolto al momento dell'esecuzione. Riservata agli STATI (valori simbolici): la
+    copia numerica fra contatori usa già l'operando '[nome]' (Tema 1a, 'il punteggio
+    diventa [forza]'); il mismatch stato↔contatore è un errore d'autore intercettato
+    a compile-time. Se la sorgente non è ancora impostata (None), la copia propaga
+    None (lo stato di destinazione torna 'non impostato')."""
+    def __init__(self, nome: str, sorgente: str):
+        self.nome = nome
+        self.sorgente = sorgente
+
+    def esegui(self, mondo: 'Mondo'):
+        mondo.variabili[self.nome] = mondo.variabili.get(self.sorgente)
 
 class ConseguenzaSceltaStato(Conseguenza):
     """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso

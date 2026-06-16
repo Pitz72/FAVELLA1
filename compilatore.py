@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.33.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.34.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -10,10 +10,12 @@ from strutture import (
     Mondo, Stanza, Oggetto, Regola, Evento, Demone,
     Condizione, CondizionePossesso, CondizioneProprieta,
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
+    CondizioneVariabileUguali,
     CondizioneContatore, CondizionePosizioneGiocatore, CondizioneProbabilita,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
-    ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaSceltaStato,
+    ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaVariabileCopia,
+    ConseguenzaSceltaStato,
     ConseguenzaContatore, ConseguenzaBuioStanza,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
     Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
@@ -545,6 +547,8 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_proprieta_neg
               | cond_variabile
               | cond_variabile_neg
+              | cond_variabile_uguali
+              | cond_variabile_uguali_neg
               | cond_contatore_eq
               | cond_contatore_neq
               | cond_contatore_gte
@@ -567,6 +571,21 @@ _GRAMMAR_TEMPLATE = r"""
     // un oggetto (cond_proprieta), senza ambiguità.
     cond_variabile: VARIABILE "è" PROPRIETA
     cond_variabile_neg: VARIABILE "non" "è" PROPRIETA
+    // [0.34.0 / Tema 3] Confronto stato↔stato per INDIREZIONE: 'se il corteggiato
+    // è come il preferito'. Il marcatore "come" è OBBLIGATORIO e non decorativo: il
+    // termine a destra è un VARIABILE (nome di stato dichiarato) che è ANCHE una
+    // WORD, quindi senza marcatore 'VARIABILE è VARIABILE' collide con
+    // 'VARIABILE è PROPRIETA' (cond_variabile, confronto con un letterale) —
+    // un'ambiguità reale (ogni nome di stato è un valore-letterale lecito). La
+    // keyword-letterale "come" (priorità sul WORD/PROPRIETA) separa i due casi in
+    // modo STRUTTURALE: dopo 'VARIABILE è' il lookahead "come" è disgiunto da
+    // PROPRIETA, da {NUMERO,"["} (cond_contatore_eq) e da "almeno"/"più"/"meno"/"al"
+    // → LALR(1) 0-ambiguo (confermato dalla guardia Earley). 'è come [stato]' si
+    // legge come italiano corrente («è come il preferito» = ha lo stesso valore).
+    // NB: "come" è già riservata da def_sinonimo ('"x" è come prendi'), in un
+    // contesto sinistro distinto (TESTO_QUOTATO, non VARIABILE) → nessuna collisione.
+    cond_variabile_uguali: VARIABILE "è" "come" VARIABILE
+    cond_variabile_uguali_neg: VARIABILE "non" "è" "come" VARIABILE
     // Confronti su contatore. Dopo 'VARIABILE è' il lookahead distingue:
     // PROPRIETA (stato) | NUMERO o "[" (==) | "almeno"/"più"/"meno"/"al massimo".
     // [0.31.0 / Tema 1b] Il termine di confronto è un operando_confronto: NUMERO
@@ -635,6 +654,17 @@ _GRAMMAR_TEMPLATE = r"""
                 // LALR(1) 0-ambiguo. Riservata aggiunta: nessuna ("uno"/"fra" già
                 // riservate da def_stato e operando_casuale).
                 | VARIABILE "diventa" "uno" "fra" PROPRIETA ( "," PROPRIETA )* -> cons_scelta_stato
+                // [0.34.0 / Tema 3] Copia stato↔stato per INDIREZIONE: 'e adesso
+                // il corteggiato diventa il preferito'. Condivide il prefisso
+                // 'VARIABILE "diventa"' con cons_scelta_stato e cons_contatore_set,
+                // ma dopo "diventa" il lookahead VARIABILE è disgiunto da "uno"
+                // (scelta di stato) e da FIRST(operando)={NUMERO,"[","un"} → LALR(1)
+                // 0-ambiguo. È riservata agli STATI (valore simbolico): la copia
+                // NUMERICA fra contatori usa già l'operando '[nome]' ('… diventa
+                // [forza]', sotto). Il mismatch stato↔contatore è un errore d'autore
+                // intercettato in valida_post (differito: lo stato sorgente può
+                // essere dichiarato dopo).
+                | VARIABILE "diventa" VARIABILE  -> cons_variabile_copia
                 // [0.31.0 / Tema 1a + casualità] La QUANTITÀ di 'di …'/'diventa'
                 // è un OPERANDO (vedi sotto): NUMERO letterale, valore di un
                 // contatore '[forza]' o estrazione casuale 'un numero fra A e B'.
@@ -929,6 +959,12 @@ class FavellaTransformer(Transformer):
         self._pending_proprieta = []     # (ogg_grezzo, proprieta_grezzo)
         self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
         self._pending_conseguenze = []   # liste di Conseguenza da validare
+        # [0.34.0 / Tema 3] Coppie (lhs, rhs, raw_lhs, raw_rhs, contesto) dei
+        # confronti/copie stato↔stato, validate in valida_post (differito: lo
+        # stato di destra può essere dichiarato dopo). Si verifica che ENTRAMBI
+        # i nomi siano dello stesso TIPO (stato vs contatore): un confronto/copia
+        # stato↔contatore non ha senso ed è un errore d'autore gentile.
+        self._pending_var_coppie = []
         self._pending_regole_target = [] # (id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo)
         self._pending_inventario_iniziale = []  # [0.19.0/A8] ogg_grezzo da mettere in inventario all'avvio
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
@@ -1412,6 +1448,19 @@ class FavellaTransformer(Transformer):
     def cond_variabile_neg(self, var_grezzo, valore_grezzo):
         return CondizioneNot(CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo)))
 
+    def cond_variabile_uguali(self, var_grezzo, altro_grezzo):
+        # [0.34.0 / Tema 3] 'se il corteggiato è il preferito': confronto fra i
+        # valori CORRENTI di due stati. Entrambi i nomi sono VARIABILE (dichiarati);
+        # la coerenza di TIPO (stato vs contatore) è validata in valida_post.
+        nome, altro = normalizza_nome(var_grezzo), normalizza_nome(altro_grezzo)
+        self._pending_var_coppie.append((nome, altro, str(var_grezzo), str(altro_grezzo), "confronto"))
+        return CondizioneVariabileUguali(nome, altro)
+
+    def cond_variabile_uguali_neg(self, var_grezzo, altro_grezzo):
+        nome, altro = normalizza_nome(var_grezzo), normalizza_nome(altro_grezzo)
+        self._pending_var_coppie.append((nome, altro, str(var_grezzo), str(altro_grezzo), "confronto"))
+        return CondizioneNot(CondizioneVariabileUguali(nome, altro))
+
     # [0.31.0 / Tema 1b] Il secondo argomento è ora un Operando (NUMERO letterale
     # o valore di un contatore [forza]), non più un int grezzo: lo passa così com'è
     # a CondizioneContatore, che lo risolve al momento della valutazione.
@@ -1499,6 +1548,14 @@ class FavellaTransformer(Transformer):
 
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
+
+    def cons_variabile_copia(self, var_grezzo, sorgente_grezzo):
+        # [0.34.0 / Tema 3] 'e adesso il corteggiato diventa il preferito': copia il
+        # valore corrente di uno stato (sorgente) in un altro. Entrambi i nomi sono
+        # VARIABILE (dichiarati); la coerenza di TIPO è validata in valida_post.
+        nome, sorgente = normalizza_nome(var_grezzo), normalizza_nome(sorgente_grezzo)
+        self._pending_var_coppie.append((nome, sorgente, str(var_grezzo), str(sorgente_grezzo), "copia"))
+        return ConseguenzaVariabileCopia(nome, sorgente)
 
     def cons_scelta_stato(self, var_grezzo, *valori_grezzi):
         # [0.32.0 / Tema 2b] 'il meteo diventa uno fra sereno, pioggia, nebbia':
@@ -1727,6 +1784,40 @@ class FavellaTransformer(Transformer):
             self._applica_descrizione(nome, cond, testo)
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
+        # [0.34.0 / Tema 3] Coerenza di TIPO nei confronti/copie stato↔stato. Un
+        # nome è un CONTATORE se il suo valore nel mondo è un intero (def_contatore
+        # → 0, 'parte da N' → N); altrimenti è uno STATO (None o parola-stato).
+        # Entrambi i nomi sono dichiarati per costruzione (VARIABILE è chiuso). La
+        # forma nuda 'X diventa Y' / 'X è Y' è riservata agli STATI: per i contatori
+        # esiste già il valore fra parentesi '[Y]' (Tema 1a/1b), più espressivo
+        # (entra anche nell'aritmetica e nei confronti d'ordine). Quindi mismatch e
+        # «due contatori» sono entrambi errori d'autore gentili.
+        def _tipo_var(n):
+            return "contatore" if isinstance(m.variabili.get(n), int) else "stato"
+        def _con_articolo(tipo):
+            return "uno stato" if tipo == "stato" else "un contatore"
+        for nome, altro, raw_lhs, raw_rhs, contesto in self._pending_var_coppie:
+            t_lhs, t_rhs = _tipo_var(nome), _tipo_var(altro)
+            # Forma SCRITTA dall'autore (rifiutata) vs forma CANONICA a contatori
+            # (col valore fra parentesi). Il confronto stato↔stato usa il marcatore
+            # 'è come'; il confronto fra contatori NON lo usa ('X è [Y]').
+            if contesto == "copia":
+                azione, scritto, giusto = "La copia", "diventa", "diventa"
+            else:
+                azione, scritto, giusto = "Il confronto", "è come", "è"
+            if t_lhs == "stato" and t_rhs == "stato":
+                continue  # caso voluto
+            if t_lhs == "contatore" and t_rhs == "contatore":
+                self.errori.append(
+                    f"{azione} fra contatori si scrive col valore fra parentesi: "
+                    f"'{raw_lhs} {giusto} [{altro}]' (non '{raw_lhs} {scritto} {raw_rhs}'). "
+                    f"La forma '{scritto} <stato>' è riservata agli stati.")
+            else:
+                self.errori.append(
+                    f"{azione} non ha senso fra tipi diversi: '{raw_lhs}' è "
+                    f"{_con_articolo(t_lhs)} e '{raw_rhs}' è {_con_articolo(t_rhs)}. "
+                    f"La forma '{raw_lhs} {scritto} {raw_rhs}' vale solo fra due "
+                    f"stati; per i contatori usa il valore fra parentesi '[{altro}]'.")
         for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
             if not (m.trova_oggetto(id_ogg1) or id_ogg1 in m.opposte_direzioni):
                 self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
@@ -2023,6 +2114,11 @@ class FavellaTransformer(Transformer):
             # è anch'esso un riferimento: non marcarlo come inutilizzato.
             if isinstance(cons, ConseguenzaContatore):
                 usate |= _variabili_in_operando(cons.valore)
+            # [0.34.0 / Tema 3] La copia stato↔stato usa ENTRAMBI i nomi (il
+            # bersaglio e la sorgente): nessuno dei due è codice morto.
+            if isinstance(cons, ConseguenzaVariabileCopia):
+                usate.add(cons.nome)
+                usate.add(cons.sorgente)
         for testo in self._tutti_i_testi():
             for ph in estrai_placeholder(testo):
                 usate.add(normalizza_nome(ph))
@@ -2093,6 +2189,9 @@ class FavellaTransformer(Transformer):
             return set()
         if isinstance(condizione, CondizioneVariabile):
             return {condizione.nome}
+        # [0.34.0 / Tema 3] Il confronto stato↔stato cita due stati: entrambi usati.
+        if isinstance(condizione, CondizioneVariabileUguali):
+            return {condizione.nome, condizione.altro}
         if isinstance(condizione, CondizioneContatore):
             # [0.31.0 / Tema 1b] Conta anche il contatore citato come termine di
             # confronto ('è più di [forza]'): è un uso a tutti gli effetti.
@@ -3116,6 +3215,9 @@ def _cond_to_json(c, mondo):
     if isinstance(c, CondizioneVariabile):
         return {"op": "var", "name": c.nome, "value": c.valore,
                 "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, CondizioneVariabileUguali):
+        # [0.34.0 / Tema 3] Confronto stato↔stato: 'X è Y' (entrambi stati).
+        return {"op": "varEq", "name": c.nome, "other": c.altro}
     if isinstance(c, CondizioneContatore):
         return {"op": "count", "name": c.nome, "cmp": c.operatore, "value": _operando_to_json(c.valore)}
     if isinstance(c, CondizionePosizioneGiocatore):
@@ -3135,6 +3237,9 @@ def _conseq_to_json(c, mondo):
     if isinstance(c, ConseguenzaVariabile):
         return {"op": "var", "name": c.nome, "value": c.valore,
                 "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, ConseguenzaVariabileCopia):
+        # [0.34.0 / Tema 3] Copia stato↔stato: 'X diventa Y' (entrambi stati).
+        return {"op": "varCopy", "name": c.nome, "from": c.sorgente}
     if isinstance(c, ConseguenzaSceltaStato):
         # [0.32.0 / Tema 2b] 'il meteo diventa uno fra sereno, pioggia, nebbia'.
         return {"op": "pick", "name": c.nome, "values": list(c.valori),
@@ -4139,6 +4244,9 @@ def _serializza_condizione(c):
         return f"{c['name']} è {c['prop']}"
     if op == "var":
         return f"{c['name']} è {c['value']}"
+    if op == "varEq":
+        # [0.34.0 / Tema 3] Confronto stato↔stato: 'X è come Y' (Y è un altro stato).
+        return f"{c['name']} è come {c['other']}"
     if op == "playerIn":
         # [0.18.0 / B1] 'il giocatore è in [stanza]' (prep nuda + nucleo).
         return f"il giocatore è in {_nucleo_nome(c['name'])}"
@@ -4165,6 +4273,9 @@ def _serializza_condizione(c):
             return f"{t['name']} non è {t['prop']}"
         if t["op"] == "var":
             return f"{t['name']} non è {t['value']}"
+        if t["op"] == "varEq":
+            # [0.34.0 / Tema 3] Negazione del confronto stato↔stato.
+            return f"{t['name']} non è come {t['other']}"
         if t["op"] == "playerIn":
             return f"il giocatore non è in {_nucleo_nome(t['name'])}"
         raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato o posizione.")
@@ -4185,6 +4296,9 @@ def _serializza_conseguenza(c):
         return f"{c['name']} è {c['prop']}"
     if op == "var":
         return f"{c['name']} è {c['value']}"
+    if op == "varCopy":
+        # [0.34.0 / Tema 3] Copia stato↔stato: 'X diventa Y' (Y è un altro stato).
+        return f"{c['name']} diventa {c['from']}"
     if op == "count":
         mode, v = c["mode"], c.get("value", 1)
         if mode == "diventa":

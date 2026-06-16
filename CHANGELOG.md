@@ -4,6 +4,44 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.34.0] - 2026-06-16
+### Tema 3: lo stato che parla allo stato 🔗
+Quinta sessione del **piano di completamento del linguaggio**
+(`documentazione/espansione-oltre-0.29.md`): il **Tema 3**, l'**indirezione fra
+stati**. Fino a ieri uno «stato» si assegnava/confrontava solo contro un valore
+**letterale** (`il corteggiato è Anna`); ora può farlo contro il **contenuto di un
+altro stato**. Costrutto piccolo e mirato, pesato con prudenza (l'indirezione è
+mezzo passo verso le variabili dei linguaggi veri) e tenuto minimo. Richiedente
+reale: il tester Pietro («La Talpa», impersonare un personaggio). **Additivo** (le
+4 demo e tutte le storie esistenti compilano e si comportano identiche). Modifica di
+grammatica → bump **minor**; spec nuova `documentazione/grammatica-0.34.0.md` (§17).
+
+- **Copia stato↔stato** (`ConseguenzaVariabileCopia`): `e adesso il corteggiato
+  diventa il preferito.` copia il valore corrente di uno stato in un altro. Forma
+  **nuda**, 0-ambigua (nessun `diventa PROPRIETA` compete dopo `diventa`).
+- **Confronto stato↔stato** (`CondizioneVariabileUguali`): `se il corteggiato è
+  come il preferito: …` (anche `non è come`). Il marcatore **`come`** è obbligatorio:
+  senza, `VARIABILE è VARIABILE` collide con `VARIABILE è PROPRIETA` (confronto con
+  un letterale) — un nome di stato è anche una parola-valore lecita. `come` separa i
+  due casi in modo strutturale → LALR(1) 0-ambiguo (guardia Earley estesa). Si legge
+  come italiano corrente («è come il preferito» = ha lo stesso valore).
+- **Riservato agli stati; diagnostica gentile.** La forma nuda vale solo fra due
+  **stati**: la copia/confronto fra **contatori** usa già il valore fra parentesi
+  `[nome]` (Tema 1, più espressivo). Un mismatch stato↔contatore — o l'uso della
+  forma nuda fra due contatori — è un errore d'autore localizzato che indirizza alla
+  forma corretta. Validazione **differita** (lo stato a destra può essere dichiarato
+  dopo). **ANNULLA-safe** (muta `Mondo.variabili`, già nelle istantanee; niente RNG).
+- **Tema 5a (quantità/scorte): NO-GO.** Pesato e non realizzato: la «versione ridotta
+  sui contatori» non richiede codice (una scorta è già un contatore col Tema 1); la
+  versione piena apre plurali/concordanza, fuori dallo spirito di FAVELLA. Resta un
+  idioma documentato, non una primitiva. Tema 5b (template): sconsigliato.
+- **Demo non retrofittate.** Nessuna delle 4 demo ha due stati simbolici fra cui
+  l'indirezione sia naturale (i pretendenti del dating sono entità/contatori):
+  forzarla sarebbe contrived e rischierebbe l'additività. Il costrutto è coperto da
+  8 test dedicati. (Stessa scelta della 4a in 0.33.0.)
+- **Suite:** 681 asserzioni di linguaggio (+15) + 43 di collaudo, pytest 312, LALR(1)
+  0-ambiguo. Le 4 demo restano vincibili/perdibili end-to-end identiche.
+
 ## [0.33.0] - 2026-06-16
 ### Tema 4: il mondo che cambia in scena 🌒
 Quarta sessione del **piano di completamento del linguaggio**

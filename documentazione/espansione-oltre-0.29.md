@@ -26,6 +26,22 @@
 > La demo di guida ha ora un meteo davvero imprevedibile (attrito D1 risolto). I
 > temi 3–5 restano da pesare (sessioni S4+).
 >
+> **Il TEMA 4 è stato realizzato in v0.33.0** (S4) → spec `grammatica-0.33.0.md`
+> §16: 4a buio commutabile + 4b battuta di nodo condizionale; 4c (creazione oggetti)
+> pesata e rimandata.
+>
+> **Il TEMA 3 è stato realizzato in v0.34.0** (2026-06-16, sessione S5) → spec
+> `grammatica-0.34.0.md` §17: l'**indirezione fra stati**. Copia
+> `il corteggiato diventa il preferito` (`ConseguenzaVariabileCopia`, forma nuda) e
+> confronto `se il corteggiato è come il preferito` (`CondizioneVariabileUguali`,
+> marcatore `come` obbligatorio per 0-ambiguità). Riservato agli STATI (i contatori
+> hanno già `[nome]`, Tema 1); mismatch stato↔contatore = errore d'autore gentile,
+> validazione differita; ANNULLA-safe. **Il TEMA 5a (quantità/scorte) è NO-GO**: la
+> versione ridotta non richiede codice (una scorta è già un contatore col Tema 1) e
+> la versione piena apre i plurali/concordanza, fuori spirito; resta un idioma
+> documentato (vedi §5a). Tema 5b (template): sconsigliato. **Con S5 il linguaggio è
+> sostanzialmente chiuso**; resta l'ecosistema (S6).
+>
 > Documento di progettazione, **2026-06-16**. Stato del motore alla stesura:
 > **v0.29.0, suite verde** (≈582 asserzioni di linguaggio + 43 di collaudo),
 > LALR(1) a zero ambiguità, deliberatamente **congelato**. Asse A completo,
@@ -191,7 +207,19 @@ operando-quantità come `di [forza]`, stessa famiglia grammaticale.
 
 ---
 
-# TEMA 3 — Stato↔stato: assegnazione e indirezione
+# TEMA 3 — Stato↔stato: assegnazione e indirezione — ✅ FATTO (v0.34.0)
+
+> **✅ Realizzato in v0.34.0 (S5).** Forma finale: copia NUDA
+> `il corteggiato diventa il preferito` (`cons_variabile_copia`, nessun
+> `diventa PROPRIETA` compete) e confronto col marcatore `come`
+> `se il corteggiato è come il preferito` / `… non è come …`
+> (`cond_variabile_uguali`/`_neg`). Il `come` è OBBLIGATORIO nel confronto perché
+> `VARIABILE è VARIABILE` collide con `VARIABILE è PROPRIETA` (un nome di stato è
+> anche un valore-letterale lecito) → ambiguità reale eliminata strutturalmente. La
+> proposta iniziale `il nome di Anna` è stata scartata (più verbosa e fuori modello:
+> gli stati non sono «posseduti» da un'entità). Riservato agli STATI; mismatch
+> stato↔contatore = errore d'autore gentile; validazione differita; ANNULLA-safe.
+> Spec `grammatica-0.34.0.md` §17.
 
 **Emerso in:** dating A2; e già col **tester reale Pietro** (gioco «La Talpa»,
 «impersonare un personaggio»). Distinto dal Tema 1: lì erano numeri, qui sono
@@ -281,11 +309,22 @@ Due limiti di **scala**, non di espressività atomica. Entrambi **cassetto B, da
 valutare con sospetto** (sono i più vicini a trasformare FAVELLA in un
 linguaggio di programmazione «vero», contro il principio 6).
 
-### 5a. Quantità / scorte (sopravvivenza S6, GDR R6)
+### 5a. Quantità / scorte (sopravvivenza S6, GDR R6) — 🛑 NO-GO (v0.34.0)
 Non esistono oggetti con molteplicità: «3 pozioni» sono 3 oggetti separati, o un
 oggetto ricomprabile solo dopo l'uso. Proposta eventuale:
 `Il giocatore ha 3 pozioni.` + `consuma una pozione`. Utile, ma apre la
 questione plurali/concordanza.
+
+> **🛑 Pesato e NO-GO in v0.34.0 (S5).** La «versione ridotta sui contatori» (una
+> scorta = un contatore associato) **non richiede alcun codice motore**: col Tema 1
+> è già esprimibile in modo pulito —
+> `Le pozioni sono un contatore.` / `Le pozioni partono da 3.`,
+> `Invece di bevi se le pozioni è almeno 1: dire "Bevi una pozione." e adesso
+> diminuisci le pozioni.`. Inventare `consuma una pozione` sarebbe o zucchero banale
+> (una nuova parola riservata per `diminuisci … di 1`) o il buco nero della
+> pluralizzazione automatica (concordanza dei nomi generati), fuori dallo spirito di
+> FAVELLA (principio 6). Decisione: **idioma da documentare**, non primitiva. Vedi il
+> nodo di memoria `debiti-motore-da-integrare`.
 
 ### 5b. Template di entità (dating A4, GDR R5)
 Non c'è modo di dichiarare un «tipo» e istanziarlo: ogni personaggio/mostro è un

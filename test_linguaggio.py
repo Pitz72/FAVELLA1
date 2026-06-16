@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.33.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.34.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1671,6 +1671,18 @@ _CORPUS_GUARDIA = (
     # il secondo TESTO_QUOTATO il lookahead "se" vs "." è disgiunto → 0-ambiguo. Si
     # accumula sulla battuta INCONDIZIONATA del nodo "chi" già nel corpus (fallback).
     'Il mercante al nodo "chi" dice "Sono in allerta." se l\'allarme è attivo.\n'   # def_battuta condizionale
+    # [0.34.0 / Tema 3] Stato↔stato per INDIREZIONE: copia ('X diventa Y', forma
+    # NUDA: dopo "diventa" non c'è alcun 'diventa PROPRIETA' che competa) e
+    # confronto ('X è come Y', anche negato): qui il marcatore "come" è OBBLIGATORIO
+    # perché 'VARIABILE è VARIABILE' collide con 'VARIABILE è PROPRIETA'
+    # (cond_variabile). Entrambi i RHS sono STATI (terminale VARIABILE). Dopo
+    # 'VARIABILE diventa' il lookahead VARIABILE è disgiunto da "uno" e da
+    # {NUMERO,"[","un"}; dopo 'VARIABILE è'/'VARIABILE non è' la keyword "come" è
+    # disgiunta da PROPRIETA/{NUMERO,"["}/"almeno"/… → 0-ambiguo (verificato qui).
+    "Il bersaglio è uno stato.\nL'obiettivo è uno stato.\n"                       # due stati per il Tema 3
+    'Invece di indaga: il bersaglio diventa l\'obiettivo.\n'                      # cons_variabile_copia
+    'Invece di accusa se il bersaglio è come l\'obiettivo: dire "Preso.".\n'       # cond_variabile_uguali
+    'Invece di dubita se il bersaglio non è come l\'obiettivo: dire "Non lui.".\n' # cond_variabile_uguali_neg
 )
 
 
@@ -2266,6 +2278,111 @@ def test_tema4b_battuta_incondizionata_resta_compatibile():
            "la battuta semplice resta la base del nodo")
     _check(nodo is not None and nodo.battute_condizionali == [],
            "nessuna battuta condizionale per un nodo senza clausola 'se'")
+
+
+# --- Test: Tema 3 [0.34.0] — lo stato che parla allo stato (indirezione) -----
+# Copia 'X diventa Y' (cons_variabile_copia) e confronto 'X è come Y'
+# (cond_variabile_uguali / _neg), entrambi fra STATI; mismatch e «due contatori»
+# sono errori d'autore; ANNULLA riavvolge la copia; la forma è additiva.
+
+def _src_tema3():
+    """Mondo minimo per il Tema 3: una leva su cui agire e due stati ('bersaglio',
+    'sospettato') con valori iniziali distinti."""
+    return ("Il covo è una stanza.\nUna leva è una cosa.\nLa leva è nel covo.\n"
+            "La leva è prendibile.\nIl giocatore comincia nel covo.\n"
+            "Il bersaglio è uno stato.\nIl sospettato è uno stato.\n"
+            "Il bersaglio è anna.\nIl sospettato è bea.\n")
+
+
+def test_tema3_copia_stato_in_stato():
+    print("[3: 'il bersaglio diventa il sospettato' copia il valore corrente]")
+    m = runtime(_src_tema3() +
+                'Invece di usa la leva: dire "Identità copiata." e adesso il bersaglio diventa il sospettato.\n')
+    _check(m.variabili["bersaglio"] == "anna", "all'avvio il bersaglio vale 'anna'")
+    esegui(m, "usa la leva")
+    _check(m.variabili["bersaglio"] == "bea",
+           "dopo la copia il bersaglio prende il valore del sospettato ('bea')")
+    _check(m.variabili["sospettato"] == "bea", "il sospettato (sorgente) resta invariato")
+
+
+def test_tema3_confronto_e_come_vero_e_falso():
+    print("[3: 'se il bersaglio è come il sospettato' confronta i due valori]")
+    m = runtime(_src_tema3() +
+                'Invece di esamina la leva se il bersaglio è come il sospettato: dire "Coincidono.".\n'
+                'Invece di usa la leva: il bersaglio diventa il sospettato.\n')
+    out = esegui(m, "esamina la leva")
+    _check("Coincidono." not in out, "valori distinti (anna vs bea): il confronto è falso")
+    esegui(m, "usa la leva")             # ora bersaglio = sospettato = bea
+    out2 = esegui(m, "esamina la leva")
+    _check("Coincidono." in out2, "dopo la copia i due stati coincidono: il confronto è vero")
+
+
+def test_tema3_confronto_negato():
+    print("[3: 'se il bersaglio non è come il sospettato' è la negazione]")
+    m = runtime(_src_tema3() +
+                'Invece di esamina la leva se il bersaglio non è come il sospettato: dire "Diversi.".\n')
+    out = esegui(m, "esamina la leva")
+    _check("Diversi." in out, "all'avvio (anna vs bea) i due stati sono diversi")
+
+
+def test_tema3_annulla_safe():
+    print("[3: ANNULLA riavvolge una copia stato-stato]")
+    m = runtime(_src_tema3() +
+                'Invece di usa la leva: dire "Copio." e adesso il bersaglio diventa il sospettato.\n')
+    esegui(m, "usa la leva")
+    _check(m.variabili["bersaglio"] == "bea", "dopo la copia il bersaglio vale 'bea'")
+    esegui(m, "annulla")
+    _check(m.variabili["bersaglio"] == "anna", "ANNULLA riporta il bersaglio a 'anna'")
+
+
+def test_tema3_copia_da_stato_non_impostato_propaga_none():
+    print("[3: copiare da uno stato non ancora impostato azzera il bersaglio]")
+    m = runtime("Il covo è una stanza.\nUna leva è una cosa.\nLa leva è nel covo.\n"
+                "Il giocatore comincia nel covo.\n"
+                "Il bersaglio è uno stato.\nIl vuoto è uno stato.\n"
+                "Il bersaglio è anna.\n"     # 'vuoto' resta None
+                'Invece di usa la leva: il bersaglio diventa il vuoto.\n')
+    esegui(m, "usa la leva")
+    _check(m.variabili["bersaglio"] is None,
+           "copiando da uno stato non impostato il bersaglio torna 'non impostato' (None)")
+
+
+def test_tema3_mismatch_stato_contatore_copia_e_errore():
+    print("[3/diagnostica: copiare un contatore in uno stato è un errore gentile]")
+    src = ("Il covo è una stanza.\nUna leva è una cosa.\nLa leva è nel covo.\n"
+           "Il giocatore comincia nel covo.\n"
+           "Il bersaglio è uno stato.\nLa forza è un contatore.\n"
+           'Invece di usa la leva: il bersaglio diventa la forza.\n')
+    r = strutturato(src)
+    _check(not r["ok"], "il file NON compila (stato <- contatore non ha senso)")
+    msg = " ".join(e["message"] for e in r["errors"])
+    _check("bersaglio" in msg and "forza" in msg and "[forza]" in msg,
+           "l'errore nomina i due nomi e indirizza alla forma '[forza]'")
+
+
+def test_tema3_due_contatori_confronto_e_errore():
+    print("[3/diagnostica: confrontare due contatori con 'è come' rinvia a [nome]]")
+    src = ("Il covo è una stanza.\nUna leva è una cosa.\nLa leva è nel covo.\n"
+           "Il giocatore comincia nel covo.\n"
+           "La forza è un contatore.\nLa difesa è un contatore.\n"
+           'Invece di esamina la leva se la forza è come la difesa: dire "x".\n')
+    r = strutturato(src)
+    _check(not r["ok"], "il file NON compila (per i contatori serve [nome])")
+    msg = " ".join(e["message"] for e in r["errors"])
+    _check("[difesa]" in msg, "l'errore suggerisce il valore fra parentesi '[difesa]'")
+
+
+def test_tema3_confronto_letterale_resta_intatto():
+    print("[3: 'è valore' (letterale) non è scambiato per un confronto fra stati]")
+    # Additività: senza 'come', 'è bea' resta un confronto col valore-letterale.
+    m = runtime(_src_tema3() +
+                'Invece di esamina la leva se il bersaglio è bea: dire "È bea.".\n')
+    out = esegui(m, "esamina la leva")
+    _check("È bea." not in out, "il bersaglio vale 'anna', non 'bea': confronto letterale falso")
+    m2 = runtime(_src_tema3().replace("Il bersaglio è anna.", "Il bersaglio è bea.") +
+                 'Invece di esamina la leva se il bersaglio è bea: dire "È bea.".\n')
+    out2 = esegui(m2, "esamina la leva")
+    _check("È bea." in out2, "con bersaglio='bea' il confronto col letterale è vero")
 
 
 def test_a4_idioma_direzioni_opposte_funziona():
@@ -3161,7 +3278,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.33.0.md")
+                          "grammatica-0.34.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3178,7 +3295,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.33.0.md è presente")
+           "documentazione/grammatica-0.34.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -5101,6 +5218,15 @@ def main():
         test_tema4b_battuta_condizionale_runtime,
         test_tema4b_battuta_condizionale_con_segnaposto,
         test_tema4b_battuta_incondizionata_resta_compatibile,
+        # [0.34.0] Tema 3 — lo stato che parla allo stato (indirezione)
+        test_tema3_copia_stato_in_stato,
+        test_tema3_confronto_e_come_vero_e_falso,
+        test_tema3_confronto_negato,
+        test_tema3_annulla_safe,
+        test_tema3_copia_da_stato_non_impostato_propaga_none,
+        test_tema3_mismatch_stato_contatore_copia_e_errore,
+        test_tema3_due_contatori_confronto_e_errore,
+        test_tema3_confronto_letterale_resta_intatto,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -5222,7 +5348,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.33.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.34.0)")
     print("=" * 60)
     for t in tests:
         t()
