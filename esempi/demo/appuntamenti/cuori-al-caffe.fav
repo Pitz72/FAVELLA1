@@ -1,0 +1,132 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  CUORI AL CAFFÈ — un simulatore di appuntamenti                           ║
+# ║  Stress-test di genere per FAVELLA 1 (motore v0.29.0)                     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Una serata in un caffè. Due persone interessanti: ANNA, libraia schiva, e
+# BEA, alpinista solare. Hai tempo fino alla chiusura per conquistare un
+# appuntamento: parla, ascolta, fai il regalo giusto. Ma attento — corteggiarle
+# entrambe ti si ritorce contro.
+#
+# SCOPO: portare l'affinità di una delle due ad almeno 4 e farti dire di sì
+# prima che il caffè chiuda (turno 18). Senza giocare doppio.
+
+# ============================================================================
+# 1. LE RELAZIONI  [un contatore di affinità PER PERSONAGGIO]
+# ============================================================================
+# (ATTRITO: ogni personaggio ha la sua riga. Non esiste un "modello di
+# personaggio" da istanziare: aggiungere una terza persona = ricopiare tutto.)
+L'affinità di Anna è un contatore.
+L'affinità di Anna parte da 0.
+L'affinità di Bea è un contatore.
+L'affinità di Bea parte da 0.
+
+# Memoria della serata: ho già fatto un regalo a ciascuna?
+Il doppiogioco è uno stato.
+Il doppiogioco è pulito.
+
+# ============================================================================
+# 2. IL LOCALE  [una sola stanza: lo spazio sociale]
+# ============================================================================
+Il caffè è una stanza.
+La descrizione del caffè è "Un caffè caldo di luce gialla, tazze che tintinnano, una chitarra in sottofondo. Al bancone ANNA sfoglia un libro; vicino alla vetrata BEA ride forte con qualcuno. Sul tuo tavolino un ROMANZO e una PICCOZZA da regalo. Puoi PARLARE CON Anna o CON Bea.".
+Il giocatore comincia in il caffè.
+
+Anna è un personaggio.
+Anna è in il caffè.
+La descrizione di Anna è "Capelli raccolti, occhiali, un sorriso che si concede poco. Tiene il libro come uno scudo.".
+
+Bea è un personaggio.
+Bea è in il caffè.
+La descrizione di Bea è "Spalle da arrampicata, mani segnate, occhi che ridono prima della bocca.".
+
+# ============================================================================
+# 3. I REGALI  [oggetti: il regalo GIUSTO vale molto, quello sbagliato poco]
+# ============================================================================
+# Ogni regalo è a colpo unico (si consuma). Il romanzo è di Anna, la piccozza
+# è di Bea: darlo alla persona giusta è la mossa decisiva.
+Il romanzo è una cosa.
+Il romanzo è prendibile.
+Il romanzo è in il caffè.
+La descrizione del romanzo è "Un romanzo russo, copertina vissuta. Roba da chi ama leggere.".
+
+La piccozza è una cosa.
+La piccozza è prendibile.
+La piccozza è in il caffè.
+La descrizione della piccozza è "Una piccozza da ghiaccio, leggera e affilata. Roba da chi ama la montagna.".
+
+# Regalo GIUSTO -> grande slancio. (usa X su Persona)
+Invece di usa il romanzo su Anna se il giocatore ha il romanzo: dire "Le porgi il romanzo. Anna lo apre, riconosce l'autore, e per la prima volta abbassa lo scudo: «Questo è... uno dei miei preferiti. Come facevi a saperlo?»." e adesso aumenta l'affinità di Anna di 3 e adesso il romanzo è nel nulla.
+Invece di usa la piccozza su Bea se il giocatore ha la piccozza: dire "Le allunghi la piccozza. Bea la soppesa, fa un fischio: «Ehi, te ne intendi! La prossima cengia la saliamo insieme.»" e adesso aumenta l'affinità di Bea di 3 e adesso la piccozza è nel nulla.
+
+# Regalo SBAGLIATO -> gesto gentile, ma poco a segno.
+Invece di usa la piccozza su Anna se il giocatore ha la piccozza: dire "Anna guarda la piccozza, poi te, perplessa: «Grazie? Non so bene cosa farmene...»." e adesso aumenta l'affinità di Anna e adesso la piccozza è nel nulla.
+Invece di usa il romanzo su Bea se il giocatore ha il romanzo: dire "Bea sfoglia il romanzo: «Carino. Io più che leggerle, le montagne le scalo — ma il pensiero conta.»" e adesso aumenta l'affinità di Bea e adesso il romanzo è nel nulla.
+
+# ============================================================================
+# 4. DIALOGO CON ANNA  [albero con opzioni che alzano l'affinità + gating]
+# ============================================================================
+Il dialogo di Anna comincia con "anna_saluto".
+Anna al nodo "anna_saluto" dice "(Alza gli occhi dal libro.) «Oh. Ciao. Non è che ami molto la confusione, ma... siediti pure.» (Affinità: [affinità di Anna])".
+Al nodo "anna_saluto" l'opzione "Cosa stai leggendo?" conduce al nodo "anna_libri".
+Al nodo "anna_saluto" l'opzione "Posso offrirti qualcosa?" conduce al nodo "anna_gentile".
+# (ATTRITO: la battuta di un nodo NON ammette varianti `se`. Per cambiare la
+# risposta in base al doppiogioco, sdoppio l'OPZIONE: stessa etichetta, due
+# condizioni, due nodi-destinazione diversi.)
+Al nodo "anna_saluto" l'opzione "Ti andrebbe di uscire, una sera?" se l'affinità di Anna è almeno 4 e il doppiogioco è pulito conduce al nodo "anna_si".
+Al nodo "anna_saluto" l'opzione "Ti andrebbe di uscire, una sera?" se il doppiogioco è palese conduce al nodo "anna_no".
+Al nodo "anna_saluto" l'opzione "Ti lascio al tuo libro." chiude il dialogo.
+
+Anna al nodo "anna_libri" dice "(Si illumina.) «Dostoevskij. La gente crede sia pesante, ma è il più tenero di tutti. Mi piace chi ha la pazienza di arrivare in fondo.»".
+Al nodo "anna_libri" l'opzione "Anche a me piace arrivare in fondo alle cose." conduce al nodo "anna_saluto" e adesso aumenta l'affinità di Anna.
+Al nodo "anna_libri" l'opzione "Troppo lungo per me, lo ammetto." conduce al nodo "anna_saluto".
+
+Anna al nodo "anna_gentile" dice "«Un tè verde, se proprio insisti. (sorride appena) Sei gentile.»".
+Al nodo "anna_gentile" l'opzione "È il minimo." conduce al nodo "anna_saluto" e adesso aumenta l'affinità di Anna.
+
+Anna al nodo "anna_si" dice "(Chiude il libro, ti guarda davvero per la prima volta.) «Sai una cosa? Sì. Mi andrebbe proprio.»".
+Al nodo "anna_si" l'opzione "(Le sorridi: è fatta.)" chiude il dialogo e adesso vinci "Esci dal caffè con un appuntamento — e con Anna che ride, finalmente senza scudo. A volte basta saper ascoltare.".
+
+Anna al nodo "anna_no" dice "(Gelida.) «Ho visto come giri intorno al tavolo di Bea. Il caffè è piccolo, sai? Cercati qualcun'altra.»".
+Al nodo "anna_no" l'opzione "(Incassi e te ne vai.)" chiude il dialogo.
+
+# ============================================================================
+# 5. DIALOGO CON BEA  [simmetrico]
+# ============================================================================
+Il dialogo di Bea comincia con "bea_saluto".
+Bea al nodo "bea_saluto" dice "«Ueh! Faccia nuova. Tu sembri uno che starebbe meglio su una parete che in un caffè, dico bene?» (Affinità: [affinità di Bea])".
+Al nodo "bea_saluto" l'opzione "Raccontami l'ultima scalata." conduce al nodo "bea_monti".
+Al nodo "bea_saluto" l'opzione "Posso offrirti qualcosa?" conduce al nodo "bea_gentile".
+Al nodo "bea_saluto" l'opzione "Ti andrebbe di uscire, una sera?" se l'affinità di Bea è almeno 4 e il doppiogioco è pulito conduce al nodo "bea_si".
+Al nodo "bea_saluto" l'opzione "Ti andrebbe di uscire, una sera?" se il doppiogioco è palese conduce al nodo "bea_no".
+Al nodo "bea_saluto" l'opzione "Buona serata, Bea." chiude il dialogo.
+
+Bea al nodo "bea_monti" dice "«Cresta di mezzogiorno, all'alba, da sola. Quando il sole ha sciolto la brina ero già in vetta. C'è un silenzio, lassù, che ti rimette al tuo posto.»".
+Al nodo "bea_monti" l'opzione "Dev'essere come toccare il cielo." conduce al nodo "bea_saluto" e adesso aumenta l'affinità di Bea.
+Al nodo "bea_monti" l'opzione "Io soffro di vertigini, temo." conduce al nodo "bea_saluto".
+
+Bea al nodo "bea_gentile" dice "«Una birra artigianale, dai. Mi piace chi non sta sulle formalità.»".
+Al nodo "bea_gentile" l'opzione "Alla montagna, allora." conduce al nodo "bea_saluto" e adesso aumenta l'affinità di Bea.
+
+Bea al nodo "bea_si" dice "(Ti dà una pacca che quasi ti sposta.) «Mi piaci, tu. Sabato si va per sentieri — passo a prenderti all'alba, e niente storie!»".
+Al nodo "bea_si" l'opzione "(Ci stai: che alba sia.)" chiude il dialogo e adesso vinci "Esci dal caffè con un appuntamento all'alba e la sensazione di esserti appena buttato da una cengia. Con Bea, la vita corre più in fretta.".
+
+Bea al nodo "bea_no" dice "«Bell'amico. Ti ho visto fare il cascamorto con la libraia. Con me questi giochetti non attaccano. Ciao.»".
+Al nodo "bea_no" l'opzione "(Incassi e te ne vai.)" chiude il dialogo.
+
+# ============================================================================
+# 6. LA GELOSIA  [demone — e qui FAVELLA si piega: niente confronto relativo]
+# ============================================================================
+# Vorrei: "si ingelosisce CHI dei due hai trascurato di più" — cioè confrontare
+# l'affinità di Anna con quella di Bea. NON è esprimibile (i contatori non si
+# confrontano fra loro). Ripiego: rilevo solo il caso grezzo "le ho corteggiate
+# ENTRAMBE", con due soglie FISSE in AND. È più rozzo del dovuto.
+Quando l'affinità di Anna è almeno 2 e l'affinità di Bea è almeno 2: dire "Ti accorgi troppo tardi che il caffè è piccolo: Anna ha visto, Bea ha capito. Due sguardi gelidi si incrociano e poi si posano su di te. L'aria si raffredda di colpo." e adesso il doppiogioco è palese.
+
+# Col doppiogioco palese, l'opzione "Usciamo?" porta al nodo del due di picche
+# (gate fatto sulle OPZIONI nelle sezioni 4 e 5, non sulla battuta del nodo).
+
+# ============================================================================
+# 7. L'AGENDA  [eventi a tempo: il caffè chiude]
+# ============================================================================
+Al turno 14: dire "Il barista comincia a girare le sedie sui tavoli. Manca poco alla chiusura.".
+Al turno 18: dire "«Chiudiamo, ragazzi.» Le luci si abbassano. La serata è finita, e tu sei ancora qui da solo." e adesso perdi "Il caffè ha chiuso e nessun appuntamento in tasca. Sarà per la prossima.".

@@ -1,0 +1,157 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  NOTTE DI GARA — il simulatore di guida "messo a soqquadro"               ║
+# ║  Stress-test di genere per FAVELLA 1 (motore v0.29.0)                     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Questo NON è il viaggio-memoria di "Salerno-Reggio": è la stessa idea spinta
+# oltre il suo design. Una corsa notturna a cronometro con QUATTRO sistemi che
+# girano insieme (carburante, gomme, calore motore, lucidità), un BIVIO che
+# apre due percorsi diversi (la litoranea sicura, il passo veloce e infame), e
+# un METEO che cambia mentre guidi. Lo scopo è rompere il modello: vedere dove
+# il motore tiene e dove si piega.
+#
+# SCOPO: raggiungere il traguardo prima che ti tradisca una delle risorse.
+# Il passo di montagna è più corto ma surriscalda il motore; la litoranea è
+# più lunga ma perdona. Scegli al bivio.
+
+# ============================================================================
+# 1. I QUATTRO SISTEMI  [contatori con valore iniziale]
+# ============================================================================
+Il carburante è un contatore.
+Il carburante parte da 10.
+Le gomme è un contatore.
+Le gomme parte da 6.
+Il calore è un contatore.
+Il calore parte da 0.
+La lucidità è un contatore.
+La lucidità parte da 9.
+
+# L'andatura è uno STATO, non un numero: tre marce discrete.
+# (ATTRITO: vorrei una "velocità" continua, ma esistono solo interi e stati.)
+L'andatura è uno stato.
+L'andatura è media.
+
+# Il meteo è uno stato: cambia DA SOLO a turni fissi (vedi sezione 6).
+# (ATTRITO: vorrei che cambiasse a CASO, ma non esiste casualità d'autore.)
+Il meteo è uno stato.
+Il meteo è sereno.
+
+# ============================================================================
+# 2. LA STRADA  [un BIVIO: due rami che si riuniscono al traguardo]
+# ============================================================================
+Avanti e indietro sono direzioni opposte.
+# Il bivio si imbocca a SINISTRA o a DESTRA: direzioni custom in coppia.
+# (ATTRITO: NON posso dare "sinistra" come SINONIMO di una direzione esistente
+# — "x è come y" vale solo per i verbi. Ma posso dichiararla come DIREZIONE
+# vera e propria, ed è anzi più pulito.)
+Sinistra e destra sono direzioni opposte.
+
+Il casello è una stanza.
+La descrizione del casello è "Mezzanotte al casello. Il cronometro parte adesso. Davanti, l'asfalto nero ingoia i fari. Si va AVANTI. Quando vuoi, ACCELERA o RALLENTA; al bivio sceglierai la strada.".
+
+La statale è una stanza.
+La descrizione della statale è "Rettilineo di statale, fossi ai lati e qualche cinghiale negli occhi gialli del guardrail. Il meteo è [meteo]. AVANTI fino al bivio.".
+
+Il bivio è una stanza.
+La descrizione del bivio è "Il cartello si sdoppia nel buio: a SINISTRA la litoranea (più lunga, ma dolce); a DESTRA il passo (più corto, ma il motore soffrirà). Decidi: SINISTRA o DESTRA.".
+
+# --- ramo LITORANEA (sicuro, 3 tratti) ---
+La litoranea è una stanza.
+La descrizione della litoranea è "Curve morbide sul mare invisibile, l'odore di salsedine entra dal finestrino. Strada onesta. AVANTI.".
+Il lungomare è una stanza.
+La descrizione del lungomare è "Lampioni arancioni, palme nere contro il cielo. Il traguardo è vicino. AVANTI.".
+
+# --- ramo PASSO (rischioso, 2 tratti infami) ---
+Il passo è una stanza.
+La descrizione del passo è "Tornanti che salgono nel nulla, niente parapetto, il motore che urla. Qui il calore è una bestia: tieni l'andatura bassa o lo paghi. AVANTI, se hai coraggio.".
+Il valico è una stanza.
+La descrizione del valico è "Il punto più alto, l'aria sottile, le luci della pianura lontanissime in basso. Da qui è tutta discesa verso il traguardo. AVANTI.".
+
+Il traguardo è una stanza.
+La descrizione del traguardo è "Lo striscione. I fari di chi ti aspetta. Ce l'hai fatta.".
+
+# Topologia: spina + bivio. Direzioni distinte per non creare conflitti di ritorno.
+Il casello collega avanti a la statale.
+La statale collega avanti a il bivio.
+Il bivio collega sinistra a la litoranea.
+La litoranea collega avanti a il lungomare.
+Il lungomare collega avanti a il traguardo.
+Il bivio collega destra a il passo.
+Il passo collega avanti a il valico.
+Il valico collega avanti a il traguardo.
+
+Il giocatore comincia in il casello.
+
+# ============================================================================
+# 3. I GESTI DI GUIDA  [verbi intransitivi: cambiano l'andatura]
+# ============================================================================
+"accelera" è un comando senza oggetto.
+"rallenta" è un comando senza oggetto.
+"accosta" è un comando senza oggetto.
+
+# ACCELERA: media -> forte. (ATTRITO: due regole per "salire di una marcia",
+# perché non posso fare aritmetica su uno stato né "il prossimo valore".)
+Invece di accelera se l'andatura è media: dire "Schiacci. Il motore prende i giri alti, il paesaggio si fa una striscia." e adesso l'andatura è forte.
+Invece di accelera se l'andatura è lenta: dire "Riprendi il passo di crociera." e adesso l'andatura è media.
+Invece di accelera se l'andatura è forte: dire "Sei già al limite. Di più non si può, non vivi.".
+
+# RALLENTA: forte -> media -> lenta.
+Invece di rallenta se l'andatura è forte: dire "Sollevi il piede, il motore respira." e adesso l'andatura è media.
+Invece di rallenta se l'andatura è media: dire "Scali, andatura tranquilla." e adesso l'andatura è lenta.
+Invece di rallenta se l'andatura è lenta: dire "Più piano di così ti fermi.".
+
+# ACCOSTA: tiri il fiato, recuperi lucidità e raffreddi il motore.
+Invece di accosta: dire "Piazzola. Spegni, abbassi il finestrino. Il sangue rallenta, il motore si raffredda." e adesso aumenta la lucidità di 3 e adesso il calore diventa 0 e adesso l'andatura è lenta.
+
+# ============================================================================
+# 4. IL CONSUMO  [tick a tempo: i sistemi si svuotano da soli]
+# ============================================================================
+# (ATTRITO: il consumo dovrebbe DIPENDERE dall'andatura — più vai forte, più
+# bruci. Ma "diminuisci di [andatura]" non esiste. Lo simulo con DEMONI a
+# soglia, uno per marcia: vedi sezione 5. Qui solo i consumi di base.)
+Ogni 2 turni: diminuisci il carburante.
+Ogni 3 turni: aumenta la stanchezza.
+La stanchezza è un contatore.
+
+# La stanchezza erode la lucidità (un sistema che ne nutre un altro: lo faccio
+# a mano, perché i contatori non sanno parlarsi).
+Ogni turno se la stanchezza è almeno 3: diminuisci la lucidità e adesso la stanchezza diventa 0.
+
+# ============================================================================
+# 5. LA FISICA DELL'ANDATURA  [demoni: l'andatura forte costa caro]
+# ============================================================================
+# Questo è il cuore "messo a soqquadro": l'effetto dell'andatura sui sistemi è
+# una BATTERIA DI DEMONI A SOGLIA, perché manca l'aritmetica fra grandezze.
+Ogni turno se l'andatura è forte: aumenta il calore di 2 e adesso diminuisci le gomme.
+Ogni turno se l'andatura è media: aumenta il calore.
+Ogni turno se l'andatura è lenta: diminuisci il calore.
+
+# Sul passo di montagna il calore sale comunque (la salita morde il motore).
+Ogni turno se il giocatore è in il passo: aumenta il calore di 2.
+Ogni turno se il giocatore è in il valico: aumenta il calore di 2.
+
+# La pioggia raffredda il motore ma logora le gomme (meteo che tocca i sistemi).
+Ogni turno se il meteo è pioggia: diminuisci il calore e adesso diminuisci le gomme.
+
+# ============================================================================
+# 6. IL METEO CHE CAMBIA  [eventi a tempo — NON casuali]
+# ============================================================================
+# (ATTRITO CENTRALE: un meteo "dinamico" vorrebbe essere imprevedibile. Senza
+# casualità d'autore posso solo sceneggiarlo su turni fissi. È deterministico:
+# alla seconda partita sai già quando arriva la pioggia.)
+Al turno 4: dire "Il cielo si chiude. Le prime gocce esplodono sul parabrezza." e adesso il meteo è pioggia.
+Al turno 9: dire "La pioggia si dirada in una nebbia lattiginosa che mangia i fari." e adesso il meteo è nebbia.
+Ogni turno se il meteo è nebbia: aumenta la stanchezza.
+
+# ============================================================================
+# 7. LE SOGLIE FATALI  [demoni di sconfitta — fronte di salita]
+# ============================================================================
+Ogni turno se il carburante è al massimo 1: dire "La spia della benzina pulsa arancione nell'angolo dell'occhio.".
+Quando il carburante è 0: dire "Il motore tossisce e muore. Resti fermo nel buio." e adesso perdi "Senza benzina, a metà gara. Game over.".
+Quando il calore è almeno 12: dire "Dal cofano sbuffa un geyser di vapore bianco. La temperatura è oltre il rosso." e adesso perdi "Motore fuso sul passo. La gara finisce qui.".
+Quando le gomme è 0: dire "Uno scoppio secco, il volante strappa a destra. Testacoda nel buio." e adesso perdi "Gomma a terra a tutta velocità. Game over.".
+Quando la lucidità è 0: dire "Gli occhi si chiudono da soli. La riga bianca si sdoppia, ti viene incontro dolce..." e adesso perdi "Ti sei addormentato al volante.".
+
+# ============================================================================
+# 8. IL TRAGUARDO  [vittoria — fronte di salita]
+# ============================================================================
+Quando il giocatore è in il traguardo: dire "Tagli lo striscione. Il cronometro si ferma, i fari ti accecano, qualcuno urla il tuo nome nella notte." e adesso vinci "Hai chiuso la Notte di Gara. La strada era tua.".

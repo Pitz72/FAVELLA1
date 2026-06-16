@@ -1,0 +1,145 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  LA NOTTE LUNGA — sopravvivere fino all'alba                              ║
+# ║  Stress-test di genere per FAVELLA 1 (motore v0.29.0)                     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Sei nel bosco, è il tardo pomeriggio, e tra poco farà freddo e buio. Devi
+# arrivare all'alba vivo: gestire FAME, SETE, CALDO e SALUTE, accendere un
+# fuoco, trovare riparo. Mani limitate: porti solo 3 cose alla volta, quindi
+# ogni viaggio è una scelta. La morte è definitiva (permadeath).
+#
+# SCOPO: sopravvivere fino all'alba (turno 14) senza che la salute arrivi a 0.
+
+# ============================================================================
+# 1. LE RISORSE VITALI  [contatori con valore iniziale]
+# ============================================================================
+La fame è un contatore.
+La fame parte da 0.
+La sete è un contatore.
+La sete parte da 0.
+Il caldo è un contatore.
+Il caldo parte da 6.
+La salute è un contatore.
+La salute parte da 5.
+
+# ============================================================================
+# 2. IL TEMPO E IL FUOCO  [stati]
+# ============================================================================
+# (ATTRITO: il giorno/notte vorrebbe spegnere la luce delle stanze, ma la
+# proprietà "è buia" è STATICA — una conseguenza non può rendere buia una
+# stanza. Modello il buio del cielo con uno STATO + descrizioni condizionali.)
+Il momento è uno stato.
+Il momento è giorno.
+Il fuoco è uno stato.
+Il fuoco è spento.
+
+# ============================================================================
+# 3. IL BOSCO  [stanze — una è davvero buia: la grotta]
+# ============================================================================
+La radura è una stanza.
+La descrizione della radura è "Una radura cinta di abeti, il cielo grande sopra. Qui si può accendere un fuoco. Sentieri: a NORD il boschetto, a EST il ruscello, a SUD una grotta.".
+La descrizione della radura se il momento è notte è "La radura al buio. Il cielo è una distesa di stelle gelide e indifferenti. Senza un fuoco, qui si muore di freddo. NORD il boschetto, EST il ruscello, SUD la grotta.".
+
+Il boschetto è una stanza.
+La descrizione del boschetto è "Fitto di rami secchi e arbusti. C'è LEGNA da raccogliere, una PIETRA focaia tra i sassi, e cespugli di BACCHE scure. Si torna a SUD.".
+
+Il ruscello è una stanza.
+La descrizione del ruscello è "Un filo d'acqua gelida tra le pietre. Si può raccogliere ACQUA. Si torna a OVEST.".
+
+# La grotta è l'unico posto DAVVERO buio: ripara dal freddo, ma senza luce non
+# vedi nulla. [A4 — buio/luce statico, con torcia che illumina]
+La grotta è una stanza.
+La grotta è buia.
+La descrizione della grotta è "Una grotta bassa e asciutta, fuori dal vento: qui il freddo morde meno. In fondo, mezza sepolta nella sabbia, una vecchia COPERTA di lana. Si esce a NORD.".
+
+La radura collega nord a il boschetto.
+La radura collega est a il ruscello.
+La radura collega sud a la grotta.
+
+Il giocatore comincia in la radura.
+
+# ============================================================================
+# 4. GLI OGGETTI  [6 oggetti, ma porti solo 3: la scelta è il gioco]
+# ============================================================================
+Il giocatore può portare 3 oggetti.
+
+La torcia è una cosa.
+La torcia è prendibile.
+La torcia illumina.
+La torcia è in la radura.
+La descrizione della torcia è "Una torcia a pile, la luce ancora buona. Indispensabile per la grotta.".
+
+La legna è una cosa.
+La legna è prendibile.
+La legna è in il boschetto.
+La descrizione della legna è "Rami secchi, buoni da ardere.".
+
+La pietra focaia è una cosa.
+La pietra focaia è prendibile.
+La pietra focaia è in il boschetto.
+La descrizione della pietra focaia è "Una scheggia di selce: contro l'acciaio fa scintille.".
+
+Le bacche è una cosa.
+Le bacche è prendibile.
+Le bacche è in il boschetto.
+La descrizione delle bacche è "Bacche scure di sottobosco. Si mangiano.".
+
+L'acqua è una cosa.
+L'acqua è prendibile.
+L'acqua è in il ruscello.
+La descrizione dell'acqua è "Acqua di ruscello, limpida e gelata.".
+
+La coperta è una cosa.
+La coperta è prendibile.
+La coperta è in la grotta.
+La descrizione della coperta è "Lana grezza ma calda: tenuta addosso, scaccia un po' di freddo.".
+
+# ============================================================================
+# 5. NUTRIRSI E DISSETARSI  [verbi custom che CONSUMANO l'oggetto]
+# ============================================================================
+"mangia" è un comando.
+"bevi" è un comando.
+
+Invece di mangia le bacche se il giocatore ha le bacche: dire "Mandi giù le bacche, aspre e acquose. Lo stomaco ringrazia." e adesso la fame diventa 0 e adesso le bacche è nel nulla.
+Invece di mangia le bacche: dire "Non hai bacche con te.".
+Invece di bevi l'acqua se il giocatore ha l'acqua: dire "Bevi a lunghe sorsate. Il gelo ti sveglia la gola." e adesso la sete diventa 0 e adesso l'acqua è nel nulla.
+Invece di bevi l'acqua: dire "Non hai acqua con te. Il ruscello è a est della radura.".
+
+# ============================================================================
+# 6. ACCENDERE IL FUOCO  [crafting: combinare due oggetti li consuma]
+# ============================================================================
+# Il crafting di FAVELLA è una regola a due oggetti: l'esito accende lo stato
+# 'fuoco' e BRUCIA la legna. (ATTRITO: il fuoco è uno STATO, non un oggetto
+# acceso che "illumina" da solo — vedi tabella nel README.)
+Invece di usa la pietra focaia su la legna se il giocatore ha la legna: dire "Batti la selce, una scintilla cade sui rami secchi: una lingua di fiamma, poi il calore. Hai un fuoco." e adesso il fuoco è acceso e adesso la legna è nel nulla.
+Invece di usa la pietra focaia su la legna: dire "Ti serve della legna in mano per accendere qualcosa.".
+
+# ============================================================================
+# 7. IL TEMPO CHE PASSA  [tick a tempo + ciclo del giorno]
+# ============================================================================
+Ogni 3 turni: aumenta la fame.
+Ogni 2 turni: aumenta la sete.
+
+Al turno 5: dire "Il sole sprofonda dietro gli abeti. Cala il buio, e con il buio il freddo." e adesso il momento è notte.
+
+# ============================================================================
+# 8. IL FREDDO  [demoni: di notte il caldo cala; fuoco, grotta e coperta aiutano]
+# ============================================================================
+Ogni turno se il momento è notte: diminuisci il caldo di 2.
+Ogni turno se il fuoco è acceso: aumenta il caldo di 2.
+Ogni turno se il giocatore è in la grotta: aumenta il caldo.
+Ogni turno se il giocatore ha la coperta: aumenta il caldo.
+
+# ============================================================================
+# 9. IL CORPO CEDE  [demoni di danno — permadeath]
+# ============================================================================
+Ogni turno se la fame è almeno 8: dire "Lo stomaco è un crampo unico, le forze ti lasciano." e adesso diminuisci la salute.
+Ogni turno se la sete è almeno 7: dire "La gola è carta vetrata, la testa martella." e adesso diminuisci la salute.
+Ogni turno se il caldo è al massimo 0: dire "Tremi senza controllo, le dita non rispondono più. Il freddo ti entra nelle ossa." e adesso diminuisci la salute.
+
+Ogni turno se la salute è al massimo 2: dire "Ti senti svenire. Devi rimediare, e subito.".
+Quando la salute è 0: dire "Le forze ti abbandonano del tutto. Ti accasci sull'erba gelata, e il bosco si fa silenzio." e adesso perdi "Non hai visto l'alba. Il bosco si tiene un altro viandante.".
+
+# ============================================================================
+# 10. L'ALBA  [vittoria]
+# ============================================================================
+Al turno 14: dire "A oriente il cielo si scolora di grigio, poi di rosa. Un merlo prova la prima nota. Ce l'hai fatta: è alba, e sei vivo." e adesso vinci "Hai attraversato la notte lunga. Il bosco non ti ha avuto.".
