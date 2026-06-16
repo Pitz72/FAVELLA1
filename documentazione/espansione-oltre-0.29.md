@@ -6,7 +6,18 @@
 > grammatica → spec `grammatica-0.30.0.md`), A4 idioma di direzione ✅ (avviso
 > mirato; idioma `… sono direzioni opposte` confermato), A2 punto-dentro-virgolette
 > **RIMANDATO** (buco nero di falsi positivi, vedi §6c). Il crash cp1252 (§6a) era
-> già stato chiuso in 0.29.1. I temi del **Cassetto B** (1, 2, …) restano da pesare.
+> già stato chiuso in 0.29.1.
+>
+> **Il TEMA 1 del Cassetto B (sessione S2) è stato realizzato in v0.31.0**
+> (2026-06-16) → spec `grammatica-0.31.0.md`. **1a** (contatore come operando,
+> `di [forza]`) ✅, **1b** (confronto grandezza↔grandezza, `è meno di [soglia]`) ✅,
+> e — **accorpata** perché della stessa famiglia grammaticale (operando-quantità) —
+> la **sola estrazione numerica casuale** del Tema 2 (`di un numero fra A e B`,
+> `il dado diventa un numero fra 1 e 6`) ✅. **1c** («valore successivo» di uno
+> stato ordinato, `sali di una marcia`) **scartato** come previsto: le N regole
+> esplicite sono più leggibili di un nuovo concetto di «scala». Il **resto del Tema
+> 2** (`diventa uno fra X, Y, Z`; `càpita (1 su N)`) e i temi 3–5 restano da pesare
+> (sessione S3+).
 >
 > Documento di progettazione, **2026-06-16**. Stato del motore alla stesura:
 > **v0.29.0, suite verde** (≈582 asserzioni di linguaggio + 43 di collaudo),
@@ -69,7 +80,13 @@ Ognuna ha un README con la sua tabella attrito→primitiva; questo documento le
 
 ---
 
-# TEMA 1 — Aritmetica e confronti fra grandezze ⭐ (il limite n°1)
+# TEMA 1 — Aritmetica e confronti fra grandezze ⭐ (il limite n°1) — ✅ FATTO (v0.31.0)
+
+> **✅ Realizzato in v0.31.0 (S2).** 1a + 1b + estrazione casuale accorpata; 1c
+> scartato. Sintassi finale: il letterale resta **nudo** (`di 3`), il riferimento
+> a contatore è **fra parentesi** (`di [forza]`, `è meno di [soglia]`) per marcare
+> il «valore dinamico» — coerente con l'interpolazione `[nome]` dei testi. Spec
+> `grammatica-0.31.0.md` §14; vedi anche il CHANGELOG 0.31.0.
 
 **È il limite strutturale più importante emerso, e l'unico comparso in TUTTE e
 quattro le demo.** FAVELLA tratta ogni contatore come una **cella isolata** su
@@ -118,7 +135,14 @@ sono più leggibili di un nuovo concetto di «scala».
 
 ---
 
-# TEMA 2 — Casualità d'autore ⭐ (il secondo grande assente)
+# TEMA 2 — Casualità d'autore ⭐ (il secondo grande assente) — ⚙️ PARZIALE (v0.31.0)
+
+> **⚙️ Estrazione numerica realizzata in v0.31.0 (S2)**, accorpata al Tema 1a come
+> terzo operando-quantità: `il dado diventa un numero fra 1 e 6.`,
+> `diminuisci la vita di un numero fra 2 e 6.` (RNG seedato e ANNULLA-safe). Il
+> **resto del tema resta da fare** (S3+): scelta fra valori di stato (`diventa uno
+> fra sereno, pioggia, nebbia`) e condizione probabilistica (`càpita (1 su 4)`),
+> costrutti distinti dall'operando numerico.
 
 **Emerso in:** guida D1 (meteo/eventi imprevedibili), GDR R1 (danno, critici,
 mancati). I due generi-simulazione lo chiedono a gran voce.

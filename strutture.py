@@ -12,10 +12,75 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.30.0"
+VERSIONE_MOTORE = "0.31.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
+
+# --- OPERANDO-QUANTITÀ (Tema 1a + estrazione casuale, v0.31.0) ---
+# Un «operando» è ciò che produce un INTERO al momento dell'uso: il secondo
+# membro di 'di …' (aumenta/diminuisci/diventa) e il termine di confronto dei
+# contatori ('è più di …', 'è meno di …', …). Tre forme:
+#   - NUMERO letterale            -> OperandoNumero      ('di 3')
+#   - valore di un contatore      -> OperandoVariabile   ('di [forza]')
+#   - estrazione casuale          -> OperandoCasuale     ('di un numero fra 2 e 6')
+# La forma [contatore] rispecchia l'interpolazione [nome] dei testi: in entrambi
+# i casi [x] significa «il valore corrente di x». L'estrazione casuale usa il
+# generatore seedato del mondo (mondo.rng), quindi è riproducibile e ANNULLA la
+# riavvolge (lo stato dell'RNG è catturato dalle istantanee, come per A2/A5).
+class Operando:
+    """Classe base astratta: produce un intero dato il mondo."""
+    def valore(self, mondo: 'Mondo') -> int:
+        raise NotImplementedError("Da implementare nella sottoclasse.")
+
+class OperandoNumero(Operando):
+    """Un intero letterale ('di 3')."""
+    def __init__(self, n: int):
+        self.n = int(n)
+
+    def valore(self, mondo: 'Mondo') -> int:
+        return self.n
+
+    def __str__(self):
+        return str(self.n)
+
+class OperandoVariabile(Operando):
+    """Il valore corrente di un contatore ('di [forza]'). Un contatore mai
+    impostato, o uno 'stato' non numerico, vale 0 (stessa tolleranza di
+    CondizioneContatore)."""
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def valore(self, mondo: 'Mondo') -> int:
+        v = mondo.variabili.get(self.nome)
+        return v if isinstance(v, int) else 0
+
+    def __str__(self):
+        return f"[{self.nome}]"
+
+class OperandoCasuale(Operando):
+    """Un'estrazione casuale uniforme nell'intervallo CHIUSO [minimo, massimo]
+    ('di un numero fra 2 e 6'), pescata da mondo.rng (riproducibile e
+    ANNULLA-safe). Se l'autore inverte gli estremi (fra 6 e 2) li riordina, così
+    l'intervallo è sempre valido."""
+    def __init__(self, minimo: int, massimo: int):
+        self.minimo = int(minimo)
+        self.massimo = int(massimo)
+
+    def valore(self, mondo: 'Mondo') -> int:
+        lo, hi = self.minimo, self.massimo
+        if lo > hi:
+            lo, hi = hi, lo
+        return mondo.rng.randint(lo, hi)
+
+    def __str__(self):
+        return f"un numero fra {self.minimo} e {self.massimo}"
+
+def _come_operando(valore) -> Operando:
+    """Normalizza un valore grezzo a Operando: un int diventa OperandoNumero
+    (retrocompatibilità con i costruttori che passavano un intero); un Operando
+    resta tale."""
+    return valore if isinstance(valore, Operando) else OperandoNumero(valore)
 
 # --- NUOVA Gerarchia delle Condizioni e Conseguenze ---
 class Condizione:
@@ -61,26 +126,31 @@ class CondizioneVariabile(Condizione):
 class CondizioneContatore(Condizione):
     """[Livello 3] Confronto numerico su un contatore: 'se [contatore] è almeno
     N', '... è più di N', '... è meno di N', '... è N' (uguaglianza).
-    Un contatore vale 0 di default; un valore non numerico è trattato come 0."""
-    def __init__(self, nome: str, operatore: str, valore: int):
+    Un contatore vale 0 di default; un valore non numerico è trattato come 0.
+    [0.31.0 / Tema 1b] Il termine di confronto è un Operando: oltre a un NUMERO
+    letterale può essere il valore di un altro contatore ('è più di [forza]'),
+    abilitando i confronti grandezza↔grandezza. `valore` è sempre un Operando
+    (un int passato dai vecchi costruttori viene avvolto in OperandoNumero)."""
+    def __init__(self, nome: str, operatore: str, valore):
         self.nome = nome
-        self.operatore = operatore   # uno di: '==', '>=', '>', '<'
-        self.valore = valore
+        self.operatore = operatore   # uno di: '==', '>=', '>', '<', '<='
+        self.valore = _come_operando(valore)
 
     def valuta(self, mondo: 'Mondo') -> bool:
         v = mondo.variabili.get(self.nome)
         if not isinstance(v, int):
             v = 0
+        soglia = self.valore.valore(mondo)
         if self.operatore == "==":
-            return v == self.valore
+            return v == soglia
         if self.operatore == ">=":
-            return v >= self.valore
+            return v >= soglia
         if self.operatore == ">":
-            return v > self.valore
+            return v > soglia
         if self.operatore == "<":
-            return v < self.valore
+            return v < soglia
         if self.operatore == "<=":   # [0.18.0 / B4] 'al massimo N'
-            return v <= self.valore
+            return v <= soglia
         return False
 
 class CondizionePosizioneGiocatore(Condizione):
@@ -157,22 +227,27 @@ class ConseguenzaVariabile(Conseguenza):
 
 class ConseguenzaContatore(Conseguenza):
     """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
-    (di N)', 'X diventa N'. Il delta predefinito di aumenta/diminuisci è 1."""
-    def __init__(self, nome: str, modo: str, valore: int = 1):
+    (di N)', 'X diventa N'. Il delta predefinito di aumenta/diminuisci è 1.
+    [0.31.0 / Tema 1a + casualità] La quantità è un Operando, risolto al momento
+    dell'esecuzione: oltre a un NUMERO può essere il valore di un altro contatore
+    ('di [forza]') o un'estrazione casuale ('di un numero fra 2 e 6'). `valore` è
+    sempre un Operando (un int dei vecchi costruttori viene avvolto)."""
+    def __init__(self, nome: str, modo: str, valore=1):
         self.nome = nome
         self.modo = modo   # uno di: 'aumenta', 'diminuisci', 'diventa'
-        self.valore = valore
+        self.valore = _come_operando(valore)
 
     def esegui(self, mondo: 'Mondo'):
         attuale = mondo.variabili.get(self.nome)
         if not isinstance(attuale, int):
             attuale = 0
+        quantita = self.valore.valore(mondo)
         if self.modo == "aumenta":
-            mondo.variabili[self.nome] = attuale + self.valore
+            mondo.variabili[self.nome] = attuale + quantita
         elif self.modo == "diminuisci":
-            mondo.variabili[self.nome] = attuale - self.valore
+            mondo.variabili[self.nome] = attuale - quantita
         else:  # diventa
-            mondo.variabili[self.nome] = self.valore
+            mondo.variabili[self.nome] = quantita
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',

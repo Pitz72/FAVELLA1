@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.30.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.31.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -15,6 +15,7 @@ from strutture import (
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaContatore,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
+    Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from utils import (
@@ -560,17 +561,21 @@ _GRAMMAR_TEMPLATE = r"""
     cond_variabile: VARIABILE "è" PROPRIETA
     cond_variabile_neg: VARIABILE "non" "è" PROPRIETA
     // Confronti su contatore. Dopo 'VARIABILE è' il lookahead distingue:
-    // PROPRIETA (stato) | NUMERO (==) | "almeno"/"più"/"meno"/"al massimo" (>=, >, <, <=).
-    cond_contatore_eq: VARIABILE "è" NUMERO
-    // [0.18.0 / B5] '≠ N' sui contatori. Dopo 'VARIABILE non è' il lookahead
-    // NUMERO (≠) vs PROPRIETA (stato, cond_variabile_neg) decide → 0-ambiguo.
-    cond_contatore_neq: VARIABILE "non" "è" NUMERO
-    cond_contatore_gte: VARIABILE "è" "almeno" NUMERO
-    cond_contatore_gt: VARIABILE "è" "più" "di" NUMERO
-    cond_contatore_lt: VARIABILE "è" "meno" "di" NUMERO
-    // [0.18.0 / B4] '≤ N' ('al massimo'), simmetrico ad 'almeno' (≥). Dopo
+    // PROPRIETA (stato) | NUMERO o "[" (==) | "almeno"/"più"/"meno"/"al massimo".
+    // [0.31.0 / Tema 1b] Il termine di confronto è un operando_confronto: NUMERO
+    // letterale OPPURE il valore di un contatore '[forza]' → confronti
+    // grandezza↔grandezza. FIRST(operando_confronto)={NUMERO,"["} resta disgiunto
+    // da PROPRIETA (cond_variabile) → LALR(1) 0-ambiguo.
+    cond_contatore_eq: VARIABILE "è" operando_confronto
+    // [0.18.0 / B5] '≠' sui contatori. Dopo 'VARIABILE non è' il lookahead
+    // NUMERO/"[" (≠) vs PROPRIETA (stato, cond_variabile_neg) decide → 0-ambiguo.
+    cond_contatore_neq: VARIABILE "non" "è" operando_confronto
+    cond_contatore_gte: VARIABILE "è" "almeno" operando_confronto
+    cond_contatore_gt: VARIABILE "è" "più" "di" operando_confronto
+    cond_contatore_lt: VARIABILE "è" "meno" "di" operando_confronto
+    // [0.18.0 / B4] '≤' ('al massimo'), simmetrico ad 'almeno' (≥). Dopo
     // 'VARIABILE è' il lookahead "al" distingue dagli altri confronti → 0-ambiguo.
-    cond_contatore_lte: VARIABILE "è" "al" "massimo" NUMERO
+    cond_contatore_lte: VARIABILE "è" "al" "massimo" operando_confronto
     // [0.18.0 / B7] Negazione di un GRUPPO booleano: 'non ( A e B )'. È l'unico
     // cond_base che inizia con "non" → distinto al primo token, 0-ambiguo.
     cond_non_gruppo: "non" "(" cond_or ")"
@@ -595,14 +600,35 @@ _GRAMMAR_TEMPLATE = r"""
                 | ENTITA "va" PREP_LUOGO ENTITA  -> cons_png_va
                 | ENTITA "cambia" "stanza"       -> cons_png_cambia
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
-                | "aumenta" VARIABILE ( "di" NUMERO )?    -> cons_aumenta
-                | "diminuisci" VARIABILE ( "di" NUMERO )? -> cons_diminuisci
-                | VARIABILE "diventa" NUMERO     -> cons_contatore_set
+                // [0.31.0 / Tema 1a + casualità] La QUANTITÀ di 'di …'/'diventa'
+                // è un OPERANDO (vedi sotto): NUMERO letterale, valore di un
+                // contatore '[forza]' o estrazione casuale 'un numero fra A e B'.
+                // Dopo "di"/"diventa" il lookahead NUMERO | "[" | "un" distingue
+                // le tre forme → LALR(1) 0-ambiguo.
+                | "aumenta" VARIABILE ( "di" operando )?    -> cons_aumenta
+                | "diminuisci" VARIABILE ( "di" operando )? -> cons_diminuisci
+                | VARIABILE "diventa" operando   -> cons_contatore_set
                 // [0.18.0 / B3] Testo d'esito opzionale: 'vinci "Sei libero!"'.
                 // Nessun'altra conseguenza inizia con TESTO_QUOTATO → 0-ambiguo.
                 | "vinci" TESTO_QUOTATO?         -> cons_vinci
                 | "perdi" TESTO_QUOTATO?         -> cons_perdi
                 | "termina" TESTO_QUOTATO?       -> cons_termina
+
+    // --- OPERANDO-QUANTITÀ (Tema 1a + estrazione casuale, v0.31.0) ---
+    // Ciò che produce un intero al momento dell'uso. Le tre forme partono da
+    // token disgiunti (NUMERO | "[" | "un") → LALR(1) 0-ambiguo. La forma
+    // "[" VARIABILE "]" rispecchia l'interpolazione [nome] dei testi: in entrambi
+    // i casi [x] significa «il valore corrente del contatore x». Le parentesi
+    // quadre, fin qui viste solo dentro TESTO_QUOTATO, diventano qui due token
+    // letterali: non collidono con nulla (fuori dalle stringhe non compaiono).
+    operando: NUMERO                                  -> operando_numero
+            | "[" VARIABILE "]"                        -> operando_variabile
+            | "un" "numero" "fra" NUMERO "e" NUMERO    -> operando_casuale
+    // Operando dei CONFRONTI fra contatori (condizioni): solo letterale o valore
+    // di un contatore. Niente estrazione casuale: una soglia ri-pescata a ogni
+    // valutazione non avrebbe senso in una condizione.
+    operando_confronto: NUMERO                 -> operando_numero
+                      | "[" VARIABILE "]"       -> operando_variabile
 
     // --- TERMINALI LESSICALI ---
     // [0.27.0 / D] PREP_LUOGO come REGEX con CONFINE DESTRO sulle forme semplici:
@@ -1342,25 +1368,28 @@ class FavellaTransformer(Transformer):
     def cond_variabile_neg(self, var_grezzo, valore_grezzo):
         return CondizioneNot(CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo)))
 
-    def cond_contatore_eq(self, var_grezzo, numero):
-        return CondizioneContatore(normalizza_nome(var_grezzo), "==", numero)
+    # [0.31.0 / Tema 1b] Il secondo argomento è ora un Operando (NUMERO letterale
+    # o valore di un contatore [forza]), non più un int grezzo: lo passa così com'è
+    # a CondizioneContatore, che lo risolve al momento della valutazione.
+    def cond_contatore_eq(self, var_grezzo, operando):
+        return CondizioneContatore(normalizza_nome(var_grezzo), "==", operando)
 
-    def cond_contatore_gte(self, var_grezzo, numero):
-        return CondizioneContatore(normalizza_nome(var_grezzo), ">=", numero)
+    def cond_contatore_gte(self, var_grezzo, operando):
+        return CondizioneContatore(normalizza_nome(var_grezzo), ">=", operando)
 
-    def cond_contatore_gt(self, var_grezzo, numero):
-        return CondizioneContatore(normalizza_nome(var_grezzo), ">", numero)
+    def cond_contatore_gt(self, var_grezzo, operando):
+        return CondizioneContatore(normalizza_nome(var_grezzo), ">", operando)
 
-    def cond_contatore_lt(self, var_grezzo, numero):
-        return CondizioneContatore(normalizza_nome(var_grezzo), "<", numero)
+    def cond_contatore_lt(self, var_grezzo, operando):
+        return CondizioneContatore(normalizza_nome(var_grezzo), "<", operando)
 
-    def cond_contatore_lte(self, var_grezzo, numero):
+    def cond_contatore_lte(self, var_grezzo, operando):
         # [0.18.0 / B4] 'al massimo N' (≤).
-        return CondizioneContatore(normalizza_nome(var_grezzo), "<=", numero)
+        return CondizioneContatore(normalizza_nome(var_grezzo), "<=", operando)
 
-    def cond_contatore_neq(self, var_grezzo, numero):
+    def cond_contatore_neq(self, var_grezzo, operando):
         # [0.18.0 / B5] 'non è N' (≠): negazione dell'uguaglianza numerica.
-        return CondizioneNot(CondizioneContatore(normalizza_nome(var_grezzo), "==", numero))
+        return CondizioneNot(CondizioneContatore(normalizza_nome(var_grezzo), "==", operando))
 
     def cond_non_gruppo(self, condizione):
         # [0.18.0 / B7] 'non ( ... )': negazione di un intero gruppo booleano.
@@ -1401,17 +1430,32 @@ class FavellaTransformer(Transformer):
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
 
+    # [0.31.0 / Tema 1a + casualità] La quantità è ora un Operando (vedi
+    # operando_*). resto: (Operando,) se è presente 'di …', altrimenti vuoto →
+    # delta predefinito 1 (OperandoNumero(1)).
     def cons_aumenta(self, var_grezzo, *resto):
-        # resto: (NUMERO,) se è presente 'di N', altrimenti vuoto (delta = 1).
-        valore = resto[0] if resto else 1
-        return ConseguenzaContatore(normalizza_nome(var_grezzo), "aumenta", valore)
+        operando = resto[0] if resto else OperandoNumero(1)
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "aumenta", operando)
 
     def cons_diminuisci(self, var_grezzo, *resto):
-        valore = resto[0] if resto else 1
-        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diminuisci", valore)
+        operando = resto[0] if resto else OperandoNumero(1)
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diminuisci", operando)
 
-    def cons_contatore_set(self, var_grezzo, numero):
-        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diventa", numero)
+    def cons_contatore_set(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "diventa", operando)
+
+    # --- Operando-quantità (Tema 1a + estrazione casuale) ---
+    # Alias condivisi da 'operando' (conseguenze) e 'operando_confronto'
+    # (condizioni). Costruiscono l'oggetto Operando che CondizioneContatore /
+    # ConseguenzaContatore risolveranno a runtime.
+    def operando_numero(self, numero):
+        return OperandoNumero(numero)
+
+    def operando_variabile(self, var_grezzo):
+        return OperandoVariabile(normalizza_nome(var_grezzo))
+
+    def operando_casuale(self, minimo, massimo):
+        return OperandoCasuale(minimo, massimo)
 
     # Conseguenze di fine partita. [0.18.0 / B3] Accettano un TESTO_QUOTATO
     # OPZIONALE: se presente, è il messaggio d'esito stampato alla chiusura
@@ -1891,6 +1935,10 @@ class FavellaTransformer(Transformer):
         for cons in self._tutte_le_conseguenze():
             if isinstance(cons, (ConseguenzaVariabile, ConseguenzaContatore)):
                 usate.add(cons.nome)
+            # [0.31.0 / Tema 1a] Il contatore usato come quantità ('di [forza]')
+            # è anch'esso un riferimento: non marcarlo come inutilizzato.
+            if isinstance(cons, ConseguenzaContatore):
+                usate |= _variabili_in_operando(cons.valore)
         for testo in self._tutti_i_testi():
             for ph in estrai_placeholder(testo):
                 usate.add(normalizza_nome(ph))
@@ -1956,8 +2004,12 @@ class FavellaTransformer(Transformer):
         condizione (anche dentro And/Or/Not)."""
         if condizione is None:
             return set()
-        if isinstance(condizione, (CondizioneVariabile, CondizioneContatore)):
+        if isinstance(condizione, CondizioneVariabile):
             return {condizione.nome}
+        if isinstance(condizione, CondizioneContatore):
+            # [0.31.0 / Tema 1b] Conta anche il contatore citato come termine di
+            # confronto ('è più di [forza]'): è un uso a tutti gli effetti.
+            return {condizione.nome} | _variabili_in_operando(condizione.valore)
         if isinstance(condizione, CondizioneNot):
             return self._variabili_in_condizione(condizione.condizione)
         if isinstance(condizione, (CondizioneAnd, CondizioneOr)):
@@ -2932,6 +2984,28 @@ def _nucleo_nome(nome):
     return nucleo or nome
 
 
+def _variabili_in_operando(op):
+    """[0.31.0] I nomi di contatore citati da un Operando: solo OperandoVariabile
+    ('[forza]') ne cita uno; numero ed estrazione casuale non citano nulla."""
+    return {op.nome} if isinstance(op, OperandoVariabile) else set()
+
+
+def _operando_to_json(op):
+    """[0.31.0] Serializza un Operando (il termine-quantità di un confronto o di
+    una mutazione di contatore) in una forma JSON. Un letterale resta un INT
+    semplice (forma storica, retrocompatibile con l'IDE); le forme dinamiche
+    introdotte in 0.31.0 diventano un oggetto con 'kind'."""
+    if isinstance(op, OperandoNumero):
+        return op.n
+    if isinstance(op, OperandoVariabile):
+        return {"kind": "var", "name": op.nome}
+    if isinstance(op, OperandoCasuale):
+        return {"kind": "rand", "min": op.minimo, "max": op.massimo}
+    if isinstance(op, int):           # difensivo: eventuale int grezzo
+        return op
+    return None
+
+
 def _cond_to_json(c, mondo):
     """Serializza una Condizione (albero) in JSON ricorsivo. None → None."""
     if c is None:
@@ -2941,7 +3015,7 @@ def _cond_to_json(c, mondo):
         # come un confronto count con cmp '!=' (round-trip pulito col builder).
         inner = c.condizione
         if isinstance(inner, CondizioneContatore) and inner.operatore == "==":
-            return {"op": "count", "name": inner.nome, "cmp": "!=", "value": inner.valore}
+            return {"op": "count", "name": inner.nome, "cmp": "!=", "value": _operando_to_json(inner.valore)}
         return {"op": "not", "term": _cond_to_json(inner, mondo)}
     if isinstance(c, CondizioneAnd):
         return {"op": "and", "terms": [_cond_to_json(x, mondo) for x in c.condizioni]}
@@ -2956,7 +3030,7 @@ def _cond_to_json(c, mondo):
         return {"op": "var", "name": c.nome, "value": c.valore,
                 "kind": _kind_variabile(mondo, c.nome)}
     if isinstance(c, CondizioneContatore):
-        return {"op": "count", "name": c.nome, "cmp": c.operatore, "value": c.valore}
+        return {"op": "count", "name": c.nome, "cmp": c.operatore, "value": _operando_to_json(c.valore)}
     if isinstance(c, CondizionePosizioneGiocatore):
         # [0.18.0 / B1] 'se il giocatore è in [stanza]'.
         return {"op": "playerIn", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
@@ -2972,7 +3046,7 @@ def _conseq_to_json(c, mondo):
         return {"op": "var", "name": c.nome, "value": c.valore,
                 "kind": _kind_variabile(mondo, c.nome)}
     if isinstance(c, ConseguenzaContatore):
-        return {"op": "count", "name": c.nome, "mode": c.modo, "value": c.valore}
+        return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
     if isinstance(c, ConseguenzaSpostamento):
         dest = c.destinazione
         dest_name = dest if dest in ("inventario", "nulla") else _nome_entita(mondo, dest)

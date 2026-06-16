@@ -89,21 +89,24 @@ La descrizione della corona è "La corona del re-lich, oro e zaffiri, ancora fre
 Includi "bottega.fav".
 
 # ============================================================================
-# 5. IL COMBATTIMENTO  [verbo 'attacca'; il danno NON scala con la forza]
+# 5. IL COMBATTIMENTO  [verbo 'attacca'; il danno SCALA con la forza — v0.31.0]
 # ============================================================================
 "attacca" è un comando.
 "bevi" è un comando.
 
-# ⭐ ATTRITO CENTRALE DEL GDR: il danno vorrebbe essere "di [forza]" (scala con
-# la statistica) e magari casuale. Niente di tutto questo è esprimibile: il
-# danno è un NUMERO FISSO. Modello la "spada che potenzia l'attacco" con DUE
-# regole a danno fisso, scelte dalla presenza dell'arma. La forza resta un
-# numero che mostro nella scheda ma che NON guida il colpo. (Vedi README.)
-Invece di attacca il troll se il giocatore ha la spada: dire "Cali la spada in un arco fischiante: il fendente apre il muschio e la pietra. Colpo pieno!" e adesso diminuisci la vita del troll di 4.
-Invece di attacca il troll: dire "Tempesti il troll di pugni: gli fai il solletico, e lui se ne accorge appena." e adesso diminuisci la vita del troll di 2.
+# ⭐ EX-ATTRITO CENTRALE DEL GDR, ORA COLMATO (Tema 1a, v0.31.0). Prima il danno
+# era un NUMERO FISSO: la forza si mostrava nella scheda ma NON guidava il colpo.
+# Oggi il danno è "di [forza]" — scala con la statistica. Le due regole per nemico
+# distinguono ancora la spada dalle mani nude (è una scelta sull'arma, non un
+# trucco): a mani nude colpisci "di [forza]", con la spada "di [forza]" PIÙ un
+# bonus d'arma di 2. Al livello 1 (forza 2) i numeri sono identici a prima
+# (mani 2, spada 4); salendo di livello la forza cresce e il colpo con essa —
+# proprio ciò che la versione a numero fisso non sapeva fare. (Vedi README.)
+Invece di attacca il troll se il giocatore ha la spada: dire "Cali la spada in un arco fischiante: il fendente apre il muschio e la pietra. Colpo pieno!" e adesso diminuisci la vita del troll di [forza] e adesso diminuisci la vita del troll di 2.
+Invece di attacca il troll: dire "Tempesti il troll di pugni: gli fai il solletico, e lui se ne accorge appena." e adesso diminuisci la vita del troll di [forza].
 
-Invece di attacca il lich se il giocatore ha la spada: dire "La lama morde la carne secca del Lich: scintille di gelo e un urlo che non è di questo mondo." e adesso diminuisci la vita del lich di 4.
-Invece di attacca il lich: dire "Lo colpisci a mani nude: la sua pelle gelata ti morde le nocche più di quanto tu morda lui." e adesso diminuisci la vita del lich di 2.
+Invece di attacca il lich se il giocatore ha la spada: dire "La lama morde la carne secca del Lich: scintille di gelo e un urlo che non è di questo mondo." e adesso diminuisci la vita del lich di [forza] e adesso diminuisci la vita del lich di 2.
+Invece di attacca il lich: dire "Lo colpisci a mani nude: la sua pelle gelata ti morde le nocche più di quanto tu morda lui." e adesso diminuisci la vita del lich di [forza].
 
 # I NEMICI RISPONDONO: attaccano a ogni turno in cui sei nella loro stanza e
 # sono ancora vivi (modello "combattimento = presenza"). Fuggire a SUD ti

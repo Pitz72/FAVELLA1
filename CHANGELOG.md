@@ -4,6 +4,54 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.31.0] - 2026-06-16
+### Tema 1: i contatori si parlano (operando-quantità + confronti) 🔢
+Seconda sessione del **piano di completamento del linguaggio**
+(`documentazione/espansione-oltre-0.29.md`): il **Tema 1**, il limite strutturale
+n°1 emerso in TUTTE e quattro le demo di stress-test. Fino a ieri un contatore era
+una **cella isolata** — aritmetica e confronti solo contro **costanti letterali**,
+mai fra celle. Ora i contatori si parlano. **Additivo** (le 4 demo e tutte le
+storie esistenti compilano e si comportano identiche; i numeri letterali restano
+nudi e invariati). Modifica di grammatica → bump **minor**; spec nuova
+`documentazione/grammatica-0.31.0.md`.
+
+- **Operando-quantità.** Un solo concetto nuovo, ciò che produce un intero al
+  momento dell'uso, in tre forme: un **NUMERO** letterale (`di 3`, storico), il
+  **valore di un contatore** fra parentesi quadre (`di [forza]` — come
+  l'interpolazione `[nome]` dei testi: `[x]` = «il valore corrente di x»), e
+  un'**estrazione casuale** (`un numero fra 2 e 6`). Le quadre marcano il «valore
+  dinamico»: il letterale resta nudo, il riferimento è fra parentesi.
+- **Tema 1a — contatore come quantità.** `aumenta/diminuisci X di [Y]` e
+  `X diventa [Y]`: il danno scala con una statistica, il consumo con la velocità,
+  l'affinità con un'altra affinità. `diminuisci la vita del lich di [forza].`
+- **Tema 1b — confronto grandezza↔grandezza.** I sei confronti (`è N`, `non è N`,
+  `almeno`, `più di`, `meno di`, `al massimo`) accettano ora un `[contatore]` come
+  termine destro: `se la vita del troll è meno di [la mia vita]: …`. Il confronto è
+  **dinamico** (risolto a ogni valutazione): abilita le soglie *relative* (gelosie,
+  difficoltà mobile) prima possibili solo con batterie di demoni.
+- **Casualità d'autore (accorpata).** `il dado diventa un numero fra 1 e 6.`,
+  `diminuisci la vita di un numero fra 2 e 6.`. Riusa l'RNG **seedato** del mondo
+  (`Mondo.rng`, infrastruttura già esistente per A2/A5): le partite restano
+  **riproducibili** e **ANNULLA riavvolge** anche l'estrazione. Solo l'estrazione
+  numerica entra ora (è un operando-quantità della stessa famiglia); `diventa uno
+  fra X, Y, Z` e `càpita (1 su N)` restano per una sessione futura.
+- **Grammatica LALR(1) 0-ambigua.** Le tre forme partono da token disgiunti
+  (`NUMERO | "[" | "un"`): `è più di 3` e `è più di [forza]` convivono con un solo
+  token di lookahead. Le quadre `[` `]`, prima viste solo dentro le stringhe,
+  diventano token letterali che non collidono con nulla. Guardia anti-ambiguità del
+  corpus estesa a tutti i nuovi costrutti.
+- **Diagnostica e IDE.** Un contatore citato **solo** come operando non è più un
+  falso «dichiarato ma mai usato». Il serializzatore JSON dell'IDE espone il
+  letterale come int (retrocompatibile) e le forme dinamiche come
+  `{kind:"var",…}` / `{kind:"rand",…}`.
+- **Scartato — 1c «valore successivo».** Il cambio di marcia (`sali di una
+  marcia`) avrebbe richiesto un concetto di «scala ordinata»: le N regole esplicite
+  restano più leggibili. Non fatto, per il principio «la semplicità è una feature».
+- **Prova sul campo.** Una porzione della demo GDR (`esempi/demo/ruolo/`) è stata
+  riscritta idiomatica col nuovo costrutto al posto del workaround a soglie.
+- 9 nuovi test di regressione (linguaggio), guardia anti-ambiguità estesa. Suite:
+  **623 + 43 di collaudo**, tutta verde (pytest e runner nativo).
+
 ## [0.30.0] - 2026-06-16
 ### Cassetto A: robustezza, diagnostica e due piccole simmetrie 🧰
 Prima sessione del **piano di completamento del linguaggio** (`documentazione/espansione-oltre-0.29.md`):

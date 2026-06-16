@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.30.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.31.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -20,6 +20,7 @@ from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
     espandi_inclusioni, _GRAMMAR_TEMPLATE, analizza_file_strutturato,
+    analizza_regole,
 )
 
 
@@ -73,6 +74,19 @@ def strutturato(src):
         path = tmp.name
     try:
         return analizza_file_strutturato(path)
+    finally:
+        os.unlink(path)
+
+
+def regole_strutturate(src):
+    """[Favella Studio] Modello editabile di regole/eventi (analizza_regole) da una
+    stringa sorgente, via file temporaneo. Restituisce il dict {ok, rules, ...}."""
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src)
+        path = tmp.name
+    try:
+        return analizza_regole(path, sorgente=src)
     finally:
         os.unlink(path)
 
@@ -1626,6 +1640,16 @@ _CORPUS_GUARDIA = (
     "Quando il punteggio è almeno 4: il mercante va nel corridoio.\n"  # cons_png_va
     # [0.26.0 / A6] Sinonimo di verbo: dopo '"…" è' il lookahead "come" vs "un".
     '"ghermisci" è come prendi.\n'                       # def_sinonimo
+    # [0.31.0 / Tema 1] Operando-quantità: valore di un contatore '[…]' ed
+    # estrazione casuale 'un numero fra A e B', sia come QUANTITÀ (1a, in 'di …'
+    # e 'diventa') sia come TERMINE DI CONFRONTO (1b). Convivono con le forme a
+    # NUMERO letterale già presenti sopra: il lookahead NUMERO|"["|"un" decide.
+    'Invece di guarda se il punteggio è meno di [vite]: aumenta il punteggio di [vite].\n'      # 1b cond_lt var + 1a cons 'di [var]'
+    'Invece di esamina la chiave se il punteggio è più di [vite]: diminuisci il punteggio di un numero fra 1 e 2.\n'  # 1b cond_gt var + casuale
+    'Ogni turno se il punteggio è almeno [vite]: il punteggio diventa [vite].\n'   # 1b cond_gte var + diventa var
+    'Quando il punteggio è al massimo [vite] diventa vera: il punteggio diventa un numero fra 1 e 6.\n'  # 1b cond_lte var + diventa casuale
+    'Ogni turno se il punteggio è [vite]: aumenta le vite.\n'                       # 1b cond_eq contatore==contatore
+    'Quando il punteggio non è [vite] diventa vera: aumenta le vite.\n'             # 1b cond_neq contatore
 )
 
 
@@ -1751,6 +1775,155 @@ def test_a4_sinonimo_direzione_avviso_mirato():
     basso = log.lower()
     _check("direzione" in basso and "opposte" in basso,
            "l'avviso spiega che 'est' è una direzione e indica 'sono direzioni opposte'")
+
+
+# --- Test: Tema 1 [0.31.0] — i contatori si parlano -------------------------
+# 1a) un contatore (o un'estrazione casuale) come QUANTITÀ di 'di …'/'diventa';
+# 1b) confronto fra due GRANDEZZE ('è più di [forza]'). Operando unico, tre
+# forme: NUMERO | [VARIABILE] | un numero fra A e B.
+
+def _src_arena():
+    """Mondo minimo per i test del Tema 1: due contatori e un verbo intransitivo
+    su cui appendere una regola globale che applica conseguenze."""
+    return ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+            "La forza è un contatore.\nLa forza parte da 5.\n"
+            "La vita è un contatore.\nLa vita parte da 10.\n"
+            '"agisci" è un comando senza oggetto.\n')
+
+
+def test_tema1a_contatore_come_quantita_in_di():
+    print("[1a: 'aumenta/diminuisci X di [Y]' usa il VALORE del contatore Y]")
+    # vita 10, forza 5: 'aumenta la vita di [forza]' -> 15; poi 'diminuisci' -> 10.
+    m = runtime(_src_arena() +
+                'Invece di agisci: aumenta la vita di [forza] e adesso diminuisci la forza.\n')
+    esegui(m, "agisci")
+    _check(m.variabili.get("vita") == 15, "la vita cresce del valore di forza (10+5=15)")
+    _check(m.variabili.get("forza") == 4, "le altre conseguenze restano invariate (forza 5->4)")
+
+
+def test_tema1a_diventa_contatore():
+    print("[1a: 'X diventa [Y]' copia il valore corrente di Y in X]")
+    m = runtime(_src_arena() +
+                'Invece di agisci: il danno diventa [forza].\n'
+                'Il danno è un contatore.\n')
+    esegui(m, "agisci")
+    _check(m.variabili.get("danno") == 5, "il danno assume il valore di forza (5)")
+
+
+def test_tema1a_di_letterale_invariato():
+    print("[1a: 'di N' letterale resta identico (additività)]")
+    m = runtime(_src_arena() +
+                'Invece di agisci: aumenta la forza di 3.\n')
+    esegui(m, "agisci")
+    _check(m.variabili.get("forza") == 8, "il delta letterale funziona come prima (5+3=8)")
+
+
+def test_tema1a_estrazione_casuale_in_intervallo_e_riproducibile():
+    print("[1a/casualità: 'di un numero fra A e B' resta nell'intervallo ed è seedato]")
+    sorgente = (_src_arena() +
+                'Invece di agisci: il dado diventa un numero fra 1 e 6.\n'
+                'Il dado è un contatore.\n')
+    valori = []
+    for _ in range(2):
+        m = runtime(sorgente)          # ogni partita riparte dallo stesso seme
+        serie = []
+        for _ in range(8):
+            esegui(m, "agisci")
+            serie.append(m.variabili.get("dado"))
+        valori.append(serie)
+    _check(all(1 <= v <= 6 for v in valori[0]), "ogni estratto è nell'intervallo chiuso [1, 6]")
+    _check(valori[0] == valori[1], "stesso seme -> stessa sequenza (riproducibile)")
+    _check(len(set(valori[0])) > 1, "la sequenza non è costante (è davvero casuale)")
+
+
+def test_tema1a_estrazione_casuale_annulla_safe():
+    print("[1a/casualità: ANNULLA riavvolge anche l'RNG dell'estrazione]")
+    m = runtime(_src_arena() +
+                'Invece di agisci: il dado diventa un numero fra 1 e 100.\n'
+                'Il dado è un contatore.\n')
+    esegui(m, "agisci")
+    primo = m.variabili.get("dado")
+    esegui(m, "agisci")
+    secondo = m.variabili.get("dado")
+    esegui(m, "annulla")               # disfa la seconda estrazione
+    _check(m.variabili.get("dado") == primo, "ANNULLA riporta il dado al valore precedente")
+    esegui(m, "agisci")                # ri-estrae dallo stesso stato RNG
+    _check(m.variabili.get("dado") == secondo,
+           "ripetendo l'azione l'estrazione è identica (RNG riavvolto)")
+
+
+def test_tema1b_confronto_contatore_contatore():
+    print("[1b: 'è più/meno di [Y]', 'almeno/al massimo [Y]', '== / != [Y]' fra contatori]")
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "La vita è un contatore.\n"
+           "La soglia è un contatore.\n"
+           "Una runa è una cosa.\nLa runa è nell'arena.\n"
+           'Invece di esamina la runa se la vita è più di [soglia]: dire "gt".\n'
+           'Invece di usa la runa se la vita è meno di [soglia]: dire "lt".\n'
+           'Invece di apri la runa se la vita è almeno [soglia]: dire "ge".\n'
+           'Invece di prendi la runa se la vita è al massimo [soglia]: dire "le".\n'
+           'Invece di rompi la runa se la vita è [soglia]: dire "eq".\n'
+           'Invece di spingi la runa se la vita non è [soglia]: dire "ne".\n')
+    mondo, _ = compila(src)
+    _check(mondo is not None, "i confronti contatore<->contatore compilano")
+    gt, lt, ge, le, eq, ne = (mondo.regole[i].condizione for i in range(6))
+    mondo.variabili["vita"] = 7
+    mondo.variabili["soglia"] = 5
+    _check(gt.valuta(mondo) and ge.valuta(mondo) and ne.valuta(mondo),
+           "vita 7 vs soglia 5: più di / almeno / diverso sono veri")
+    _check(not lt.valuta(mondo) and not le.valuta(mondo) and not eq.valuta(mondo),
+           "vita 7 vs soglia 5: meno di / al massimo / uguale sono falsi")
+    mondo.variabili["vita"] = 5     # ora pari alla soglia
+    _check(eq.valuta(mondo) and ge.valuta(mondo) and le.valuta(mondo),
+           "vita 5 == soglia 5: uguale / almeno / al massimo sono veri")
+    _check(not gt.valuta(mondo) and not lt.valuta(mondo) and not ne.valuta(mondo),
+           "vita 5 == soglia 5: più di / meno di / diverso sono falsi")
+    mondo.variabili["soglia"] = 9   # la soglia si muove: il confronto è DINAMICO
+    _check(lt.valuta(mondo) and not gt.valuta(mondo),
+           "spostando la soglia il confronto cambia (5 < 9): operando risolto a runtime")
+
+
+def test_tema1b_confronto_letterale_invariato():
+    print("[1b: il confronto con NUMERO letterale resta identico (additività)]")
+    src = ("L'arena è una stanza.\nIl giocatore comincia nell'arena.\n"
+           "La vita è un contatore.\n"
+           "Una runa è una cosa.\nLa runa è nell'arena.\n"
+           'Invece di esamina la runa se la vita è più di 3: dire "ok".\n')
+    mondo, _ = compila(src)
+    cond = mondo.regole[0].condizione
+    mondo.variabili["vita"] = 4
+    _check(cond.valuta(mondo) is True, "vita 4 > 3 (letterale) è vero")
+    mondo.variabili["vita"] = 2
+    _check(cond.valuta(mondo) is False, "vita 2 > 3 (letterale) è falso")
+
+
+def test_tema1_operando_marca_contatore_come_usato():
+    print("[1a/lint: un contatore citato solo come 'di [Y]' NON è 'inutilizzato']")
+    # 'bonus' compare SOLO come operando di 'di [bonus]': il linter non deve
+    # segnalarlo come dichiarato-ma-mai-usato.
+    src = (_src_arena() +
+           "Il bonus è un contatore.\nIl bonus parte da 2.\n"
+           'Invece di agisci: aumenta la vita di [bonus].\n')
+    r = strutturato(src)
+    _check(r["ok"], "il file compila")
+    inutil = [w for w in r.get("warnings", []) if "bonus" in str(w) and "mai usato" in str(w)]
+    _check(not inutil, "'bonus' usato come operando non è segnalato inutilizzato")
+
+
+def test_tema1_strutturato_serializza_operando():
+    print("[1a/IDE: il serializzatore JSON espone le forme dinamiche dell'operando]")
+    src = (_src_arena() +
+           'Invece di agisci: aumenta la vita di [forza] e adesso il dado diventa un numero fra 1 e 6.\n'
+           'Il dado è un contatore.\n')
+    dati = regole_strutturate(src)
+    _check(dati["ok"], "analizza_regole non solleva e ritorna ok")
+    cons = [c for r in dati["rules"] for c in r.get("consequences", []) if c.get("op") == "count"]
+    valori = [c.get("value") for c in cons]
+    var_ref = any(isinstance(v, dict) and v.get("kind") == "var" and v.get("name") == "forza" for v in valori)
+    rand_ref = any(isinstance(v, dict) and v.get("kind") == "rand"
+                   and v.get("min") == 1 and v.get("max") == 6 for v in valori)
+    _check(var_ref, "l'operando contatore è serializzato come {kind:'var', name:'forza'}")
+    _check(rand_ref, "l'estrazione casuale è serializzata come {kind:'rand', min, max}")
 
 
 def test_a4_idioma_direzioni_opposte_funziona():
@@ -2646,7 +2819,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.30.0.md")
+                          "grammatica-0.31.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -2663,7 +2836,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.30.0.md è presente")
+           "documentazione/grammatica-0.31.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -4553,6 +4726,16 @@ def main():
         test_a3_regola_con_dire_resta_invariata,
         test_a4_sinonimo_direzione_avviso_mirato,
         test_a4_idioma_direzioni_opposte_funziona,
+        # [0.31.0] Tema 1 — i contatori si parlano (operando-quantità + confronti)
+        test_tema1a_contatore_come_quantita_in_di,
+        test_tema1a_diventa_contatore,
+        test_tema1a_di_letterale_invariato,
+        test_tema1a_estrazione_casuale_in_intervallo_e_riproducibile,
+        test_tema1a_estrazione_casuale_annulla_safe,
+        test_tema1b_confronto_contatore_contatore,
+        test_tema1b_confronto_letterale_invariato,
+        test_tema1_operando_marca_contatore_come_usato,
+        test_tema1_strutturato_serializza_operando,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -4674,7 +4857,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.30.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.31.0)")
     print("=" * 60)
     for t in tests:
         t()
