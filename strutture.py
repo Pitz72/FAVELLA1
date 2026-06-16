@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.34.0"
+VERSIONE_MOTORE = "1.0.0"
 
 class Mondo: # Forward declaration per i type hint
     pass

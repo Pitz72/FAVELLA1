@@ -4,6 +4,34 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.0] - 2026-06-16
+### 🏁 Il linguaggio è completo — versione 1.0
+Traguardo. La **1.0.0 non introduce modifiche di grammatica** rispetto alla 0.34.0:
+è il rilascio che **dichiara chiuso e definitivo il linguaggio FAVELLA 1**. Un solo
+numero di versione per motore, compilatore e specifica; spec di milestone
+`documentazione/grammatica-1.0.0.md` (identica alla 0.34.0, con la nota di traguardo).
+
+Cosa c'è dentro la 1.0:
+- **Livelli 1–8** della roadmap (stanze, oggetti, regole «Invece di», stati e
+  contatori, contenitori/supporti, dialoghi, capacità di trasporto, eventi e demoni).
+- **Consolidamento 0.18.0** (regole a due oggetti col `se`, posizione del giocatore,
+  testi d'esito, copula plurale, `al massimo`/`non è`, verbi multi-parola, `non(…)`).
+- **Asse A «Il mondo vivo» 0.19.0→0.26.0** (pronomi/anafora, ANNULLA/ANCORA/
+  trascrizione, varietà nelle descrizioni, buio e luce, movimento degli NPC,
+  sinonimi di verbo, verbi intransitivi, inventario iniziale, tick silenziosi).
+- **Revisione totale di solidità 0.27.0→0.28.1** (correttezza, robustezza, perf).
+- **Piano di completamento**: Cassetto A (0.30.0), **Tema 1** «i contatori si parlano»
+  (0.31.0), **Tema 2** «casualità d'autore» (0.32.0), **Tema 4** «il mondo che cambia
+  in scena» (0.33.0), **Tema 3** «lo stato che parla allo stato» (0.34.0).
+- **Fuori per scelta**: Tema 5a (quantità con plurali) e Tema 5b (template di entità)
+  — la semplicità d'autore è una feature; una scorta è già un contatore.
+
+Garanzie della 1.0: grammatica **LALR(1) a zero ambiguità** (guardia Earley
+permanente), **suite verde** (681 asserzioni di linguaggio + 43 di collaudo, pytest
+312), versioning unificato, una spec e un CHANGELOG per release. Da qui l'evoluzione
+è di **ecosistema** (distribuzione, libreria di moduli, galleria di storie), non più
+di linguaggio.
+
 ## [0.34.0] - 2026-06-16
 ### Tema 3: lo stato che parla allo stato 🔗
 Quinta sessione del **piano di completamento del linguaggio**

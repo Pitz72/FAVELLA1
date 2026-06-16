@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.34.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -3278,7 +3278,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.34.0.md")
+                          "grammatica-1.0.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3295,7 +3295,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.34.0.md è presente")
+           "documentazione/grammatica-1.0.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -5348,7 +5348,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.34.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.0)")
     print("=" * 60)
     for t in tests:
         t()
