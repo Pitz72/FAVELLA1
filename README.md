@@ -42,20 +42,37 @@ favella1 esporta storia.fav      # genera un .html giocabile e condivisibile
 
 ---
 
-## 🚀 Stato Attuale: v0.29.0 — Distribuzione multipiattaforma (Asse A completo + Revisione totale)
+## 🏁 Stato Attuale: v1.0.0 — Il linguaggio è completo e definitivo
 
-Il linguaggio FAVELLA è **completo ed eccellente allo stato attuale**. Sono chiusi i Livelli 1-8 della roadmap, il **Consolidamento** (v0.18.0) e l'intero **Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0: pronomi/anafora, ANNULLA/ANCORA, varietà nelle descrizioni, buio e luce, movimento degli NPC, sinonimi di verbo, verbi intransitivi, inventario iniziale, tick silenziosi). Le versioni **v0.27.0 e v0.28.0** sono una **revisione totale di solidità** (caccia a difetti e debiti, non nuove feature) prima del manuale.
+**FAVELLA 1 ha raggiunto la versione 1.0.0: il linguaggio è dichiarato completo e
+chiuso.** Sono stati portati a termine i **Livelli 1-8** della roadmap, il
+**Consolidamento** (v0.18.0), l'intero **Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0),
+una **revisione totale di solidità** (v0.27.0→v0.28.1) e tutte le espansioni del
+**piano di completamento**: il Cassetto A (v0.30.0) e i quattro Temi —
+**Tema 1** «i contatori si parlano» (v0.31.0), **Tema 2** «casualità d'autore» (v0.32.0),
+**Tema 4** «il mondo che cambia in scena» (v0.33.0) e **Tema 3** «lo stato che parla
+allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto alla
+0.34.0: è il *traguardo* che sancisce la maturità del linguaggio.
 
-La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate: symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità nella suite. Suite di **582 test** del linguaggio + **43 test** del collaudatore statico, tutti verdi. Spec tecnica: [`documentazione/grammatica-0.28.0.md`](documentazione/grammatica-0.28.0.md).
+La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
+symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **681
+asserzioni** del linguaggio + **43** del collaudatore statico, tutte verdi (`pytest`:
+312 passati). Spec tecnica: [`documentazione/grammatica-1.0.0.md`](documentazione/grammatica-1.0.0.md).
 
-### Novità della Revisione totale (v0.27.0 + v0.28.0)
-- **Correttezza (Lotto 1):** copula plurale sugli stati/contatori (`Le vite sono un contatore`, `Le vite partono da 3`); `accesa`/`spenta` opposte di default; `lascia` bloccato al buio come gli altri verbi; nomi propri preservati negli annunci (`La Guardia Reale` non diventa più `La guardia reale`).
-- **Robustezza (Lotto 2):** aggettivi che iniziano con una preposizione ora ammessi (`La lapide è incisa.`); **turno atomico** (un'eccezione in una conseguenza fa rollback, niente stato a metà); una conversazione è un solo passo di **ANNULLA**; rete di test rinforzata (anti-drift della spec sui blocchi EBNF, collaudo su vittoria via evento/demone).
-- **Perf & pulizia (Lotto 3):** cache dei parser LALR (≈40 ms → trascurabile sulle ricostruzioni identiche); `guarda` e l'ingresso in stanza condividono ora la stessa resa (uscite incluse).
+> Da qui in avanti l'evoluzione del progetto è di **ecosistema** (distribuzione,
+> libreria di moduli `Includi`-bili, galleria di storie, pacchetto installabile),
+> **non più di linguaggio**. I Temi **5a** (quantità con plurali) e **5b** (template di
+> entità) restano **deliberatamente fuori**: la semplicità per l'autore è una feature
+> (una scorta è già esprimibile come contatore; vedi il CHANGELOG).
 
 ### Capacità del linguaggio (panoramica)
-- **Italiano ricco:** copula plurale, genitivi/partitivi, preposizioni articolate, accenti affidabili (NFC) nei nomi.
-- **Espressività:** condizione e teletrasporto sulla posizione del giocatore; testo d'esito personalizzato (`vinci "Sei libero!"`); confronti sui contatori (`almeno`/`al massimo`/`non è`); negazione di gruppi `non ( A e B )`; verbi personalizzati anche multi-parola; sinonimi di verbo.
+- **Italiano ricco:** copula plurale, genitivi/partitivi, preposizioni articolate, accenti affidabili (NFC) nei nomi; `dire` opzionale nelle regole a sola conseguenza.
+- **Espressività:** condizione e teletrasporto sulla posizione del giocatore; testo d'esito personalizzato (`vinci "Sei libero!"`); negazione di gruppi `non ( A e B )`; verbi personalizzati anche multi-parola; sinonimi di verbo.
+- **I contatori si parlano (Tema 1):** una quantità può essere un numero, il valore di un altro contatore o un'estrazione casuale — `diminuisci la vita di [forza]`, `… di un numero fra 2 e 6`; confronti *fra grandezze* dinamici — `se la vita è meno di [soglia]`.
+- **Casualità d'autore (Tema 2):** scelta casuale fra valori di stato — `il meteo diventa uno fra sereno, pioggia, nebbia`; condizione probabilistica — `Ogni turno se càpita (1 su 4): …`. Tutto riproducibile e **ANNULLA-safe**.
+- **Mondo che cambia in scena (Tema 4):** buio commutabile — `la radura diventa buia`/`illuminata`; battuta di dialogo condizionale — `Anna al nodo "x" dice "…" se …`.
+- **Lo stato parla allo stato (Tema 3):** indirezione fra stati — copia `il corteggiato diventa il preferito` e confronto `se il corteggiato è come il preferito`.
 - **Mondo vivo:** stati e contatori, eventi a tempo, **demoni** (if-then autonomi), buio/luce, NPC che si muovono, dialoghi ramificati, pronomi/anafora, ANNULLA/ANCORA.
 
 Storia completa in [CHANGELOG.md](CHANGELOG.md). Le sezioni seguenti documentano le tappe precedenti della roadmap.
@@ -66,16 +83,16 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **0.28.1** | header di modulo |
-| Compilatore (`compilatore.py`) | **0.28.1** | header di modulo |
-| Strutture dati (`strutture.py`) | **0.28.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **0.28.1** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **0.28.1** | usa `VERSIONE_MOTORE` |
-| Specifica formale della grammatica | **0.28.0** | [`documentazione/grammatica-0.28.0.md`](documentazione/grammatica-0.28.0.md) — *grammatica invariata in 0.28.1* |
-| Suite di test | **0.28.1** | 582 test linguaggio + 43 collaudo |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 0.28.1 | — |
+| Motore / interprete (`gioco.py`) | **1.0.0** | header di modulo |
+| Compilatore (`compilatore.py`) | **1.0.0** | header di modulo |
+| Strutture dati (`strutture.py`) | **1.0.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.0.0** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.0.0** | usa `VERSIONE_MOTORE` |
+| Specifica formale della grammatica | **1.0.0** | [`documentazione/grammatica-1.0.0.md`](documentazione/grammatica-1.0.0.md) — *grammatica invariata dalla 0.34.0* |
+| Suite di test | **1.0.0** | 681 asserzioni linguaggio + 43 collaudo (pytest 312) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.0.0 | — |
 
-> La 0.28.1 è una patch di perf/documentazione/pulizia: la **grammatica è invariata** rispetto alla 0.28.0, quindi la spec EBNF resta `grammatica-0.28.0.md` (come per la v0.14.0, che mantenne la spec 0.13.0). Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale, che è **v0.28.1** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)) — sarà rigenerato sul linguaggio finale.
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale, che è **v1.0.0** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)) — la **2ª edizione** è allineata alla v0.29.0 e verrà **rigenerata** sul linguaggio 1.0.0.
 
 ---
 
@@ -181,25 +198,28 @@ errore voluto in `esempi/test debug/storia-con-errore.fav`.
 
 ## 🗺️ Roadmap
 
-I **Livelli 1-8**, il **Consolidamento** (v0.18.0) e l'intero **Asse A — «Il mondo
-vivo»** (v0.19.0→v0.26.0) sono **chiusi**; le v0.27.0–v0.28.0 hanno aggiunto una
-**revisione totale di solidità**. Il linguaggio FAVELLA è completo ed eccellente
-allo stato attuale delle conoscenze. Sono disponibili azioni a due oggetti (`usa X
-su Y`, con clausola `se`), condizioni composte (AND/OR/NOT con parentesi),
+**Il linguaggio è completo: con la v1.0.0 è dichiarato chiuso e definitivo.** Sono
+stati portati a termine i **Livelli 1-8**, il **Consolidamento** (v0.18.0), l'intero
+**Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0), la **revisione totale di solidità**
+(v0.27.0→v0.28.1) e tutte le espansioni del piano di completamento (Cassetto A
+v0.30.0 + Temi 1-4 e Tema 3, v0.31.0→v0.34.0). Sono disponibili azioni a due oggetti
+(`usa X su Y`, con clausola `se`), condizioni composte (AND/OR/NOT con parentesi),
 contenitori e supporti, modifiche dinamiche del mondo (`e adesso …`), stati e
-contatori, NPC con dialoghi ramificati e movimento, eventi a turni e demoni,
-buio/luce, pronomi/anafora e ANNULLA. Il percorso completo è in
-[CHANGELOG.md](CHANGELOG.md) e nei documenti per-versione in [`documentazione/`](documentazione/).
+contatori **che si parlano** (aritmetica e confronti fra grandezze), **casualità
+d'autore** (estrazioni, scelte di stato, probabilità), **indirezione fra stati**,
+buio commutabile e battute di dialogo condizionali, NPC con dialoghi ramificati e
+movimento, eventi a turni e demoni, pronomi/anafora e ANNULLA. Il percorso completo
+è in [CHANGELOG.md](CHANGELOG.md) e nei documenti per-versione in
+[`documentazione/`](documentazione/).
 
-Le prossime tappe non riguardano nuove primitive del linguaggio, ma il suo
-contorno:
+Le prossime tappe **non riguardano più il linguaggio**, ma il suo **ecosistema**:
 
--   📘 **Manuale d'autore completo rigenerato** sul linguaggio finale (Asse A
-    completo + revisione), con «La Casa di Via Stradivari» / «Il Relitto Silente»
-    come esempi guida. Il manuale attuale in PDF è in [`documentazione/manuale/`](documentazione/manuale/)
-    (allineato alla v0.18.0, da aggiornare).
--   **Eventuale internazionalizzazione** e valutazione di una **1.0.0** «linguaggio
-    maturo» quando l'esperienza d'uso lo confermerà.
+-   📦 **Pacchetto installabile** (`pip install favella`), **libreria standard di
+    moduli** `Includi`-bili e **galleria di storie** della community.
+-   📘 **Manuale d'autore rigenerato** sul linguaggio 1.0.0 (oggi la 2ª edizione in
+    PDF, in [`documentazione/manuale/`](documentazione/manuale/), è allineata alla
+    v0.29.0), con «La Casa di Via Stradivari» / «Il Relitto Silente» come esempi guida.
+-   **Eventuale internazionalizzazione** e strumenti d'autore (l'IDE è in cantiere).
 
 ---
 

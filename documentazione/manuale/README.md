@@ -1,10 +1,16 @@
 # Manuale di Programmazione — FAVELLA 1
 
 Sorgente del manuale d'autore in **PDF tipografico**, generato con
-[Typst](https://typst.app). Allineato al motore **v0.29.0** e focalizzato
-*esclusivamente sul linguaggio*; ogni costrutto è illustrato con esempi reali
-tratti dalla storia guida **«La Casa di Via Stradivari»**
-(`esempi/materiale-didattico/`). Edizione corrente: **Seconda edizione · 2026**.
+[Typst](https://typst.app). Focalizzato *esclusivamente sul linguaggio*; ogni
+costrutto è illustrato con esempi reali tratti dalla storia guida **«La Casa di Via
+Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Seconda
+edizione · 2026**, allineata al motore **v0.29.0**.
+
+> ⚠️ **Da rigenerare per la 1.0.0.** Il linguaggio FAVELLA è ora alla versione
+> **1.0.0** (completo e definitivo: vedi il [CHANGELOG](../../CHANGELOG.md)). Questa
+> edizione del PDF è ancora ferma alla v0.29.0 e **non copre** le espansioni
+> successive (Cassetto A + Temi 1-4 e Tema 3). La **terza edizione** andrà
+> rigenerata sul linguaggio 1.0.0; le novità da incorporare sono elencate sotto.
 
 ## Come compilare
 
@@ -40,6 +46,15 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 
 ### Da incorporare alla prossima edizione
 
+- **Espansioni post-0.29 → linguaggio 1.0.0** (vedi `documentazione/grammatica-1.0.0.md`
+  e il CHANGELOG): **Cassetto A** (v0.30.0: diagnostica nomi, `dire` opzionale nelle
+  regole); **Tema 1** «i contatori si parlano» (v0.31.0: quantità come operando
+  `di [forza]`/`un numero fra A e B`, confronti fra grandezze); **Tema 2** «casualità
+  d'autore» (v0.32.0: `diventa uno fra …`, `càpita (N su M)`); **Tema 4** «mondo che
+  cambia in scena» (v0.33.0: buio commutabile, battuta di dialogo condizionale);
+  **Tema 3** «lo stato che parla allo stato» (v0.34.0: copia `… diventa …` e confronto
+  `… è come …` fra stati). Da capitolare con esempi e citando le **demo stress-test di
+  genere** (`esempi/demo/`). I Temi 5a/5b sono fuori dal linguaggio (annotarlo).
 - **2026-06-15** — Aggiunta nel cap. 3 («Anatomia di una frase», sorgente
   `.typ`) una `#nota` che rende esplicita la regola *«il punto di fine frase va
   fuori dalle virgolette»* (`…gancio.".`, non `…gancio."`). Il manuale la mostrava

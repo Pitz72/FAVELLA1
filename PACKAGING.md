@@ -66,8 +66,8 @@ in parallelo e impacchetta per ogni OS.
 1. Allinea le versioni (vedi sotto) e aggiorna il `CHANGELOG.md`.
 2. Crea e spingi un tag `v*`:
    ```sh
-   git tag v0.28.1
-   git push origin v0.28.1
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
 3. La CI builda i tre installer, esegue uno smoke su ciascuno e **pubblica una
    GitHub Release** con questi asset:
