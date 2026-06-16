@@ -79,7 +79,9 @@ Invece di bevi il bicchiere di grappa: dire "Ne resta poca. Ti riempie la bocca 
 ]
 
 *Muovere un contatore* (`aumenta`, `diminuisci`, oppure `diventa [N]`) o *cambiare
-uno stato*. Spesso una regola ne fa più d'una di seguito, ciascuna con il suo
+uno stato* — fissandone il valore (`la verita è sospetta`) o copiandolo da un altro
+stato (`il corteggiato diventa il preferito`, come nel capitolo «Stati e
+contatori»). Spesso una regola ne fa più d'una di seguito, ciascuna con il suo
 `e adesso`:
 
 #esempio[
@@ -91,6 +93,14 @@ Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni,
 Una sola azione del giocatore — esaminare una foto — fa salire gli indizi, sposta
 lo stato della verità da `ignota` a `sospetta` e intacca la calma. Le conseguenze
 si eseguono nell'ordine in cui le scrivi.
+
+#nota[
+  `aumenta` e `diminuisci`, da soli, muovono il contatore di uno. Ma puoi dire
+  anche *di quanto*: `aumenta gli indizi di 2`. E quel «quanto» non deve restare
+  fisso — può essere il valore di un altro contatore o un numero estratto a caso.
+  È il cuore del capitolo «Il caso e le quantità»; qui ti basti sapere che la
+  quantità non è per forza un numero scritto a mano.
+]
 
 #nota[
   Esiste anche la conseguenza che *sposta il giocatore* in un'altra stanza:

@@ -80,6 +80,47 @@ Finché la torcia è spenta, la cantina resta nera; dopo `usa torcia` diventa ac
 e la stanza si rivela. Spegnerla di nuovo — con un'altra regola, o come conseguenza
 di un evento — la riporta nel buio.
 
+== Il buio che va e viene
+
+Dichiarare `La cantina è buia.` fissa il buio *dall'inizio*: la cantina nasce nera e
+tale resta, finché non porti una luce. Ma il buio può anche *calare in scena*, come
+conseguenza di qualcosa che accade. La stessa parola che descrive una stanza la può
+trasformare:
+
+#sintassi[
+  `[stanza] diventa buia` — cala il buio \
+  `[stanza] diventa illuminata` (oppure `chiara`) — torna la luce
+]
+
+In una centrale, spegnere il generatore spegne tutto:
+
+#esempio(da: "forma disponibile")[
+#fav(```
+Invece di spegni il generatore: dire "Le luci si spengono una a una. Resta solo il ronzio che si smorza." e adesso la sala macchine diventa buia.
+```)
+]
+
+E un evento a tempo può riportare la luce — l'alba che entra, un interruttore che
+qualcuno riarma altrove:
+
+#esempio(da: "forma disponibile")[
+#fav(```
+Al turno 12: dire "La luce del mattino entra dalle assi sconnesse." e adesso la cantina diventa illuminata.
+```)
+]
+
+Vale tutto ciò che già sai sul buio: una stanza diventata buia torna a nascondere
+descrizione, oggetti e uscite, e una torcia accesa raggiungibile la rischiara
+comunque. Cambia solo *quando* il buio compare — non più soltanto all'avvio, ma nel
+momento che decidi tu.
+
+#nota[
+  `diventa buia` / `diventa illuminata` vale per le *stanze*. Le parole ammesse sono
+  `buia` (anche `buio`, `buie`) per spegnere, `illuminata` o `chiara` per riaccendere:
+  qualunque altra, su questo costrutto, è un errore, e FAVELLA ti indica le due
+  giuste. Se il nome a sinistra è un oggetto invece di una stanza, te lo segnala.
+]
+
 #tranello[
   La luce deve essere *raggiungibile*. Una torcia accesa chiusa dentro un baule non
   illumina niente: il contenitore chiuso la nasconde, e finché non lo apri è come se

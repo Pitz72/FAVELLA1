@@ -58,6 +58,25 @@ dice, e se è solo una lettera sbagliata ti propone il nome giusto.
   chiave?». L'errore arriva subito, non a gioco avviato.
 ]
 
+== Che cosa può stare in un nome
+
+Un nome è fatto di *lettere* (accentate comprese: `à`, `è`, `ò`…), *cifre*,
+*spazi* e l'*apostrofo*: tutto qui. Sono gli stessi caratteri con cui scrivi
+normalmente in italiano, e bastano per qualunque nome ti serva: `la chiave della
+cantina`, `l'armadio`.
+
+Un carattere fuori da questo alfabeto — la barra `/`, per esempio — confonde
+FAVELLA quando registra i tuoi nomi, e in passato faceva spuntare un errore
+tecnico difficile da decifrare. Oggi il compilatore lo intercetta *prima ancora di
+leggere le frasi*, e ti indica riga, colonna e carattere incriminato.
+
+#tranello[
+  Se vuoi separare due parole in un nome, usa lo *spazio*, non il trattino:
+  `sala macchine`, non `sala-macchine`. E per «e/o» nei nomi scrivi le parole per
+  esteso: il segno `/` non è ammesso. FAVELLA te lo segnala subito, e ti dice
+  dove.
+]
+
 == Nomi lunghi, proprietà corte
 
 Un *nome* può essere lungo quanto vuoi. `la chiave della cantina`, `il flacone di

@@ -60,6 +60,31 @@ Il notaio al nodo "tavolo" dice "Lei è il nipote. Bene. Le carte sono sul tavol
 ```)
 ]
 
+== Battute che cambiano
+
+Un nodo non deve dire sempre la stessa cosa. Come una descrizione può cambiare con
+un `se`, una battuta può averne più versioni: a ognuna attacchi una condizione, e il
+personaggio pronuncia la *prima* che risulta vera.
+
+#sintassi[
+  `[personaggio] al nodo "[nodo]" dice "[battuta]" se [condizione].`
+]
+
+Un oste ti accoglie in un modo o nell'altro a seconda di quanto si fida:
+
+#esempio(da: "forma disponibile")[
+#fav(```
+L'oste al nodo "bancone" dice "Tu. Cosa vuoi?".
+L'oste al nodo "bancone" dice "Il mio cliente preferito. Siediti pure." se la fiducia è almeno 3.
+```)
+]
+
+La riga senza `se` è la battuta *di base*: vale quando nessuna delle condizionali
+risulta vera, ed è bene scriverne sempre una, come rete di sicurezza. Le condizionali
+si provano nell'ordine in cui le scrivi — la prima vera vince, le altre non vengono
+nemmeno guardate. Anche le battute condizionali possono contenere interpolazioni come
+`[fiducia]`, per riflettere lo stato del momento.
+
 == Le opzioni: ramificare
 
 Sotto ogni battuta metti le risposte possibili. Ogni opzione mostra un testo e

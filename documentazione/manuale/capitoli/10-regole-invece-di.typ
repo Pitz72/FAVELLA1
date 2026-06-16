@@ -57,6 +57,14 @@ Invece di apri il cassettone se il cassettone è chiuso: dire "Il primo cassetto
 ```)
 ]
 
+#nota[
+  E se una regola serve *solo* a cambiare qualcosa, senza niente da raccontare al
+  giocatore? Allora puoi saltare il `dire "…"` e andare dritto alla conseguenza:
+  `Invece di riposa: aumenta la forza.`. È la stessa libertà di eventi e demoni —
+  il «tick silenzioso» del capitolo sul tempo. Le conseguenze le vedi per esteso nel
+  prossimo capitolo; qui basta sapere che il testo, da solo, è facoltativo.
+]
+
 == Regole condizionali: la parola `se`
 
 Una regola può aspettare il momento giusto. Aggiungendo una clausola `se`, scatta
@@ -151,6 +159,14 @@ comportamento di default, le tue regole `Invece di`, perfino i pronomi.
 Da qui `ghermisci la torcia` fa esattamente quel che farebbe `prendi la torcia`. Il
 verbo a destra dev'essere uno di quelli che il motore riconosce; se non lo è,
 FAVELLA te lo segnala con un avviso.
+
+#tranello[
+  `è come` vale *solo per i verbi*. Per le direzioni non funziona: `"destra" è
+  come est` non crea una direzione. Per dire che due direzioni sono l'una l'opposto
+  dell'altra c'è la forma apposita, già vista nel capitolo sulla topologia —
+  `Destra e sinistra sono direzioni opposte.`. Se provi `è come` su una direzione,
+  FAVELLA te lo fa notare e ti rimanda a questa forma.
+]
 
 == Regole a due oggetti
 

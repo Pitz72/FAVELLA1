@@ -29,6 +29,7 @@ porta a est` è un nome valido, anche se `est` è riservata).
   [Trasporto], [#kw[può · portare · oggetti · dà · spazi]],
   [Regole e logica], [#kw[Invece · se · dire · e · adesso · oppure · non · ha · come]],
   [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · partono · almeno · massimo · meno · più]],
+  [Quantità e caso], [#kw[fra · numero · càpita]],
   [Fine partita], [#kw[vinci · perdi · termina]],
   [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · anche · come]],
   [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera]],
@@ -90,13 +91,17 @@ Le vite partono da 3.
 #fav(```
 Invece di [verbo] [oggetto] se [condizione]: dire "..." e adesso [conseguenza].
 Invece di usa [ogg1] su [ogg2] se [condizione]: dire "...".
+Invece di [verbo]: [conseguenza].   # il «dire "..."» è facoltativo
+# operando (quantità): N · [contatore] · un numero fra A e B
 # conseguenze: [ogg] è [proprietà] · [ogg] è in [luogo] · [ogg] è nel nulla ·
-#              aumenta/diminuisci [contatore] · [contatore] diventa N ·
-#              [stato] è [valore] · il giocatore è in [stanza] ·
-#              [personaggio] va nel [stanza] · [personaggio] cambia stanza ·
-#              vinci/perdi/termina "...".
+#              aumenta/diminuisci [contatore] di [operando] · [contatore] diventa [operando] ·
+#              [stato] è [valore] · [stato] diventa [altro stato] ·
+#              [stato] diventa uno fra A, B, C · [stanza] diventa buia/illuminata ·
+#              il giocatore è in [stanza] · [personaggio] va nel [stanza] ·
+#              [personaggio] cambia stanza · vinci/perdi/termina "...".
 # condizioni:  il giocatore ha [ogg] · [ogg] è [proprietà] · [stato] è [valore] ·
-#              [contatore] è almeno/al massimo/più di/meno di/non è N ·
+#              [stato] è come [altro stato] · càpita (N su M) ·
+#              [contatore] è almeno/al massimo/più di/meno di/non è N (o [altro contatore]) ·
 #              A e B · A oppure B · non [...] · non ( A e B ).
 ```)
 
@@ -110,6 +115,7 @@ Quando [condizione] diventa vera: dire "...".
 Il notaio è un personaggio.
 Il dialogo del notaio comincia con "tavolo".
 Il notaio al nodo "tavolo" dice "...".
+Il notaio al nodo "tavolo" dice "..." se [condizione].
 Al nodo "tavolo" l'opzione "..." se [condizione] conduce al nodo "..." e adesso [conseguenza].
 Includi "oggetti.fav".
 ```)

@@ -1,13 +1,13 @@
 #import "lib/manuale-template.typ": *
 
 // Versione del motore ed etichetta d'edizione: un solo punto di verità.
-#let MOTORE = "v0.29.0"
+#let MOTORE = "v1.0.0"
 #let EDIZIONE = "Seconda edizione · 2026"
 
 // Due tirature dalla stessa sorgente:
 //  • digitale (default) — include la copertina navy a pagina intera;
 //  • interno KDP (`--input kdp=1`) — parte dal frontespizio, senza copertina,
-//    perché in stampa la copertina è un file a sé (vedi copertina-kdp.typ).
+//    perché in stampa la copertina è un file a sé (nel kit KDP esterno).
 #let per-kdp = "kdp" in sys.inputs
 
 #show: conf.with(titolo: "Manuale di Programmazione", autore: "Simone Pizzi")
@@ -58,6 +58,7 @@
 #include "capitoli/09-stati-contatori.typ"
 #include "capitoli/10-regole-invece-di.typ"
 #include "capitoli/11-logica-conseguenze.typ"
+#include "capitoli/11b-caso-quantita.typ"
 #include "capitoli/12-fine-partita.typ"
 #include "capitoli/13-eventi-turni.typ"
 #include "capitoli/14-demoni.typ"

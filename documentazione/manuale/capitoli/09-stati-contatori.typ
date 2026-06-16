@@ -87,6 +87,14 @@ tutta la scala, da usare nelle condizioni:
   `se [contatore] è meno di [N]` — strettamente minore
 ]
 
+#nota[
+  Al posto del numero fisso `N` puoi mettere il valore di un altro contatore,
+  scritto fra parentesi quadre: `se la vita è meno di [soglia]`. Così confronti due
+  grandezze fra loro, non più un contatore contro una costante. È l'idea che il
+  capitolo «Il caso e le quantità» sviluppa per intero — lì i numeri imparano a
+  parlarsi.
+]
+
 La Casa li usa per far maturare gli eventi: certe rivelazioni si sbloccano solo
 quando hai raccolto abbastanza indizi, e la tensione monta quando la calma scende
 sotto una soglia.
@@ -118,6 +126,52 @@ Se al momento giusto il contatore vale quattro, il giocatore leggerà «Hai mess
 insieme 4 frammenti, e bastano». La stessa interpolazione funziona nelle
 descrizioni, nelle risposte delle regole, nelle battute dei personaggi: ovunque ci
 sia un testo fra virgolette.
+
+== Uno stato che ne ricalca un altro
+
+Finora il valore di uno stato lo hai sempre scritto a mano: `la verita è svelata`,
+`il meteo è sereno`. Certe volte, però, il valore giusto è «quello di un altro
+stato», e non lo conosci in anticipo. Per questo uno stato può prendere il valore
+di un altro, e due stati si possono confrontare fra loro.
+
+#sintassi[
+  `[stato] diventa [altro stato].` — copia il valore
+]
+
+In una storia di appuntamenti, per esempio, puoi tenere uno stato `corteggiato` che
+ricorda chi sta in cima alle preferenze del giocatore:
+
+#esempio(da: "forma disponibile")[
+#fav(```
+e adesso il corteggiato diventa il preferito.
+```)
+]
+
+Da quel momento `corteggiato` vale esattamente quanto vale `preferito`: se più
+avanti cambi `preferito`, `corteggiato` resta com'era — la copia avviene una volta,
+nel momento in cui la scrivi, non si aggancia per sempre.
+
+Per confrontare due stati, invece, c'è `è come`:
+
+#sintassi[
+  `se [stato] è come [altro stato]` — stesso valore \
+  `se [stato] non è come [altro stato]` — valore diverso
+]
+
+#tranello[
+  Il `come` non è un vezzo: senza, `se il corteggiato è il preferito` sarebbe
+  ambiguo — FAVELLA non saprebbe se `il preferito` è un altro stato con cui
+  confrontare o la parola-valore `preferito`. Il `come` toglie il dubbio, e va
+  scritto sempre.
+]
+
+#nota[
+  Questa forma «nuda» vale fra due *stati*. Per i contatori il valore di un altro
+  contatore si scrive fra parentesi quadre, `[nome]` (lo hai visto poco sopra, nei
+  confronti): è più preciso, e lo riprende il capitolo «Il caso e le quantità».
+  Mischiare i due — uno stato di qua, un contatore di là — non funziona, e FAVELLA
+  te lo dice indicando la forma giusta.
+]
 
 #prova[
   Dichiara un contatore `passi` che parte da 0 e uno stato `meteo` che parte da
