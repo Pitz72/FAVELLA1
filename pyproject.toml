@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "favella1"
+dynamic = ["version"]
+description = "FAVELLA 1 — l'italiano come linguaggio di programmazione narrativa: scrivi, compila e gioca avventure testuali in italiano."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Simone (Pitz72)", email = "pizzisimone1972@gmail.com" }]
+keywords = [
+    "interactive-fiction", "narrativa-interattiva", "avventure-testuali",
+    "italiano", "linguaggio", "dsl", "text-adventure", "parser", "lark",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Education",
+    "Natural Language :: Italian",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Interpreters",
+]
+dependencies = ["lark>=1.1"]
+
+[project.urls]
+Homepage = "https://github.com/Pitz72/FAVELLA1"
+Repository = "https://github.com/Pitz72/FAVELLA1"
+Issues = "https://github.com/Pitz72/FAVELLA1/issues"
+
+[project.scripts]
+favella1 = "favella:main"
+
+[tool.setuptools]
+# Layout PIATTO: il motore vive in moduli alla radice (congelati) e l'entry-point
+# 'esporta' li rilegge da disco dalla loro stessa cartella, perciò vanno
+# installati insieme come moduli top-level. Il package 'favella1' porta solo i
+# DATI dell'ecosistema (libreria + galleria). L'elenco esplicito disattiva
+# l'autodiscovery: i moduli non elencati (test_*, favella_server, …) non vengono
+# pubblicati.
+py-modules = [
+    "favella",
+    "utils",
+    "strutture",
+    "libreria_azioni",
+    "compilatore",
+    "gioco",
+    "collaudo",
+    "favella_playground",
+]
+packages = ["favella1"]
+
+[tool.setuptools.dynamic]
+version = { attr = "strutture.VERSIONE_MOTORE" }
+
+[tool.setuptools.package-data]
+favella1 = [
+    "libreria/*.fav",
+    "libreria/*.md",
+    "galleria/*.json",
+    "galleria/*.md",
+    "galleria/**/*.fav",
+    "galleria/**/*.md",
+]

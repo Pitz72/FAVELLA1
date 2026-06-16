@@ -36,7 +36,15 @@ ENGINE_SOURCES = [
 # Le avventure ufficiali, così l'eseguibile può giocarle subito dopo l'install.
 DEMOS = [("esempi/demo", "esempi/demo")]
 
-datas = lark_datas + ENGINE_SOURCES + DEMOS
+# Ecosistema: la libreria di moduli .fav e la galleria di storie, sotto
+# 'favella1/…' (favella1/__init__.py le cerca lì via sys._MEIPASS). Servono ai
+# sottocomandi 'favella1 libreria' e 'favella1 galleria'.
+ECOSISTEMA = [
+    ("favella1/libreria", "favella1/libreria"),
+    ("favella1/galleria", "favella1/galleria"),
+]
+
+datas = lark_datas + ENGINE_SOURCES + DEMOS + ECOSISTEMA
 
 a = Analysis(
     ["favella.py"],
@@ -45,7 +53,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=lark_hiddenimports + [
         "compilatore", "gioco", "collaudo", "strutture",
-        "libreria_azioni", "utils", "favella_playground",
+        "libreria_azioni", "utils", "favella_playground", "favella1",
     ],
     hookspath=[],
     runtime_hooks=[],

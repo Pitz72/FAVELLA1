@@ -32,6 +32,30 @@ permanente), **suite verde** (681 asserzioni di linguaggio + 43 di collaudo, pyt
 è di **ecosistema** (distribuzione, libreria di moduli, galleria di storie), non più
 di linguaggio.
 
+### 📦 Ecosistema (2026-06-16): pacchetto PyPI, libreria standard, galleria
+Primo passo dell'**ecosistema** annunciato dalla 1.0.0. **Nessuna modifica al
+motore** (resta `VERSIONE_MOTORE = 1.0.0`, suite 681+43 verde): solo confezione e
+contenuti attorno al linguaggio.
+
+- **Pacchetto installabile (`pip install favella1`).** Aggiunti
+  `pyproject.toml` (layout piatto: i moduli del motore restano alla radice e si
+  installano insieme — `esporta` li rilegge da lì a runtime — più il package
+  `favella1` coi dati), `LICENSE` (**MIT**) e `MANIFEST.in`. La versione del
+  pacchetto è derivata automaticamente da `strutture.VERSIONE_MOTORE`. Verificato
+  con `python -m build` + `twine check` (wheel e sdist) e con un'installazione
+  pulita in venv (CLI completa, **`esporta` incluso**, funzionante).
+- **Libreria standard di moduli `Includi`-bili** in `favella1/libreria/`:
+  `sinonimi.fav` (sinonimi dei verbi), `proprieta.fav` (coppie di proprietà
+  opposte comuni), `verbi.fav` (verbi d'azione pronti). Vocabolario riusabile,
+  sicuro da includere per intero (nessun avviso del linter).
+- **Galleria di storie** in `favella1/galleria/`: tre avventure brevi, complete e
+  **vincibili** col sorgente commentato — «Il Faro Spento», «Il Giardino Murato»,
+  «Il Forziere dei Tre Sigilli» — più l'indice `galleria.json`. Ognuna passa il
+  `collaudo` statico ed è stata giocata end-to-end fino alla vittoria.
+- **Nuovi sottocomandi della CLI** (`favella.py`, lo strato sottile — motore
+  intatto): `favella1 libreria [elenca|copia]` e
+  `favella1 galleria [elenca|gioca|copia]`.
+
 ## [0.34.0] - 2026-06-16
 ### Tema 3: lo stato che parla allo stato 🔗
 Quinta sessione del **piano di completamento del linguaggio**

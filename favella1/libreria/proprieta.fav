@@ -1,0 +1,49 @@
+# proprieta.fav — Libreria standard di FAVELLA 1
+# Modulo «Proprietà opposte comuni»
+#
+# Dichiara le coppie di proprietà opposte (mutuamente esclusive) più frequenti
+# nelle avventure. Assegnando una proprietà a un oggetto, la sua opposta viene
+# automaticamente tolta: così "se la lampada è accesa" e "se la lampada è spenta"
+# non possono mai essere vere insieme.
+#
+# (Le coppie aperta↔chiusa e accesa↔spenta sono già precaricate dal motore: qui
+#  NON vanno ridichiarate, le trovi pronte all'uso senza includere nulla.)
+#
+# Uso:  Includi "proprieta.fav".
+#       (in un'installazione pip:  favella1 libreria copia proprieta)
+#
+# Includi pure tutto: le coppie non usate non producono avvisi. Tieni solo le
+# righe che ti servono se preferisci un file più snello.
+
+# --- INTEGRITÀ ---------------------------------------------------------------
+Rotta e integra sono opposte.
+
+# --- PULIZIA -----------------------------------------------------------------
+Sporca e pulita sono opposte.
+
+# --- UMIDITÀ -----------------------------------------------------------------
+Bagnata e asciutta sono opposte.
+
+# --- RIEMPIMENTO -------------------------------------------------------------
+Piena e vuota sono opposte.
+
+# --- LEGAME ------------------------------------------------------------------
+Legata e slegata sono opposte.
+
+# --- VISIBILITÀ --------------------------------------------------------------
+Nascosta e visibile sono opposte.
+
+# --- ATTIVAZIONE -------------------------------------------------------------
+Attiva e inattiva sono opposte.
+
+# --- ALIMENTAZIONE -----------------------------------------------------------
+Carica e scarica sono opposte.
+
+# --- TEMPERATURA -------------------------------------------------------------
+Calda e fredda sono opposte.
+
+# --- SIGILLO -----------------------------------------------------------------
+Sigillata e dissigillata sono opposte.
+
+# --- STATO DI VITA (utile per piante, fuochi, creature) ---------------------
+Viva e morta sono opposte.

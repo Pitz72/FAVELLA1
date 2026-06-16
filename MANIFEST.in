@@ -1,0 +1,9 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include PACKAGING.md
+recursive-include favella1 *.fav *.md *.json
+exclude test_*.py
+exclude favella_server.py
+exclude favella1.spec
+exclude test_pyside.py

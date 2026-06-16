@@ -1,0 +1,54 @@
+# sinonimi.fav — Libreria standard di FAVELLA 1
+# Modulo «Sinonimi di verbo»
+#
+# Aggiunge un ventaglio di sinonimi ai verbi di libreria, così che il giocatore
+# possa scrivere più naturalmente ("scruta la targa", "arraffa la chiave") senza
+# che tu debba scrivere una regola per ogni parola. Ogni riga rimappa una parola
+# NUOVA al verbo canonico, che si comporta in tutto e per tutto come l'originale
+# (regole "Invece di …", anafora e logica di default comprese).
+#
+# Uso:  metti questa riga nel tuo file, dopo aver dichiarato le stanze:
+#         Includi "sinonimi.fav".
+#       (in un'installazione pip:  favella1 libreria copia sinonimi)
+#
+# È sicuro includerlo per intero: i sinonimi non usati non danno alcun avviso.
+
+# --- ESAMINA (guardare un oggetto da vicino) --------------------------------
+"ispeziona" è come esamina.
+"scruta" è come esamina.
+"analizza" è come esamina.
+"controlla" è come esamina.
+"studia" è come esamina.
+"esplora" è come esamina.
+
+# --- PRENDI (raccogliere un oggetto) ----------------------------------------
+"arraffa" è come prendi.
+"agguanta" è come prendi.
+"ghermisci" è come prendi.
+"acchiappa" è come prendi.
+
+# --- LASCIA (posare/abbandonare un oggetto) ---------------------------------
+"deposita" è come lascia.
+"abbandona" è come lascia.
+"getta" è come lascia.
+
+# --- USA (adoperare un oggetto, anche "usa X con Y") ------------------------
+"adopera" è come usa.
+"utilizza" è come usa.
+"impiega" è come usa.
+"maneggia" è come usa.
+
+# --- APRI (aprire contenitori, porte, ante) ---------------------------------
+"spalanca" è come apri.
+"schiudi" è come apri.
+"scoperchia" è come apri.
+
+# --- METTI (riporre un oggetto in un contenitore o su un supporto) ----------
+"riponi" è come metti.
+"colloca" è come metti.
+"sistema" è come metti.
+
+# --- VAI (muoversi in una direzione) ----------------------------------------
+"spostati" è come vai.
+"dirigiti" è come vai.
+"procedi" è come vai.

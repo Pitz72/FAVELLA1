@@ -16,9 +16,11 @@ Un unico eseguibile, **`favella1`**, con sottocomandi:
 | `favella1 collaudo <storia.fav>` | collaudatore statico (catena della vittoria) |
 | `favella1 playground [storia.fav]` | apre l'editor + motore nel browser (offline) |
 | `favella1 esporta <storia.fav>` | genera un `.html` autoportante giocabile (Pyodide) |
+| `favella1 libreria [elenca\|copia <nome>]` | elenca o copia i moduli `.fav` riusabili della libreria standard |
+| `favella1 galleria [elenca\|gioca <id>\|copia <id>]` | elenca, gioca o copia le storie brevi della galleria |
 | `favella1 versione` | stampa la versione del motore |
 
-Alias inglesi: `play`, `check`, `test`, `export`, `version`.
+Alias inglesi: `play`, `check`, `test`, `export`, `version`, `library`, `gallery`.
 
 Le avventure ufficiali (`esempi/demo/`) sono incluse nel bundle, così si può
 giocare subito dopo l'installazione.
@@ -95,3 +97,49 @@ coincidere. Non esistono numeri di versione separati per l'installer.
 Gli eseguibili **non sono firmati** (nessun certificato Apple/Windows). Al primo
 avvio l'utente vedrà un avviso di **Gatekeeper** (macOS) o **SmartScreen**
 (Windows): è atteso. La firma/notarizzazione potrà essere aggiunta in seguito.
+
+## Distribuzione su PyPI (`pip install favella1`)
+
+Oltre all'eseguibile, FAVELLA è pubblicabile come **pacchetto Python**. La
+ricetta è in `pyproject.toml`.
+
+- **Layout piatto.** I moduli del motore (`utils`, `strutture`, `libreria_azioni`,
+  `compilatore`, `gioco`, `collaudo`, `favella.py`, `favella_playground`) restano
+  alla radice e si installano insieme come moduli top-level: `esporta` li rilegge
+  da disco dalla **loro stessa cartella** (`__file__`), quindi devono stare
+  affiancati anche in `site-packages`. Il package `favella1/` porta solo i **dati**
+  dell'ecosistema (`libreria/`, `galleria/`).
+- **Versione automatica.** Derivata da `strutture.VERSIONE_MOTORE` via
+  `[tool.setuptools.dynamic]`: il numero del pacchetto coincide sempre col motore.
+- **Dipendenza:** `lark`. **Requisito:** Python ≥ 3.10. **Licenza:** MIT (`LICENSE`).
+- **Entry-point:** `favella1 = favella:main` (lo stesso comando dell'eseguibile).
+
+### Costruire e validare (riproducibile in locale)
+
+```sh
+python -m pip install --upgrade build twine
+python -m build --outdir dist_pypi          # crea wheel + sdist (dist_pypi/ è gitignored)
+python -m twine check dist_pypi/*           # valida i metadati → deve dire PASSED
+```
+
+Prova d'installazione pulita (consigliata prima di pubblicare):
+
+```sh
+python -m venv .venv-test
+.venv-test/Scripts/python -m pip install dist_pypi/favella1-<versione>-py3-none-any.whl
+.venv-test/Scripts/favella1 versione
+.venv-test/Scripts/favella1 galleria
+```
+
+### Pubblicare (passo manuale, richiede le credenziali PyPI)
+
+```sh
+# 1) (opzionale) prova su TestPyPI
+python -m twine upload --repository testpypi dist_pypi/*
+# 2) pubblicazione vera su PyPI
+python -m twine upload dist_pypi/*
+```
+
+> L'upload è **irreversibile** (una versione pubblicata non si può rimpiazzare) e
+> richiede un token API PyPI. Conviene farlo a valle di un tag di release, con la
+> stessa `VERSIONE_MOTORE`.

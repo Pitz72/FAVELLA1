@@ -40,6 +40,20 @@ favella1 esporta storia.fav      # genera un .html giocabile e condivisibile
 
 > Gli eseguibili non sono firmati: al primo avvio accetta l'avviso di SmartScreen (Windows) o Gatekeeper (macOS). Dettagli e procedura di rilascio in [PACKAGING.md](PACKAGING.md).
 
+### Oppure con pip (per chi ha Python ≥ 3.10)
+
+```sh
+pip install favella1
+favella1 versione
+favella1 galleria              # le storie brevi incluse
+favella1 galleria gioca il-faro
+favella1 libreria              # i moduli .fav riusabili
+```
+
+Il pacchetto pip porta con sé la **libreria standard** di moduli `Includi`-bili e
+la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
+`favella1 galleria copia <id>` te li copiano nella cartella corrente.
+
 ---
 
 ## 🏁 Stato Attuale: v1.0.0 — Il linguaggio è completo e definitivo
@@ -212,10 +226,13 @@ movimento, eventi a turni e demoni, pronomi/anafora e ANNULLA. Il percorso compl
 è in [CHANGELOG.md](CHANGELOG.md) e nei documenti per-versione in
 [`documentazione/`](documentazione/).
 
-Le prossime tappe **non riguardano più il linguaggio**, ma il suo **ecosistema**:
+L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
--   📦 **Pacchetto installabile** (`pip install favella`), **libreria standard di
-    moduli** `Includi`-bili e **galleria di storie** della community.
+-   ✅ **Pacchetto installabile** (`pip install favella1`), **libreria standard di
+    moduli** `Includi`-bili (`favella1/libreria/`) e **galleria di storie**
+    (`favella1/galleria/`) — *fatti*. Confezione PyPI pronta (`pyproject.toml`,
+    `LICENSE` MIT), verificata con `build` + `twine check` e in venv pulito; la
+    pubblicazione su PyPI è l'ultimo passo manuale (vedi [PACKAGING.md](PACKAGING.md)).
 -   📘 **Manuale d'autore rigenerato** sul linguaggio 1.0.0 (oggi la 2ª edizione in
     PDF, in [`documentazione/manuale/`](documentazione/manuale/), è allineata alla
     v0.29.0), con «La Casa di Via Stradivari» / «Il Relitto Silente» come esempi guida.

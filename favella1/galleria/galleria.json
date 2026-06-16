@@ -1,0 +1,36 @@
+{
+  "versione": 1,
+  "descrizione": "Galleria ufficiale di storie brevi di FAVELLA 1: avventure complete, vincibili e commentate, pensate per imparare giocando e leggendo il sorgente.",
+  "storie": [
+    {
+      "id": "il-faro",
+      "titolo": "Il Faro Spento",
+      "file": "il-faro/il-faro.fav",
+      "genere": "mistero atmosferico",
+      "difficolta": 1,
+      "durata": "5 minuti",
+      "descrizione": "Riaccendi la lanterna in cima al faro prima che la nave si schianti sugli scogli.",
+      "mostra": ["direzioni custom", "contenitore con chiave", "regola a due oggetti", "gating per direzione", "verbo custom", "finale di vittoria"]
+    },
+    {
+      "id": "il-giardino-murato",
+      "titolo": "Il Giardino Murato",
+      "file": "il-giardino-murato/il-giardino-murato.fav",
+      "genere": "fiaba / enigma",
+      "difficolta": 2,
+      "durata": "10 minuti",
+      "descrizione": "Da questo giardino non si esce con le chiavi, ma con un dono. Trova la rosa d'oro e parla col giardiniere.",
+      "mostra": ["dialogo a nodi (NPC)", "opzione di dialogo condizionale", "proprieta opposte custom", "regola a due oggetti", "gating di stanza"]
+    },
+    {
+      "id": "i-tre-sigilli",
+      "titolo": "Il Forziere dei Tre Sigilli",
+      "file": "i-tre-sigilli/i-tre-sigilli.fav",
+      "genere": "enigma gotico",
+      "difficolta": 2,
+      "durata": "10 minuti",
+      "descrizione": "Raccogli i tre sigilli nascosti nel castello e apri il forziere di ferro dai tre incavi.",
+      "mostra": ["contatore con valore iniziale", "conseguenza aumenta", "confronto e almeno N", "interpolazione del contatore", "demone a fronte di salita", "evento a turni"]
+    }
+  ]
+}

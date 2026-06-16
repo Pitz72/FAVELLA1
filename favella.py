@@ -127,6 +127,144 @@ def cmd_versione(_args):
     return 0
 
 
+def _titolo_modulo(percorso):
+    """Estrae il titolo «Modulo «…»» dalle prime righe di commento di un .fav.
+    Ritorna stringa vuota se non lo trova."""
+    try:
+        with open(percorso, encoding="utf-8") as f:
+            for _ in range(6):
+                riga = f.readline()
+                if not riga:
+                    break
+                if "«" in riga and "»" in riga:
+                    return riga[riga.index("«") + 1:riga.index("»")]
+    except OSError:
+        pass
+    return ""
+
+
+def cmd_libreria(args):
+    """Elenca o copia i moduli .fav riusabili della libreria standard."""
+    try:
+        from favella1 import LIBRERIA_DIR
+    except Exception:
+        print("[FAVELLA 1] Libreria non disponibile in questa installazione.")
+        return 1
+    if not os.path.isdir(LIBRERIA_DIR):
+        print(f"[FAVELLA 1] Cartella della libreria non trovata: '{LIBRERIA_DIR}'.")
+        return 1
+    moduli = sorted(f for f in os.listdir(LIBRERIA_DIR) if f.endswith(".fav"))
+
+    if args.azione == "copia":
+        if not args.tutti and not args.nome:
+            print("[FAVELLA 1] Indica un modulo da copiare (o usa --tutti). "
+                  "Es.: favella1 libreria copia sinonimi")
+            return 1
+        dest = args.output or os.getcwd()
+        os.makedirs(dest, exist_ok=True)
+        import shutil
+        if args.tutti:
+            scelti = moduli
+        else:
+            nome = args.nome if args.nome.endswith(".fav") else args.nome + ".fav"
+            if nome not in moduli:
+                print(f"[FAVELLA 1] Modulo '{args.nome}' inesistente. Disponibili: "
+                      + ", ".join(m[:-4] for m in moduli))
+                return 1
+            scelti = [nome]
+        for m in scelti:
+            shutil.copy(os.path.join(LIBRERIA_DIR, m), os.path.join(dest, m))
+            print(f"[FAVELLA 1] Copiato '{m}' in '{dest}'.")
+        print("            Includilo nella tua storia con:  Includi \""
+              + scelti[0] + "\".")
+        return 0
+
+    # azione = elenca (default)
+    print(f"FAVELLA 1 — libreria standard ({len(moduli)} moduli)\n")
+    for m in moduli:
+        titolo = _titolo_modulo(os.path.join(LIBRERIA_DIR, m))
+        print(f"  {m[:-4]:<14} {titolo}")
+    print("\nCopia un modulo accanto alla tua storia con:")
+    print("  favella1 libreria copia <nome>     (oppure --tutti)")
+    print("poi includilo:  Includi \"<nome>.fav\".")
+    return 0
+
+
+def _carica_galleria():
+    """Carica l'indice della galleria; ritorna (lista_storie, GALLERIA_DIR) o
+    (None, None) se non disponibile."""
+    try:
+        from favella1 import GALLERIA_DIR
+    except Exception:
+        return None, None
+    indice = os.path.join(GALLERIA_DIR, "galleria.json")
+    if not os.path.isfile(indice):
+        return None, None
+    import json
+    with open(indice, encoding="utf-8") as f:
+        dati = json.load(f)
+    return dati.get("storie", []), GALLERIA_DIR
+
+
+def cmd_galleria(args):
+    """Elenca, gioca o copia le storie brevi della galleria ufficiale."""
+    storie, galleria_dir = _carica_galleria()
+    if storie is None:
+        print("[FAVELLA 1] Galleria non disponibile in questa installazione.")
+        return 1
+
+    def _trova(id_storia):
+        for s in storie:
+            if s.get("id") == id_storia:
+                return s
+        return None
+
+    stelle = lambda n: "⭐" * int(n or 1)
+
+    if args.azione in ("gioca", "copia"):
+        if not args.id:
+            print(f"[FAVELLA 1] Indica l'id della storia. Es.: favella1 galleria "
+                  f"{args.azione} il-faro")
+            return 1
+        s = _trova(args.id)
+        if not s:
+            print(f"[FAVELLA 1] Storia '{args.id}' inesistente. Disponibili: "
+                  + ", ".join(x["id"] for x in storie))
+            return 1
+        percorso = os.path.join(galleria_dir, s["file"].replace("/", os.sep))
+        if args.azione == "gioca":
+            from compilatore import analizza_file
+            from gioco import gioca
+            print(f"[FAVELLA 1] «{s['titolo']}» — {s.get('genere', '')}")
+            mondo = analizza_file(percorso)
+            if mondo is None:
+                print("\n[FAVELLA 1] La storia non compila.")
+                return 1
+            gioca(mondo)
+            return 0
+        # copia: copia l'intera cartella della storia
+        import shutil
+        sorgente_dir = os.path.dirname(percorso)
+        dest = os.path.join(args.output or os.getcwd(), s["id"])
+        if os.path.exists(dest):
+            print(f"[FAVELLA 1] La cartella di destinazione esiste già: '{dest}'.")
+            return 1
+        shutil.copytree(sorgente_dir, dest)
+        print(f"[FAVELLA 1] Storia '{s['id']}' copiata in '{dest}'.")
+        print(f"            Giocala con:  favella1 gioca {os.path.join(dest, os.path.basename(s['file']))}")
+        return 0
+
+    # azione = elenca (default)
+    print(f"FAVELLA 1 — galleria di storie ({len(storie)} avventure brevi)\n")
+    for s in storie:
+        print(f"  {s['id']:<22} {stelle(s.get('difficolta'))}  {s['titolo']}")
+        print(f"  {'':<22} {s.get('descrizione', '')}")
+        print(f"  {'':<22} ({s.get('genere', '')} · {s.get('durata', '')})\n")
+    print("Gioca una storia con:  favella1 galleria gioca <id>")
+    print("Copiane il sorgente con:  favella1 galleria copia <id>")
+    return 0
+
+
 def costruisci_parser():
     p = argparse.ArgumentParser(
         prog="favella1",
@@ -166,6 +304,29 @@ def costruisci_parser():
     e.add_argument("-o", "--output", default=None, help="file .html di destinazione")
     e.add_argument("--titolo", default=None, help="titolo del gioco esportato")
     e.set_defaults(func=cmd_esporta)
+
+    lib = sub.add_parser("libreria", aliases=["library"],
+                         help="elenca o copia i moduli .fav riusabili (Includi)")
+    lib.add_argument("azione", nargs="?", default="elenca",
+                     choices=["elenca", "copia"],
+                     help="elenca (default) o copia un modulo")
+    lib.add_argument("nome", nargs="?", default=None,
+                     help="nome del modulo da copiare (es. sinonimi)")
+    lib.add_argument("--tutti", action="store_true", help="copia tutti i moduli")
+    lib.add_argument("-o", "--output", default=None,
+                     help="cartella di destinazione (default: cartella corrente)")
+    lib.set_defaults(func=cmd_libreria)
+
+    gal = sub.add_parser("galleria", aliases=["gallery"],
+                         help="elenca, gioca o copia le storie brevi della galleria")
+    gal.add_argument("azione", nargs="?", default="elenca",
+                     choices=["elenca", "gioca", "copia"],
+                     help="elenca (default), gioca o copia una storia")
+    gal.add_argument("id", nargs="?", default=None,
+                     help="id della storia (es. il-faro)")
+    gal.add_argument("-o", "--output", default=None,
+                     help="cartella di destinazione per 'copia'")
+    gal.set_defaults(func=cmd_galleria)
 
     v = sub.add_parser("versione", aliases=["version"], help="stampa la versione del motore")
     v.set_defaults(func=cmd_versione)
