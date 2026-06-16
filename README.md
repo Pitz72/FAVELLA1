@@ -1,7 +1,7 @@
 # FAVELLA 1
 
 <p align="center">
-  <img src="assets/banner.png" alt="FAVELLA 1 — Programmare storie interattive in linguaggio naturale italiano" width="840">
+  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.0.0 — L'italiano è il linguaggio di programmazione" width="880">
 </p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
