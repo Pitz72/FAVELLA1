@@ -4,6 +4,49 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [0.33.0] - 2026-06-16
+### Tema 4: il mondo che cambia in scena 🌒
+Quarta sessione del **piano di completamento del linguaggio**
+(`documentazione/espansione-oltre-0.29.md`): il **Tema 4**, due «non si può» dal
+lato della *messa in scena*, indipendenti e a riuso alto. **Additivo** (le 4 demo
+e tutte le storie esistenti compilano e si comportano identiche). Modifica di
+grammatica → bump **minor**; spec nuova `documentazione/grammatica-0.33.0.md`.
+
+- **4a — buio commutabile.** Una conseguenza nuova (`ConseguenzaBuioStanza`):
+  `e adesso la radura diventa buia.` spegne la luce di una stanza e
+  `… diventa illuminata.` (o `chiara`) la riaccende. Fino a ieri il buio di stanza
+  (`è buia`) era **statico** — solo all'avvio; ora il ciclo giorno/notte può calare
+  il buio in scena. La proprietà è classificata per **radice** riusando il folding
+  di concordanza (`bui-` → buio; `illuminat-`/`chiar-` → luce). **ANNULLA-safe**
+  senza RNG (è stato del mondo). Diagnostica gentile: cambiare il buio a un oggetto,
+  o con una proprietà non di luce, è un errore localizzato.
+- **4b — battuta di nodo condizionale.** La regola della battuta guadagna una
+  clausola `se` opzionale, per parità con le descrizioni:
+  `Anna al nodo "x" dice "Ciao." se il doppiogioco è palese.` convive con la battuta
+  incondizionata (fallback). Le varianti si **accumulano** e a render-time vince la
+  prima la cui condizione è vera — riuso diretto del meccanismo «prima vera vince»
+  delle descrizioni.
+- **4c — creazione di oggetti: pesata e rimandata.** Creare un oggetto *non
+  dichiarato* sfida il terminale chiuso `ENTITA`; il pattern «dichiara nel nulla e
+  rivela» resta sufficiente. Non entra in 0.33.0 (annotato in
+  `debiti-motore-da-integrare`).
+- **Grammatica LALR(1) 0-ambigua.** 4a: dopo `ENTITA` il lookahead `"diventa"` è
+  disgiunto da `_copula`/`"va"`/`"cambia"`, ed `ENTITA` è disgiunto da `VARIABILE`
+  (niente collisione con `VARIABILE "diventa" …`). 4b: dopo il 2° testo il lookahead
+  `"se"` vs `"."` è disgiunto. **Nessun** terminale o parola riservata nuovi. Guardia
+  anti-ambiguità estesa a entrambi.
+- **Demo.** Il saluto di Anna in `cuori-al-caffe.fav` ora si **scalda** quando
+  l'affinità è alta (battuta condizionale 4b): risolve l'attrito annotato nel demo.
+  Il 4a (buio commutabile) non è stato retrofittato nelle demo: la notte
+  *all'aperto* del survival non è buio pesto (stelle + uscite visibili), e
+  sostituirla regredirebbe le descrizioni notturne d'autore — il costrutto è
+  comunque pienamente coperto dai test.
+- **Test.** +10 test (4a: spegne/riaccende/sinonimo-chiara/ANNULLA/2 diagnostiche;
+  4b: prima-vera-vince/runtime/segnaposto/retro-compatibilità). Suite **666
+  linguaggio + 43 collaudo** (pytest **304**), LALR(1) 0-ambiguo.
+
+---
+
 ## [0.32.0] - 2026-06-16
 ### Tema 2 (resto): casualità d'autore non-numerica 🎲
 Terza sessione del **piano di completamento del linguaggio**

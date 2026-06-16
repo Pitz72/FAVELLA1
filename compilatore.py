@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v0.32.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v0.33.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -14,7 +14,7 @@ from strutture import (
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaSceltaStato,
-    ConseguenzaContatore,
+    ConseguenzaContatore, ConseguenzaBuioStanza,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
     Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
 )
@@ -483,7 +483,12 @@ _GRAMMAR_TEMPLATE = r"""
     //   'Al nodo "saluto" l'opzione "Addio." chiude il dialogo.' — opzione del giocatore.
     //     Inizia con "Al": lookahead "nodo" vs "turno" (eventi).
     def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
-    def_battuta: ENTITA "al" "nodo" TESTO_QUOTATO "dice" TESTO_QUOTATO "."
+    // [0.33.0 / Tema 4b] Battuta CONDIZIONALE: clausola 'se' opzionale dopo il
+    // testo, per parità con le descrizioni (def_descrizione). Dopo il secondo
+    // TESTO_QUOTATO il lookahead "se" vs "." è disgiunto → LALR(1) 0-ambiguo. Più
+    // battute per lo stesso nodo si accumulano (transformer): a render-time vince
+    // la prima la cui condizione è vera, le incondizionate fanno da fallback.
+    def_battuta: ENTITA "al" "nodo" TESTO_QUOTATO "dice" TESTO_QUOTATO ( "se" condizione )? "."
     // [0.10.2] L'opzione ha un ESITO: 'conduce al nodo "X"' (ramificazione) oppure
     // 'chiude il dialogo'. Dopo il testo dell'opzione il lookahead "conduce" vs
     // "chiude" distingue le due alternative: LALR(1) 0-ambiguo.
@@ -610,6 +615,16 @@ _GRAMMAR_TEMPLATE = r"""
                 // 'cambia stanza', equivalente e privo di collisioni.
                 | ENTITA "va" PREP_LUOGO ENTITA  -> cons_png_va
                 | ENTITA "cambia" "stanza"       -> cons_png_cambia
+                // [0.33.0 / Tema 4a] Buio COMMUTABILE di una stanza: 'la radura
+                // diventa buia' (spegne la luce) / 'la radura diventa illuminata'
+                // (la riaccende). Inizia con ENTITA come spostamento/proprietà/
+                // movimento: dopo l'entità il lookahead "diventa" è disgiunto da
+                // _copula/"va"/"cambia" → LALR(1) 0-ambiguo. ENTITA è un terminale
+                // CHIUSO disgiunto da VARIABILE, quindi non collide con
+                // 'VARIABILE "diventa" …' (cons_contatore_set / cons_scelta_stato),
+                // che parte da VARIABILE. La PROPRIETA (buia/illuminata/chiara) è
+                // classificata nel transformer (folding per radice 'bui-').
+                | ENTITA "diventa" PROPRIETA     -> cons_stanza_buio
                 | VARIABILE "è" PROPRIETA        -> cons_variabile
                 // [0.32.0 / Tema 2b] Scelta casuale fra VALORI DI STATO: 'il meteo
                 // diventa uno fra sereno, pioggia, nebbia'. Pesca una PROPRIETA
@@ -1029,11 +1044,20 @@ class FavellaTransformer(Transformer):
         self._dialogo_inizio[normalizza_nome(npc_grezzo)] = etichetta
         return None
 
-    def def_battuta(self, npc_grezzo, etichetta, battuta):
+    def def_battuta(self, npc_grezzo, etichetta, battuta, *resto):
         # 'Il mercante al nodo "saluto" dice "Benvenuto!".' — la battuta dell'NPC
         # al nodo. I nodi sono GLOBALI (etichetta unica nel gioco); il nome dell'NPC
         # serve alla leggibilità e alla validazione (registrato in _nodo_speaker).
-        self.mondo.nodo_dialogo_di(etichetta).battuta = battuta
+        # [0.33.0 / Tema 4b] Una clausola 'se' opzionale rende la battuta
+        # CONDIZIONALE: 'resto' contiene allora l'oggetto Condizione. Le battute
+        # condizionali si accumulano (prima vera vince a render-time); quelle
+        # incondizionate fanno da fallback (l'ultima vince, come le descrizioni).
+        condizione = next((a for a in resto if isinstance(a, Condizione)), None)
+        nodo = self.mondo.nodo_dialogo_di(etichetta)
+        if condizione is None:
+            nodo.battuta = battuta
+        else:
+            nodo.battute_condizionali.append((condizione, battuta))
         self._nodo_speaker[etichetta] = normalizza_nome(npc_grezzo)
         return None
 
@@ -1452,6 +1476,27 @@ class FavellaTransformer(Transformer):
         # a caso (fra le uscite della sua stanza), pescata da mondo.rng.
         return ConseguenzaMovimentoPNG(normalizza_nome(png_grezzo), adiacente=True)
 
+    def cons_stanza_buio(self, ent_grezzo, prop_grezzo):
+        # [0.33.0 / Tema 4a] 'la radura diventa buia' / '… diventa illuminata':
+        # commuta il buio della STANZA. Classifichiamo la PROPRIETA per RADICE,
+        # riusando il folding di concordanza: radice 'bui-' (buia/buio/buie) →
+        # buio; 'illuminat-' o 'chiar-' → luce. Ogni altra proprietà è un errore
+        # d'autore gentile (qui, perché la PROPRIETA è nota subito). L'esistenza
+        # del bersaglio come STANZA è validata in _valida_conseguenze (differita:
+        # la stanza può essere dichiarata dopo).
+        id_stanza = normalizza_nome(ent_grezzo)
+        radice = radice_proprieta(normalizza_nome(prop_grezzo))
+        if radice == radice_proprieta("buia"):
+            buio = True
+        elif radice in (radice_proprieta("illuminata"), radice_proprieta("chiara")):
+            buio = False
+        else:
+            self.errori.append(
+                f"'{prop_grezzo}' non è una proprietà di luce valida per una "
+                f"stanza: usa 'buia' oppure 'illuminata'/'chiara'.")
+            buio = True  # segnaposto: la compilazione fallisce comunque per l'errore
+        return ConseguenzaBuioStanza(id_stanza, buio)
+
     def cons_variabile(self, var_grezzo, valore_grezzo):
         return ConseguenzaVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
 
@@ -1531,6 +1576,12 @@ class FavellaTransformer(Transformer):
                 if c.destinazione is not None and not self.mondo.trova_stanza(c.destinazione):
                     self.errori.append(
                         f"Stanza inesistente nel movimento del personaggio: '{c.destinazione}'")
+            if isinstance(c, ConseguenzaBuioStanza) and not self.mondo.trova_stanza(c.id_stanza):
+                # [0.33.0 / Tema 4a] Il buio commutabile agisce solo su una STANZA
+                # (un oggetto/personaggio con lo stesso nome non va bene).
+                self.errori.append(
+                    f"Il buio si può cambiare solo a una stanza: '{c.id_stanza}' "
+                    f"non è una stanza.")
 
     def _crea_evento(self, tipo, args):
         # args: (NUMERO, [TESTO_QUOTATO], conseguenza*). [0.19.0/A9] La battuta
@@ -2029,6 +2080,9 @@ class FavellaTransformer(Transformer):
         testi += [d.risposta for d in m.demoni]   # [Livello 8]
         for nodo in m.dialogo_nodi.values():
             testi.append(nodo.battuta)
+            # [0.33.0 / Tema 4b] Anche le battute condizionali ('… dice "…" se …')
+            # vanno ispezionate per i segnaposto [nome].
+            testi += [t for _, t in nodo.battute_condizionali]
             testi += [o.testo for o in nodo.opzioni]
         return testi
 

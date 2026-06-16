@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "0.32.0"
+VERSIONE_MOTORE = "0.33.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -410,6 +410,24 @@ class ConseguenzaMovimentoPNG(Conseguenza):
         if destinazione == pos_gioc:
             mondo.annunci.append(f"{nome} arriva.")
 
+class ConseguenzaBuioStanza(Conseguenza):
+    """[0.33.0 / Tema 4a] Commuta il BUIO di una stanza in scena: 'e adesso la
+    radura diventa buia' (spegne la luce) / 'e adesso la radura diventa illuminata'
+    (la riaccende). Il buio di stanza (`Stanza.buia`, §10) nasceva STATICO — solo
+    'La cantina è buia.' all'avvio; questa conseguenza lo rende DINAMICO, così il
+    ciclo giorno/notte di una storia di sopravvivenza può calare il buio. È stato
+    del mondo (un attributo della stanza), quindi ANNULLA lo riavvolge come ogni
+    altro cambiamento, senza bisogno di RNG. Il bersaglio dev'essere una stanza
+    (validato a compile-time in `_valida_conseguenze`)."""
+    def __init__(self, id_stanza: str, buio: bool):
+        self.id_stanza = id_stanza
+        self.buio = buio   # True = la stanza diventa buia; False = si illumina
+
+    def esegui(self, mondo: 'Mondo'):
+        stanza = mondo.trova_stanza(self.id_stanza)
+        if stanza is not None:
+            stanza.buia = self.buio
+
 # --- Classi Esistenti (con modifiche) ---
 
 class Azione:
@@ -581,8 +599,24 @@ class NodoDialogo:
     """Un nodo del grafo di dialogo: la battuta dell'NPC più le opzioni offerte."""
     def __init__(self, etichetta: str):
         self.etichetta = etichetta
+        # Battuta di BASE (fallback senza condizione). Più dichiarazioni
+        # incondizionate per lo stesso nodo: l'ultima vince (come le descrizioni).
         self.battuta: str = ""
+        # [0.33.0 / Tema 4b] Battute CONDIZIONALI: lista di (Condizione, testo)
+        # valutate in ordine di dichiarazione; la prima vera vince, altrimenti vale
+        # 'battuta'. È la stessa simmetria «prima vera vince» delle descrizioni di
+        # oggetti/stanze (vedi _descrizione_attuale).
+        self.battute_condizionali: List = []
         self.opzioni: List[OpzioneDialogo] = []
+
+    def battuta_attuale(self, mondo: 'Mondo') -> str:
+        """[0.33.0 / Tema 4b] La battuta da pronunciare ora: la prima battuta
+        condizionale la cui condizione è vera (in ordine), altrimenti la battuta
+        di base. Le condizioni si valutano sullo stato corrente del mondo."""
+        for condizione, testo in self.battute_condizionali:
+            if condizione.valuta(mondo):
+                return testo
+        return self.battuta
 
 class Stanza:
     """Rappresenta una singola stanza nel mondo di gioco."""

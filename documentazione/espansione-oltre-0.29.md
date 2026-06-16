@@ -223,8 +223,15 @@ Tema 1 e 2. Rivedere se più tester reali lo chiedono (Pietro è il primo).
 # TEMA 4 — Contenuti e mondo dinamici
 
 Tre piccoli «non si può» dal lato della *messa in scena*, indipendenti fra loro.
+**Stato (v0.33.0, S4):** 4a e 4b ✅ FATTI; 4c 🛑 PESATO E RIMANDATO.
 
-### 4a. Buio dinamico (sopravvivenza S1)
+### 4a. Buio dinamico (sopravvivenza S1) — ✅ FATTO (0.33.0)
+Realizzato: la conseguenza `ConseguenzaBuioStanza` (`ENTITA "diventa" PROPRIETA`)
+commuta `Stanza.buia` in scena. `e adesso la radura diventa buia.` spegne la luce,
+`… diventa illuminata.`/`chiara.` la riaccende. Proprietà classificata per radice
+(`bui-` / `illuminat-`/`chiar-`), ANNULLA-safe senza RNG, diagnostica gentile
+(bersaglio non-stanza o proprietà non di luce). Spec `grammatica-0.33.0.md` §16.
+*(Testo storico sotto.)*
 La proprietà `è buia` è **statica**: una conseguenza `e adesso la radura è buia`
 è rifiutata (le conseguenze agiscono su oggetti, non su stanze). Il ciclo
 giorno/notte — battito di ogni survival — non può spegnere la luce delle stanze.
@@ -235,7 +242,12 @@ giorno/notte — battito di ogni survival — non può spegnere la luce delle st
   `Quando il momento è notte: tutte le stanze all'aperto sono buie.` (ambizioso),
   oppure il più semplice `e adesso la radura diventa buia.`.
 
-### 4b. Battuta di nodo condizionale (dating A3)
+### 4b. Battuta di nodo condizionale (dating A3) — ✅ FATTO (0.33.0)
+Realizzato: `def_battuta` estesa con `( "se" condizione )?` opzionale; `NodoDialogo`
+accumula `battute_condizionali` e `battuta_attuale(mondo)` sceglie la prima vera
+(altrimenti la base), riuso del meccanismo delle descrizioni. Demo: il saluto di
+Anna in `cuori-al-caffe.fav` si scalda con l'affinità. Spec §16. *(Storico sotto.)*
+
 La battuta di un nodo di dialogo non ammette varianti `se`:
 `… al nodo "x" dice "…" se [cond]` è **rifiutato** — eppure le descrizioni di
 oggetti/stanze le hanno (`La descrizione di X se … è "…"`). È un'**asimmetria**.
@@ -247,7 +259,12 @@ oggetti/stanze le hanno (`La descrizione di X se … è "…"`). È un'**asimmet
   «più varianti, prima vera vince» è già implementato per le descrizioni → in
   buona parte riuso.
 
-### 4c. Creazione di oggetti (sopravvivenza S2)
+### 4c. Creazione di oggetti (sopravvivenza S2) — 🛑 PESATO E RIMANDATO (0.33.0)
+Confermata la raccomandazione: creare un oggetto non dichiarato sfida il terminale
+chiuso `ENTITA`; il pattern «dichiara nel nulla e rivela» resta sufficiente e più
+semplice. Non realizzato in S4; resta workaround documentato (vedi
+`debiti-motore-da-integrare`). *(Testo storico sotto.)*
+
 `usa X su Y` sposta oggetti **già esistenti** (anche dal «nulla»), ma non può
 *creare* un oggetto nuovo. Il crafting «due bastoni → una torcia nuova» non è
 esprimibile; va pre-collocato tutto nel «nulla» e rivelato.

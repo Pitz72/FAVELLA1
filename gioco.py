@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v0.32.0)
+# Interprete Interattivo per FAVELLA 1 (v0.33.0)
 
 import sys
 import traceback
@@ -375,8 +375,11 @@ def _mostra_nodo(mondo: Mondo):
         mondo.termina_dialogo()
         return
     nome = prima_maiuscola(npc.nome_visualizzato) if npc else "?"
-    if nodo.battuta:
-        print(f"\n{nome}: {rendi_testo(mondo, nodo.battuta)}")
+    # [0.33.0 / Tema 4b] La battuta può variare con una condizione ('… dice "…"
+    # se …'): si sceglie la prima battuta condizionale vera, altrimenti la base.
+    battuta = nodo.battuta_attuale(mondo)
+    if battuta:
+        print(f"\n{nome}: {rendi_testo(mondo, battuta)}")
     opzioni = _opzioni_disponibili(mondo, nodo)
     if not opzioni:
         print("(La conversazione si chiude.)")

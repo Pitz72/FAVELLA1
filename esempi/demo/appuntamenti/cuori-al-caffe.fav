@@ -66,6 +66,10 @@ Invece di usa il romanzo su Bea se il giocatore ha il romanzo: dire "Bea sfoglia
 # 4. DIALOGO CON ANNA  [albero con opzioni che alzano l'affinità + gating]
 # ============================================================================
 Il dialogo di Anna comincia con "anna_saluto".
+# [0.33.0 / Tema 4b] La battuta del nodo varia con lo stato: quando l'affinità è
+# alta, Anna saluta più calda. La variante condizionale ha la precedenza; la
+# battuta senza `se` resta il fallback (prima vera vince, come le descrizioni).
+Anna al nodo "anna_saluto" dice "(Chiude il libro appena ti vede e scosta la sedia accanto.) «Sei tornato. Bene: cominciavo a sperarci.» (Affinità: [affinità di Anna])" se l'affinità di Anna è almeno 4.
 Anna al nodo "anna_saluto" dice "(Alza gli occhi dal libro.) «Oh. Ciao. Non è che ami molto la confusione, ma... siediti pure.» (Affinità: [affinità di Anna])".
 Al nodo "anna_saluto" l'opzione "Cosa stai leggendo?" conduce al nodo "anna_libri".
 Al nodo "anna_saluto" l'opzione "Posso offrirti qualcosa?" conduce al nodo "anna_gentile".

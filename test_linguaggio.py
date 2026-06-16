@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v0.32.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v0.33.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -1659,6 +1659,18 @@ _CORPUS_GUARDIA = (
     'Invece di osserva: il meteo diventa uno fra sereno, pioggia, nebbia.\n'        # 2b cons_scelta_stato
     'Ogni turno se càpita (1 su 4): aumenta il punteggio.\n'                        # 2c cond_probabilita (demone)
     'Invece di scruta se càpita (3 su 4) e il meteo è pioggia: dire "Forse.".\n'    # 2c in regola, in AND con cond_variabile
+    # [0.33.0 / Tema 4a] Buio COMMUTABILE: 'la stanza diventa buia/illuminata'.
+    # Dopo ENTITA il lookahead "diventa" è disgiunto da _copula/"va"/"cambia"; ENTITA
+    # è un terminale chiuso disgiunto da VARIABILE, quindi non collide con
+    # 'VARIABILE "diventa" …' (cons_contatore_set / cons_scelta_stato).
+    '"oscura" è un comando senza oggetto.\n'
+    'Invece di oscura: la cantina diventa buia.\n'           # cons_stanza_buio (buio)
+    '"rischiara" è un comando senza oggetto.\n'
+    'Invece di rischiara: la cantina diventa illuminata.\n'  # cons_stanza_buio (luce)
+    # [0.33.0 / Tema 4b] Battuta CONDIZIONALE: 'X al nodo "n" dice "…" se …'. Dopo
+    # il secondo TESTO_QUOTATO il lookahead "se" vs "." è disgiunto → 0-ambiguo. Si
+    # accumula sulla battuta INCONDIZIONATA del nodo "chi" già nel corpus (fallback).
+    'Il mercante al nodo "chi" dice "Sono in allerta." se l\'allarme è attivo.\n'   # def_battuta condizionale
 )
 
 
@@ -2099,6 +2111,161 @@ def test_tema2c_serializza_chance_e_2b_pick():
     chance = [c for c in cond_dem if isinstance(c, dict) and c.get("op") == "chance"]
     _check(any(c.get("num") == 1 and c.get("den") == 4 for c in chance),
            "la condizione probabilistica è serializzata come {op:'chance', num, den}")
+
+
+# --- Test: Tema 4 [0.33.0] — il mondo che cambia in scena -------------------
+# 4a) buio COMMUTABILE ('la stanza diventa buia/illuminata'); 4b) battuta di
+# nodo CONDIZIONALE ('… dice "…" se …', prima vera vince come le descrizioni).
+
+
+def _src_buio():
+    """Mondo minimo per il Tema 4a: una stanza non buia in cui il giocatore parte,
+    più due verbi intransitivi che la oscurano / la rischiarano."""
+    return ("La radura è una stanza.\nIl giocatore comincia nella radura.\n"
+            'La descrizione della radura è "Una radura quieta.".\n'
+            '"oscura" è un comando senza oggetto.\n'
+            '"rischiara" è un comando senza oggetto.\n')
+
+
+def test_tema4a_diventa_buia_spegne_la_luce():
+    print("[4a: 'la radura diventa buia' spegne la luce in scena]")
+    m = runtime(_src_buio() +
+                'Invece di oscura: la radura diventa buia.\n')
+    radura = m.trova_stanza("radura")
+    _check(radura is not None and radura.buia is False, "la radura parte illuminata")
+    esegui(m, "oscura")
+    _check(radura.buia is True, "dopo 'oscura' la radura è buia")
+    out = esegui(m, "guarda")
+    _check("buio pesto" in out.lower(), "al buio 'guarda' mostra 'È buio pesto.'")
+    _check("radura quieta" not in out.lower(), "al buio la descrizione non si vede")
+
+
+def test_tema4a_diventa_illuminata_riaccende():
+    print("[4a: 'la radura diventa illuminata' riaccende una stanza buia]")
+    # La radura parte BUIA (statica) e viene riaccesa in scena.
+    m = runtime("La radura è una stanza.\nIl giocatore comincia nella radura.\n"
+                "La radura è buia.\n"
+                'La descrizione della radura è "Una radura quieta.".\n'
+                '"rischiara" è un comando senza oggetto.\n'
+                'Invece di rischiara: la radura diventa illuminata.\n')
+    radura = m.trova_stanza("radura")
+    _check(radura.buia is True, "la radura parte buia (dichiarazione statica)")
+    esegui(m, "rischiara")
+    _check(radura.buia is False, "dopo 'rischiara' la radura è illuminata")
+    out = esegui(m, "guarda")
+    _check("radura quieta" in out.lower(), "riaccesa, la descrizione torna visibile")
+
+
+def test_tema4a_chiara_e_un_sinonimo_di_illuminata():
+    print("[4a: 'diventa chiara' è accettato come opposto di 'buia']")
+    m = runtime("La radura è una stanza.\nIl giocatore comincia nella radura.\n"
+                "La radura è buia.\n"
+                '"rischiara" è un comando senza oggetto.\n'
+                'Invece di rischiara: la radura diventa chiara.\n')
+    esegui(m, "rischiara")
+    _check(m.trova_stanza("radura").buia is False, "'diventa chiara' spegne il buio")
+
+
+def test_tema4a_annulla_safe():
+    print("[4a: ANNULLA riavvolge il buio commutato]")
+    m = runtime(_src_buio() +
+                'Invece di oscura: la radura diventa buia.\n')
+    radura = m.trova_stanza("radura")
+    esegui(m, "oscura")
+    _check(radura.buia is True, "la radura è buia dopo 'oscura'")
+    esegui(m, "annulla")
+    # Dopo ANNULLA l'oggetto stanza potrebbe essere stato sostituito dall'istantanea.
+    _check(m.trova_stanza("radura").buia is False,
+           "ANNULLA riporta la radura allo stato illuminato precedente")
+
+
+def test_tema4a_bersaglio_non_stanza_e_errore():
+    print("[4a/diagnostica: cambiare il buio a un OGGETTO è un errore gentile]")
+    src = ("La cella è una stanza.\nUna pietra è una cosa.\nLa pietra è in cella.\n"
+           '"x" è un comando senza oggetto.\n'
+           "Invece di x: la pietra diventa buia.\n")
+    r = strutturato(src)
+    _check(not r["ok"], "il file NON compila (la pietra non è una stanza)")
+    msg = " ".join(e["message"] for e in r["errors"])
+    _check("pietra" in msg and "stanza" in msg.lower(),
+           "l'errore nomina la pietra e spiega che serve una stanza")
+
+
+def test_tema4a_proprieta_non_di_luce_e_errore():
+    print("[4a/diagnostica: 'diventa rossa' (non buio/luce) è un errore gentile]")
+    src = ("La cella è una stanza.\n"
+           '"x" è un comando senza oggetto.\n'
+           "Invece di x: la cella diventa rossa.\n")
+    r = strutturato(src)
+    _check(not r["ok"], "il file NON compila ('rossa' non è una proprietà di luce)")
+    msg = " ".join(e["message"] for e in r["errors"])
+    _check("rossa" in msg and ("buia" in msg or "illuminata" in msg),
+           "l'errore nomina 'rossa' e suggerisce buia/illuminata/chiara")
+
+
+def _src_battuta_cond():
+    """Mondo minimo per il Tema 4b: un NPC con una battuta che dipende da uno stato
+    ('doppiogioco'), più due battute condizionali e una di fallback."""
+    return ("La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+            "Il doppiogioco è uno stato.\nIl doppiogioco è ignoto.\n"
+            "Anna è un personaggio.\nAnna è in sala.\n"
+            'Il dialogo di Anna comincia con "incontro".\n'
+            'Anna al nodo "incontro" dice "Sono smascherata." se il doppiogioco è palese.\n'
+            'Anna al nodo "incontro" dice "Sospetti qualcosa?" se il doppiogioco è sospetto.\n'
+            'Anna al nodo "incontro" dice "Buongiorno.".\n'
+            'Al nodo "incontro" l\'opzione "Addio." chiude il dialogo.\n')
+
+
+def test_tema4b_battuta_condizionale_prima_vera_vince():
+    print("[4b: la battuta scelta è la prima la cui condizione è vera]")
+    m = runtime(_src_battuta_cond())
+    nodo = m.nodo_dialogo_di("incontro")
+    _check(len(nodo.battute_condizionali) == 2, "due battute condizionali accumulate")
+    _check(nodo.battuta == "Buongiorno.", "la battuta incondizionata è la base (fallback)")
+    # Stato di default: nessuna condizione vera -> fallback.
+    _check(nodo.battuta_attuale(m) == "Buongiorno.", "senza condizioni vere vince la base")
+    m.variabili["doppiogioco"] = "sospetto"
+    _check(nodo.battuta_attuale(m) == "Sospetti qualcosa?", "con 'sospetto' vince la 2a condizionale")
+    m.variabili["doppiogioco"] = "palese"
+    _check(nodo.battuta_attuale(m) == "Sono smascherata.",
+           "con 'palese' vince la 1a condizionale (ordine di dichiarazione)")
+
+
+def test_tema4b_battuta_condizionale_runtime():
+    print("[4b: 'parla con Anna' mostra la battuta giusta secondo lo stato]")
+    m = runtime(_src_battuta_cond())
+    out = esegui(m, "parla con Anna")
+    _check("Buongiorno." in out, "di default Anna usa la battuta di fallback")
+    m2 = runtime(_src_battuta_cond() +
+                 "Il doppiogioco è palese.\n")  # stato iniziale = palese
+    out2 = esegui(m2, "parla con Anna")
+    _check("Sono smascherata." in out2,
+           "con doppiogioco palese Anna usa la prima battuta condizionale")
+
+
+def test_tema4b_battuta_condizionale_con_segnaposto():
+    print("[4b: i segnaposto [nome] funzionano anche in una battuta condizionale]")
+    src = ("La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+           "Il bottino è un contatore.\nIl bottino parte da 9.\n"
+           "Il doppiogioco è uno stato.\nIl doppiogioco è palese.\n"
+           "Anna è un personaggio.\nAnna è in sala.\n"
+           'Il dialogo di Anna comincia con "incontro".\n'
+           'Anna al nodo "incontro" dice "Ho [bottino] monete." se il doppiogioco è palese.\n'
+           'Anna al nodo "incontro" dice "Niente.".\n'
+           'Al nodo "incontro" l\'opzione "Addio." chiude il dialogo.\n')
+    m = runtime(src)
+    out = esegui(m, "parla con Anna")
+    _check("Ho 9 monete." in out, "il segnaposto [bottino] è interpolato nella battuta condizionale")
+
+
+def test_tema4b_battuta_incondizionata_resta_compatibile():
+    print("[4b: una battuta senza 'se' continua a funzionare come prima]")
+    mondo, _ = compila(_SRC_NPC)
+    nodo = mondo.dialogo_nodi.get("saluto")
+    _check(nodo is not None and nodo.battuta == "Benvenuto, viaggiatore!",
+           "la battuta semplice resta la base del nodo")
+    _check(nodo is not None and nodo.battute_condizionali == [],
+           "nessuna battuta condizionale per un nodo senza clausola 'se'")
 
 
 def test_a4_idioma_direzioni_opposte_funziona():
@@ -2994,7 +3161,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-0.32.0.md")
+                          "grammatica-0.33.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3011,7 +3178,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-0.32.0.md è presente")
+           "documentazione/grammatica-0.33.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -4923,6 +5090,17 @@ def main():
         test_tema2c_probabilita_annulla_safe,
         test_tema2c_probabilita_in_regola_e_in_and,
         test_tema2c_serializza_chance_e_2b_pick,
+        # [0.33.0] Tema 4 — il mondo che cambia in scena (buio commutabile + battuta condizionale)
+        test_tema4a_diventa_buia_spegne_la_luce,
+        test_tema4a_diventa_illuminata_riaccende,
+        test_tema4a_chiara_e_un_sinonimo_di_illuminata,
+        test_tema4a_annulla_safe,
+        test_tema4a_bersaglio_non_stanza_e_errore,
+        test_tema4a_proprieta_non_di_luce_e_errore,
+        test_tema4b_battuta_condizionale_prima_vera_vince,
+        test_tema4b_battuta_condizionale_runtime,
+        test_tema4b_battuta_condizionale_con_segnaposto,
+        test_tema4b_battuta_incondizionata_resta_compatibile,
         # Livello 2.5 — errori d'autore migliori
         test_errore_entita_sconosciuta,
         test_errore_entita_suggerimento,
@@ -5044,7 +5222,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v0.32.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v0.33.0)")
     print("=" * 60)
     for t in tests:
         t()
