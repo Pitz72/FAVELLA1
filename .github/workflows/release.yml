@@ -1,15 +1,19 @@
 name: Release multipiattaforma
 
-# Build matrix su Windows/macOS/Linux con PyInstaller. Al push di un tag `v*`
-# gli installer vengono pubblicati come asset di una GitHub Release. Si può
-# lanciare anche a mano (workflow_dispatch) per produrre solo gli artifact,
-# senza pubblicare una Release.
+# Build matrix su Windows/macOS/Linux con PyInstaller. SI LANCIA SOLO A MANO
+# (workflow_dispatch): nessun avvio automatico al push. Quando lo lanci, la
+# casella «Pubblicare la Release?» decide cosa fare:
+#   - vuota  → produce solo gli installer come artifact (build di prova);
+#   - spuntata → crea e pubblica la GitHub Release, con tag `v<versione>`
+#                generato in automatico dalla versione del motore (strutture.py).
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
+    inputs:
+      pubblica:
+        description: "Pubblicare la Release su GitHub? (vuota = solo build di prova)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,6 +22,8 @@ jobs:
   build:
     name: Build ${{ matrix.artifact }}
     runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +111,7 @@ jobs:
   release:
     name: Pubblica la Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: ${{ github.event.inputs.pubblica == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Scarica tutti gli artifact
@@ -116,6 +122,8 @@ jobs:
       - name: Crea la GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: v${{ needs.build.outputs.version }}
           files: artifacts/**/*
           generate_release_notes: true
           body: |
