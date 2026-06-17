@@ -136,14 +136,7 @@ dmypy.json
 .pyre/
 
 # Esclusioni Progetto
-# NOTA (2026-06-17): inclusione TEMPORANEA della landing page nel repo pubblico.
-# Normalmente la landing è un repo separato locale e va ignorata: ripristinare
-# questa riga (e rimuovere landingpage/ dal tracking) dopo l'intervento.
-# landingpage/
-landingpage/node_modules/
-landingpage/dist/
-landingpage/.git.disabled/
-landingpage/scripts/_tmp_valida/
+landingpage/
 
 # Favella Studio (IDE Electron) — artefatti di build
 studio/out/
