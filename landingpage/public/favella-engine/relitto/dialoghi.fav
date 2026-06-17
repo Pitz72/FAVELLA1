@@ -1,0 +1,40 @@
+# ============================================================================
+# dialoghi.fav — Modulo NPC & DIALOGHI  [Livello 5b]
+# Demo ufficiale «Il Relitto Silente» — FAVELLA 1 v0.18.0
+# ----------------------------------------------------------------------------
+# L'ANZIANO: la memoria della civiltà K'tharr, proiezione olografica nel
+# Santuario Centrale. Il dialogo è il finale del gioco: il monologo si dispiega
+# tra i nodi, un ramo riconosce i segni lasciati con INCIDI (condizione OR), e
+# l'opzione conclusiva porta all'epilogo e a 'vinci'. La vittoria è raggiungibile
+# solo qui: arrivarci richiede tutta la catena di enigmi.
+# ('anziano' è dichiarato personaggio in oggetti.fav.)
+# Incluso da relitto.fav.
+# ============================================================================
+
+Il dialogo dell'anziano comincia con "benvenuto".
+
+L'anziano al nodo "benvenuto" dice "(La figura non muove le labbra, ma le parole fioriscono direttamente nella tua mente, limpide e complete.) «Creatura di carbonio... Figlio delle Stelle... Benvenuto. So cosa cerchi: una risposta. Ma io non sono che la memoria di una domanda. Sono ciò che resta quando il cantastorie è svanito: l'ultima frase, scritta nella luce.»".
+Al nodo "benvenuto" l'opzione "Chi eravate?" conduce al nodo "salto".
+Al nodo "benvenuto" l'opzione "Cosa ne è stato di voi?" conduce al nodo "memoria".
+Al nodo "benvenuto" l'opzione "Resto ad ascoltare." conduce al nodo "salto".
+
+L'anziano al nodo "salto" dice "«Il nostro tempo era un cerchio che si chiudeva. Il grande fuoco del nostro universo si riduceva a brace, e noi eravamo le ultime scintille. Ma la vita è una fiamma che non deve mai spegnersi del tutto. Così intraprendemmo il Grande Salto: non per conquistare, ma per comporre. Intrecciammo le note del nostro stesso essere nella trama silenziosa di mondi giovani, sperando che una nuova, imprevedibile sinfonia potesse un giorno iniziare.»".
+Al nodo "salto" l'opzione "E io che c'entro?" conduce al nodo "sangue".
+Al nodo "salto" l'opzione "Cosa è rimasto di voi?" conduce al nodo "memoria".
+
+L'anziano al nodo "memoria" dice "«Quasi nulla, e quasi tutto. Gli archivi sono polvere, i corpi sono cenere nelle capsule, i nomi si sono persi. Ma tu hai attraversato la nave, e hai visto. Hai letto, hai ascoltato, ti sei fermato dove altri avrebbero solo preso. Questo, e non i cristalli, è ciò che sopravvive: qualcuno che ricorda.»".
+Al nodo "memoria" l'opzione "E allora perché tutto questo?" conduce al nodo "sangue".
+Al nodo "memoria" l'opzione "Torno ad ascoltare." conduce al nodo "benvenuto".
+
+L'anziano al nodo "sangue" dice "«Tu... sei quella nuova musica. Nel tuo sangue porti il fantasma dei nostri tre soli. Siamo solo il ricordo della prima nota. Non ci hai trovati per caso: ti abbiamo seminato, molto prima che nascessi, in un mondo che avevamo scelto perché la vita vi attecchisse.»".
+Al nodo "sangue" l'opzione "Ho lasciato dei segni, là dietro." se le tacche è segnata oppure il bassorilievo è segnata oppure le capsule è segnata conduce al nodo "tracce".
+Al nodo "sangue" l'opzione "Allora cosa devo fare?" conduce al nodo "congedo".
+
+L'anziano al nodo "tracce" dice "«Lo so. Ho sentito la tua mano sulla pietra, goffa accanto alla nostra. Non cambierà niente: forse sono già polvere, insieme alla nave. Ma li hai fatti lo stesso, per la stessa ragione per cui qualcuno, prima di te, incise tre tacche in una parete che nessuno avrebbe più letto. Perché essere passati conta, anche quando non guarda nessuno. Non sei più soltanto un testimone: sei un anello della catena.»".
+Al nodo "tracce" l'opzione "Allora cosa devo fare?" conduce al nodo "congedo".
+
+L'anziano al nodo "congedo" dice "(La figura ti osserva, e per un istante senti il peso di un tempo incalcolabile.) «La nostra canzone è finita. Le sue ultime armonie si dissolvono ora, in questo istante. Tutto ciò che abbiamo sempre chiesto alla musica a venire è che venisse suonata, con forza, fino all'ultima nota. Vivi. Sarà il suono più bello.»".
+Al nodo "congedo" l'opzione "[Chiudi gli occhi e lascia andare.]" conduce al nodo "epilogo".
+
+L'anziano al nodo "epilogo" dice "Ti risvegli di soprassalto. Non sei più nel buio del Santuario: sei sulla plancia della Santa Maria, sulla tua poltrona di comando. Aria di ozono riciclato e caffè stantio. Familiarità. Guardi fuori dall'oblò: il Relitto Silente è scomparso, lo spazio è vuoto e indifferente, come se non fosse mai stato lì. Stai quasi per convincerti di aver immaginato tutto, quando un 'bip' sommesso attira la tua attenzione. Sul pannello, dove prima non c'era nulla, un piccolo oggetto: un seme fossilizzato. Ma non è più inerte — dentro, una debole luce verde pulsa lentamente, come un cuore addormentato in attesa della primavera. La ricchezza che cercavi non l'hai trovata. Hai trovato qualcos'altro: un'eredità, un segreto, una responsabilità. Il carico più prezioso che trasporti non è nelle casse della stiva. È qui, con te, sulla plancia.".
+Al nodo "epilogo" l'opzione "[Apri gli occhi.]" chiude il dialogo e adesso vinci.

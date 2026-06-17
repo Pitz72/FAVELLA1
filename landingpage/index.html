@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
+    <meta name="theme-color" content="#050a14" />
+
+    <title>FAVELLA 1.0.0 — Scrivi storie, non codice</title>
+    <meta name="description" content="FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.0.0, il linguaggio è completo. Parser LALR, 681 test. Su GitHub, aperto ai contributi." />
+    <meta name="keywords" content="Favella 1, narrativa interattiva, avventure testuali, interactive fiction, linguaggio di programmazione italiano, Inform 7 italiano, Python, Lark, open source, game design narrativo" />
+    <meta name="author" content="Simone Pizzi" />
+    <link rel="canonical" href="https://favella.eu/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://favella.eu/" />
+    <meta property="og:title" content="FAVELLA 1.0.0 — Scrivi storie, non codice" />
+    <meta property="og:description" content="Il linguaggio di programmazione in cui l'italiano È il codice. Open-source, versione 1.0.0: il linguaggio è completo. Dai una mano su GitHub." />
+    <meta property="og:image" content="https://favella.eu/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-favella-void text-favella-text-primary antialiased selection:bg-favella-cyan selection:text-favella-dark">
+    <!-- Sfondi animati di brand: griglia + aurore -->
+    <div class="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+      <div class="absolute inset-0 bg-grid-animate"></div>
+      <div class="aurora aurora-cyan"></div>
+      <div class="aurora aurora-emerald"></div>
+      <div class="aurora aurora-amber"></div>
+      <div class="absolute inset-0 bg-vignette"></div>
+    </div>
+    <div id="root" class="relative z-10"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
