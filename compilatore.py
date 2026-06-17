@@ -3244,6 +3244,10 @@ def _conseq_to_json(c, mondo):
         # [0.32.0 / Tema 2b] 'il meteo diventa uno fra sereno, pioggia, nebbia'.
         return {"op": "pick", "name": c.nome, "values": list(c.valori),
                 "kind": _kind_variabile(mondo, c.nome)}
+    if isinstance(c, ConseguenzaBuioStanza):
+        # [0.33.0 / Tema 4a] 'la radura diventa buia' / '… diventa illuminata'.
+        return {"op": "dark", "room": c.id_stanza,
+                "name": _nome_stanza(mondo, c.id_stanza), "dark": c.buio}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
     if isinstance(c, ConseguenzaSpostamento):
@@ -4323,6 +4327,10 @@ def _serializza_conseguenza(c):
         if not valori:
             raise ValueError("«diventa uno fra …» richiede almeno un valore.")
         return f"{c['name']} diventa uno fra {', '.join(valori)}"
+    if op == "dark":
+        # [0.33.0 / Tema 4a] Buio commutabile: '<stanza> diventa buia/illuminata'.
+        # 'name' è il nome con articolo (ENTITA) → 'la radura diventa buia'.
+        return f"{c['name']} diventa {'buia' if c.get('dark') else 'illuminata'}"
     if op == "count":
         mode, v = c["mode"], c.get("value", 1)
         if mode == "diventa":
