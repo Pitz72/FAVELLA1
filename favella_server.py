@@ -48,7 +48,7 @@ try:
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.9.10"  # v1.0.0: + buio commutabile (Tema 4a) negli editor visuali
+VERSIONE_SIDECAR = "0.9.11"  # v1.0.0: + movimento PNG (A5) → copertura editor COMPLETA
 
 
 # ==============================================================================

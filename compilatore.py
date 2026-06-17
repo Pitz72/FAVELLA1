@@ -3248,6 +3248,13 @@ def _conseq_to_json(c, mondo):
         # [0.33.0 / Tema 4a] 'la radura diventa buia' / '… diventa illuminata'.
         return {"op": "dark", "room": c.id_stanza,
                 "name": _nome_stanza(mondo, c.id_stanza), "dark": c.buio}
+    if isinstance(c, ConseguenzaMovimentoPNG):
+        # [0.25.0 / A5] '<png> va <prep> <stanza>' (deterministico) o '<png> cambia
+        # stanza' (adiacente, casuale). 'name' è il PNG con articolo (ENTITA).
+        return {"op": "movePNG", "png": c.id_png, "name": _nome_entita(mondo, c.id_png),
+                "adjacent": bool(c.adiacente),
+                "dest": c.destinazione,
+                "destName": _nome_stanza(mondo, c.destinazione) if c.destinazione else None}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
     if isinstance(c, ConseguenzaSpostamento):
@@ -4331,6 +4338,26 @@ def _serializza_conseguenza(c):
         # [0.33.0 / Tema 4a] Buio commutabile: '<stanza> diventa buia/illuminata'.
         # 'name' è il nome con articolo (ENTITA) → 'la radura diventa buia'.
         return f"{c['name']} diventa {'buia' if c.get('dark') else 'illuminata'}"
+    if op == "movePNG":
+        # [0.25.0 / A5] Movimento di un personaggio. Adiacente → 'X cambia stanza';
+        # deterministico → 'X va <prep> <stanza>' (prep articolata anti-doppio-articolo
+        # come _frase_posizione; le stanze usano la prep nuda 'in' + nucleo).
+        nome = c["name"]
+        if c.get("adjacent"):
+            return f"{nome} cambia stanza"
+        prep = c.get("prep")
+        place = c.get("place")
+        if prep is None or place is None:
+            _art, nucleo = _scomponi_articolo(c.get("destName") or c.get("dest") or "")
+            prep, place = "in", (nucleo or (c.get("dest") or ""))
+        if not place:
+            raise ValueError("Movimento PNG senza destinazione (stanza).")
+        nuda = prep.strip().lower() in ("in", "su", "a", "con", "per", "tra", "fra", "di", "da")
+        if not nuda:
+            _art, nucleo = _scomponi_articolo(place)
+            place = nucleo or place
+        sep = "" if prep.endswith("'") else " "
+        return f"{nome} va {prep}{sep}{place}"
     if op == "count":
         mode, v = c["mode"], c.get("value", 1)
         if mode == "diventa":
