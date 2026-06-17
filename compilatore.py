@@ -4232,9 +4232,24 @@ _DEF_KIND_TESTO = {
 }
 
 
+def _serializza_operando(v):
+    """[v1.0.0 / Tema 1] Quantità di un contatore (JSON) → testo .fav. Un numero è
+    un letterale; le forme dinamiche rispecchiano la grammatica operando:
+    {kind:'var'} → '[contatore]' (valore corrente), {kind:'rand'} → 'un numero fra
+    A e B' (estrazione). NB: nei CONFRONTI di condizione (operando_confronto) la
+    forma 'rand' non è ammessa dalla grammatica → l'editor non la offre lì."""
+    if isinstance(v, dict):
+        if v.get("kind") == "var":
+            return f"[{v['name']}]"
+        if v.get("kind") == "rand":
+            return f"un numero fra {v['min']} e {v['max']}"
+        raise ValueError(f"Operando non serializzabile: {v!r}.")
+    return str(v)
+
+
 def _serializza_condizione(c):
     """[Fase 6c] Condizione JSON (ricorsiva) → testo .fav canonico. Vincoli della
-    grammatica: NOT solo su has/prop/var (infisso «non»); contatori/gruppi non
+    grammatica: NOT solo su has/prop/var/varEq (infisso «non»); contatori/gruppi non
     negabili; AND='e', OR='oppure'; i gruppi composti dentro un altro composto
     vanno fra parentesi. Solleva ValueError su forme non ammesse."""
     op = c["op"]
@@ -4250,8 +4265,11 @@ def _serializza_condizione(c):
     if op == "playerIn":
         # [0.18.0 / B1] 'il giocatore è in [stanza]' (prep nuda + nucleo).
         return f"il giocatore è in {_nucleo_nome(c['name'])}"
+    if op == "chance":
+        # [v1.0.0 / Tema 2c] Probabilità: 'càpita (N su M)'.
+        return f"càpita ({c['num']} su {c['den']})"
     if op == "count":
-        cmp, v = c["cmp"], c["value"]
+        cmp, v = c["cmp"], _serializza_operando(c["value"])
         if cmp == "==":
             return f"{c['name']} è {v}"
         if cmp == "!=":  # [0.18.0 / B5] ≠
@@ -4299,12 +4317,19 @@ def _serializza_conseguenza(c):
     if op == "varCopy":
         # [0.34.0 / Tema 3] Copia stato↔stato: 'X diventa Y' (Y è un altro stato).
         return f"{c['name']} diventa {c['from']}"
+    if op == "pick":
+        # [0.32.0 / Tema 2b] Estrazione: 'X diventa uno fra a, b, c'.
+        valori = [v for v in c.get("values", []) if str(v).strip()]
+        if not valori:
+            raise ValueError("«diventa uno fra …» richiede almeno un valore.")
+        return f"{c['name']} diventa uno fra {', '.join(valori)}"
     if op == "count":
         mode, v = c["mode"], c.get("value", 1)
         if mode == "diventa":
-            return f"{c['name']} diventa {v}"
+            return f"{c['name']} diventa {_serializza_operando(v)}"
         base = "aumenta" if mode == "aumenta" else "diminuisci"
-        return f"{base} {c['name']}" + (f" di {v}" if v != 1 else "")
+        # Ometti 'di 1' (default); ogni operando dinamico è esplicito.
+        return f"{base} {c['name']}" + ("" if v == 1 else f" di {_serializza_operando(v)}")
     if op == "playerIn" or op == "teleport":
         # [0.18.0 / B2] Teletrasporto del giocatore: 'il giocatore è in [stanza]'.
         return f"il giocatore è in {_nucleo_nome(c['name'])}"
