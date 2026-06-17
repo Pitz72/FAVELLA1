@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
+  <stop offset="0" stop-color="#050a14"/><stop offset="0.5" stop-color="#0b1726"/><stop offset="1" stop-color="#0f2032"/>
+</linearGradient>
+<linearGradient id="ver" x1="0" y1="0" x2="1" y2="0.4">
+  <stop offset="0" stop-color="#5cf3ff"/><stop offset="0.42" stop-color="#22d3ee"/>
+  <stop offset="0.72" stop-color="#f59e0b"/><stop offset="1" stop-color="#fb923c"/>
+</linearGradient>
+<linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/>
+</linearGradient>
+<radialGradient id="glowc" cx="0.5" cy="0.5" r="0.5">
+  <stop offset="0" stop-color="#22d3ee" stop-opacity="0.40"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="glowa" cx="0.5" cy="0.5" r="0.5">
+  <stop offset="0" stop-color="#fb923c" stop-opacity="0.28"/><stop offset="1" stop-color="#fb923c" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0" stop-color="#22d3ee" stop-opacity="0"/><stop offset="0.5" stop-color="#22d3ee" stop-opacity="0.9"/>
+  <stop offset="1" stop-color="#fb923c" stop-opacity="0"/>
+</linearGradient>
+</defs>
+<rect width="1920" height="1080" fill="url(#bg)"/>
+<ellipse cx="960" cy="180" rx="900" ry="460" fill="url(#glowc)"/>
+<ellipse cx="500" cy="380" rx="620" ry="360" fill="url(#glowa)"/>
+<rect x="24" y="24" width="1872" height="1032" rx="40" fill="none" stroke="#1e3a52" stroke-opacity="0.6" stroke-width="2"/>
+
+<text x="960" y="132" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" letter-spacing="10" text-anchor="middle" fill="#62788d">IL SITO UFFICIALE · FAVELLA 1.0.0</text>
+<text x="960" y="318" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="196" font-weight="800" letter-spacing="2" text-anchor="middle" fill="url(#ver)">FAVELLA.EU</text>
+<text x="960" y="392" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="600" text-anchor="middle" fill="#9fb3c8">L'italiano è il linguaggio di programmazione</text>
+<rect x="360" y="450" width="1200" height="3" rx="1.5" fill="url(#rule)"/>
+<text x="960" y="516" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#eaf3fb">TUTTO QUELLO CHE TROVI NEL SITO</text>
+
+  <rect x="140" y="576" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="157,606 165,614 182,594" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="224" y="606" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Inizio</text>
+  <text x="224" y="634" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Il linguaggio in cui l'italiano è il codice.</text>
+  <rect x="224" y="650" width="716" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="140" y="662" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="157,692 165,700 182,680" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="224" y="692" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Il progetto</text>
+  <text x="224" y="720" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">La visione e l'ingegneria: parser LALR(1), 681 test.</text>
+  <rect x="224" y="736" width="716" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="140" y="748" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="157,778 165,786 182,766" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="224" y="778" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Novità &amp; roadmap</text>
+  <text x="224" y="806" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Changelog, traguardo 1.0.0 e prossimi passi.</text>
+  <rect x="224" y="822" width="716" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="140" y="834" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="157,864 165,872 182,852" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="224" y="864" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Guida rapida</text>
+  <text x="224" y="892" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Il manuale completo del linguaggio, anche in PDF.</text>
+  <rect x="224" y="908" width="716" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="140" y="920" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="157,950 165,958 182,938" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="224" y="950" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Corso interattivo</text>
+  <text x="224" y="978" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Ventuno «cassette», con il motore FAVELLA vero.</text>
+  <rect x="224" y="994" width="716" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="1016" y="576" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="1033,606 1041,614 1058,594" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1100" y="606" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Programma</text>
+  <text x="1100" y="634" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Scrivi ed esegui storie nel browser, senza installare.</text>
+  <rect x="1100" y="650" width="710" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="1016" y="662" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="1033,692 1041,700 1058,680" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1100" y="692" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Galleria</text>
+  <text x="1100" y="720" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Avventure testuali giocabili dal vivo.</text>
+  <rect x="1100" y="736" width="710" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="1016" y="748" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="1033,778 1041,786 1058,766" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1100" y="778" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Libreria</text>
+  <text x="1100" y="806" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Moduli .fav pronti da includere nelle storie.</text>
+  <rect x="1100" y="822" width="710" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+  <rect x="1016" y="834" width="58" height="58" rx="16" fill="url(#chip)"/>
+  <polyline points="1033,864 1041,872 1058,852" fill="none" stroke="#050a14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1100" y="864" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="30" font-weight="700" fill="#eaf3fb">Collabora</text>
+  <text x="1100" y="892" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="21" fill="#9fb3c8">Progetto open source: codice, storie, idee.</text>
+  <rect x="1100" y="908" width="710" height="1" fill="#1e3a52" fill-opacity="0.5"/>
+<rect x="360" y="1006" width="1200" height="3" rx="1.5" fill="url(#rule)"/>
+<text x="960" y="1046" font-family="'Segoe UI','Trebuchet MS',Arial,sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#5cf3ff">681 test verdi · 0 ambiguità · 100% italiano · sito pre-renderizzato · open source</text>
+</svg>
