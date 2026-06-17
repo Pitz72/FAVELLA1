@@ -114,6 +114,18 @@ celerybeat.pid
 env/
 venv/
 ENV/
+
+# --- Segreti di deploy (rete di sicurezza) ---
+# Le credenziali FTP/FTPS di favella.eu vivono FUORI dal repo, in
+# C:\Users\Utente\.favella1-deploy (cartella nascosta, ACL ristrette). Queste
+# righe servono solo da difesa-in-profondità: se un file di credenziali finisse
+# per errore dentro il repo, NON deve mai essere committato.
+.favella1-deploy/
+credentials.json
+*.ftp-credentials*
+ftp-credentials*
+*.secret
+secrets/
 env.bak/
 venv.bak/
 
