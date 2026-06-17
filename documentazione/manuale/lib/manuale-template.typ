@@ -114,18 +114,27 @@
 // =============================================================================
 // FRONTESPIZIO + COLOPHON
 // =============================================================================
-#let frontespizio(versione: "v0.18.0", edizione: "Seconda edizione · 2026", autore: "Simone Pizzi") = {
+// Frontespizio interno (pagina bianca): rispecchia ORDINE e CONTENUTI della
+// copertina (occhiello «MOTORE…», FAVELLA 1, 1.0.0, linea, Manuale di Programmazione),
+// adattati alla stampa interna — testo scuro su bianco, accenti di marca.
+#let frontespizio(versione: "v1.0.0", edizione: "Seconda edizione · 2026", autore: "Simone Pizzi") = {
+  let ver = versione.replace("v", "")
+  let brandGrad = gradient.linear(c.cyan-dark, c.teal, c.emerald, c.amber)
   page(header: none, footer: none)[
     #v(1fr)
     #align(center)[
-      #image("../assets/logo.png", width: 52pt)
+      #image("../assets/logo-hero.png", width: 2.1in)
+      #v(9mm)
+      #text(font: font-display, size: 11pt, weight: 600, tracking: 5pt, fill: c.cyan-dark)[MOTORE DI NARRATIVA INTERATTIVA]
       #v(6mm)
-      #text(font: font-display, size: 30pt, weight: 800, fill: c.ink)[FAVELLA 1]
-      #v(2mm)
-      #text(font: font-display, size: 16pt, weight: 500, fill: c.cyan-dark)[Manuale di Programmazione]
-      #v(3mm)
-      #text(font: font-body, size: 10.5pt, fill: c.muted)[Il linguaggio in cui l'italiano #emph[è] il codice]
-      #v(7mm)
+      #text(font: font-display, size: 40pt, weight: 800, tracking: 1pt, fill: c.ink)[FAVELLA 1]
+      #v(2.5mm)
+      #text(font: font-display, size: 22pt, weight: 800, tracking: 2pt, fill: brandGrad)[#ver]
+      #v(5mm)
+      #box(width: 46mm, line(length: 100%, stroke: 1.5pt + brandGrad))
+      #v(6mm)
+      #text(font: font-display, size: 17pt, weight: 600, fill: c.cyan-dark)[Manuale di Programmazione]
+      #v(8mm)
       #text(font: font-display, size: 12pt, weight: 500, fill: c.ink)[#autore]
     ]
     #v(1fr)
