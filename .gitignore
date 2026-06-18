@@ -174,8 +174,12 @@ Thumbs.db
 # IDE Favella Studio: spostato in repo privata (Pitz72/favella-studio)
 /studio/
 
-# Brand kit 2026: fonte locale (master + derivati + archivio); in pubblico vanno solo gli asset in assets/
-/Branding2026/
+# Brand kit 2026: fonte locale (master + derivati + archivio). In pubblico vanno
+# solo gli asset di consumo in assets/ e il materiale informativo tracciato in
+# branding/materiale/. Il kit sorgente resta fuori da git.
+/branding/marchi/
+/branding/favicon/
+/branding/archivio-2025/
 
 # Artefatti di anteprima del manuale (le pagine PNG di lavorazione)
 /documentazione/manuale/pag-*.png
