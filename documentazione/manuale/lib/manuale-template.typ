@@ -152,7 +152,7 @@
 #let dedica(testo) = {
   page(header: none, footer: none)[
     #v(1fr)
-    #align(center)[
+    #align(right)[
       #set text(font: font-body, size: 12pt, fill: c.ink-soft, style: "italic")
       #set par(leading: 0.95em, justify: false)
       #testo
@@ -161,27 +161,31 @@
   ]
 }
 
-// Colophon — chiude il libro: chi, con cosa, con quali caratteri.
-#let colophon(versione: "v0.18.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = {
-  pagebreak(weak: true)
+// Colophon → PAGINA DEI DIRITTI all'italiana (verso del frontespizio, p2).
+// Apre subito dopo il frontespizio: niente pagebreak iniziale qui.
+#let colophon(versione: "v1.0.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = {
   page(header: none, footer: none)[
     #v(1fr)
     #align(center)[
-      #image("../assets/logo.png", width: 40pt)
-      #v(5mm)
-      #set par(justify: false, leading: 0.85em)
+      #image("../assets/logo.png", width: 88pt)
+      #v(6mm)
+      #set par(justify: false, leading: 0.9em)
       #set text(font: font-body, size: 9.5pt, fill: c.ink-soft)
-      #text(font: font-display, size: 11pt, weight: 600, fill: c.ink)[FAVELLA 1 — Manuale di Programmazione]
+      #text(font: font-display, size: 12pt, weight: 600, fill: c.ink)[FAVELLA 1 — Manuale di Programmazione]
+      #v(2.5mm)
+      #text(size: 9pt)[#edizione · allineata al motore #versione]
       #v(3mm)
-      Linguaggio, motore e manuale ideati e scritti da #text(fill: c.ink, weight: 600)[#autore].
-      #linebreak()
-      #edizione, allineata al motore #versione.
-      #v(4mm)
-      Composto con #link("https://typst.app")[Typst]. \
-      Titoli in Sora, testo in Inter, codice in Source Code Pro. \
-      Gli esempi sono tratti da «La Casa di Via Stradivari».
-      #v(4mm)
       #box(width: 30mm, line(length: 100%, stroke: 1pt + gradient.linear(c.cyan, c.amber)))
+      #v(3.5mm)
+      #text(fill: c.ink, weight: 600)[© 2026 #autore — Runtime Edizioni]
+      #linebreak()
+      Tutti i diritti riservati.
+      #v(4.5mm)
+      #block(width: 80%)[FAVELLA 1 è un progetto open source: il motore e l'ebook sono distribuiti gratuitamente. Questa edizione a stampa sostiene lo sviluppo del progetto.]
+      #v(4.5mm)
+      #block(width: 80%)[Sito ufficiale: #link("https://www.favella.eu")[www.favella.eu] — download, spiegazioni, manuale interattivo, galleria di demo, libreria di moduli e i link per collaborare su GitHub.]
+      #v(4.5mm)
+      #block(width: 80%)[Composto con #link("https://typst.app")[Typst]. Titoli in Sora, testo in Inter, codice in Source Code Pro. Gli esempi sono tratti da «La Casa di Via Stradivari».]
     ]
     #v(1fr)
   ]
@@ -261,9 +265,12 @@
 
   // Titoli
   show heading.where(level: 1): it => {
-    // Ogni capitolo apre su pagina dispari (recto, «bella pagina»): se serve,
-    // Typst lascia bianco il verso precedente.
-    pagebreak(to: "odd", weak: true)
+    // Solo il PRIMO capitolo apre su pagina dispari (recto, «bella pagina»);
+    // gli altri proseguono sulla prima pagina utile, senza versi quasi vuoti.
+    context {
+      if _capnum.get().first() == 0 { pagebreak(to: "odd", weak: true) }
+      else { pagebreak(weak: true) }
+    }
     _capnum.step()
     block(above: 0pt, below: 0.9em)[
       #context text(font: font-display, size: 11pt, weight: 700, fill: c.cyan-dark, tracking: 2pt)[

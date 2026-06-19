@@ -18,7 +18,11 @@
 }
 #frontespizio(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)
 
-// ---- DEDICA -----------------------------------------------------------------
+// ---- COLOPHON / PAGINA DEI DIRITTI (p2, verso del frontespizio) --------------
+#colophon(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)
+
+// ---- DEDICA (p3, recto) -----------------------------------------------------
+#pagebreak(to: "odd", weak: true)
 #dedica[
   A Bonaventura Di Bello,#linebreak()
   che con le sue storie ci ha portato#linebreak()
@@ -37,7 +41,8 @@
   Alcune di queste pagine esistono per merito suo.
 ]
 
-// ---- INDICE -----------------------------------------------------------------
+// ---- INDICE (recto) ---------------------------------------------------------
+#pagebreak(to: "odd", weak: true)
 #page(header: none)[
   #text(font: font-display, size: 22pt, weight: 800, fill: c.ink)[Indice]
   #v(2mm)
@@ -69,5 +74,19 @@
 #include "capitoli/19-comandi-giocatore.typ"
 #include "capitoli/20-riepilogo.typ"
 
-// ---- COLOPHON ---------------------------------------------------------------
-#colophon(versione: MOTORE, autore: "Simone Pizzi", edizione: EDIZIONE)
+// ---- PADDING A MULTIPLO DI 4 (obbligo brossura KDP) --------------------------
+// Solo per l'interno di stampa: aggiunge pagine vacat (senza testatine né numero)
+// finché il totale è multiplo di 4. L'ebook non viene impaginato con pagine bianche.
+#if per-kdp {
+  // Normalizza il cursore all'inizio della prima pagina libera dopo il contenuto:
+  // così `here().page() - 1` è sempre l'ultima pagina di contenuto, a prescindere
+  // dal fatto che l'ultimo capitolo riempia o no la pagina fino in fondo.
+  pagebreak(weak: true)
+  context {
+    let contenuto = here().page() - 1
+    let pad = calc.rem(4 - calc.rem(contenuto, 4), 4)
+    for _ in range(pad) {
+      page(header: none, footer: none)[#hide[·]]
+    }
+  }
+}
