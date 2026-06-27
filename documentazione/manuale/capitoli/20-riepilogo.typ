@@ -79,8 +79,8 @@ Il tavolino è un supporto.
 
 *Stati e contatori*
 #fav(```
-La verita è uno stato.
-La verita è ignota.
+La verità è uno stato.
+La verità è ignota.
 Gli indizi è un contatore.
 La calma parte da 3.
 Le vite sono un contatore.

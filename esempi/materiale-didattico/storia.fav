@@ -21,14 +21,14 @@ La descrizione dell'ingresso se il temporale è scoppiato è "Anticamera stretta
 
 Il salotto è una stanza.
 La descrizione del salotto è "Tre poltrone, una credenza, un orologio a pendolo fermo. Sul tavolo, una cartelletta aperta. Il notaio aspetta seduto, non si è alzato quando sei entrato.".
-La descrizione del salotto se la verita è svelata è "Le stesse poltrone, la stessa credenza. Adesso lo vedi: tutto disposto come se qualcuno dovesse venire a riprenderla. Solo non è venuto nessuno.".
+La descrizione del salotto se la verità è svelata è "Le stesse poltrone, la stessa credenza. Adesso lo vedi: tutto disposto come se qualcuno dovesse venire a riprenderla. Solo non è venuto nessuno.".
 
 Lo studio è una stanza.
 La descrizione dello studio è "Una scrivania ordinata. Un cassetto chiuso a chiave. Sotto i piedi un kilim. Alle pareti, due foto di gruppo da cui qualcuno è stato ritagliato.".
 
 La cucina è una stanza.
 La descrizione della cucina è "Pavimentazione di graniglia. Lo schienale della sedia è ancora sguarnito. Il bicchiere e il flacone sono dove li ha lasciati. L'hanno trovata seduta, hanno detto, non riversa.".
-La descrizione della cucina se la verita è svelata è "Pavimentazione di graniglia. Non ti torna l'idea che sia caduta qui dentro: il pavimento è troppo pulito per una caduta. Forse non è caduta proprio.".
+La descrizione della cucina se la verità è svelata è "Pavimentazione di graniglia. Non ti torna l'idea che sia caduta qui dentro: il pavimento è troppo pulito per una caduta. Forse non è caduta proprio.".
 
 La camera è una stanza.
 La descrizione della camera è "Letto rifatto, lenzuola fresche. Sul comodino, un libro con il segnalibro al quinto capitolo. Contro la parete, un cassettone di noce: il primo cassetto è stato forzato di recente. Sopra di te, la botola della soffitta.".
@@ -74,8 +74,8 @@ Il giocatore comincia in ingresso.
 # ============================================================================
 # 5. STATI E CONTATORI  [Livello 3]
 # ============================================================================
-La verita è uno stato.
-La verita è ignota.
+La verità è uno stato.
+La verità è ignota.
 
 Il temporale è uno stato.
 Il temporale è lontano.
@@ -176,8 +176,8 @@ Invece di spegni la torcia se la torcia è accesa: dire "Premi l'interruttore. B
 Invece di bevi il bicchiere di grappa: dire "Ne resta poca. Ti riempie la bocca di legno bruciato." e adesso il bicchiere di grappa è nel nulla.
 
 # --- Esami con conseguenza: indizi + eventuale cambio di stato --------------
-# fotografia: gated da 'verita ignota' (si auto-disarma). CONSEGUENZE MULTIPLE.
-Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verita è sospetta e adesso diminuisci la calma.
+# fotografia: gated da 'verità ignota' (si auto-disarma). CONSEGUENZE MULTIPLE.
+Invece di esamina la fotografia se la verità è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verità è sospetta e adesso diminuisci la calma.
 
 # medicine: sentinella d'oggetto 'notata' per impedire il farming.
 Invece di esamina il flacone di medicine se il flacone di medicine non è notata: dire "Cardioaspirina, scatola sigillata, prescrizione del mese scorso. Non ne ha presa una. Chi smette di prenderle è qualcuno che ha deciso di smettere." e adesso aumenta gli indizi e adesso il flacone di medicine è notata e adesso diminuisci la calma.
@@ -203,5 +203,5 @@ Invece di brucia le lettere con la torcia se la torcia è accesa: dire "Le tieni
 
 # --- REGOLA GLOBALE SENZA BERSAGLIO  [Livello 5 / 0.9.2] --------------------
 # 'ricorda' è un verbo custom senza oggetto: la regola scatta sul solo verbo.
-Invece di ricorda se la verita è svelata: dire "Tua zia. Le lettere chiuse. Il bambino consegnato. Le mensilità mai cessate. Hai messo insieme [indizi] frammenti, e bastano.".
+Invece di ricorda se la verità è svelata: dire "Tua zia. Le lettere chiuse. Il bambino consegnato. Le mensilità mai cessate. Hai messo insieme [indizi] frammenti, e bastano.".
 Invece di ricorda: dire "Non hai abbastanza pezzi per cucirli insieme. Non ancora.".

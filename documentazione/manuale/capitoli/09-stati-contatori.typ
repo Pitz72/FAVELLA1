@@ -21,8 +21,8 @@ Nella Casa la verità sul conto di Adele attraversa più stadi, e il temporale p
 
 #esempio[
 #fav(```
-La verita è uno stato.
-La verita è ignota.
+La verità è uno stato.
+La verità è ignota.
 
 Il temporale è uno stato.
 Il temporale è lontano.
@@ -31,8 +31,8 @@ Il temporale è lontano.
 
 I valori — `ignota`, `sospetta`, `svelata` per la verità — non si elencano in
 anticipo: li introduci usandoli. Da quel momento puoi interrogare lo stato in una
-condizione (`se la verita è svelata`, oppure `se la verita non è ignota`) e
-cambiarlo con una conseguenza (`e adesso la verita è svelata`), che vedremo a
+condizione (`se la verità è svelata`, oppure `se la verità non è ignota`) e
+cambiarlo con una conseguenza (`e adesso la verità è svelata`), che vedremo a
 breve.
 
 == I contatori
@@ -118,7 +118,7 @@ FAVELLA sostituisce il segnaposto con il valore corrente.
 
 #esempio[
 #fav(```
-Invece di ricorda se la verita è svelata: dire "Hai messo insieme [indizi] frammenti, e bastano.".
+Invece di ricorda se la verità è svelata: dire "Hai messo insieme [indizi] frammenti, e bastano.".
 ```)
 ]
 
@@ -129,7 +129,7 @@ sia un testo fra virgolette.
 
 == Uno stato che ne ricalca un altro
 
-Finora il valore di uno stato lo hai sempre scritto a mano: `la verita è svelata`,
+Finora il valore di uno stato lo hai sempre scritto a mano: `la verità è svelata`,
 `il meteo è sereno`. Certe volte, però, il valore giusto è «quello di un altro
 stato», e non lo conosci in anticipo. Per questo uno stato può prendere il valore
 di un altro, e due stati si possono confrontare fra loro.

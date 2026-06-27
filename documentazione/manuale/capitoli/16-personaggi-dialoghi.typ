@@ -146,7 +146,7 @@ casa e parlando con entrambi.
 #esempio[
 #fav(```
 La vicina al nodo "soglia" dice "Lei chi è? ...Ah. Il nipote. Adele parlava di voi. Poco.".
-Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verita non è ignota chiude il dialogo e adesso vinci.
+Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verità non è ignota chiude il dialogo e adesso vinci.
 Al nodo "soglia" l'opzione "Devo andare." chiude il dialogo.
 ```)
 ]

@@ -39,7 +39,7 @@ personaggi; per ora nota la conseguenza `e adesso vinci` agganciata alla scelta.
 
 #esempio[
 #fav(```
-Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verita non è ignota chiude il dialogo e adesso vinci.
+Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verità non è ignota chiude il dialogo e adesso vinci.
 ```)
 ]
 

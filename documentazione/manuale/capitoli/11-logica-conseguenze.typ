@@ -45,7 +45,7 @@ Quando ti serve negare un *intero gruppo*, lo racchiudi tra parentesi e gli prem
 #esempio[
 #fav(```
 # Forma disponibile (la Casa non la usa, ma è perfettamente valida):
-Invece di esci se non ( il giocatore ha le lettere e la verita è svelata ): dire "Non puoi andartene così.".
+Invece di esci se non ( il giocatore ha le lettere e la verità è svelata ): dire "Non puoi andartene così.".
 ```)
 ]
 
@@ -79,14 +79,14 @@ Invece di bevi il bicchiere di grappa: dire "Ne resta poca. Ti riempie la bocca 
 ]
 
 *Muovere un contatore* (`aumenta`, `diminuisci`, oppure `diventa [N]`) o *cambiare
-uno stato* — fissandone il valore (`la verita è sospetta`) o copiandolo da un altro
+uno stato* — fissandone il valore (`la verità è sospetta`) o copiandolo da un altro
 stato (`il corteggiato diventa il preferito`, come nel capitolo «Stati e
 contatori»). Spesso una regola ne fa più d'una di seguito, ciascuna con il suo
 `e adesso`:
 
 #esempio[
 #fav(```
-Invece di esamina la fotografia se la verita è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verita è sospetta e adesso diminuisci la calma.
+Invece di esamina la fotografia se la verità è ignota: dire "Adele a vent'anni, di tre quarti, con in braccio un neonato. Il retro a matita: 'novembre del trentanove, prima di portarlo via'. Non c'è mai stato un cugino in casa nostra." e adesso aumenta gli indizi e adesso la verità è sospetta e adesso diminuisci la calma.
 ```)
 ]
 

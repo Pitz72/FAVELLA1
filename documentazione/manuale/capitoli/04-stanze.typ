@@ -87,7 +87,7 @@ Adele viene a galla, il salotto smette di essere un salotto qualunque:
 #esempio[
 #fav(```
 La descrizione del salotto è "Tre poltrone, una credenza, un orologio a pendolo fermo. Sul tavolo, una cartelletta aperta. Il notaio aspetta seduto, non si è alzato quando sei entrato.".
-La descrizione del salotto se la verita è svelata è "Le stesse poltrone, la stessa credenza. Adesso lo vedi: tutto disposto come se qualcuno dovesse venire a riprenderla. Solo non è venuto nessuno.".
+La descrizione del salotto se la verità è svelata è "Le stesse poltrone, la stessa credenza. Adesso lo vedi: tutto disposto come se qualcuno dovesse venire a riprenderla. Solo non è venuto nessuno.".
 ```)
 ]
 

@@ -15,10 +15,11 @@ Il molo è una stanza.
 La descrizione del molo è "Assi marce sotto i piedi, la risacca che batte i pali. Davanti a te il faro, nero contro il cielo nero. La porta in fondo dà sull'atrio.".
 
 L'atrio è una stanza.
-La descrizione dell'atrio è "La base del faro. Una scala di ferro sale a spirale verso una botola, in alto. Contro il muro, una vecchia cassapanca.".
+La descrizione dell'atrio è "La base del faro. Una scala di ferro sale a spirale verso una botola chiusa, in alto. Contro il muro, una vecchia cassapanca.".
+La descrizione dell'atrio se la botola è aperta è "La base del faro. La scala di ferro sale a una botola ormai spalancata: di lì si va SOPRA, su alla lanterna. Contro il muro, la vecchia cassapanca.".
 
 La lanterna è una stanza.
-La descrizione della lanterna se la grande lampada è spenta è "La cella di vetro in cima al faro. La grande lampada è morta, fredda. Sotto di te, nel buio, una nave cerca la costa a tentoni.".
+La descrizione della lanterna se la grande lampada è spenta è "La cella di vetro in cima al faro. La grande lampada è morta, fredda. Sotto di te, nel buio, una nave procede alla cieca verso gli scogli.".
 La descrizione della lanterna è "La cella di vetro splende. Il fascio gira sul mare, regolare, e laggiù la nave vira al largo, salva.".
 
 # ============================================================================
@@ -75,7 +76,7 @@ Invece di apri la cassapanca se la cassapanca è chiusa: dire "Il coperchio cede
 Invece di vai sopra se la botola è chiusa: dire "La botola sopra di te non si muove: è chiusa a chiave.".
 
 # Aprire la botola con la chiave (regola a due oggetti).
-Invece di usa la chiave della botola sulla botola se la botola è chiusa: dire "La chiave entra dura, poi gira. La botola si solleva con uno schianto di ruggine." e adesso la botola è aperta.
+Invece di usa la chiave della botola sulla botola se la botola è chiusa: dire "La chiave entra dura, poi gira. La botola si solleva con uno schianto di ruggine. La via verso l'alto è libera: sali SOPRA." e adesso la botola è aperta.
 
 # Accendere la lampada: serve avere i fiammiferi addosso.
 Invece di accendi la grande lampada se il giocatore non ha i fiammiferi: dire "Soffi sullo stoppino: niente. Ti servirebbe di che accendere.".

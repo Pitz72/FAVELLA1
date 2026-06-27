@@ -43,7 +43,7 @@ qualcosa] — `prendi`, `lascia`, `metti`, `apri` — la faccenda è più delica
   messaggio #emph[e la torcia non finirà nell'inventario]: hai sostituito l'intera
   azione «prendi», compreso il suo effetto. Per conservare l'effetto normale devi
   #emph[ricrearlo] con una conseguenza `e adesso` (il capitolo successivo,
-  «Conseguenze: e adesso»). È un tranello in cui cade chiunque, almeno una volta:
+  «Logica e conseguenze»). È un tranello in cui cade chiunque, almeno una volta:
   «Invece di» #emph[spegne] il comportamento di default.
 ]
 
@@ -78,7 +78,7 @@ un'altra regola applicabile.
 La torcia di Adele è a manovella: per accenderla devi averla in mano. Servono due
 regole, una per il caso «ci riesco» e una per il caso «non ci riesco»; la prima
 usa una condizione composta con `e` (la logica booleana completa è nel capitolo
-«Conseguenze: e adesso»).
+«Logica e conseguenze»).
 
 #esempio[
 #fav(```
@@ -211,7 +211,7 @@ raccolti:
 
 #esempio[
 #fav(```
-Invece di ricorda se la verita è svelata: dire "Tua zia. Le lettere chiuse. Il bambino consegnato. Le mensilità mai cessate. Hai messo insieme [indizi] frammenti, e bastano.".
+Invece di ricorda se la verità è svelata: dire "Tua zia. Le lettere chiuse. Il bambino consegnato. Le mensilità mai cessate. Hai messo insieme [indizi] frammenti, e bastano.".
 Invece di ricorda: dire "Non hai abbastanza pezzi per cucirli insieme. Non ancora.".
 ```)
 ]

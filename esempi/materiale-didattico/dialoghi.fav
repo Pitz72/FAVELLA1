@@ -45,15 +45,15 @@ La vicina al nodo "soglia" dice "Lei chi è? ...Ah. Il nipote. Adele parlava di 
 Al nodo "soglia" l'opzione "Le voleva bene?" conduce al nodo "bene" e adesso aumenta la fiducia.
 Al nodo "soglia" l'opzione "Cosa sa di lei?" conduce al nodo "sa".
 Al nodo "soglia" l'opzione "Dov'è la chiave dello studio?" se la fiducia è almeno 2 conduce al nodo "indica".
-Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verita non è ignota chiude il dialogo e adesso vinci.
+Al nodo "soglia" l'opzione "Continuerò io." se il giocatore ha le lettere e la verità non è ignota chiude il dialogo e adesso vinci.
 Al nodo "soglia" l'opzione "Devo andare." chiude il dialogo.
 
-La vicina al nodo "bene" dice "Le portavo il pane. Lei mi dava i gerani da tenere quando partiva per i suoi giri. Era sola, ma non vuota.".
+La vicina al nodo "bene" dice "Io le portavo il pane. Lei, quando partiva per le sue gite, mi affidava i gerani da innaffiare. Adele viveva sola, ma vuota non era.".
 Al nodo "bene" l'opzione "Quali giri?" conduce al nodo "sa" e adesso aumenta la fiducia.
 Al nodo "bene" l'opzione "Torno alla soglia." conduce al nodo "soglia".
 
-La vicina al nodo "sa" dice "So che scriveva. Tutti i mesi. E che le tornavano indietro chiuse. Smise di aprirle anche lei, le impilava e basta.".
-Al nodo "sa" l'opzione "A chi scriveva?" se gli indizi è almeno 3 conduce al nodo "figlio" e adesso la verita è svelata.
+La vicina al nodo "sa" dice "So che Adele scriveva. Una lettera al mese, sempre. E che le tornavano indietro chiuse, mai aperte da chi le riceveva. Alla fine smise di aprirle pure lei, quelle buste rispedite: le metteva in pila, e basta.".
+Al nodo "sa" l'opzione "A chi scriveva?" se gli indizi è almeno 3 conduce al nodo "figlio" e adesso la verità è svelata.
 Al nodo "sa" l'opzione "Perché tornavano indietro?" conduce al nodo "indietro".
 Al nodo "sa" l'opzione "Torno alla soglia." conduce al nodo "soglia".
 
