@@ -79,6 +79,36 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
 
 ---
 
+## 🔁 Ripartire da zero
+
+Il repository è stato ripulito da tutto ciò che si rigenera: dipendenze,
+virtualenv, build e cache. Per rimetterlo in moto:
+
+```bash
+# motore: serve solo Lark
+pip install lark
+python test_linguaggio.py     # 681 asserzioni
+python test_collaudo.py       # 43 asserzioni
+python favella.py gioca favella1/galleria/il-faro/il-faro.fav
+
+# pacchetto pip (artefatti in dist/)
+pip install build twine && python -m build && python -m twine check dist/*
+
+# eseguibili desktop: Actions → «Release multipiattaforma» (avvio manuale)
+# oppure in locale:  pip install pyinstaller && pyinstaller --clean favella1.spec
+
+# sito
+cd landingpage && npm ci && npm run build     # poi npm run deploy per favella.eu
+
+# IDE (esperimento): serve anche il sidecar congelato, vedi studio/PACKAGING.md
+cd studio && npm ci && npm run dev
+
+# manuale (richiede Typst)
+cd documentazione/manuale && pwsh ./build.ps1
+```
+
+---
+
 ### Cosa NON cercare più nella root
 Rimossi nel riordino 2026-06-18: `test_pyside.py` (estraneo), `src/`+`public/`
 vuote. La vecchia `Branding2026/` e `materiale-informativo/` sono confluite in
