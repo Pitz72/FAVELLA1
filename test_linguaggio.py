@@ -415,7 +415,7 @@ def test_opposti_default_aperta_chiusa():
 
 def test_concordanza_genere_proprieta():
     print("[concordanza: le proprietà di stato ignorano genere/numero (aperto = aperta)]")
-    from utils import radice_proprieta
+    from favella_utils import radice_proprieta
     _check(radice_proprieta("aperto") == radice_proprieta("aperta") == "apert",
            "aperto e aperta hanno la stessa radice 'apert'")
     _check(radice_proprieta("chiuso") == radice_proprieta("chiuse") == "chius",
@@ -2495,7 +2495,7 @@ def test_interpolazione_sconosciuto_resta_letterale_e_warning():
 
 def test_interpolazione_stato_non_impostato_vuoto():
     print("[interpolazione: stato dichiarato senza valore -> stringa vuota]")
-    from utils import rendi_testo
+    from favella_utils import rendi_testo
     src = (
         "La cella è una stanza.\n"
         "Il semaforo è uno stato.\n"   # nessun valore iniziale -> None
@@ -2677,7 +2677,7 @@ def test_descrizione_condizionale_con_interpolazione():
 
 def test_concordanza_inferenza_genere_numero():
     print("[concordanza: genere/numero inferiti dall'articolo del nome]")
-    from utils import genere_numero
+    from favella_utils import genere_numero
     casi = {
         "La torcia": ("f", "s"),
         "Il tavolo": ("m", "s"),
@@ -2694,7 +2694,7 @@ def test_concordanza_inferenza_genere_numero():
 
 def test_concordanza_frase_indeterminativa():
     print("[concordanza: articolo indeterminativo/partitivo concordato]")
-    from utils import frase_indeterminativa as f
+    from favella_utils import frase_indeterminativa as f
     _check(f("La torcia") == "una torcia", "femminile + consonante -> 'una'")
     _check(f("La ascia") == "un'ascia", "femminile + vocale -> \"un'\"")
     _check(f("Il tavolo") == "un tavolo", "maschile + consonante -> 'un'")
@@ -3656,7 +3656,7 @@ def test_lascia_bloccato_al_buio():
 
 def test_prima_maiuscola_preserva_nomi_propri():
     print("[concordanza: prima_maiuscola preserva le maiuscole interne]")
-    from utils import prima_maiuscola
+    from favella_utils import prima_maiuscola
     _check(prima_maiuscola("la Guardia Reale") == "La Guardia Reale",
            "maiuscola solo sull'iniziale, resto preservato")
     _check(prima_maiuscola("") == "", "stringa vuota gestita")
@@ -3790,7 +3790,7 @@ def test_dialogo_annullabile_come_unita():
 def test_accenti_nfc_normalizzazione_nome():
     print("[accenti: normalizza_nome unifica NFC/NFD allo stesso id]")
     import unicodedata
-    from utils import normalizza_nome
+    from favella_utils import normalizza_nome
     nfc = unicodedata.normalize("NFC", "Il comò")
     nfd = unicodedata.normalize("NFD", "Il comò")
     _check(nfc != nfd, "le due forme Unicode sono diverse byte-per-byte (precondizione)")
@@ -4936,10 +4936,10 @@ def test_a6_piu_sinonimi():
 def test_robustezza_console_cp1252_non_crasha():
     """Robustezza (debito R8): un carattere fuori da Windows-1252 in un testo
     stampato non deve far terminare il gioco sulla console Windows. La fonte
-    unica utils.assicura_console_utf8 riconfigura lo stream con
+    unica favella_utils.assicura_console_utf8 riconfigura lo stream con
     errors='replace' (no-op se non riconfigurabile)."""
     import sys as _sys
-    from utils import assicura_console_utf8
+    from favella_utils import assicura_console_utf8
 
     class _ConsoleCp1252:
         """Finta console Windows: di default esplode sui caratteri non-cp1252;

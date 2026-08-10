@@ -103,7 +103,7 @@ avvio l'utente vedrà un avviso di **Gatekeeper** (macOS) o **SmartScreen**
 Oltre all'eseguibile, FAVELLA è pubblicabile come **pacchetto Python**. La
 ricetta è in `pyproject.toml`.
 
-- **Layout piatto.** I moduli del motore (`utils`, `strutture`, `libreria_azioni`,
+- **Layout piatto.** I moduli del motore (`favella_utils`, `strutture`, `libreria_azioni`,
   `compilatore`, `gioco`, `collaudo`, `favella.py`, `favella_playground`) restano
   alla radice e si installano insieme come moduli top-level: `esporta` li rilegge
   da disco dalla **loro stessa cartella** (`__file__`), quindi devono stare

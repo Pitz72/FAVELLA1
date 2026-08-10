@@ -56,6 +56,16 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 
 ---
 
+## 📘 Il manuale
+
+C'è un **manuale d'autore completo**: 21 capitoli, 84 pagine, dall'installazione fino
+a demoni, dialoghi e casualità d'autore, allineato al linguaggio 1.0.0.
+
+- **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
+- **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026)
+
+---
+
 ## 🏁 Stato Attuale: v1.0.0 — Il linguaggio è completo e definitivo
 
 **FAVELLA 1 ha raggiunto la versione 1.0.0: il linguaggio è dichiarato completo e
@@ -97,16 +107,16 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.0.0** | header di modulo |
-| Compilatore (`compilatore.py`) | **1.0.0** | header di modulo |
-| Strutture dati (`strutture.py`) | **1.0.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.0.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.0.0** | usa `VERSIONE_MOTORE` |
+| Motore / interprete (`gioco.py`) | **1.0.1** | header di modulo |
+| Compilatore (`compilatore.py`) | **1.0.1** | header di modulo |
+| Strutture dati (`strutture.py`) | **1.0.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.0.1** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.0.1** | usa `VERSIONE_MOTORE` |
 | Specifica formale della grammatica | **1.0.0** | [`documentazione/grammatica-1.0.0.md`](documentazione/grammatica-1.0.0.md) — *grammatica invariata dalla 0.34.0* |
-| Suite di test | **1.0.0** | 681 asserzioni linguaggio + 43 collaudo (pytest 312) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.0.0 | — |
+| Suite di test | **1.0.1** | 681 asserzioni linguaggio + 43 collaudo (pytest 312) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.0.1 | — |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale, che è **v1.0.0** su tutta la linea. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)) — la **2ª edizione** è allineata alla v0.29.0 e verrà **rigenerata** sul linguaggio 1.0.0.
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 84 pagine, allineato al linguaggio 1.0.0**.
 
 ---
 
@@ -228,14 +238,16 @@ movimento, eventi a turni e demoni, pronomi/anafora e ANNULLA. Il percorso compl
 
 L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
--   ✅ **Pacchetto installabile** (`pip install favella1`), **libreria standard di
-    moduli** `Includi`-bili (`favella1/libreria/`) e **galleria di storie**
-    (`favella1/galleria/`) — *fatti*. Confezione PyPI pronta (`pyproject.toml`,
-    `LICENSE` MIT), verificata con `build` + `twine check` e in venv pulito; la
-    pubblicazione su PyPI è l'ultimo passo manuale (vedi [PACKAGING.md](PACKAGING.md)).
--   📘 **Manuale d'autore rigenerato** sul linguaggio 1.0.0 (oggi la 2ª edizione in
-    PDF, in [`documentazione/manuale/`](documentazione/manuale/), è allineata alla
-    v0.29.0), con «La Casa di Via Stradivari» / «Il Relitto Silente» come esempi guida.
+-   ✅ **Pacchetto installabile** — *fatto e **pubblicato su PyPI***:
+    `pip install favella1`. Con esso la **libreria standard di moduli**
+    `Includi`-bili (`favella1/libreria/`) e la **galleria di storie**
+    (`favella1/galleria/`), giocabili da CLI. Dettagli di confezionamento e
+    procedura di rilascio in [PACKAGING.md](PACKAGING.md).
+-   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 84 pagine, allineato al
+    linguaggio 1.0.0, con «La Casa di Via Stradivari» e «Il Relitto Silente» come
+    esempi guida. Disponibile come **ebook PDF scaricabile** in
+    [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
+    su Amazon**.
 -   **Eventuale internazionalizzazione** e strumenti d'autore (l'IDE è in cantiere).
 
 ---

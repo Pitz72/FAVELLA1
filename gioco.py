@@ -1,11 +1,11 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.0.0)
+# Interprete Interattivo per FAVELLA 1 (v1.0.1)
 
 import sys
 import traceback
 from compilatore import analizza_file
 from strutture import Mondo
-from utils import normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola, assicura_console_utf8
+from favella_utils import normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola, assicura_console_utf8
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):

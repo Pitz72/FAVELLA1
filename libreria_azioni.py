@@ -1,8 +1,8 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.0.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.0.1)
 
 from strutture import Mondo, Azione
-from utils import rendi_testo, frase_indeterminativa, prima_maiuscola
+from favella_utils import rendi_testo, frase_indeterminativa, prima_maiuscola
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è

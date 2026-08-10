@@ -1,6 +1,6 @@
 # Indice del repository — FAVELLA 1
 
-Mappa di **dove sta ogni cosa**. Aggiornata al riordino del 2026-06-18.
+Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
 
 ---
 
@@ -17,7 +17,7 @@ Mappa di **dove sta ogni cosa**. Aggiornata al riordino del 2026-06-18.
 | `strutture.py` | Object model del Mondo + `VERSIONE_MOTORE` |
 | `gioco.py` | Interprete / loop di gioco |
 | `libreria_azioni.py` | Verbi e azioni di base |
-| `utils.py` | Utilità condivise |
+| `favella_utils.py` | Utilità condivise |
 | `collaudo.py` | Collaudatore statico di storie (catena della vittoria) |
 | `favella_playground.py` | Playground locale offline |
 | `favella_server.py` | Server (escluso dal pacchetto pip) |
@@ -69,12 +69,16 @@ Mappa di **dove sta ogni cosa**. Aggiornata al riordino del 2026-06-18.
 |---|---|---|
 | `studio/` | repo separato (`Pitz72/favella-studio`), gitignored | IDE desktop Favella Studio (Electron) |
 | `landingpage/` | repo separato e solo locale, gitignored | Sito favella.eu (React/Vite). **Non pushare.** |
-| `newdesign/` | non tracciato | Handoff redesign della landing (zip + estratto) |
-| `.venv/` | gitignored | Virtualenv locale |
+| `newdesign/` | gitignored | Handoff redesign della landing (zip + estratto), materiale di lavorazione per `landingpage/` |
+| `presentazione/` | gitignored | Pitch deck Marp (sorgente, tema, `output/`): materiale di outreach **interno**, come `dove-presentare-favella.md` |
+| `.claude/`, `.venv/` | gitignored | Configurazione locale e virtualenv |
 
 ---
 
 ### Cosa NON cercare più nella root
 Rimossi nel riordino 2026-06-18: `test_pyside.py` (estraneo), `src/`+`public/`
-vuote, artefatti di build (`dist/`, `dist_pypi/`, `*.egg-info`, `__pycache__/`).
-La vecchia `Branding2026/` e `materiale-informativo/` sono confluite in `branding/`.
+vuote. La vecchia `Branding2026/` e `materiale-informativo/` sono confluite in
+`branding/`.
+
+> `dist/`, `*.egg-info/`, `build/` e `__pycache__/` **ricompaiono a ogni build**:
+> sono gitignorati, non tracciati, e non c'è niente da ripulire a mano.

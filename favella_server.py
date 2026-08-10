@@ -41,7 +41,7 @@ try:
                              riordina_sorgente, esporta_html,
                              serializza_frase, VERBI_VALIDI,
                              PAROLE_RISERVATE)
-    from utils import DIREZIONI_BASE, rendi_testo
+    from favella_utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza
     from strutture import Mondo, VERSIONE_MOTORE

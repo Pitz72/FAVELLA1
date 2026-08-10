@@ -204,3 +204,16 @@ Thumbs.db
 # non un artefatto Python. La regola generica «lib/» qui sopra la escluderebbe.
 !/documentazione/manuale/lib/
 !/documentazione/manuale/lib/**
+
+# Handoff di design della landing (prototipo Claude Design: zip + estratto). È
+# materiale di lavorazione per landingpage/, che a sua volta è fuori dal repo
+# pubblico. Resta in locale.
+/newdesign/
+
+# Presentazione/pitch deck (Marp: sorgente, tema, immagini e l'export in
+# output/). Stessa famiglia di dove-presentare-favella.md: materiale di outreach
+# INTERNO, non parte del linguaggio. Resta in locale.
+/presentazione/
+
+# Configurazione locale di Claude Code: mai nel repo (regola di progetto).
+/.claude/

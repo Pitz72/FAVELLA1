@@ -47,9 +47,16 @@ favella1 = "favella:main"
 # DATI dell'ecosistema (libreria + galleria). L'elenco esplicito disattiva
 # l'autodiscovery: i moduli non elencati (test_*, favella_server, …) non vengono
 # pubblicati.
+#
+# IGIENE DEL NAMESPACE: questi nomi finiscono in site-packages come moduli
+# top-level, quindi devono essere improbabili da collidere. Per questo il modulo
+# di utilità si chiama 'favella_utils' e non 'utils': un 'utils' generico si
+# scontra con quello di altri pacchetti (e con un utils.py nella cartella di
+# lavoro dell'autore, che romperebbe `python -m favella`). Gli altri nomi sono
+# parole italiane specifiche del dominio: collisione trascurabile.
 py-modules = [
     "favella",
-    "utils",
+    "favella_utils",
     "strutture",
     "libreria_azioni",
     "compilatore",

@@ -3,7 +3,7 @@
 import copy
 import random
 from typing import Callable, List, Dict, Set, Optional
-from utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta, prima_maiuscola
+from favella_utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta, prima_maiuscola
 
 # [0.22.0 / A2] Seme predefinito del generatore casuale del mondo. Fisso: le
 # partite sono riproducibili di default (utile per i test, per il futuro
@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.0.0"
+VERSIONE_MOTORE = "1.0.1"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -712,8 +712,8 @@ class Oggetto:
 
     def concordanza(self):
         """[Livello 5] (genere, numero) inferiti dall'articolo del nome dichiarato
-        (es. 'La torcia' -> ('f','s')). Vedi utils.genere_numero."""
-        from utils import genere_numero
+        (es. 'La torcia' -> ('f','s')). Vedi favella_utils.genere_numero."""
+        from favella_utils import genere_numero
         return genere_numero(self.nome_visualizzato)
 
 class Mondo:
@@ -912,7 +912,7 @@ class Mondo:
         genere/numero, per risolvere i pronomi anaforici ('prendila'). Gli oggetti
         senza genere/numero inferibile (nome senza articolo) sono ignorati: non
         sono raggiungibili da un pronome, ma il loro nome resta sempre usabile."""
-        from utils import chiave_genere_numero
+        from favella_utils import chiave_genere_numero
         oggetto = self.trova_oggetto(id_oggetto)
         if not oggetto:
             return
@@ -943,7 +943,7 @@ class Mondo:
         self.sinonimi_verbo[sinonimo] = verbo_canonico
 
     def _inizializza_direzioni_base(self):
-        """[Livello 4 / L1] Precarica le direzioni di base (fonte unica in utils)."""
+        """[Livello 4 / L1] Precarica le direzioni di base (fonte unica in favella_utils)."""
         for canonica, forme in DIREZIONI_BASE.items():
             for forma in forme:
                 self.direzioni[forma] = canonica

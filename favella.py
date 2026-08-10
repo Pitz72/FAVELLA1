@@ -23,8 +23,8 @@ import sys
 def _console_utf8():
     """La console di Windows è cp1252 di default: i nomi italiani accentati
     passano, ma per sicurezza riconfiguriamo stdout/stderr a UTF-8 con
-    errors='replace'. Fonte unica condivisa con gioco.py in utils."""
-    from utils import assicura_console_utf8
+    errors='replace'. Fonte unica condivisa con gioco.py in favella_utils."""
+    from favella_utils import assicura_console_utf8
     assicura_console_utf8()
 
 

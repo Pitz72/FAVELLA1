@@ -4,6 +4,32 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.0.1] - 2026-08-10
+### 🧹 Igiene del namespace nel pacchetto installabile
+Patch di **sola distribuzione**: il linguaggio, la grammatica e il comportamento del
+motore sono **identici alla 1.0.0**. Nessuna storia `.fav` cambia di una virgola.
+
+- **`utils.py` → `favella_utils.py`.** Il wheel installa i moduli del motore in
+  `site-packages` come moduli *top-level*, e `utils` è uno dei nomi più affollati
+  dell'ecosistema Python. Due conseguenze reali, entrambe verificate:
+  - qualunque `import utils` di un altro pacchetto, nello stesso ambiente,
+    prendeva silenziosamente il modulo di FAVELLA;
+  - `python -m favella` lanciato da una cartella che conteneva un `utils.py`
+    dell'autore moriva con un traceback grezzo, perché la cwd vince su
+    `site-packages`. Ora quello scenario funziona.
+
+  Il console script `favella1` non era esposto al secondo problema (la cwd non
+  entra in `sys.path`), quindi chi usa la CLI installata non ha mai visto il bug.
+- Aggiornati di conseguenza `pyproject.toml` (`py-modules`), `favella1.spec`
+  (`datas` + `hiddenimports`), l'elenco `_ENGINE_FILES` che `esporta_html` rilegge
+  da disco, il sidecar `favella_server.py`, la suite e `index.md`/`PACKAGING.md`.
+- Gli altri moduli restano coi nomi italiani di dominio (`strutture`, `gioco`,
+  `compilatore`, `collaudo`, `libreria_azioni`): rischio di collisione trascurabile.
+  La motivazione è ora scritta accanto a `py-modules` in `pyproject.toml`.
+
+Suite invariata e verde: **681 asserzioni del linguaggio + 43 di collaudo**
+(`pytest`: 312). Esportazione HTML e installazione da wheel riprovate a mano.
+
 ## [1.0.0] - 2026-06-16
 ### 🏁 Il linguaggio è completo — versione 1.0
 Traguardo. La **1.0.0 non introduce modifiche di grammatica** rispetto alla 0.34.0:

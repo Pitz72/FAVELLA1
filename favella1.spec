@@ -10,7 +10,7 @@
 # Eseguibile:    dist/favella1/favella1[.exe]
 
 import sys
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.favella_utils.hooks import collect_all
 
 # Icona dell'eseguibile: .ico su Windows; altrove PyInstaller la ignora (serve
 # .icns per il .app macOS, che non produciamo: è una CLI).
@@ -26,7 +26,7 @@ lark_datas, lark_binaries, lark_hiddenimports = collect_all("lark")
 #     incorporarli nell'HTML autoportante (li cerca in sys._MEIPASS, cioè la
 #     cartella del bundle). Per questo vanno aggiunti anche come `datas`.
 ENGINE_SOURCES = [
-    ("utils.py", "."),
+    ("favella_utils.py", "."),
     ("strutture.py", "."),
     ("libreria_azioni.py", "."),
     ("compilatore.py", "."),
@@ -53,7 +53,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=lark_hiddenimports + [
         "compilatore", "gioco", "collaudo", "strutture",
-        "libreria_azioni", "utils", "favella_playground", "favella1",
+        "libreria_azioni", "favella_utils", "favella_playground", "favella1",
     ],
     hookspath=[],
     runtime_hooks=[],

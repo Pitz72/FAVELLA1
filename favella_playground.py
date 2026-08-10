@@ -26,7 +26,7 @@ from compilatore import analizza_file_strutturato, compila_mondo
 from gioco import elabora_comando, mostra_stanza
 from libreria_azioni import LIBRERIA_AZIONI
 from strutture import VERSIONE_MOTORE
-from utils import rendi_testo
+from favella_utils import rendi_testo
 
 
 # --------------------------------------------------------------------------

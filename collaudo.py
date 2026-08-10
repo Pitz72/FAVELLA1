@@ -34,7 +34,7 @@ from strutture import (
     ConseguenzaContatore,
     ConseguenzaFinePartita, ConseguenzaSpostamento, ConseguenzaSpostamentoGiocatore,
 )
-from utils import radice_proprieta
+from favella_utils import radice_proprieta
 
 # Tetto di profondità della risalita a ritroso: protegge da catene patologiche
 # e dall'esplosione combinatoria di alternative. Largamente sufficiente per le

@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.0.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -21,7 +21,7 @@ from strutture import (
     Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
 )
 from libreria_azioni import LIBRERIA_AZIONI
-from utils import (
+from favella_utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
     DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo, radice_proprieta,
 )
@@ -726,7 +726,7 @@ _GRAMMAR_TEMPLATE = r"""
     // ENTITA): mancava solo 'dei', che non si scompone in 'del' + articolo.
     _PREP_DESCR: "di" | "del" | "dei" | "della" | "dell'" | "degli" | "delle"
     // [Livello 4 / L1] DIREZIONE è generata per-file: le forme di base
-    // (utils.DIREZIONI_BASE) più le direzioni personalizzate dichiarate.
+    // (favella_utils.DIREZIONI_BASE) più le direzioni personalizzate dichiarate.
     // È una regex con confine di parola (\b) e priorità ALTA (.2): serve a
     // vincere il longest-match contro le keyword di cui una direzione custom
     // potrebbe condividere il prefisso (es. 'alto' vs 'al' di "Al turno").
@@ -805,7 +805,7 @@ def _costruisci_regex_entita(simboli) -> str:
 
 def _costruisci_alt_direzioni(direzioni_extra=()) -> str:
     """[Livello 4 / L1] Costruisce il corpo regex dell'alternanza del terminale
-    DIREZIONE: tutte le forme di base (utils.DIREZIONI_BASE) più i nomi delle
+    DIREZIONE: tutte le forme di base (favella_utils.DIREZIONI_BASE) più i nomi delle
     direzioni personalizzate dichiarate, ordinate per lunghezza decrescente per
     garantire il longest-match (es. 'ovest' prima di 'o')."""
     forme = []
@@ -1904,7 +1904,7 @@ class FavellaTransformer(Transformer):
                     )
 
         # 4. [Livello 5] Segnaposto di testo dinamico [nome] che non risolvono
-        #    nulla. L'interpolazione (utils.rendi_testo) sostituisce [nome] con uno
+        #    nulla. L'interpolazione (favella_utils.rendi_testo) sostituisce [nome] con uno
         #    stato/contatore o col nome di un oggetto; un segnaposto che non
         #    corrisponde a nessuno dei due resterà letterale a runtime: quasi
         #    sempre un refuso. Lo segnaliamo qui, non bloccante. I nomi noti sono
@@ -3959,7 +3959,7 @@ def riordina_sorgente(percorso_file, sorgente=None):
 # nulla (serve solo un browser e, al primo avvio, la rete per scaricare Pyodide).
 # ==============================================================================
 
-_ENGINE_FILES = ["utils.py", "strutture.py", "libreria_azioni.py", "compilatore.py", "gioco.py"]
+_ENGINE_FILES = ["favella_utils.py", "strutture.py", "libreria_azioni.py", "compilatore.py", "gioco.py"]
 
 _EXPORT_DRIVER_PY = r'''
 import io, contextlib, json, sys
