@@ -6,22 +6,29 @@ __pycache__/
 # C extensions
 *.so
 
-# Distribution / packaging
+# Distribution / packaging (Python).
+# ATTENZIONE: queste regole vengono dal template Python standard e sono nate quando
+# il repo conteneva solo Python. Ora ospita anche il sito (landingpage/) e l'IDE
+# (studio/), dove nomi come «lib», «build», «var» o «parts» sono cartelle di
+# SORGENTE del tutto legittime. Percio' sono ancorate alla RADICE con «/»: senza,
+# «lib/» inghiottiva silenziosamente landingpage/src/lib/favellaRuntime.ts, cioe' il
+# caricatore del motore nel browser. Prima di aggiungere una regola generica qui,
+# controlla che non colpisca src/ di quei due progetti.
 .Python
-build/
-dist_pypi/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
+/build/
+/dist_pypi/
+/dist/
+/develop-eggs/
+/downloads/
+/eggs/
+/.eggs/
+/lib/
+/lib64/
+/parts/
+/sdist/
+/var/
+/wheels/
+/share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -204,8 +211,9 @@ Thumbs.db
 /documentazione/manuale/copertina-kdp.pdf
 /documentazione/manuale/copertina-kdp.typ
 
-# Eccezione: la cartella lib/ del manuale è SORGENTE Typst (template + evidenziatore),
-# non un artefatto Python. La regola generica «lib/» qui sopra la escluderebbe.
+# (Storico) La cartella lib/ del manuale è SORGENTE Typst — template e evidenziatore.
+# Serviva un'eccezione finché «lib/» era una regola globale; ora che è ancorata alla
+# radice non serve più, ma la si tiene come rete di sicurezza esplicita.
 !/documentazione/manuale/lib/
 !/documentazione/manuale/lib/**
 
