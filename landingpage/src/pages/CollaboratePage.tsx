@@ -1,12 +1,57 @@
 import {
   GITHUB_URL,
   GITHUB_DISCUSSIONS_URL,
+  GITHUB_SITO_URL,
+  GITHUB_IDE_URL,
+  GITHUB_MANUALE_URL,
+  GITHUB_ESEMPI_URL,
+  GITHUB_BRANDING_URL,
   TELEGRAM_URL,
   TELEGRAM_HANDLE,
   AUTHOR_EMAIL,
   AUTHOR_NAME,
   FACEBOOK_GROUP_URL,
 } from "../constants";
+
+// Le cartelle del repository, per chi arriva e non sa da dove cominciare.
+const CARTELLE = [
+  {
+    path: "/",
+    title: "Il motore",
+    body: "Compilatore, interprete, libreria delle azioni e la suite di 681 test. Python puro, l'unica dipendenza è Lark.",
+    href: GITHUB_URL,
+  },
+  {
+    path: "/landingpage",
+    title: "Questo sito",
+    body: "Il sorgente completo di favella.eu: React, Vite, il corso interattivo e il motore vero che gira nel browser via Pyodide.",
+    href: GITHUB_SITO_URL,
+  },
+  {
+    path: "/studio",
+    title: "Favella Studio",
+    body: "L'IDE desktop. Esperimento incompiuto e fermo alla 0.9, aperto perché qualcuno possa riprenderlo. Licenza MIT propria.",
+    href: GITHUB_IDE_URL,
+  },
+  {
+    path: "/documentazione/manuale",
+    title: "Il manuale",
+    body: "Sorgenti Typst dei 21 capitoli, i font e l'ebook PDF pronto da scaricare. Si ricompila con un comando.",
+    href: GITHUB_MANUALE_URL,
+  },
+  {
+    path: "/esempi",
+    title: "Le avventure",
+    body: "Le storie ufficiali e gli stress-test di genere: guida, sopravvivenza, gioco di ruolo, appuntamenti. Tutte vincibili.",
+    href: GITHUB_ESEMPI_URL,
+  },
+  {
+    path: "/branding",
+    title: "Il marchio",
+    body: "Logo, banner, icone e favicon — anche i master a piena risoluzione, non solo i derivati per il web.",
+    href: GITHUB_BRANDING_URL,
+  },
+];
 
 const WAYS = [
   { n: "01", title: "Testa il linguaggio", body: "Scrivi storie, rompi il parser, segnala gli attriti: ogni frizione è una possibile parola nuova." },
@@ -49,6 +94,32 @@ const CollaboratePage = () => (
           <p className="m-0 text-[14px] leading-[1.6] text-favella-text-secondary">{w.body}</p>
         </div>
       ))}
+    </div>
+
+    {/* Dove sta cosa nel repository */}
+    <div className="mx-auto mt-[54px] max-w-[1000px]">
+      <p className="mb-2 text-center font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">
+        Dove sta cosa
+      </p>
+      <p className="mx-auto mb-7 max-w-[640px] text-center text-[15px] leading-[1.6] text-favella-text-secondary">
+        Dall'agosto 2026 è tutto in un repository solo — motore, sito, IDE, manuale, avventure e marchio.
+        Niente più pezzi sparsi o tenuti da parte.
+      </p>
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        {CARTELLE.map((c) => (
+          <a
+            key={c.path}
+            href={c.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-[13px] border border-favella-cyan/16 bg-favella-panel p-5 transition-colors hover:border-favella-cyan/40"
+          >
+            <div className="mb-1.5 font-mono text-[11px] text-favella-cyan">{c.path}</div>
+            <div className="mb-1.5 font-display text-[15px] font-semibold text-favella-text-primary">{c.title}</div>
+            <p className="m-0 text-[13.5px] leading-[1.55] text-favella-text-secondary">{c.body}</p>
+          </a>
+        ))}
+      </div>
     </div>
 
     {/* Appello maintainer */}

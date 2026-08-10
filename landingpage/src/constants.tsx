@@ -4,12 +4,10 @@
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
-export const VERSION = "1.0.0";
-export const VERSION_LABEL = "v1.0.0 — Il linguaggio è completo";
-// Versione del motore che gira DENTRO al sito (Pyodide), vendorato in
-// public/favella-engine/. Può correre avanti a VERSION: la 1.0.1 è una patch di
-// sola distribuzione (igiene dei nomi dei moduli), grammatica identica.
-export const ENGINE_VERSION = "1.0.1";
+// Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
+// distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
+export const VERSION = "1.0.1";
+export const VERSION_LABEL = "v1.0.1 — Il linguaggio è completo";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -21,7 +19,9 @@ export const SITE_URL = "https://favella.eu";
 // · 2.0 = traguardo v1.0.0 (linguaggio completo), ecosistema (pip/libreria/
 //   galleria), manuale v1.0.0 (84 pp.) e casa ufficiale su favella.eu.
 // · 2.0.1 = motore vendorato risincronizzato alla 1.0.1 (utils → favella_utils).
-export const SITE_VERSION = "2.0.1";
+// · 2.1.0 = aggiornamento finale: tutto in un repository solo (motore, sito, IDE,
+//   branding), download alla 1.0.1, l'IDE sperimentale annunciato in chiaro.
+export const SITE_VERSION = "2.1.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -30,10 +30,19 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.0.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.0.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.0.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.0.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.0.1";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.0.1-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.0.1-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.0.1-linux-x86_64.AppImage`;
+// Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
+// tutti qui dentro, non più sparsi fra repo diversi.
+const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
+export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
+export const GITHUB_IDE_URL = `${_REPO}/studio`;
+export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
+export const GITHUB_MANUALE_URL = `${_REPO}/documentazione/manuale`;
+export const GITHUB_ESEMPI_URL = `${_REPO}/esempi`;
+export const GITHUB_BRANDING_URL = `${_REPO}/branding`;
 export const GITHUB_DISCUSSIONS_URL = "https://github.com/Pitz72/FAVELLA1/discussions";
 export const GITHUB_ISSUES_URL = "https://github.com/Pitz72/FAVELLA1/issues";
 export const DEMO_PATH = "esempi/demo/relitto-silente/";
@@ -59,7 +68,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // --------------------------------------------------------------------
 export const STATS = [
   { value: "681", label: "test verdi", hint: "+ 43 di collaudo" },
-  { value: "1.0.0", label: "linguaggio completo", hint: "grammatica chiusa" },
+  { value: "1.0.1", label: "linguaggio completo", hint: "grammatica chiusa dalla 1.0.0" },
   { value: "0", label: "ambiguità", hint: "grammatica LALR(1)" },
   { value: "100%", label: "italiano", hint: "le frasi SONO il codice" },
 ];
@@ -121,6 +130,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Tutto in chiaro",
+    date: "Agosto 2026",
+    emphasis: "primary",
+    title: "Un repository solo: motore, sito, IDE, branding",
+    body: "FAVELLA era sparsa. Il linguaggio stava in un repository pubblico, il sito che state leggendo in uno privato sul disco di casa, l'IDE in un terzo repository chiuso, e i file originali del marchio da nessuna parte se non in una cartella locale. Da oggi è tutto in un posto solo, in chiaro, con licenza MIT: il motore, il sorgente completo del sito, l'IDE sperimentale, il manuale, le dieci avventure e perfino i master grafici a piena risoluzione. Non c'è più niente di questo progetto che viva soltanto sul computer di chi l'ha scritto. Il motore passa alla 1.0.1: una patch di sola distribuzione — i moduli installati da pip avevano un nome troppo generico e finivano per pestare i piedi ad altri pacchetti — che non tocca di una virgola il linguaggio.",
+    cta: { label: "Apri il repository", href: "https://github.com/Pitz72/FAVELLA1" },
+  },
   {
     tag: "Traguardo",
     date: "Giugno 2026",
@@ -192,12 +209,11 @@ export const NEWS: NewsItem[] = [
     cta: { label: "Entra nel corso interattivo", href: "/corso" },
   },
   {
-    tag: "Prossimamente",
-    date: "?",
+    tag: "Esperimento",
+    date: "Agosto 2026",
     emphasis: "secondary",
-    art: "question",
-    title: "C'è un cantiere di cui non parliamo ancora",
-    body: "Qualcosa di grosso sta prendendo forma in officina. Chi scrive storie con FAVELLA lo troverà… familiare. L'annuncio arriverà qui.",
+    title: "Favella Studio: il cantiere aperto, così com'è",
+    body: "Il cantiere di cui non parlavamo era questo: Favella Studio, un tentativo di dare a FAVELLA un ambiente di sviluppo visuale — mappa delle stanze, editor di oggetti, regole e dialoghi, esportazione del gioco in un HTML che gira da solo. Non è un prodotto e non lo diventerà: è un lavoro incompiuto, senza supporto e senza data, fermo alla 0.9. Doveva essere il pezzo a pagamento del progetto; abbiamo preferito aprirlo. Il codice è lì, con licenza MIT, per chiunque voglia guardarci dentro o riprenderlo in mano. Il linguaggio, al contrario, è finito e non si tocca.",
   },
 ];
 
@@ -280,13 +296,13 @@ export const DONE_EVOLUTIONS: RoadmapItem[] = [
 export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "ecosistema",
-    title: "favella.eu, la casa del progetto",
-    body: "Un indirizzo tutto suo: documentazione, manuale, laboratorio nel browser e la galleria giocabile, raccolti sotto un solo dominio facile da ricordare.",
+    title: "La galleria cresce",
+    body: "Le avventure scritte dagli autori, giocabili qui sul sito: scrivi in italiano, condividi un link. Le dieci storie di oggi sono una vetrina, non un tetto.",
   },
   {
-    area: "ecosistema",
-    title: "La galleria cresce",
-    body: "Le avventure scritte dagli autori, giocabili qui sul sito: scrivi in italiano, condividi un link. Le prime tre storie ufficiali sono solo l'inizio della vetrina.",
+    area: "strumenti",
+    title: "Il cantiere aperto",
+    body: "Il linguaggio è chiuso e non cambierà: è una promessa, non una resa. Quello che resta da fare vive intorno — l'IDE sperimentale fermo alla 0.9, le traduzioni, gli strumenti d'autore. Il codice è tutto pubblico e sotto MIT: chi vuole raccoglierlo lo trova su GitHub.",
   },
 ];
 
@@ -313,6 +329,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.0.1",
+    title: "Un repository solo, e i nomi dei moduli a posto",
+    content: "Patch di sola distribuzione: il linguaggio e la grammatica non cambiano di una virgola. Il pacchetto pip installava i moduli del motore con nomi generici, e «utils» in particolare finiva per pestare i piedi a qualunque altro pacchetto ne avesse uno: adesso si chiama «favella_utils». Intorno, il riordino grosso: il sorgente del sito e l'IDE sperimentale Favella Studio entrano nel repository pubblico — prima vivevano uno in locale e l'altro in un repository chiuso — insieme ai file originali del marchio a piena risoluzione. Tutto sotto MIT, tutto in un posto solo.",
+  },
   {
     version: "1.0.0",
     title: "Il linguaggio è completo",
