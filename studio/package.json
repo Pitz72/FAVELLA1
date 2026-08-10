@@ -1,0 +1,92 @@
+{
+  "name": "favella-studio",
+  "version": "0.9.29",
+  "description": "Favella Studio — IDE desktop ufficiale per il linguaggio FAVELLA",
+  "author": "Simone (Pitz72)",
+  "license": "MIT",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "predist": "node -e \"const p=process.platform==='win32'?'../dist/favella_engine.exe':'../dist/favella_engine';if(!require('fs').existsSync(p)){console.error('ERRORE: manca '+p+' - congela prima il sidecar con PyInstaller (vedi PACKAGING.md, Passo 1)');process.exit(1)}\"",
+    "dist": "electron-vite build && electron-builder"
+  },
+  "build": {
+    "appId": "it.pizzi.favellastudio",
+    "productName": "Favella Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "branding/icone/favella-studio.ico",
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "FavellaStudio-Setup-${version}.${ext}",
+      "extraResources": [
+        {
+          "from": "../dist/favella_engine.exe",
+          "to": "engine/favella_engine.exe"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "icon": "branding/icone/favella-studio.icns",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "FavellaStudio-${version}-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "../dist/favella_engine",
+          "to": "engine/favella_engine"
+        }
+      ]
+    },
+    "linux": {
+      "icon": "branding/icone/icon.png",
+      "category": "Development",
+      "target": [
+        "AppImage"
+      ],
+      "artifactName": "FavellaStudio-${version}.${ext}",
+      "extraResources": [
+        {
+          "from": "../dist/favella_engine",
+          "to": "engine/favella_engine"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.50.0",
+    "reactflow": "^11.11.4",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.5"
+  }
+}

@@ -54,21 +54,25 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
 
 | Percorso | Git | Contenuto |
 |---|---|---|
-| `branding/marchi/` | 🔒 locale | Marchi ufficiali 2026 master (logo, banner, icona-app, icona-trasparente) |
-| `branding/favicon/` | 🔒 locale | Set favicon derivati (16→512) + `.ico` |
+| `branding/marchi/` | ✅ tracciato | Marchi ufficiali 2026 master (logo, banner, icona-app, icona-trasparente) |
+| `branding/favicon/` | ✅ tracciato | Set favicon derivati (16→512) + `.ico` |
 | `branding/materiale/` | ✅ tracciato | Infografiche + banner versionati (`.svg`/`.png`) + generatore |
-| `branding/archivio-2025/` | 🔒 locale | Vecchio branding storico |
+| `branding/archivio-2025/` | ✅ tracciato | Vecchio branding storico |
 | `assets/` | ✅ tracciato | **Punto di consumo**: `logo.png`/`banner.png` usati dal README e dal pacchetto pip |
 
-> Dettagli e comandi di rigenerazione: `branding/README.md`. Le icone installer
-> stanno in `packaging/icons/` perché accoppiate a `favella1.spec`/`installer.nsi`.
+> Dal 2026-08-10 **tutto il branding è versionato, master compresi** — qui, in
+> `landingpage/immagini/` e in `studio/branding/`: gli originali hanno una copia di
+> sicurezza e chi vuole rigenerare i derivati ha da dove partire. `assets/` resta il
+> punto di **consumo** (README, pacchetto pip). Dettagli e comandi di rigenerazione:
+> `branding/README.md`. Le icone installer stanno in `packaging/icons/` perché
+> accoppiate a `favella1.spec`/`installer.nsi`.
 
 ## 🛰️ Sito e progetti satellite
 
 | Percorso | Git | Contenuto |
 |---|---|---|
-| `studio/` | repo separato (`Pitz72/favella-studio`), gitignored | IDE desktop Favella Studio (Electron) |
-| `landingpage/` | tracciato | Sito **favella.eu** (React/Vite + pre-rendering). Dal 2026-08-10 vive qui: non è più un repo a sé. I master grafici (`landingpage/immagini/`, ~51 MB) restano locali, come `branding/marchi/`; il sito usa le WebP in `landingpage/public/covers/`. Deploy: `npm run deploy` (FTPS, credenziali fuori dal repo) |
+| `studio/` | tracciato | **Favella Studio**, IDE desktop (Electron + React + sidecar Python). ⚠️ **Esperimento in fase primordiale**, pubblicato così com'è dal 2026-08-10 (prima era un repo privato): non è un prodotto finito, ma è a disposizione di chi voglia riprenderlo. Licenza MIT propria. Fuori dal repo solo `node_modules/`, `out/`, `release/` |
+| `landingpage/` | tracciato (master grafici compresi) | Sito **favella.eu** (React/Vite + pre-rendering). Dal 2026-08-10 vive qui: non è più un repo a sé. I master grafici (`landingpage/immagini/`, ~51 MB) restano locali, come `branding/marchi/`; il sito usa le WebP in `landingpage/public/covers/`. Deploy: `npm run deploy` (FTPS, credenziali fuori dal repo) |
 | `newdesign/` | gitignored | Handoff redesign della landing (zip + estratto), materiale di lavorazione per `landingpage/` |
 | `presentazione/` | gitignored | Pitch deck Marp (sorgente, tema, `output/`): materiale di outreach **interno**, come `dove-presentare-favella.md` |
 | `.claude/`, `.venv/` | gitignored | Configurazione locale e virtualenv |

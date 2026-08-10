@@ -248,7 +248,28 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     esempi guida. Disponibile come **ebook PDF scaricabile** in
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
     su Amazon**.
--   **Eventuale internazionalizzazione** e strumenti d'autore (l'IDE è in cantiere).
+-   **Eventuale internazionalizzazione** e strumenti d'autore (vedi «Favella Studio» qui sotto).
+
+---
+
+## 🧪 Favella Studio — l'IDE, esperimento in fase primordiale
+
+In [`studio/`](studio/) c'è **Favella Studio**: un tentativo di dare a FAVELLA un
+ambiente di sviluppo visuale desktop (Electron + React, col motore Python come
+sidecar). Mappa delle stanze, editor degli oggetti, delle regole e dei dialoghi,
+esportazione del gioco in HTML autoportante.
+
+> **Va preso per quello che è: un esperimento incompiuto.** Non è un prodotto
+> finito, non è supportato, non ha una data di uscita — la versione dice `0.9.x`
+> e lo dice sul serio. Nasceva come progetto separato e a pagamento; dal
+> **10 agosto 2026** è pubblicato in chiaro qui dentro, **così com'è**, con
+> licenza MIT. **Se a qualcuno interessa — usarlo, studiarlo, forkarlo,
+> riprenderlo in mano — è a disposizione.** Aspettatevi spigoli.
+
+Questo **non** riguarda il linguaggio: FAVELLA 1 è completo, stabile e coperto da
+681 test. L'IDE è un accessorio sperimentale che gli sta accanto.
+
+Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).
 
 ---
 

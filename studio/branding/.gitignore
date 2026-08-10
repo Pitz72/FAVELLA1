@@ -1,0 +1,8 @@
+# Dal 2026-08-10 il branding dello Studio è versionato PER INTERO, master compresi
+# (scelta di Simone: le immagini di branding vanno nel repo in ogni cartella e in
+# ogni situazione). Restano qui i concept AI d'archivio, gli upscale ad alta
+# risoluzione e gli export della ricostruzione SVG: sono copie di sicurezza, non
+# input del build. Gli asset che il build usa davvero sono icone/favella-studio.ico,
+# .icns, icon.png e favella-studio-logo.svg.
+#
+# Nessuna esclusione: questo file resta solo come nota.

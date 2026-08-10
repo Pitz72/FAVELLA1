@@ -1,0 +1,99 @@
+name: Build IDE (Windows / macOS / Linux)
+
+# AVVIO SOLO MANUALE: nessun trigger automatico (niente push/PR/tag).
+# Si lancia da GitHub → Actions → "Build IDE (Windows / macOS / Linux)" → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      ref_motore:
+        description: "Branch o tag del repo motore pubblico Pitz72/FAVELLA1 da cui congelare il sidecar"
+        required: false
+        default: "main"
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            sep: ";"      # separatore --add-data di PyInstaller su Windows
+            engine: "favella_engine.exe"
+          - os: macos-latest
+            sep: ":"
+            engine: "favella_engine"
+          - os: ubuntu-latest
+            sep: ":"
+            engine: "favella_engine"
+
+    steps:
+      # 1) Motore (repo PUBBLICO) nella root: fornisce i .py per congelare il sidecar.
+      - name: Checkout motore (Pitz72/FAVELLA1, pubblico) nella root
+        uses: actions/checkout@v4
+        with:
+          repository: Pitz72/FAVELLA1
+          ref: ${{ inputs.ref_motore }}
+          path: .
+
+      # 2) IDE (QUESTO repo privato) in studio/  → ricrea il layout root + studio.
+      - name: Checkout IDE (Favella Studio) in studio/
+        uses: actions/checkout@v4
+        with:
+          path: studio
+
+      # 3) Python + PyInstaller per congelare il sidecar (favella_server.py).
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installa lark + pyinstaller
+        run: python -m pip install --upgrade pip lark pyinstaller
+
+      - name: Congela il sidecar (PyInstaller, dalla root)
+        shell: bash
+        run: |
+          python -m PyInstaller --onefile --name favella_engine --collect-all lark \
+            --add-data "favella_utils.py${{ matrix.sep }}." \
+            --add-data "strutture.py${{ matrix.sep }}." \
+            --add-data "libreria_azioni.py${{ matrix.sep }}." \
+            --add-data "compilatore.py${{ matrix.sep }}." \
+            --add-data "gioco.py${{ matrix.sep }}." \
+            favella_server.py
+          ls -la dist
+
+      - name: Permessi di esecuzione al sidecar (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: chmod +x "dist/favella_engine"
+
+      # 4) Node + dipendenze + build installer (electron-builder).
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installa dipendenze IDE
+        working-directory: studio
+        run: npm ci
+
+      - name: Build installer (electron-builder)
+        working-directory: studio
+        env:
+          # Niente firma in CI: build non firmati (SmartScreen/Gatekeeper avviseranno).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist
+
+      # 5) Artefatti scaricabili (un pacchetto per OS).
+      - name: Carica gli artefatti
+        uses: actions/upload-artifact@v4
+        with:
+          name: favella-studio-${{ runner.os }}
+          if-no-files-found: warn
+          path: |
+            studio/release/*.exe
+            studio/release/*.dmg
+            studio/release/*.zip
+            studio/release/*.AppImage

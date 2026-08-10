@@ -147,13 +147,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Il SITO (landingpage/) ora vive QUI, nel repo pubblico: dal 2026-08-10 non è
-# più un repository a sé. Restano fuori solo i master grafici, per lo stesso
-# criterio di /branding/marchi/: nel repo vanno gli asset di consumo (le WebP in
-# landingpage/public/covers/, 488 KB), non gli originali a piena risoluzione.
-# I master vivono in locale in landingpage/immagini/ (~51 MB: logo, banner,
-# icona, render del manuale, le 10 copertine originali).
-/landingpage/immagini/
+# Il SITO (landingpage/) vive QUI, nel repo pubblico: dal 2026-08-10 non e' piu' un
+# repository a se'. Anche i master grafici in landingpage/immagini/ sono versionati
+# (logo, banner, icona, render del manuale, le 10 copertine originali): il sito usa
+# le WebP in landingpage/public/covers/, ma gli originali restano nel repo come
+# copia di sicurezza.
 
 # Favella Studio (IDE Electron) — artefatti di build
 studio/out/
@@ -176,15 +174,17 @@ Thumbs.db
 # Salvataggi di partita (dati utente, non versionati)
 *.favsave
 
-# IDE Favella Studio: spostato in repo privata (Pitz72/favella-studio)
-/studio/
+# IDE Favella Studio: dal 2026-08-10 vive QUI, nel repo pubblico (prima era un
+# repository privato a se'). E' un ESPERIMENTO in fase primordiale, pubblicato
+# cosi' com'e' per chi volesse guardarci dentro. Restano fuori solo gli artefatti
+# di build, gia' coperti dal .gitignore annidato di studio/ (node_modules, out,
+# release, dist).
 
-# Brand kit 2026: fonte locale (master + derivati + archivio). In pubblico vanno
-# solo gli asset di consumo in assets/ e il materiale informativo tracciato in
-# branding/materiale/. Il kit sorgente resta fuori da git.
-/branding/marchi/
-/branding/favicon/
-/branding/archivio-2025/
+# Brand kit 2026: dal 2026-08-10 il kit e' INTERAMENTE versionato, master compresi
+# (branding/marchi/, branding/favicon/, branding/archivio-2025/). Scelta di Simone:
+# le immagini di branding vanno nel repo in ogni cartella e in ogni situazione, cosi'
+# gli originali hanno una copia di sicurezza e chi vuole rigenerare i derivati ha da
+# dove partire. assets/ resta il punto di CONSUMO (README, pacchetto pip).
 
 # Strategia di lancio / outreach: materiale interno, NON pubblico.
 /branding/materiale/dove-presentare-favella.md
@@ -203,7 +203,6 @@ Thumbs.db
 /documentazione/manuale/manuale-interno-kdp.pdf
 /documentazione/manuale/copertina-kdp.pdf
 /documentazione/manuale/copertina-kdp.typ
-/documentazione/manuale/copertina-manuale.png
 
 # Eccezione: la cartella lib/ del manuale è SORGENTE Typst (template + evidenziatore),
 # non un artefatto Python. La regola generica «lib/» qui sopra la escluderebbe.
