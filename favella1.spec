@@ -10,7 +10,7 @@
 # Eseguibile:    dist/favella1/favella1[.exe]
 
 import sys
-from PyInstaller.favella_utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all  # NB: «utils» di PyInstaller, non nostro
 
 # Icona dell'eseguibile: .ico su Windows; altrove PyInstaller la ignora (serve
 # .icns per il .app macOS, che non produciamo: è una CLI).
