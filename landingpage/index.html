@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
+    <meta name="theme-color" content="#050a14" />
+
+    <title>FAVELLA 1 — Scrivi storie, non codice</title>
+    <meta name="description" content="FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.0.0, il linguaggio è completo. Parser LALR(1), 681 test. Su GitHub, aperto ai contributi." />
+    <meta name="keywords" content="Favella 1, narrativa interattiva, avventure testuali, interactive fiction, linguaggio di programmazione italiano, Inform 7 italiano, Python, Lark, open source, game design narrativo" />
+    <meta name="author" content="Simone Pizzi" />
+    <link rel="canonical" href="https://www.favella.eu/" />
+
+    <!-- Open Graph / Twitter (valori di default; ogni pagina li sovrascrive
+         con i propri via seo.ts → applySeo, anche nei file pre-renderizzati) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FAVELLA 1" />
+    <meta property="og:locale" content="it_IT" />
+    <meta property="og:url" content="https://www.favella.eu/" />
+    <meta property="og:title" content="FAVELLA 1 — Scrivi storie, non codice" />
+    <meta property="og:description" content="Il linguaggio di programmazione in cui l'italiano È il codice. Open-source, versione 1.0.0: il linguaggio è completo. Dai una mano su GitHub." />
+    <meta property="og:image" content="https://www.favella.eu/og/home.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://www.favella.eu/og/home.png" />
+
+    <!-- Dati strutturati globali del sito (per pagina: <script id="ld-page">) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "name": "FAVELLA 1",
+          "url": "https://www.favella.eu/",
+          "inLanguage": "it",
+          "description": "Linguaggio di programmazione open-source in cui l'italiano è il codice: scrivi avventure testuali con frasi in italiano."
+        },
+        {
+          "@type": "Organization",
+          "name": "FAVELLA 1",
+          "url": "https://www.favella.eu/",
+          "logo": "https://www.favella.eu/favicon-512.png",
+          "sameAs": ["https://github.com/Pitz72/FAVELLA1"]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "FAVELLA 1",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Windows, macOS, Linux",
+          "softwareVersion": "1.0.0",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+          "url": "https://www.favella.eu/"
+        }
+      ]
+    }
+    </script>
+
+    <!-- Font self-hosted (GDPR): nessuna chiamata a Google. I woff2 e questo
+         CSS sono generati da scripts/fetch-fonts.mjs e serviti dal nostro dominio. -->
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+  </head>
+  <body class="bg-favella-void text-favella-text-primary antialiased selection:bg-favella-cyan selection:text-favella-dark">
+    <!-- Sfondo editoriale: fondo piatto #03060d; ogni sezione porta il proprio
+         gradiente radiale (estetica del redesign). Le pagine immersive (corso,
+         programma, galleria) aggiungono le proprie aurore localmente. -->
+    <div id="root" class="relative z-10"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

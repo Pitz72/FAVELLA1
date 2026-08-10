@@ -1,0 +1,43 @@
+# ╔═ MODULO · SISTEMI ════════════════════════════════════════════════════════╗
+# ║  Sopravvivenza trasversale a TUTTE le zone: bere, mangiare, il logorio del  ║
+# ║  tempo, le soglie di sete/fame/vita, la morte e il comando STATO.           ║
+# ║  Gli effetti AMBIENTALI per-zona (il sole del tratto, il riverbero del      ║
+# ║  fondale, ...) stanno invece nel modulo della rispettiva zona.              ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- BERE / MANGIARE  [verbi su CONTATORE — consumo SEMPRE protetto da guard] ---
+"bevi" è un comando senza oggetto.
+Invece di bevi se l'acqua è almeno 1: dire "Bevi a piccoli sorsi dalla tanica. La gola brucia meno." e adesso diminuisci l'acqua di 1 e adesso diminuisci la sete di 4.
+Invece di bevi: dire "Porti la tanica alle labbra: vuota. Solo il sapore del metallo caldo.".
+
+# NB: 'mangia' è un verbo TRANSITIVO riservato del motore (usa/apri/mangia/sposta):
+# non si può ridichiarare 'senza oggetto'. Comando multiparola intransitivo dedicato.
+"mangia qualcosa" è un comando senza oggetto.
+Invece di mangia qualcosa se il cibo è almeno 1: dire "Mastichi piano. Non sa di niente, ma è qualcosa nello stomaco." e adesso diminuisci il cibo di 1 e adesso diminuisci la fame di 3.
+Invece di mangia qualcosa: dire "Non hai niente da mettere sotto i denti.".
+
+# --- IL TEMPO  [logorio lento, di fondo, per tutto il viaggio] ---
+Ogni 3 turni: aumenta la sete.
+Ogni 4 turni: aumenta la fame.
+
+# --- LE SOGLIE  [avvisi → danno continuo alla vita → morte] ---
+Ogni turno se la sete è almeno 6: dire "Hai la lingua impastata. Devi bere.".
+Ogni turno se la sete è almeno 9: dire "La testa martella, le mani tremano." e adesso diminuisci la vita di 1.
+Quando la sete è almeno 13: dire "Le gambe cedono sul ciglio della strada. Il sole è l'ultima cosa che vedi." e adesso perdi "La sete ti ha avuto prima di casa.".
+
+Ogni turno se la fame è almeno 7: dire "Lo stomaco è un nodo stretto. (MANGIA QUALCOSA, se hai di che.)".
+Ogni turno se la fame è almeno 11: dire "La debolezza ti rallenta i passi." e adesso diminuisci la vita di 1.
+Quando la fame è almeno 15: dire "Non hai più la forza di rialzarti." e adesso perdi "La fame ti ha fermato lungo la strada.".
+
+Quando la vita è al massimo 0: dire "Ti accasci, e non riparti più." e adesso perdi "Il viaggio finisce qui.".
+
+# --- FLOOR-CLAMP COSMETICO  [sete/fame non scendono sotto 0: niente valori negativi
+# nello STATO se si beve/mangia in eccesso. I contatori del motore non clampano.] ---
+Ogni turno se la sete è meno di 0: la sete diventa 0.
+Ogni turno se la fame è meno di 0: la fame diventa 0.
+
+# --- SCHEDA  [STATO: i valori del corpo a colpo d'occhio; base della UI React]
+# Legge le 'fiducia di <maggiore>' dichiarate nei moduli-zona: aggiornare la
+# riga via via che si aggiungono i maggiori (Z4 Vito, Z5 Rosaria, Z6 Onofrio).
+"stato" è un comando senza oggetto.
+Invece di stato: dire "Vita [vita]/10 · Sete [sete] · Fame [fame] · Acqua [acqua] · Cibo [cibo] · (Saverio: [fiducia di Saverio] · Iole: [fiducia di Iole] · Vito: [fiducia di Vito] · Rosaria: [fiducia di Rosaria] · Onofrio: [fiducia di Onofrio])".

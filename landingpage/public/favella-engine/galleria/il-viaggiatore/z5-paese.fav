@@ -1,0 +1,184 @@
+# ╔═ MODULO · ZONA 5 — IL PAESE ══════════════════════════════════════════════╗
+# ║  Il cuore sociale e morale: restare o partire. Quasi nessuno scontro: la    ║
+# ║  tensione è nelle persone. Qui arriva LA NOTIZIA su Acquamorta e si pianta   ║
+# ║  il nome del boss (Cosimo, il fratello). Maggiore: Rosaria (RESTARE).        ║
+# ║  Minori: Ciro (mercato), Concetta (memoria), Pasquale (scelta), Peppe.       ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stato e relazione di zona ---
+La fiducia di Rosaria è un contatore.
+La fiducia di Rosaria parte da 1.
+
+Lo stato di Pasquale è uno stato.
+Lo stato di Pasquale è malato.
+
+Lo stato di Peppe è uno stato.
+Lo stato di Peppe è qui.
+
+Lo stato della salita è uno stato.
+Lo stato della salita è nuova.
+
+# --- Stanze ---
+La porta è una stanza.
+La descrizione della porta è "Una porta di paese vera, di pietra, con la nicchia di un santo svuotata. Di qua si sente quello che non sentivi da giorni: voci, un cane che abbaia per gioco, una radio. Acquamorta è ancora lontana, oltre le colline. A OVEST la piazzetta; a EST la statale da cui sei sceso.".
+
+La piazzetta è una stanza.
+La descrizione della piazzetta è "Una piazzetta in salita, i panni stesi tra una finestra e l'altra. Su un gradino, PEPPE, diciassette anni e gli occhi già altrove. (PARLA CON Peppe.) A NORD l'osteria; a EST il mercato; a OVEST un vicolo stretto; a SUD si torna alla porta.".
+
+L'osteria è una stanza.
+La descrizione dell'osteria è "Una stanza bassa che sa di vino e di legna. ROSARIA tiene il banco, l'ospitalità come ultima economia rimasta. Su una mensola, un REGISTRO del paese. (PARLA CON Rosaria.) A EST un cortile; a NORD la mulattiera che sale alle colline; a SUD la piazzetta.".
+
+Il mercato è una stanza.
+La descrizione del mercato è "Quattro banchi sotto un telone scolorito: il mercato del baratto. CIRO ci sta in mezzo come un re senza regno. (PARLA CON Ciro per scambiare.) A OVEST la piazzetta.".
+
+Il vicolo è una stanza.
+La descrizione del vicolo è "Un vicolo cieco, l'ombra fresca. Su un giaciglio di stracci, PASQUALE brucia di febbre. (Con le MEDICINE giuste lo si può curare: USA LE MEDICINE SU Pasquale. Oppure si tira dritto.) A EST la piazzetta.".
+
+Il cortile è una stanza.
+La descrizione del cortile è "Un cortile in penombra, gerani secchi nei barattoli. CONCETTA siede su una sedia impagliata, vecchissima, le mani in grembo. (PARLA CON Concetta.) Su un davanzale, un GIOCATTOLO di legno e un ANELLO. A OVEST l'osteria.".
+
+La salita è una stanza.
+La descrizione della salita è "Dove le case finiscono, una mulattiera si inerpica tra i fichi d'India verso le colline. L'aria cambia, si fa di pietra. È la via per Acquamorta.".
+
+# --- Collegamenti (auto-reciproci). La discesa è agganciata da z4-statale.fav. ---
+La porta collega ovest a la piazzetta.
+La piazzetta collega nord a l'osteria.
+La piazzetta collega est a il mercato.
+La piazzetta collega ovest a il vicolo.
+L'osteria collega est a il cortile.
+
+# --- Oggetti ---
+Il registro è una cosa.
+Il registro è prendibile.
+Il registro è in l'osteria.
+La descrizione del registro è "Il registro del paese: nascite, morti, partenze, in una grafia a penna che si fa più rada anno dopo anno. Verso il fondo, un cognome che conosci bene.".
+
+Il giocattolo è una cosa.
+Il giocattolo è prendibile.
+Il giocattolo è in il cortile.
+La descrizione del giocattolo è "Un cavalluccio di legno, la vernice consumata dove una mano piccola lo stringeva. Tuo, da bambino. O di tuo fratello: non lo sai più nemmeno tu.".
+
+L'anello è una cosa.
+L'anello è prendibile.
+L'anello è in il cortile.
+La descrizione dell'anello è "Una fede nuziale, dentro un'incisione e una data. Pesa pochissimo, e pesa tutto: tenerla è un peso da portare a casa, venderla è acqua per la strada.".
+
+# Il salvacondotto lo consegna Rosaria (nessun luogo iniziale: grant via conseguenza).
+Il salvacondotto è una cosa.
+La descrizione del salvacondotto è "Due righe di Rosaria a un pastore delle colline: «è uno a posto, fallo passare». Su per quei sentieri, vale più di un'arma.".
+
+# --- ROSARIA  [maggiore: RESTARE. Fiducia → la notizia + il salvacondotto] ---
+Rosaria è un personaggio.
+Rosaria è in l'osteria.
+La descrizione di Rosaria è "Una donna sui sessanta, le braccia tonde, gli occhi che hanno visto andare via tutti a uno a uno. Tiene aperto per non restare sola col silenzio.".
+
+Il dialogo di Rosaria comincia con "rosaria_inizio".
+Rosaria al nodo "rosaria_inizio" dice "«Siediti, che sei bianco di polvere. Qui si entra come si entra in casa d'altri: con rispetto.» Ti versa da bere senza chiederti niente." se la fiducia di Rosaria è al massimo 2.
+Rosaria al nodo "rosaria_inizio" dice "«Ah, sei tu. Il paese parla bene di te, per una volta. Dimmi.»" se la fiducia di Rosaria è almeno 3.
+
+Al nodo "rosaria_inizio" l'opzione "Ti lascio dell'acqua, per l'ospitalità." se l'acqua è almeno 1 conduce al nodo "rosaria_dono" e adesso diminuisci l'acqua di 1 e adesso aumenta la fiducia di Rosaria di 1.
+Al nodo "rosaria_inizio" l'opzione "Cosa si dice di Acquamorta?" conduce al nodo "rosaria_notizia".
+Al nodo "rosaria_inizio" l'opzione "Mi serve salire alle colline." conduce al nodo "rosaria_colline".
+Al nodo "rosaria_inizio" l'opzione "Niente, grazie." chiude il dialogo.
+
+Rosaria al nodo "rosaria_dono" dice "Accetta con un cenno, senza cerimonie. «Buono a sapersi, che qualcuno dà ancora.»".
+Al nodo "rosaria_dono" l'opzione "..." conduce al nodo "rosaria_inizio".
+
+Rosaria al nodo "rosaria_notizia" dice "Abbassa la voce. «Acquamorta è vuota, ormai. Tranne uno. Dicono sia rimasto a tenere il paese, o quel che ne resta, e che non lasci entrare nessuno. Chi è andato via, per lui, è come morto.» Ti guarda. «Tu di là vieni, eh? Pensaci, a cosa torni.»".
+Al nodo "rosaria_notizia" l'opzione "Chi è quest'uomo?" conduce al nodo "rosaria_chi".
+Al nodo "rosaria_notizia" l'opzione "..." conduce al nodo "rosaria_inizio".
+
+Rosaria al nodo "rosaria_chi" dice "«Non lo so, e chi lo sa non lo dice. Sangue tuo, magari. Queste cose, qui, sono sempre di famiglia.» Ti rimette il bicchiere davanti. «Concetta, la vecchia nel cortile: lei ricorda. Lei le famiglie le sa.»".
+Al nodo "rosaria_chi" l'opzione "..." conduce al nodo "rosaria_inizio".
+
+Rosaria al nodo "rosaria_colline" dice "«Su, da quelle parti, non si arriva da estranei: c'è Onofrio, e i pastori, gente che spara prima di chiedere. Ti do due righe mie, ma prima il paese deve fidarsi di te.» Ti misura. «Fatti voler bene. Aiuta qualcuno, qui.»" se la fiducia di Rosaria è al massimo 2.
+Rosaria al nodo "rosaria_colline" dice "«Te lo sei guadagnato. Tieni: due righe mie. Su per i sentieri, valgono.» Ti mette in mano un foglio piegato." se la fiducia di Rosaria è almeno 3.
+Al nodo "rosaria_colline" l'opzione "Prendo il foglio." se la fiducia di Rosaria è almeno 3 e il giocatore non ha il salvacondotto conduce al nodo "rosaria_pass" e adesso il salvacondotto è in inventario.
+Al nodo "rosaria_colline" l'opzione "Capito. Tornerò." conduce al nodo "rosaria_inizio".
+
+Rosaria al nodo "rosaria_pass" dice "«E sta' attento, lassù. La pietra non perdona più della pianura.»".
+Al nodo "rosaria_pass" l'opzione "Grazie." chiude il dialogo.
+
+# Gate [!] verso Z6: la mulattiera, chiusa finché non hai il salvacondotto di Rosaria.
+Invece di vai nord se il giocatore è in l'osteria e il giocatore non ha il salvacondotto: dire "Fai per imboccare la salita, ma Rosaria ti ferma con un'occhiata dal banco. «Senza una mia parola, lassù non ci arrivi. Fatti voler bene, prima.»".
+L'osteria collega nord a la salita.
+
+# --- CONCETTA  [vecchia: la memoria a pezzi. Nomina Cosimo, il fratello] ---
+Concetta è un personaggio.
+Concetta è in il cortile.
+La descrizione di Concetta è "Tanto vecchia che il tempo, su di lei, sembra essersi seduto a riposare. Non ti riconosce, e poi un po' sì.".
+
+Il dialogo di Concetta comincia con "concetta_inizio".
+Concetta al nodo "concetta_inizio" dice "Ti studia a lungo. «Tu... ma tu sei dei... aspetta.» Le si illumina qualcosa. «La casa in fondo, ad Acquamorta. Due maschi, c'erano. Tu quale dei due?»".
+Al nodo "concetta_inizio" l'opzione "Erano in due?" conduce al nodo "concetta_fratelli".
+Al nodo "concetta_inizio" l'opzione "Il giocattolo, sul davanzale..." conduce al nodo "concetta_giocattolo".
+Al nodo "concetta_inizio" l'opzione "Ti lascio riposare." chiude il dialogo.
+
+Concetta al nodo "concetta_fratelli" dice "«Due, sì. Tu te ne andasti, col treno, e non tornasti più. L'altro restò. Cosimo.» Mastica il nome come pane vecchio. «Cosimo restò, e si chiuse. Dopo che... no. Dopo non ricordo. C'è stata una disgrazia, in quella casa, ma il quando mi sfugge.»".
+Al nodo "concetta_fratelli" l'opzione "Che disgrazia?" conduce al nodo "concetta_disgrazia".
+Al nodo "concetta_fratelli" l'opzione "..." conduce al nodo "concetta_inizio".
+
+Concetta al nodo "concetta_disgrazia" dice "Scuote la testa piano. «Non me lo far dire, che poi sbaglio e ti faccio male per niente. Vacci, e guardala tu, la casa. Le cose vere si sanno solo sulla soglia.» Ti spinge verso il davanzale. «Pìgliati il cavallo di legno. Era vostro.»".
+Al nodo "concetta_disgrazia" l'opzione "..." conduce al nodo "concetta_inizio".
+
+Concetta al nodo "concetta_giocattolo" dice "«Pìgliatelo. Lo tenevo io, da quando la casa si è chiusa. Uno di voi due ci dormiva insieme, ma quale non te lo so dire.» Sorride senza denti. «Portatelo a casa, quel cavallo. Le case vogliono indietro le loro cose.»".
+Al nodo "concetta_giocattolo" l'opzione "..." conduce al nodo "concetta_inizio".
+
+# --- PASQUALE  [malato: scelta secca. Curarlo costa le medicine; o tirar dritto] ---
+Pasquale è un personaggio.
+Pasquale è in il vicolo.
+La descrizione di Pasquale è "Un uomo giovane invecchiato dalla febbre, il sudore che gli incolla i capelli. Non chiede: gli brucia troppo l'orgoglio, anche adesso.".
+
+Il dialogo di Pasquale comincia con "pasquale_inizio".
+Pasquale al nodo "pasquale_inizio" dice "«Non sto male.» Lo dice e gli trema la voce. «Passa pure, viandante. Non sei il primo che passa.»" se lo stato di Pasquale è malato.
+Pasquale al nodo "pasquale_inizio" dice "«Sto meglio. Te lo devo.» Si tira su a sedere. «Quello che hai fatto, qui, non si scorda. Il paese lo sa.»" se lo stato di Pasquale è curato.
+Al nodo "pasquale_inizio" l'opzione "..." chiude il dialogo.
+
+# La cura: usa le medicine su Pasquale (le medicine vengono da Z4, o le hai spese su di te).
+Invece di usa le medicine su Pasquale se il giocatore ha le medicine e lo stato di Pasquale è malato: dire "Gli fai sciogliere le medicine in un dito d'acqua e lo aiuti a mandarle giù. Per la prima volta da giorni, il respiro gli si fa lungo. Una donna sulla soglia ti guarda fare, e non lo dimenticherà." e adesso le medicine è nel nulla e adesso lo stato di Pasquale è curato e adesso aumenta la fiducia di Rosaria di 2.
+Invece di usa le medicine su Pasquale se lo stato di Pasquale è curato: dire "Pasquale riposa, la febbre rotta. Non gli serve altro.".
+Invece di usa le medicine su Pasquale: dire "Le medicine le avevi, e le hai spese altrove. A mani vuote, qui, puoi solo guardare.".
+
+# --- PEPPE  [il rovescio del tema: PARTIRE. Portarlo o lasciarlo: flag per Z7] ---
+Peppe è un personaggio.
+Peppe è in la piazzetta.
+La descrizione di Peppe è "Diciassette anni, le scarpe sbagliate per camminare e la testa piena di altrove. Ti ha visto arrivare dalla strada e non smette di fissarti.".
+
+Il dialogo di Peppe comincia con "peppe_inizio".
+Peppe al nodo "peppe_inizio" dice "«Tu vai a ovest, vero? Oltre le colline.» Si alza di scatto. «Portami con te. Qui si muore da fermi. Io cammino, non mi lamento, ti giuro.»" se lo stato di Peppe è qui.
+Peppe al nodo "peppe_inizio" dice "«Allora si parte davvero?» Ha già un fagotto pronto, lo nasconde male." se lo stato di Peppe è preso.
+Peppe al nodo "peppe_inizio" dice "Non alza più gli occhi da terra. «Ho capito. Stammi bene, viandante.»" se lo stato di Peppe è lasciato.
+
+Al nodo "peppe_inizio" l'opzione "Vieni con me, allora." se lo stato di Peppe è qui conduce al nodo "peppe_preso" e adesso lo stato di Peppe è preso.
+Al nodo "peppe_inizio" l'opzione "È troppo dura, dove vado. Resta." se lo stato di Peppe è qui conduce al nodo "peppe_lasciato" e adesso lo stato di Peppe è lasciato.
+Al nodo "peppe_inizio" l'opzione "..." chiude il dialogo.
+
+Peppe al nodo "peppe_preso" dice "Gli si apre la faccia. «Non te ne penti. Vado a salutare nessuno, e sono pronto.»".
+Al nodo "peppe_preso" l'opzione "..." chiude il dialogo.
+
+Peppe al nodo "peppe_lasciato" dice "Incassa, annuisce, si rimette a sedere sul gradino. «Sì. Sì, certo. Era una cosa da ragazzini.» Non ci crede, e neanche tu.".
+Al nodo "peppe_lasciato" l'opzione "..." chiude il dialogo.
+
+# --- CIRO  [barattaro: l'economia del paese, e la scelta dell'anello] ---
+Ciro è un personaggio.
+Ciro è in il mercato.
+La descrizione di Ciro è "Svelto d'occhi e di mani, la faccia di chi tratta da quando aveva i calzoni corti. Non vuole amicizia: vuole fare affari.".
+
+Il dialogo di Ciro comincia con "ciro_inizio".
+Ciro al nodo "ciro_inizio" dice "«Tutto si scambia, niente si regala.» Allarga le mani sui banchi. «Acqua, cibo, o qualcosa di buono da rivendere. Tu cos'hai?» (Hai [acqua] d'acqua e [cibo] di cibo.)".
+Al nodo "ciro_inizio" l'opzione "Ti do l'orologio per dell'acqua." se il giocatore ha l'orologio conduce al nodo "ciro_affare" e adesso l'orologio è nel nulla e adesso aumenta l'acqua di 3.
+Al nodo "ciro_inizio" l'opzione "Ti do i cristalli di sale per del cibo." se il giocatore ha i cristalli conduce al nodo "ciro_affare" e adesso i cristalli è nel nulla e adesso aumenta il cibo di 2.
+Al nodo "ciro_inizio" l'opzione "Vendo l'anello." se il giocatore ha l'anello conduce al nodo "ciro_anello" e adesso l'anello è nel nulla e adesso aumenta l'acqua di 4 e adesso aumenta il cibo di 2.
+Al nodo "ciro_inizio" l'opzione "Niente, per ora." chiude il dialogo.
+
+Ciro al nodo "ciro_affare" dice "«Affare.» Conta la merce, ti dà il dovuto. «Roba così, di questi tempi, è oro.» (Ora hai [acqua] d'acqua e [cibo] di cibo.)".
+Al nodo "ciro_affare" l'opzione "Altro." conduce al nodo "ciro_inizio".
+Al nodo "ciro_affare" l'opzione "Basta così." chiude il dialogo.
+
+Ciro al nodo "ciro_anello" dice "Soppesa l'anello, legge la data, non commenta. «Oro è oro, anche quando scotta. Tieni.» Te lo paga bene. (Ora hai [acqua] d'acqua.)".
+Al nodo "ciro_anello" l'opzione "Va bene così." chiude il dialogo.
+
+# --- Passaggio a Z6: la mulattiera sale verso le colline ---
+# (il sentiero è la stanza d'ingresso di z6-colline.fav)
+La salita collega nord a il sentiero.
+Quando il giocatore è in la salita e lo stato della salita è nuova: dire "Imbocchi la mulattiera. Il paese resta sotto, con le sue voci e le sue scelte fatte. Davanti, la pietra delle colline, e qualcuno lassù che ha conosciuto i tuoi." e adesso lo stato della salita è vista.

@@ -1,0 +1,72 @@
+# ╔═ MODULO · ZONA 7 — IL GUADO E ACQUAMORTA ═════════════════════════════════╗
+# ║  Il boss è COSIMO, il fratello rimasto. Non lo sconfiggi: lo RICONOSCI       ║
+# ║  (usa la lettera su Cosimo, via umana) o lo ABBATTI (attacca col fucile,     ║
+# ║  via violenta). Poi entri ad Acquamorta, e lo stato accumulato in tutto il   ║
+# ║  viaggio decide quale dei QUATTRO FINALI si apre alla casa.                  ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stato del confronto finale ---
+Lo stato di Cosimo è uno stato.
+Lo stato di Cosimo è fermo.
+
+# --- Stanze ---
+Il guado è una stanza.
+La descrizione del guado è "Un greto di pietre bianche, un filo d'acqua morta in mezzo. Sull'altra riva comincia Acquamorta. Di qua, in piedi tra te e il guado, c'è COSIMO: più vecchio di come te lo ricordi, più tuo di chiunque. (PARLA CON Cosimo. La lettera di Onofrio: USA LA LETTERA SU Cosimo. Il fucile: ATTACCA Cosimo.) A NORD si guada; a SUD il valico.".
+
+La strada è una stanza.
+La descrizione della strada è "La strada di Acquamorta, tra case con le porte aperte sul niente. Nessuna voce, nessun cane. Solo il tuo passo, e il vento che entra ed esce dalle finestre. In fondo, la tua casa. A NORD la casa; a SUD il guado.".
+
+La soglia è una stanza.
+La descrizione della soglia è "La porta di casa tua, socchiusa. La maniglia la conosci ancora, la mano ci torna da sola.".
+
+# --- Collegamenti (auto-reciproci). Il valico è agganciato da z6-colline.fav. ---
+Il guado collega nord a la strada.
+La strada collega nord a la soglia.
+
+# --- COSIMO  [il boss umano: il fratello. Parla; poi lo riconosci o lo abbatti] ---
+Cosimo è un personaggio.
+Cosimo è in il guado.
+La descrizione di Cosimo è "Tuo fratello. Le stesse mani di vostro padre, la stessa fronte. Tiene il greto come si tiene una tomba: non per cattiveria, per fedeltà a qualcosa che non c'è più.".
+
+Il dialogo di Cosimo comincia con "cosimo_inizio".
+Cosimo al nodo "cosimo_inizio" dice "«Lo sapevo, che saresti tornato. Quando non serve più a nessuno.» Non grida. È peggio. «Io sono rimasto a chiudere gli occhi a tutti, qui. Tu eri al sicuro, lontano. Adesso il guado è mio, e di qua non passi.»".
+Al nodo "cosimo_inizio" l'opzione "Non sapevo. Te lo giuro." conduce al nodo "cosimo_sapere".
+Al nodo "cosimo_inizio" l'opzione "Fammi passare, Cosimo." conduce al nodo "cosimo_no".
+Al nodo "cosimo_inizio" l'opzione "..." chiude il dialogo.
+
+Cosimo al nodo "cosimo_sapere" dice "«Non sapevi.» Lo ripete piano, come per pesarlo. «Le lettere te le scrissi io. Una per dirti di non venire, che ero capace di tenere tutto in piedi. Bugia. L'altra non te l'ho mandata.» Si guarda le mani. «Non sapevi perché io non te l'ho lasciato sapere. Questo non ti assolve. Assolve me, semmai, e non voglio.»".
+Al nodo "cosimo_sapere" l'opzione "..." conduce al nodo "cosimo_inizio".
+
+Cosimo al nodo "cosimo_no" dice "«No.» Allarga appena le braccia, a chiudere il passaggio. «Di là ci sono loro. Tu di là ci entri solo se prima passi da me. In un modo o nell'altro.»".
+Al nodo "cosimo_no" l'opzione "..." conduce al nodo "cosimo_inizio".
+
+# --- VIA UMANA: usa la lettera su Cosimo → lo riconosci ---
+Invece di usa la lettera su Cosimo se il giocatore ha la lettera e lo stato di Cosimo è fermo: dire "Tiri fuori la lettera che lui credeva persa e gliela tieni davanti agli occhi. Cosimo la riconosce dalla grafia, dalla sua, e qualcosa gli si rompe nel petto senza rumore. «Quella non doveva leggerla nessuno.» «L'ho letta.» Restate così, due uomini su un greto, finché lui non si scosta dal guado. Non ti perdona. Ti lascia passare, che è un'altra cosa, e forse l'unica possibile." e adesso lo stato di Cosimo è riconosciuto.
+Invece di usa la lettera su Cosimo se lo stato di Cosimo è fermo: dire "Non hai niente di scritto da mettergli in mano. Solo parole, e le parole, tra voi due, si sono consumate da anni.".
+Invece di usa la lettera su Cosimo: dire "È già detto tutto, qui.".
+
+# --- VIA VIOLENTA: attacca col fucile → lo abbatti ---
+Invece di attacca Cosimo se il giocatore ha il fucile e lo stato di Cosimo è fermo: dire "Alzi il fucile. Cosimo non scappa, non implora: fa un passo avanti, come per aiutarti a mirare. «Bravo. Almeno uno di noi due finisce questa storia.» Il colpo parte e copre il rumore del greto. Poi solo il vento, e l'acqua morta, e tu di qua, ancora in piedi." e adesso lo stato di Cosimo è abbattuto.
+Invece di attacca Cosimo se lo stato di Cosimo è fermo: dire "A mani nude non concludi niente, e lui non alza un dito per difendersi. Ti lascia provare, e ti guarda farlo, ed è la cosa più dura che ti sia capitata in tutto il viaggio.".
+Invece di attacca Cosimo: dire "È già fatta. Non c'è altro da togliergli.".
+
+# Il guado non si passa finché Cosimo è in piedi e ti guarda.
+Invece di vai nord se il giocatore è in il guado e lo stato di Cosimo è fermo: dire "Cosimo è tra te e l'altra riva. Non si guada, finché è lì in piedi a guardarti.".
+
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║  I QUATTRO FINALI  —  scattano alla casa, in ordine di priorità.            ║
+# ║  Solo uno è vero per ogni partita (condizioni mutuamente esclusive +        ║
+# ║  ordine di dichiarazione: il primo che combacia chiude la partita).         ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# 1. VIA VIOLENTA → il finale più buio.
+Quando il giocatore è in la soglia e lo stato di Cosimo è abbattuto: dire "Spingi la porta, cede. Dentro è tutto fermo all'ultimo giorno: due piatti, una sedia rovesciata. Dietro la casa, due croci di legno, e accanto la terra dove stanotte ne pianterai una terza, per tuo fratello. Hai passato il guado. Sei l'ultimo rimasto di questa casa, e l'hai voluto tu." e adesso termina "FINALE — Sei entrato ad Acquamorta sopra il corpo di tuo fratello. La casa è tua, e non c'è più nessuno a cui dirlo.".
+
+# 2. VIA UMANA + hai portato via Peppe → scegli i vivi.
+Quando il giocatore è in la soglia e lo stato di Cosimo è riconosciuto e lo stato di Peppe è preso: dire "Entri, ma solo con gli occhi: due piatti, la sedia rovesciata, le due croci dietro. Poi ti volti, e c'è il ragazzo che ti ha seguito fin qua, vivo, impaurito, che aspetta te. Capisci che non sei tornato per restare in mezzo ai morti. Saluti Cosimo senza una parola che basti, e rimetti i piedi sulla strada, dalla parte opposta, con Peppe accanto." e adesso vinci "FINALE — Hai trovato la casa, e hai scelto di non restarci. Qualcuno, almeno, lo porti via vivo.".
+
+# 3. VIA UMANA + porti a casa la memoria (il cavallo di legno) → il riconoscimento.
+Quando il giocatore è in la soglia e lo stato di Cosimo è riconosciuto e il giocatore ha il giocattolo: dire "Entri. Cosimo resta sulla soglia, dietro di te, e non entra: non ne è più capace. Dietro la casa, due croci, l'erba tenuta corta da una mano paziente per anni. Posi il cavallo di legno sulla più piccola. Non vi dite niente, voi due: non esiste la parola giusta, e lo sapete entrambi. Resti. Non perché sia un lieto fine, ma perché ripartire sarebbe l'unica cosa peggiore." e adesso vinci "FINALE — Sei tornato, e hai riportato a casa l'ultima cosa che restava da riportare.".
+
+# 4. VIA UMANA a mani vuote → il ritorno vuoto.
+Quando il giocatore è in la soglia e lo stato di Cosimo è riconosciuto: dire "Entri. La casa è vuota di tutto, anche di te. Dietro, due croci con i nomi ormai illeggibili. Vorresti posarci qualcosa, e non hai niente: l'hai barattato per la strada, o non l'hai raccolto quando potevi. Resti in piedi sulla soglia di una vita che hai lasciato spegnere da lontano. Cosimo non entra. E nemmeno tu, davvero." e adesso termina "FINALE — Sei arrivato a casa con le mani vuote, e la casa se n'è accorta.".

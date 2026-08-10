@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* Tailwind v4: il tema custom (colori favella-*, font, ombre, animazioni) resta
+   definito nel file di config legacy, caricato esplicitamente. */
+@config "../tailwind.config.js";
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #03060d;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #05101a; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(#155e75, #1e3a52);
+  border-radius: 8px;
+  border: 2px solid #05101a;
+}
+::-webkit-scrollbar-thumb:hover { background: #22d3ee; }
+
+/* ---------- Griglia animata di sfondo ---------- */
+.bg-grid-animate {
+  background-size: 56px 56px;
+  background-image:
+    linear-gradient(to right, rgba(34, 211, 238, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.045) 1px, transparent 1px);
+  animation: moveGrid 24s linear infinite;
+  -webkit-mask-image: radial-gradient(circle at 50% 35%, black 30%, transparent 92%);
+          mask-image: radial-gradient(circle at 50% 35%, black 30%, transparent 92%);
+}
+@keyframes moveGrid {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(56px); }
+}
+
+/* ---------- Aurore di brand (blob morbidi che derivano) ---------- */
+.aurora {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.4;
+  will-change: transform;
+}
+.aurora-cyan {
+  width: 46vw; height: 46vw;
+  top: -8vw; left: 38vw;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.55), transparent 70%);
+  animation: drift1 26s ease-in-out infinite;
+}
+.aurora-emerald {
+  width: 40vw; height: 40vw;
+  top: 32vh; left: -8vw;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.45), transparent 70%);
+  animation: drift2 32s ease-in-out infinite;
+}
+.aurora-amber {
+  width: 30vw; height: 30vw;
+  bottom: -6vw; right: -4vw;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.32), transparent 70%);
+  animation: drift3 28s ease-in-out infinite;
+}
+@keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-6vw, 7vh) scale(1.12); } }
+@keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(8vw, -5vh) scale(1.1); } }
+@keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-5vw, -6vh) scale(1.18); } }
+
+.bg-vignette {
+  background: radial-gradient(ellipse at 50% 0%, transparent 40%, rgba(3, 6, 13, 0.6) 100%);
+}
+
+/* ---------- Utility di brand ---------- */
+.text-gradient-brand {
+  background-image: linear-gradient(110deg, #5cf3ff 0%, #2dd4bf 38%, #34d399 64%, #f59e0b 108%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: gradient-pan 6s ease infinite;
+}
+
+/* Accento editoriale (redesign): parola in corsivo con gradiente statico,
+   usata nei titoli serif Lora. Gemella di .text-gradient-brand ma SENZA
+   animazione, per il tono più calmo del redesign. */
+.text-ink-accent {
+  background-image: linear-gradient(110deg, #5cf3ff, #34d399 60%, #f59e0b 120%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(15, 32, 50, 0.7), rgba(11, 23, 38, 0.55));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+}
+
+/* Bordo "glow" che si accende all'hover — leggero (border + shadow, niente mask) */
+.glow-border {
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.3s ease;
+}
+.glow-border:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22), 0 20px 50px -22px rgba(34, 211, 238, 0.4);
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ---------- Manuale interattivo (estetica «cassetta», palette di brand) ---------- */
+/* Bobine del mangianastri che girano durante il caricamento */
+@keyframes reel-spin { to { transform: rotate(360deg); } }
+.reel-spin { animation: reel-spin 1.1s linear infinite; }
+
+/* Lieve bagliore «fosfori» sul testo dello schermo */
+.screen-glow { text-shadow: 0 0 8px rgba(34, 211, 238, 0.25); }
+
+/* Velo di scanline CRT, molto tenue, sopra lo schermo della lezione */
+.crt-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: repeating-linear-gradient(rgba(34, 211, 238, 0.05) 0 1px, transparent 1px 3px);
+  opacity: 0.5;
+}
+
+/* Scossa del campo input quando la riga non combacia */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+.animate-shake { animation: shake 0.4s ease-in-out; }
+
+.perspective-1000 { perspective: 1200px; }
+
+/* ---------- Markdown / prose nel manuale ---------- */
+.prose code {
+  color: #5cf3ff !important;
+  background: rgba(34, 211, 238, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+.prose strong { color: #f4f8fc; }
+
+/* ---------- Rispetto delle preferenze di movimento ridotto ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,42 @@
+# ============================================================================
+# strada.fav — I TRATTI DELLA STRADA e le loro DUE EPOCHE
+# Demo «Salerno-Reggio Calabria» — FAVELLA 1 v0.18.0
+# ----------------------------------------------------------------------------
+# Ogni tratto ha una descrizione base (l'OGGI, 2021, l'ultima volta) e una
+# variante "se l'epoca è infanzia" (il sedile di dietro, papà alla guida).
+# Le due descrizioni raccontano lo STESSO luogo: è il comando RICORDA che,
+# cambiando lo stato 'epoca', decide quale delle due il motore stamperà al
+# prossimo GUARDA. Questo è il trucco — anzi, il meccanismo nativo — su cui
+# poggia tutta la demo: descrizioni condizionali [Livello 5] + uno stato.
+# Incluso da salerno-reggio.fav.
+# ============================================================================
+
+# --- 1. CASELLO DI SALERNO (partenza) ---------------------------------------
+Il casello di Salerno è una stanza.
+La descrizione del casello di Salerno è "La sbarra si alza, il biglietto in mano, e la A3 ti si apre davanti. Alla tua sinistra il mare di Salerno tiene ancora la luce del mattino; davanti, il cartello verde: REGGIO CALABRIA. Quattrocentottanta chilometri di curve, gallerie e memoria. Metti la freccia e parti. La strada va AVANTI. (E quando vuoi, prova a RICORDARE.)".
+La descrizione del casello di Salerno se l'epoca è infanzia è "Sei piccolo, sul sedile di dietro, le gambe che non arrivano a terra. Odore di plastica calda e della sigaretta di papà socchiusa al finestrino. Mamma piega la carta stradale sulle ginocchia. 'Quando arriviamo?' — e non siete ancora partiti. La A3 è nuova, il cemento è bianco. Si va AVANTI, verso un mare che ancora non vedi.".
+
+# --- 2. IL VIADOTTO ITALIA --------------------------------------------------
+Il viadotto Italia è una stanza.
+La descrizione del viadotto Italia è "Il viadotto Italia ti sospende nel vuoto: una delle campate più alte d'Europa, duecentottanta metri di niente sotto le ruote. La valle è laggiù, lontanissima. Cantiere eterno: birilli arancioni, una gru immobile, un restringimento che non finisce mai. Si tira il fiato e si va AVANTI.".
+La descrizione del viadotto Italia se l'epoca è infanzia è "Il viadotto ti sembra la cosa più alta del mondo. Schiacci il naso contro il finestrino e guardi giù, e ti gira la testa di una vertigine bellissima e proibita. 'Stai seduto composto!' — ma tu continui a guardare. Nessun cantiere, allora: solo cielo da tutte le parti. AVANTI.".
+
+# --- 3. LO SVINCOLO DI LAGONEGRO (autogrill: sosta e benzina) ---------------
+Lo svincolo di Lagonegro è una stanza.
+La descrizione dello svincolo di Lagonegro è "L'autogrill di Lagonegro, chiuso da anni: l'insegna sbiadita, le pompe arrugginite, un cane che dorme all'ombra. Eppure l'aria di montagna entra a tradimento dal finestrino, resinosa, fredda. Buon punto per FARE BENZINA e ACCOSTARE un momento. Poi di nuovo AVANTI.".
+La descrizione dello svincolo di Lagonegro se l'epoca è infanzia è "L'autogrill è un formicaio di gente, e profuma di caffè e di cornetti caldi. Papà fa il pieno, mamma ti tiene per mano tra gli scaffali, e finisce sempre che torni in macchina con un giocattolino e le gambe finalmente sgranchite. Si riparte AVANTI, masticando.".
+
+# --- 4. LA GALLERIA DELL'APPENNINO ------------------------------------------
+La galleria dell'Appennino è una stanza.
+La descrizione della galleria dell'Appennino è "Galleria dopo galleria dopo galleria. La luce arancione che scorre sul parabrezza in un ritmo ipnotico, il rombo che si chiude attorno e poi di colpo si riapre sulla montagna calabrese, scura di boschi. Gli occhi si fanno pesanti. Tieni la linea. AVANTI.".
+La descrizione della galleria dell'Appennino se l'epoca è infanzia è "Le gallerie! Le contavate a una a una con tuo fratello, e a ognuna trattenevate il fiato fino all'uscita, le guance gonfie, ridendo. Qualcuno suonava il clacson nel buio solo per sentirne l'eco rimbombare. Quante ne mancano? Nessuno lo sa. AVANTI, nel rombo.".
+
+# --- 5. LO SVINCOLO DI BAGNARA (la vista) -----------------------------------
+Lo svincolo di Bagnara è una stanza.
+La descrizione dello svincolo di Bagnara è "La curva di Bagnara, e all'improvviso il mondo si apre: lo Stretto si spalanca azzurro e abbagliante, la Sicilia distesa sull'acqua a un palmo di mano, l'Etna sospeso nella foschia come un'idea. Ogni volta lo stesso colpo al petto. Ci sei quasi. AVANTI.".
+La descrizione dello svincolo di Bagnara se l'epoca è infanzia è "'Il mare! Il mare!' — lo gridavate insieme, slacciando già la cintura prima del tempo, mentre lo Stretto esplodeva azzurro oltre la curva e la Sicilia sembrava a un tuffo di distanza. La fine del viaggio profumava già di nonni e di sale. AVANTI, l'ultimo pezzo.".
+
+# --- 6. LO STRETTO DI REGGIO (arrivo) ---------------------------------------
+Lo Stretto di Reggio è una stanza.
+La descrizione dello Stretto di Reggio è "Il lungomare di Reggio, 'il più bel chilometro d'Italia'. I traghetti che tagliano lo Stretto verso Messina, le palme, l'aria che sa di salsedine e di gelso. Hai posato le mani in grembo. Per oggi la strada è finita. È l'agosto del 2021: non lo sai ancora, ma è l'ultima volta che la percorri.".
+La descrizione dello Stretto di Reggio se l'epoca è infanzia è "I nonni sono già sul marciapiede, le braccia spalancate prima ancora che la macchina si fermi. Il viaggio si dissolve di colpo, come si dissolvono sempre i viaggi quando si arriva: non resta che l'abbraccio, il sale sulla pelle, e l'estate intera ancora davanti.".

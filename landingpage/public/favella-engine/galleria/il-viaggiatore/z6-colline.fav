@@ -1,0 +1,123 @@
+# ╔═ MODULO · ZONA 6 — LE COLLINE ════════════════════════════════════════════╗
+# ║  L'ultima salita: la pietra, il freddo, l'isolamento. Onofrio (maggiore,    ║
+# ║  RINUNCIARE), l'eremita che conobbe la famiglia, dà la verità a pezzi e il   ║
+# ║  bivio che arma le due vie col boss: LA LETTERA (via umana) o IL FUCILE      ║
+# ║  (via violenta). Tore il pastore (minore). Gate: senza il lascito, al guado  ║
+# ║  non si va.                                                                  ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stato e relazione di zona ---
+La fiducia di Onofrio è un contatore.
+La fiducia di Onofrio parte da 1.
+
+Lo stato del lascito è uno stato.
+Lo stato del lascito è offerto.
+
+# --- Stanze ---
+Il sentiero è una stanza.
+La descrizione del sentiero è "La mulattiera si fa ripida tra muretti a secco crollati. Il fiato si accorcia, la pietra rimanda il caldo del giorno e già promette il freddo della notte. A NORD si sale a un pianoro; a EST una cappella diroccata; a SUD si ridiscende al paese.".
+
+Il pianoro è una stanza.
+La descrizione del pianoro è "Un pianoro di ginestra e roccia, il vento che non smette. TORE muove poche pecore tra le pietre, l'ultimo che lavora la terra alta. (PARLA CON Tore.) A OVEST una grotta abitata; a EST una sorgente; a NORD il valico verso il guado; a SUD il sentiero.".
+
+La grotta è una stanza.
+La descrizione della grotta è "Una grotta chiusa da un muro a secco e una porta di tavole. Dentro, al buio, ONOFRIO: barba lunga, occhi fermi, le mani di chi non stringe più niente. (PARLA CON Onofrio.) Si esce a EST.".
+
+La sorgente è una stanza.
+La descrizione della sorgente è "Una vena d'acqua che esce dalla roccia e sparisce tra i sassi, fredda, viva, dimenticata da tutti tranne le bestie. (ATTINGI per riempire la tanica.) Si torna a OVEST.".
+
+La cappella è una stanza.
+La descrizione della cappella è "Una cappella senza tetto, l'altare spaccato, un SANTINO consunto incastrato in una fessura del muro. Su una panca, una COPERTA di lana piegata da qualcuno che non è più tornato a prenderla. Si torna a OVEST.".
+
+Il valico è una stanza.
+La descrizione del valico è "Il punto più alto della salita. Di qua le colline finiscono e il terreno ricomincia a scendere, verso un greto e un guado. Oltre, lo sai, c'è Acquamorta. A NORD si scende al guado; a SUD il pianoro.".
+
+# --- Collegamenti (auto-reciproci). La salita è agganciata da z5-paese.fav. ---
+La salita collega nord a il sentiero.
+Il sentiero collega nord a il pianoro.
+Il sentiero collega est a la cappella.
+Il pianoro collega ovest a la grotta.
+Il pianoro collega est a la sorgente.
+Il pianoro collega nord a il valico.
+
+# --- Oggetti della cappella ---
+Il santino è una cosa.
+Il santino è prendibile.
+Il santino è in la cappella.
+La descrizione del santino è "Un santino di carta, la figura sbiadita fino a non riconoscersi. Dietro, a matita, due nomi e una data. Uno dei nomi è il tuo.".
+
+La coperta è una cosa.
+La coperta è prendibile.
+La coperta è in la cappella.
+La descrizione della coperta è "Una coperta di lana grezza, che sa di fumo. Lassù, di notte, vale più del pane.".
+
+# Il lascito di Onofrio: la lettera (via umana) O il fucile (via violenta).
+# Nessun luogo iniziale: li consegna lui, e uno solo.
+La lettera è una cosa.
+La descrizione della lettera è "La lettera che Cosimo scrisse e non spedì mai. La grafia parte ferma e si sfalda riga dopo riga. Non l'hai ancora letta tutta: certe cose si leggono una volta sola, e davanti a chi le ha scritte.".
+
+Il fucile è una cosa.
+La descrizione del fucile è "Un fucile da caccia a due colpi, oliato di fresco da mani che non cacciano più niente. Carico. Pesa quello che pesa togliere di mezzo qualcuno.".
+
+# --- ONOFRIO  [maggiore: RINUNCIARE. La verità a pezzi, e il lascito che sceglie la via]
+Onofrio è un personaggio.
+Onofrio è in la grotta.
+La descrizione di Onofrio è "Vecchio come la pietra intorno. Ha smesso di scendere a valle quando ha smesso di servirgli qualcosa, laggiù. Ti guarda come si guarda un tempo che torna a bussare.".
+
+Il dialogo di Onofrio comincia con "onofrio_inizio".
+Onofrio al nodo "onofrio_inizio" dice "«Non scendo, non parlo, non prego più. Cosa vuoi da un vecchio rimasto.» Poi ti mette a fuoco, e qualcosa gli si stringe in faccia. «Ma tu... io ti conosco. Tu sei di quella casa.»".
+Al nodo "onofrio_inizio" l'opzione "Cosa è successo, ad Acquamorta?" conduce al nodo "onofrio_verita".
+Al nodo "onofrio_inizio" l'opzione "Ti mostro questo cavallo di legno." se il giocatore ha il giocattolo conduce al nodo "onofrio_giocattolo" e adesso aumenta la fiducia di Onofrio di 2.
+Al nodo "onofrio_inizio" l'opzione "Devo passare il guado." conduce al nodo "onofrio_lascito".
+Al nodo "onofrio_inizio" l'opzione "Lasciami stare anche tu." chiude il dialogo.
+
+Onofrio al nodo "onofrio_verita" dice "«Sei andato via per mandare i soldi. Per un po' sono arrivati, i soldi. Poi l'acqua se n'è andata, e i soldi non si bevono.» Tace, sceglie le parole come sassi. «Tua moglie e il bambino sono rimasti senza. Prima il piccolo, poi lei. Cosimo li ha messi sotto terra da solo, dietro la casa.»".
+Al nodo "onofrio_verita" l'opzione "E le lettere che dicevano di non tornare?" conduce al nodo "onofrio_lettere".
+Al nodo "onofrio_verita" l'opzione "..." conduce al nodo "onofrio_inizio".
+
+Onofrio al nodo "onofrio_lettere" dice "«Quella te la scrisse lui, Cosimo, quando già non c'era più niente da salvare. Per orgoglio, per non farti vedere la rovina. Poi ne scrisse un'altra, dopo, di notte. In quella ti chiamava. Quella non la spedì.» Si gratta la barba. «Ce l'ho io. Lui non sa che ce l'ho.»".
+Al nodo "onofrio_lettere" l'opzione "..." conduce al nodo "onofrio_inizio".
+
+Onofrio al nodo "onofrio_giocattolo" dice "Prende il cavallo di legno con due dita, lo gira. Per un attimo il vecchio non c'è più, c'è un uomo. «Era del piccolo. Lo so perché glielo intagliai io.» Te lo rende. «Allora ascolta bene cosa ti do, e scegli da uomo.»".
+Al nodo "onofrio_giocattolo" l'opzione "Cosa mi dai?" conduce al nodo "onofrio_lascito".
+
+Onofrio al nodo "onofrio_lascito" dice "«Al guado c'è Cosimo, e non ti lascia passare. Posso darti una cosa sola.» Indica il buio della grotta. «La lettera che non spedì: portagliela, e mettilo davanti a quello che ha scritto. O il fucile: e fattela tu, la strada. Una cosa, non tutte e due. Scegli, e va'.»" se lo stato del lascito è offerto.
+Onofrio al nodo "onofrio_lascito" dice "«Ho già dato. Quello che hai in mano è la tua scelta, ormai.»" se lo stato del lascito è fatto.
+Al nodo "onofrio_lascito" l'opzione "Dammi la lettera." se lo stato del lascito è offerto conduce al nodo "onofrio_dato" e adesso la lettera è in inventario e adesso lo stato del lascito è fatto.
+Al nodo "onofrio_lascito" l'opzione "Dammi il fucile." se lo stato del lascito è offerto conduce al nodo "onofrio_dato" e adesso il fucile è in inventario e adesso lo stato del lascito è fatto.
+Al nodo "onofrio_lascito" l'opzione "Devo pensarci." conduce al nodo "onofrio_inizio".
+
+Onofrio al nodo "onofrio_dato" dice "«Va'. E qualunque cosa fai al guado, falla guardandolo in faccia. È l'ultima cosa che gli devi.»".
+Al nodo "onofrio_dato" l'opzione "..." chiude il dialogo.
+
+# --- TORE  [minore: il pastore. Formaggio per acqua, e due parole sul guado] ---
+Tore è un personaggio.
+Tore è in il pianoro.
+La descrizione di Tore è "Asciutto, cotto dal vento, gli occhi sempre su un punto lontano. Parla poco, e quel poco lo fa contare.".
+
+Il dialogo di Tore comincia con "tore_inizio".
+Tore al nodo "tore_inizio" dice "«Quassù non sale più nessuno, e tu invece sali.» Studia da che parte vieni. «Ho formaggio, se hai da scambiare. Acqua, magari: di quella, lassù, se ne beve poca.»".
+Al nodo "tore_inizio" l'opzione "Ti do un po' d'acqua per del formaggio." se l'acqua è almeno 2 conduce al nodo "tore_baratto" e adesso diminuisci l'acqua di 2 e adesso aumenta il cibo di 4.
+Al nodo "tore_inizio" l'opzione "Chi c'è, al guado?" conduce al nodo "tore_guado".
+Al nodo "tore_inizio" l'opzione "Il vecchio nella grotta?" conduce al nodo "tore_onofrio".
+Al nodo "tore_inizio" l'opzione "Tiro avanti." chiude il dialogo.
+
+Tore al nodo "tore_baratto" dice "Taglia una fetta di pecorino duro e te la passa. «Roba che cammina con te per giorni.»".
+Al nodo "tore_baratto" l'opzione "..." conduce al nodo "tore_inizio".
+
+Tore al nodo "tore_guado" dice "«Uno che non lascia passare. Sta là da quando il paese è morto, a guardia di niente.» Sputa al vento. «Sangue tuo, dicono. Di queste cose, qui, non si chiede.»".
+Al nodo "tore_guado" l'opzione "..." conduce al nodo "tore_inizio".
+
+Tore al nodo "tore_onofrio" dice "«Onofrio non parla con anima viva. Con te, forse, se gli porti qualcosa di casa tua. È l'unico che sappia com'è andata davvero, lassù.»".
+Al nodo "tore_onofrio" l'opzione "..." conduce al nodo "tore_inizio".
+
+# --- La sorgente: acqua pulita e gratis (rara), via il comando ATTINGI ---
+Invece di attingi se il giocatore è in la sorgente: dire "Metti la tanica sotto la vena. Viene su un'acqua che sa di pietra e di freddo, la prima acqua buona che non devi a nessuno." e adesso aumenta l'acqua di 6.
+
+# --- Il freddo del valico: senza coperta, logora ---
+Ogni turno se il giocatore è in il valico e il giocatore non ha la coperta: dire "Quassù il vento taglia. Tremi, e tremare prosciuga." e adesso aumenta la sete di 1.
+
+# --- IL GATE [!] verso Z7: al guado non si va a mani vuote ---
+# (il guado è la stanza d'ingresso di z7-guado.fav)
+Invece di vai nord se il giocatore è in il valico e il giocatore non ha la lettera e il giocatore non ha il fucile: dire "Guardi giù, verso il greto. Onofrio è stato chiaro: a Cosimo, a mani vuote, non ci si arriva. Torna da lui, e scegli cosa portargli.".
+Il valico collega nord a il guado.

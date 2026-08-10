@@ -147,8 +147,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Esclusioni Progetto
-landingpage/
+# Il SITO (landingpage/) ora vive QUI, nel repo pubblico: dal 2026-08-10 non è
+# più un repository a sé. Restano fuori solo i master grafici, per lo stesso
+# criterio di /branding/marchi/: nel repo vanno gli asset di consumo (le WebP in
+# landingpage/public/covers/, 488 KB), non gli originali a piena risoluzione.
+# I master vivono in locale in landingpage/immagini/ (~51 MB: logo, banner,
+# icona, render del manuale, le 10 copertine originali).
+/landingpage/immagini/
 
 # Favella Studio (IDE Electron) — artefatti di build
 studio/out/

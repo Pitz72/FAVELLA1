@@ -1,0 +1,100 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  IL RELITTO SILENTE — demo ufficiale di FAVELLA 1 (motore v0.18.0)         ║
+# ║  Porting in linguaggio .fav dell'avventura di Simone «Pitz72».            ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Sei il pilota solitario della nave da carico Santa Maria. Intercetti
+# un'anomalia: un'antica nave stellare aliena alla deriva, silenziosa e morta.
+# La bordi, la esplori, raccogli tre artefatti-chiave — il Seme Vivente, la
+# Stele del Ricordo, il Nucleo di Memoria — apri la Grande Porta, ripristini
+# l'energia, raggiungi il Santuario e parli con l'Anziano. Scoprirai chi erano
+# i K'tharr, e chi sei tu.
+#
+# Questa demo è l'orchestratore: definisce il vocabolario del mondo e include i
+# moduli. Esercita TUTTE le primitive del linguaggio (Livelli 1→8).
+
+# ============================================================================
+# 1. STATI GLOBALI  [Livello 3]
+# ============================================================================
+# Lo stato dell'energia di bordo e della proiezione del Ponte sono globali
+# perché letti da più stanze; il "sistema trino" è la conoscenza che apre la
+# porta finale e si può apprendere per due vie (mappa stellare O Stele).
+L'energia è uno stato.
+L'energia è assente.
+
+La proiezione è uno stato.
+La proiezione è spenta.
+
+Il sistema è uno stato.
+Il sistema è ignoto.
+
+# ============================================================================
+# 2. CONTATORI  [Livello 3 + valore iniziale 0.16.0]
+# ============================================================================
+Le chiavi è un contatore.
+La traduzione è un contatore.
+Gli echi è un contatore.
+Le risonanze è un contatore.
+
+# La matrice di traduzione parte da zero (esplicito, a scopo dimostrativo).
+La traduzione parte da 0.
+
+# ============================================================================
+# 3. DIREZIONI PERSONALIZZATE  [Livello 4]
+# ============================================================================
+# Oltre ai cardinali (nord/sud/est/ovest), coppie verticali e di transito.
+# REGOLA D'ORO (lezione di design): una direzione usata per GATING deve esistere
+# in UNA SOLA stanza d'origine, così "Invece di vai X" non è mai ambiguo.
+Alto e basso sono direzioni opposte.
+Fuori e rientro sono direzioni opposte.
+Varco e risigillo sono direzioni opposte.
+Soglia e sigillo sono direzioni opposte.
+Portale e arretra sono direzioni opposte.
+Avanti e addietro sono direzioni opposte.
+Oltre e ritroso sono direzioni opposte.
+Laterale e centrale sono direzioni opposte.
+
+# ============================================================================
+# 4. TOPOLOGIA  [Livello 1]  — il ritorno è automatico per ogni 'collega'
+# ============================================================================
+La plancia collega ovest a la stiva.
+La stiva collega fuori a lo scafo.
+Lo scafo collega varco a la camera di compensazione.
+La camera di compensazione collega soglia a il corridoio principale.
+Il corridoio principale collega nord a il santuario del silenzio.
+Il corridoio principale collega sud a la serra morente.
+Il corridoio principale collega basso a il laboratorio di risonanza.
+Il corridoio principale collega laterale a l'alloggio dell'equipaggio.
+Il corridoio principale collega portale a il ponte di comando.
+Il santuario del silenzio collega ovest a lo scriptorium.
+Lo scriptorium collega nord a l'arca della memoria.
+La serra morente collega ovest a l'arca biologica.
+Il ponte di comando collega avanti a l'anticamera.
+L'anticamera collega oltre a il santuario centrale.
+
+# ============================================================================
+# 5. POSIZIONE INIZIALE
+# ============================================================================
+Il giocatore comincia in plancia.
+
+# ============================================================================
+# 6. MODULI  [Livello 6]  — espansi dal preprocessore prima del parsing
+# ============================================================================
+Includi "stanze.fav".
+Includi "oggetti.fav".
+Includi "regole.fav".
+Includi "traduci.fav".
+Includi "echi.fav".
+Includi "dialoghi.fav".
+
+# ============================================================================
+# 7. EVENTI A TEMPO  [Livello 3]  — l'ambiente del relitto vive da sé
+# ============================================================================
+Ogni 9 turni: dire "Da qualche parte nello scafo il metallo si assesta con un gemito lungo e bassissimo. Poi di nuovo il silenzio, più fondo di prima.".
+
+# ============================================================================
+# 8. DEMONI  [Livello 8]  — if-then autonomi, valutati a ogni turno
+# ============================================================================
+# (a) FRONTE DI SALITA: scattano UNA volta sulla transizione falso→vero.
+Quando le chiavi è almeno 3: dire "Le tre luci — verde, bianca e ambrata — pulsano all'unisono. La loro frequenza accelera, il ronzio diventa un gong risonante che vibra in tutta la nave. Il simbolo a stella brilla di luce accecante, e la Grande Porta a OVEST non si apre: si dissolve in particelle di luce, come stelle che tornano al cielo." e adesso la grande porta è aperta.
+Quando l'energia è ripristinata diventa vera: dire "Un brivido percorre lo scafo. Lontano, sistemi dormienti da secoli tornano a respirare uno dopo l'altro. Per la prima volta, il relitto non è del tutto morto.".
+Quando la traduzione è almeno 100 diventa vera: dire "(MATRICE DI TRADUZIONE: [traduzione]% — DECODIFICA COMPLETATA) Per un momento la distanza tra te e loro collassa: non c'è più nulla di alieno nel linguaggio. Non sei più uno scopritore. Sei un testimone.".

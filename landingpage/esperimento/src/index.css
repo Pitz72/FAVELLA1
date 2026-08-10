@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Tailwind v4: tema custom (colori favella-*, font, ombre, animazioni) nel
+   file di config legacy, caricato esplicitamente. */
+@config "../tailwind.config.js";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  background-color: #03060d;
+  /* L'app è un «emulatore a tutto schermo»: niente scroll di pagina. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100dvh;
+}
+
+/* ====================================================================
+   Keyframes dell'INTRO «Sete» (porting 1:1 dal design Claude Design).
+   Ogni beat anima da solo via animation-delay: niente timeline condivisa.
+   ==================================================================== */
+@keyframes kf-beat { 0%{opacity:0;filter:blur(8px);transform:translateY(16px)} 9%{opacity:1;filter:blur(0);transform:translateY(0)} 84%{opacity:1;filter:blur(0);transform:translateY(0)} 100%{opacity:0;filter:blur(7px);transform:translateY(-12px)} }
+@keyframes kf-rise { 0%{opacity:0;transform:translateY(14px);filter:blur(6px)} 100%{opacity:1;transform:translateY(0);filter:blur(0)} }
+@keyframes kf-title { 0%{opacity:0;letter-spacing:.55em;filter:blur(12px);transform:scale(1.04)} 45%{opacity:1;letter-spacing:.07em;filter:blur(0);transform:scale(1)} 100%{opacity:1;letter-spacing:.07em;transform:scale(1)} }
+@keyframes kf-veil { 0%{opacity:0} 30%{opacity:.5} 70%{opacity:.5} 100%{opacity:0} }
+@keyframes kf-push { from{transform:scale(1.04)} to{transform:scale(1.16)} }
+@keyframes kf-pan { from{transform:translateX(0)} to{transform:translateX(var(--d))} }
+@keyframes kf-bar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+@keyframes kf-grain { 0%{transform:translate(0,0)} 100%{transform:translate(-7%,-5%)} }
+@keyframes kf-walkA { 0%,100%{transform:rotate(21deg)} 50%{transform:rotate(-21deg)} }
+@keyframes kf-walkB { 0%,100%{transform:rotate(-21deg)} 50%{transform:rotate(21deg)} }
+@keyframes kf-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+@keyframes kf-flicker { 0%,100%{opacity:.5} 50%{opacity:.36} }
+@keyframes kf-progress { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+@keyframes kf-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 0 26px -4px var(--gl)} 50%{box-shadow:0 0 0 6px rgba(255,255,255,.06),0 0 58px -2px var(--gl)} }
+@keyframes kf-sun { 0%,100%{opacity:.85} 50%{opacity:1} }
+@keyframes kf-launch { from{opacity:0} to{opacity:1} }
+@keyframes kf-on { from{opacity:0} to{opacity:1} }
+@keyframes kf-caret { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes kf-hud { from{opacity:0} to{opacity:.9} }
+
+/* ====================================================================
+   Keyframes dell'INTERFACCIA DI GIOCO (porting 1:1 dal design).
+   ==================================================================== */
+@keyframes gv-caret { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes gv-flicker { 0%,100%{opacity:.5} 50%{opacity:.38} }
+@keyframes gv-in { from{transform:translateY(6px)} to{transform:translateY(0)} }
+@keyframes gv-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,0)} 50%{box-shadow:0 0 14px -2px var(--accent)} }
+@keyframes gv-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* Scrollbar sottile dei pannelli/schermo (gv-scroll). */
+.gv-scroll::-webkit-scrollbar { width: 8px; }
+.gv-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+.gv-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Rispetto delle preferenze di movimento ridotto ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "favella-esperimento-viaggiatore",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "App React separata: l'esperimento «Il Viaggiatore» — trailer cinematografico GSAP + full-game 16:9 col motore FAVELLA reale (Pyodide). Builda dentro la dist del sito (../dist/esperimento) così resta UN solo deploy.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

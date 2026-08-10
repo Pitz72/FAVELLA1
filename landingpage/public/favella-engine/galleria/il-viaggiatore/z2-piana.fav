@@ -1,0 +1,97 @@
+# ╔═ MODULO · ZONA 2 — LA PIANA ══════════════════════════════════════════════╗
+# ║  Il primo cammino che costa (il sole del tratto morde la sete).             ║
+# ║  Maggiore: Saverio (CUSTODIRE) → fiducia apre il pozzo. Scontro EVITABILE:  ║
+# ║  il cane (combatti / sviàlo col cibo / non entrare). Gate: acqua dal pozzo. ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stato di zona ---
+La fiducia di Saverio è un contatore.
+La fiducia di Saverio parte da 1.
+
+La vita del cane è un contatore.
+La vita del cane parte da 5.
+Lo stato del cane è uno stato.
+Lo stato del cane è minaccioso.
+
+Lo stato del pozzo è uno stato.
+Lo stato del pozzo è pieno.
+
+Lo stato del crinale è uno stato.
+Lo stato del crinale è nuovo.
+
+# --- Stanze ---
+Il tratto è una stanza.
+La descrizione del tratto è "Un tratto di strada provinciale, dritto e nudo. Niente ombra, niente acqua, il catrame che ondeggia di calore. Si tira avanti a OVEST, verso una masseria; o si torna a EST, al paese.".
+
+La masseria è una stanza.
+La descrizione della masseria è "Una masseria bassa, intonaco scrostato. Un cortile silenzioso. A NORD il pozzo, dove un uomo monta la guardia. A SUD una serra di vetro. A OVEST una sterrata punta verso il bianco di un invaso. A EST si torna sulla provinciale.".
+
+Il pozzo è una stanza.
+La descrizione del pozzo è "Un pozzo vero, di quelli che pescano in fondo. SAVERIO ci sta seduto accanto come su un trono, gli occhi che ti misurano. (PARLA CON Saverio; poi ATTINGI per prendere acqua.) Si torna a SUD.".
+
+La serra è una stanza.
+La descrizione della serra è "Una serra dai vetri opachi di salsedine. Tra i filari secchi, casse di CONSERVE ancora buone. Ma un CANE rognoso le fa la guardia, il pelo ritto. Si torna a NORD.".
+
+La sterrata è una stanza.
+La descrizione della sterrata è "La sterrata scollina e, sotto, si apre la conca accecante dell'invaso prosciugato.".
+
+Il tratto collega ovest a la masseria.
+La masseria collega nord a il pozzo.
+La masseria collega sud a la serra.
+
+# --- Il sole del tratto: il cammino esposto morde forte la sete ---
+Ogni turno se il giocatore è in il tratto: dire "Il sole picchia sulla nuca. La gola si secca a vista d'occhio." e adesso aumenta la sete di 2.
+
+# --- SAVERIO  [relazione: dargli cibo alza la fiducia → ti lascia il pozzo] ---
+Saverio è un personaggio.
+Saverio è in il pozzo.
+La descrizione di Saverio è "Un uomo cotto dal sole, le mani grosse. Non se n'è andato perché il pozzo è suo padre e suo figlio. Diffida di tutto ciò che cammina.".
+
+Il dialogo di Saverio comincia con "guardia".
+Saverio al nodo "guardia" dice "«Cosa vuoi.» Non è una domanda." se la fiducia di Saverio è al massimo 1.
+Saverio al nodo "guardia" dice "«Sei ancora qui. Be', non sei il peggio passato di qua.»" se la fiducia di Saverio è almeno 2.
+
+Al nodo "guardia" l'opzione "Ti lascio del cibo. Ne hai più bisogno tu di me." se il cibo è almeno 1 conduce al nodo "dono" e adesso diminuisci il cibo di 1 e adesso aumenta la fiducia di Saverio di 2.
+Al nodo "guardia" l'opzione "Mi serve acqua dal pozzo." conduce al nodo "richiesta".
+Al nodo "guardia" l'opzione "Niente." chiude il dialogo.
+
+Saverio al nodo "dono" dice "Prende il cibo, lo soppesa, annuisce piano. «Pochi danno, di questi tempi. Il pozzo... vieni pure, quando ti serve.»".
+Al nodo "dono" l'opzione "Grazie." chiude il dialogo.
+
+Saverio al nodo "richiesta" dice "«Acqua.» Sputa di lato. «Tutti vogliono acqua. Portami un motivo per fidarmi, e ne parliamo.»".
+Al nodo "richiesta" l'opzione "Capito." conduce al nodo "guardia".
+
+# --- ATTINGERE AL POZZO  [acqua gated su FIDUCIA + esaurimento] ---
+"attingi" è un comando senza oggetto.
+Invece di attingi se il giocatore è in il pozzo e la fiducia di Saverio è almeno 2 e lo stato del pozzo è pieno: dire "Saverio fa un cenno secco. Cali la tanica: risale mezza piena di acqua vera, fredda di fondo. Ne hai per il tratto che viene." e adesso aumenta l'acqua di 5 e adesso lo stato del pozzo è vuoto.
+Invece di attingi se il giocatore è in il pozzo e lo stato del pozzo è vuoto: dire "Il pozzo ormai dà solo fango. Hai preso quel che c'era.".
+Invece di attingi se il giocatore è in il pozzo: dire "«Giù le mani» ti ferma Saverio, senza alzarsi. «Questo pozzo è la mia vita. Dammi un motivo per fidarmi.»".
+
+# --- IL CANE  [scontro EVITABILE: combatti, o sviàlo col cibo, o non entrare] ---
+Il cane è una cosa.
+Il cane è in la serra.
+La descrizione del cane è "Un cane rimasto solo e tornato mezzo selvatico, le costole in vista. Difende le casse come fossero cuccioli.".
+
+"attacca" è un comando.
+Invece di attacca il cane se lo stato del cane è minaccioso e il giocatore ha il coltello: dire "Tieni il cane a distanza con la lama e affondi quando si lancia." e adesso diminuisci la vita del cane di 3.
+Invece di attacca il cane se lo stato del cane è minaccioso: dire "Lo colpisci a mani nude. Ringhia, ti morde, non basta mai." e adesso diminuisci la vita del cane di 1.
+Invece di attacca il cane: dire "Il cane non è più un problema.".
+
+"getta" è un comando senza oggetto.
+Invece di getta se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3.
+Invece di getta: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
+
+# Il cane morde finché è minaccioso e tu sei nella serra. Critico raro.
+Ogni turno se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Il cane ti azzanna il polpaccio." e adesso diminuisci la vita di 1.
+Ogni turno se il giocatore è in la serra e lo stato del cane è minaccioso e càpita (1 su 4): dire "Stavolta affonda i denti a fondo." e adesso diminuisci la vita di 1.
+
+# Sconfitto: lasci le conserve (cibo). Stesso stato finale dello sviato: via libera.
+Quando la vita del cane è al massimo 0: dire "Il cane crolla su un fianco con un guaìto e resta giù. Tra le casse, le conserve sono tue: cibo per giorni." e adesso lo stato del cane è abbattuto e adesso aumenta il cibo di 3.
+
+# --- Gate [!] verso Z3: serve più acqua (il prossimo tratto è peggio) ---
+# (la conca è la stanza d'ingresso di z3-invaso.fav, agganciata da lì)
+Invece di vai ovest se il giocatore è in la masseria e l'acqua è meno di 4: dire "La sterrata punta verso una conca bianca, senza un filo d'ombra. Con quest'acqua è suicidio. Riempi la tanica al pozzo.".
+La masseria collega ovest a la sterrata.
+
+# Soglia di passaggio: il crinale sull'invaso (una volta sola).
+Quando il giocatore è in la sterrata e lo stato del crinale è nuovo: dire "Ti fermi sul crinale. Davanti, l'invaso morto luccica di sale fino all'orizzonte. Acquaviva è alle spalle, la piana è attraversata. Il viaggio, vero, comincia adesso. Si scende a OVEST, nella conca." e adesso lo stato del crinale è visto.

@@ -1,0 +1,15 @@
+# ============================================================================
+# oggetti.fav — L'UNICO OGGETTO: lo specchietto
+# Demo «Salerno-Reggio Calabria» — FAVELLA 1 v0.19.0
+# ----------------------------------------------------------------------------
+# Dalla 0.19.0 i gesti di guida sono verbi intransitivi [A7]: non servono più
+# oggetti-pretesto. Resta un solo oggetto, per pura poesia — lo specchietto, che
+# riflette chi guida e in che tempo. Lo si porta «a bordo» con l'inventario
+# iniziale dichiarativo [A8]: 'Il giocatore ha lo specchietto.' (nel file radice).
+# Incluso da salerno-reggio.fav.
+# ============================================================================
+
+Lo specchietto è una cosa.
+Lo specchietto si chiama anche "retrovisore".
+La descrizione dello specchietto è "Nello specchietto retrovisore due occhi stanchi, segnati agli angoli. I tuoi, nell'agosto del 2021. Dietro, il sedile vuoto.".
+La descrizione dello specchietto se l'epoca è infanzia è "Nello specchietto incontri gli occhi di papà, che ti sorridono un istante prima di tornare alla strada. 'Tutto bene lì dietro, capitano?'".

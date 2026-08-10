@@ -1,0 +1,46 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  IL VIAGGIATORE — «la Secca»                                               ║
+# ║  un sud svuotato, l'acqua finita prima delle persone.                      ║
+# ║                                                                            ║
+# ║  FILE RADICE / orchestratore: dichiara lo stato globale del viaggiatore e  ║
+# ║  include i moduli (sistemi + zone, in ordine di viaggio). Avvia con:       ║
+# ║     favella.py gioca "il-viaggiatore.fav"                                  ║
+# ║  Nomi propri PROVVISORI (audit anti-LLM da fare).                          ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ============================================================================
+# STATO GLOBALE DEL VIAGGIATORE  [il corpo (sete/fame) e le scorte (acqua/cibo)]
+# ============================================================================
+La vita è un contatore.
+La vita parte da 10.
+La sete è un contatore.
+La sete parte da 0.
+La fame è un contatore.
+La fame parte da 0.
+L'acqua è un contatore.
+L'acqua parte da 3.
+Il cibo è un contatore.
+Il cibo parte da 2.
+
+# ============================================================================
+# INVENTARIO  [6 slot: l'inventario stesso è una scelta. La tanica è la vita.]
+# ============================================================================
+Il giocatore può portare 6 oggetti.
+La tanica è una cosa.
+Il giocatore ha la tanica.
+La descrizione della tanica è "Una tanica da dieci litri, ammaccata ma a tenuta. La tua vita, in pratica.".
+
+# ============================================================================
+# MODULI  [i sistemi trasversali, poi le zone in ordine di cammino]
+# ============================================================================
+Includi "sistemi.fav".
+Includi "z1-acquaviva.fav".
+Includi "z2-piana.fav".
+Includi "z3-invaso.fav".
+Includi "z4-statale.fav".
+Includi "z5-paese.fav".
+Includi "z6-colline.fav".
+Includi "z7-guado.fav".
+
+# Punto di partenza (la stazione è dichiarata in z1-acquaviva.fav).
+Il giocatore comincia in la stazione.

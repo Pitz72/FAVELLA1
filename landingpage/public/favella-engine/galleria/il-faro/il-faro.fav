@@ -1,0 +1,83 @@
+# il-faro.fav — «Il Faro Spento»
+# Galleria di FAVELLA 1 — storia breve, completa e vincibile.
+#
+# Genere: mistero atmosferico.   Difficoltà: ⭐ (facile).
+# Mostra: direzioni custom (sopra/sotto), contenitore con chiave, regola a due
+#         oggetti (usa CHIAVE su BOTOLA), gating per direzione, verbo custom
+#         (accendi), buio/luce, finale di vittoria.
+#
+# Obiettivo: riaccendere la lanterna in cima al faro prima che la nave si schianti.
+
+# ============================================================================
+# STANZE
+# ============================================================================
+Il molo è una stanza.
+La descrizione del molo è "Assi marce sotto i piedi, la risacca che batte i pali. Davanti a te il faro, nero contro il cielo nero. La porta in fondo dà sull'atrio.".
+
+L'atrio è una stanza.
+La descrizione dell'atrio è "La base del faro. Una scala di ferro sale a spirale verso una botola chiusa, in alto. Contro il muro, una vecchia cassapanca.".
+La descrizione dell'atrio se la botola è aperta è "La base del faro. La scala di ferro sale a una botola ormai spalancata: di lì si va SOPRA, su alla lanterna. Contro il muro, la vecchia cassapanca.".
+
+La lanterna è una stanza.
+La descrizione della lanterna se la grande lampada è spenta è "La cella di vetro in cima al faro. La grande lampada è morta, fredda. Sotto di te, nel buio, una nave procede alla cieca verso gli scogli.".
+La descrizione della lanterna è "La cella di vetro splende. Il fascio gira sul mare, regolare, e laggiù la nave vira al largo, salva.".
+
+# ============================================================================
+# DIREZIONI E TOPOLOGIA
+# ============================================================================
+Sopra e sotto sono direzioni opposte.
+Il molo collega nord a l'atrio.
+L'atrio collega sopra a la lanterna.
+
+Il giocatore comincia in molo.
+
+# ============================================================================
+# VERBI E PROPRIETÀ
+# ============================================================================
+"accendi" è un comando.
+# accesa/spenta sono già opposte di default nel motore.
+
+# ============================================================================
+# OGGETTI
+# ============================================================================
+La cassapanca è un contenitore.
+La cassapanca è in atrio.
+La cassapanca è chiusa.
+La descrizione della cassapanca è "Legno gonfio di salsedine. Il coperchio è solo accostato.".
+
+La chiave della botola è una cosa.
+La chiave della botola è prendibile.
+La chiave della botola è nella cassapanca.
+La descrizione della chiave della botola è "Una chiave lunga, di ferro, con la barba a doppia mappa.".
+
+La botola è una cosa.
+La botola è in atrio.
+La botola è chiusa.
+La descrizione della botola è "Una botola di ghisa chiude la cima della scala. Una serratura grossa, arrugginita.".
+
+I fiammiferi è una cosa.
+I fiammiferi è prendibile.
+I fiammiferi è in atrio.
+I fiammiferi si chiama anche "scatola di fiammiferi".
+La descrizione dei fiammiferi è "Una scatola di cerini da cucina, ancora asciutti per miracolo.".
+
+La grande lampada è una cosa.
+La grande lampada è in lanterna.
+La grande lampada è spenta.
+La descrizione della grande lampada è "Un occhio di vetro e ottone grande come un uomo, pieno d'olio. Manca solo la scintilla.".
+
+# ============================================================================
+# REGOLE
+# ============================================================================
+# Aprire la cassapanca (verbo standard 'apri').
+Invece di apri la cassapanca se la cassapanca è chiusa: dire "Il coperchio cede con un gemito. Dentro, una chiave di ferro." e adesso la cassapanca è aperta.
+
+# La botola sbarra la salita finché è chiusa.
+Invece di vai sopra se la botola è chiusa: dire "La botola sopra di te non si muove: è chiusa a chiave.".
+
+# Aprire la botola con la chiave (regola a due oggetti).
+Invece di usa la chiave della botola sulla botola se la botola è chiusa: dire "La chiave entra dura, poi gira. La botola si solleva con uno schianto di ruggine. La via verso l'alto è libera: sali SOPRA." e adesso la botola è aperta.
+
+# Accendere la lampada: serve avere i fiammiferi addosso.
+Invece di accendi la grande lampada se il giocatore non ha i fiammiferi: dire "Soffi sullo stoppino: niente. Ti servirebbe di che accendere.".
+Invece di accendi la grande lampada se la grande lampada è spenta: dire "Sfreghi un cerino, lo accosti allo stoppino imbevuto d'olio. La fiamma corre, il vetro si riempie di luce." e adesso la grande lampada è accesa e adesso vinci "Il faro è di nuovo vivo. La nave, in basso, vira verso il largo. Stanotte non affonderà nessuno.".

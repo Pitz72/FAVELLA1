@@ -1,0 +1,72 @@
+# ╔═ MODULO · ZONA 1 — ACQUAVIVA ═════════════════════════════════════════════╗
+# ║  Il capolinea: tutorial implicito (sete/fame/baratto), pericolo nullo.      ║
+# ║  Personaggio: Nunzio (minore). Gate d'uscita: la mappa + un minimo d'acqua. ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stanze ---
+La stazione è una stanza.
+La descrizione della stazione è "La stazione di Acquaviva. I binari finiscono qui, mangiati dalla gramigna; un cartello arrugginito promette treni che non passano da anni. È da qui che parti, a piedi. A NORD la piazza. (Quando il corpo lo chiede: BEVI per la sete, MANGIA QUALCOSA per la fame; STATO per vederti addosso.)".
+
+La piazza è una stanza.
+La descrizione della piazza è "La piazza del paese attorno a un pozzo asciutto. Persiane sbarrate, una fontana muta. Solo il BAR, a EST, tiene una luce accesa. A NORD una casa aperta, a OVEST il margine del paese e la strada. A SUD la stazione.".
+
+Il bar è una stanza.
+La descrizione del bar è "Un bar fermo agli ultimi avventori. Dietro il banco, NUNZIO asciuga un bicchiere che è già asciutto. (PARLA CON Nunzio per barattare.) Si torna a OVEST.".
+
+La casa è una stanza.
+La descrizione della casa è "Una casa lasciata in fretta: cassetti aperti, una foto storta alla parete. Su un mobile, una MAPPA piegata della provincia; in un cassetto, un vecchio OROLOGIO e un COLTELLO da cucina. Si torna a SUD.".
+
+Il margine è una stanza.
+La descrizione del margine è "Dove finiscono le case comincia il bianco. La strada esce a OVEST, nella piana che frigge sotto il sole. Si torna a EST, in piazza.".
+
+La stazione collega nord a la piazza.
+La piazza collega est a il bar.
+La piazza collega nord a la casa.
+La piazza collega ovest a il margine.
+
+# --- Oggetti  [in casa: la chiave del progredire] ---
+La mappa è una cosa.
+La mappa è prendibile.
+La mappa è in la casa.
+La descrizione della mappa è "Una mappa della provincia, le strade segnate a penna. Acquamorta è all'altro capo, oltre le colline.".
+
+L'orologio è una cosa.
+L'orologio è prendibile.
+L'orologio è in la casa.
+La descrizione dell'orologio è "Un orologio da polso fermo, ma d'oro vero. Qualcuno te lo cambierebbe con qualcosa di più utile.".
+
+Il coltello è una cosa.
+Il coltello è prendibile.
+Il coltello è in la casa.
+La descrizione del coltello è "Un coltello da cucina, la lama ancora buona. Meglio di niente, contro i denti.".
+
+# --- NUNZIO  [baratto via dialogo] ---
+Nunzio è un personaggio.
+Nunzio è in il bar.
+La descrizione di Nunzio è "Magro, la camicia stirata anche adesso che non viene più nessuno. Tiene aperto per testardaggine.".
+
+Il dialogo di Nunzio comincia con "banco".
+Nunzio al nodo "banco" dice "«Acqua non ne ho da regalare, di questi tempi. Ma qualcosa per la strada lo trovo, se hai da scambiare.» (Hai [acqua] d'acqua e [cibo] di cibo.)".
+
+Al nodo "banco" l'opzione "Ti do l'orologio per dell'acqua." se il giocatore ha l'orologio conduce al nodo "scambio_acqua" e adesso l'orologio è nel nulla e adesso aumenta l'acqua di 3.
+Al nodo "banco" l'opzione "Hai qualcosa da mangiare?" se l'acqua è almeno 1 conduce al nodo "scambio_cibo" e adesso diminuisci l'acqua di 1 e adesso aumenta il cibo di 2.
+Al nodo "banco" l'opzione "Da che parte è Acquamorta?" conduce al nodo "indicazioni".
+Al nodo "banco" l'opzione "Niente, per ora." chiude il dialogo.
+
+Nunzio al nodo "scambio_acqua" dice "«Oro per acqua. Ai miei tempi avrei riso. Tieni.» Versa nella tua tanica. (Ora hai [acqua] d'acqua.)".
+Al nodo "scambio_acqua" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco".
+Al nodo "scambio_acqua" l'opzione "Basta così." chiude il dialogo.
+
+Nunzio al nodo "scambio_cibo" dice "«Un po' di scorta secca. Ti costa un sorso, ma cammini meglio.» (Ora hai [cibo] di cibo.)".
+Al nodo "scambio_cibo" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco".
+Al nodo "scambio_cibo" l'opzione "Basta così." chiude il dialogo.
+
+Nunzio al nodo "indicazioni" dice "«A ovest, oltre la piana, c'è l'invaso secco. Poi la statale, e un paese che resiste. Le colline, infine. Acquamorta è dietro le colline.» Ti studia. «Ma serve una mappa, e acqua. Senza, non ci arrivi.»".
+Al nodo "indicazioni" l'opzione "Grazie." chiude il dialogo.
+Al nodo "indicazioni" l'opzione "Altro." conduce al nodo "banco".
+
+# --- Gate [!] verso Z2: servono la mappa e un minimo d'acqua ---
+# (il tratto è la stanza d'ingresso di z2-piana.fav)
+Invece di vai ovest se il giocatore è in il margine e il giocatore non ha la mappa: dire "Senza una mappa, là fuori è solo perdersi. Cerca in giro prima di partire.".
+Invece di vai ovest se il giocatore è in il margine e l'acqua è meno di 3: dire "Guardi la distesa che frigge. Con quest'acqua non arrivi dall'altra parte. Fa' scorta, prima.".
+Il margine collega ovest a il tratto.

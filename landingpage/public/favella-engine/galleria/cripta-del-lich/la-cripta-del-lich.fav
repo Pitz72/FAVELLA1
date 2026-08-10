@@ -1,0 +1,149 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  LA CRIPTA DEL LICH — un piccolo gioco di ruolo                           ║
+# ║  Stress-test di genere per FAVELLA 1 (motore v0.29.0)                     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+# Il banco di prova più severo: STATISTICHE, un MERCANTE con cui commerciare,
+# COMBATTIMENTO a turni, e CRESCITA DI LIVELLO. È qui che FAVELLA scricchiola di
+# più — e dove si vede meglio cosa le manca (vedi README e tabella attrito).
+#
+# IL CICLO: compra la spada dal mercante -> abbatti il troll nella cripta ->
+# l'esperienza ti fa SALIRE DI LIVELLO -> col vigore nuovo affronti il Lich
+# nella sala -> prendi la Corona. Senza la spada e senza il livello, il Lich ti
+# fa a pezzi: l'economia e la crescita NON sono decorazione, sono la strategia.
+
+# ============================================================================
+# 1. LA SCHEDA DELL'EROE  [contatori = statistiche]
+# ============================================================================
+La vita è un contatore.
+La vita parte da 10.
+La forza è un contatore.
+La forza parte da 2.
+L'oro è un contatore.
+L'oro parte da 8.
+L'esperienza è un contatore.
+L'esperienza parte da 0.
+Il livello è un contatore.
+Il livello parte da 1.
+
+# I PUNTI VITA DEI NEMICI sono contatori a sé (uno per nemico: nessun "modello
+# di mostro" da istanziare — vedi attrito R5 nel README).
+La vita del troll è un contatore.
+La vita del troll parte da 6.
+La vita del lich è un contatore.
+La vita del lich parte da 12.
+
+# ============================================================================
+# 2. IL MONDO  [villaggio -> cripta -> sala del trono]
+# ============================================================================
+Il villaggio è una stanza.
+La descrizione del villaggio è "Quattro case di pietra attorno a un pozzo. Alla bancarella, il mercante GORBAL ti studia da sotto il cappuccio. A NORD si apre la bocca nera della cripta. (Prova SCHEDA per vedere le tue statistiche; PARLA CON Gorbal per commerciare.)".
+
+La cripta è una stanza.
+La descrizione della cripta è "Volte basse, ossa sul pavimento, un tanfo di muffa. Un TROLL di pietra e muschio monta la guardia, la clava già alzata. Una GEMMA luccica tra i detriti. Oltre, a NORD, una porta sigillata di rune. Si torna a SUD, al villaggio.".
+
+La sala è una stanza.
+La descrizione della sala è "La sala del trono sotterranea. Su uno scranno di ossa siede il LICH, due fuochi azzurri al posto degli occhi. Dietro di lui, su un cuscino di velluto marcio, brilla la CORONA. Si fugge a SUD, nella cripta.".
+
+Il villaggio collega nord a la cripta.
+La cripta collega nord a la sala.
+
+Il giocatore comincia in il villaggio.
+
+# ============================================================================
+# 3. I PERSONAGGI E IL BOTTINO  [il mercante, i nemici, gli oggetti]
+# ============================================================================
+Gorbal è un personaggio.
+Gorbal è in il villaggio.
+La descrizione di Gorbal è "Un mercante secco come un chiodo, occhi che pesano l'oro a vista. Vende, e compra.".
+
+# I nemici sono 'cosa', non 'personaggio': non si conversa, si combatte.
+Il troll è una cosa.
+Il troll è in la cripta.
+La descrizione del troll è "Tre metri di pietra, muschio e cattiveria. Lento, ma quella clava spacca un'incudine.".
+
+Il lich è una cosa.
+Il lich è in la sala.
+La descrizione del lich è "Un re morto e non rassegnato. La magia di gelo gli cola dalle dita come brina.".
+
+La spada è una cosa.
+La spada è prendibile.
+La descrizione della spada è "Una spada lunga, ben bilanciata. In pugno, i tuoi fendenti diventano un'altra cosa.".
+
+La pozione è una cosa.
+La pozione è prendibile.
+La descrizione della pozione è "Una fiala di liquido rosso che pulsa piano. Rimette in sesto.".
+
+La gemma è una cosa.
+La gemma è prendibile.
+La gemma è in la cripta.
+La descrizione della gemma è "Una gemma viola grossa come una noce. Gorbal pagherebbe per averla.".
+
+# La CORONA appare solo quando il Lich è sconfitto (parte "nel nulla").
+La corona è una cosa.
+La corona è prendibile.
+La descrizione della corona è "La corona del re-lich, oro e zaffiri, ancora fredda di magia. È il tuo trofeo.".
+
+# ============================================================================
+# 4. IL COMMERCIO  [il mercante: comprare e vendere via dialogo]
+# ============================================================================
+Includi "bottega.fav".
+
+# ============================================================================
+# 5. IL COMBATTIMENTO  [verbo 'attacca'; il danno SCALA con la forza — v0.31.0]
+# ============================================================================
+"attacca" è un comando.
+"bevi" è un comando.
+
+# ⭐ EX-ATTRITO CENTRALE DEL GDR, ORA COLMATO (Tema 1a, v0.31.0). Prima il danno
+# era un NUMERO FISSO: la forza si mostrava nella scheda ma NON guidava il colpo.
+# Oggi il danno è "di [forza]" — scala con la statistica. Le due regole per nemico
+# distinguono ancora la spada dalle mani nude (è una scelta sull'arma, non un
+# trucco): a mani nude colpisci "di [forza]", con la spada "di [forza]" PIÙ un
+# bonus d'arma di 2. Al livello 1 (forza 2) i numeri sono identici a prima
+# (mani 2, spada 4); salendo di livello la forza cresce e il colpo con essa —
+# proprio ciò che la versione a numero fisso non sapeva fare. (Vedi README.)
+Invece di attacca il troll se il giocatore ha la spada: dire "Cali la spada in un arco fischiante: il fendente apre il muschio e la pietra. Colpo pieno!" e adesso diminuisci la vita del troll di [forza] e adesso diminuisci la vita del troll di 2.
+Invece di attacca il troll: dire "Tempesti il troll di pugni: gli fai il solletico, e lui se ne accorge appena." e adesso diminuisci la vita del troll di [forza].
+
+Invece di attacca il lich se il giocatore ha la spada: dire "La lama morde la carne secca del Lich: scintille di gelo e un urlo che non è di questo mondo." e adesso diminuisci la vita del lich di [forza] e adesso diminuisci la vita del lich di 2.
+Invece di attacca il lich: dire "Lo colpisci a mani nude: la sua pelle gelata ti morde le nocche più di quanto tu morda lui." e adesso diminuisci la vita del lich di [forza].
+
+# I NEMICI RISPONDONO: attaccano a ogni turno in cui sei nella loro stanza e
+# sono ancora vivi (modello "combattimento = presenza"). Fuggire a SUD ti
+# sottrae ai colpi: puoi ritirarti a curarti.
+Ogni turno se il giocatore è in la cripta e la vita del troll è più di 0: dire "Il troll rovescia la clava: ti coglie di striscio. Fa male." e adesso diminuisci la vita di 2.
+Ogni turno se il giocatore è in la sala e la vita del lich è più di 0: dire "Il Lich scaglia un dardo di gelo che ti trapassa il fianco." e adesso diminuisci la vita di 3.
+
+# CURA
+Invece di bevi la pozione se il giocatore ha la pozione: dire "Stappi la fiala e bevi: il calore ti torna nelle vene, le ferite si chiudono." e adesso aumenta la vita di 6 e adesso la pozione è nel nulla.
+Invece di bevi la pozione: dire "Non hai pozioni con te.".
+
+# ============================================================================
+# 6. MORTE DEI NEMICI  [al massimo 0: regge l'overshoot del danno]
+# ============================================================================
+Quando la vita del troll è al massimo 0: dire "Il troll si spacca con un boato e franano via pietra e muschio. Dalle sue ossa filtra una luce: senti l'ESPERIENZA fluire in te, e qualche moneta rotola dai detriti." e adesso aumenta l'esperienza di 10 e adesso aumenta l'oro di 6.
+
+Quando la vita del lich è al massimo 0: dire "Il Lich si inarca, i fuochi azzurri si spengono di colpo, e l'ossatura si affloscia in un mucchio di polvere e gioielli. Sul cuscino, la CORONA è ora tua da prendere." e adesso aumenta l'esperienza di 20 e adesso la corona è in la sala.
+
+# ============================================================================
+# 7. CRESCITA DI LIVELLO  [fronte di salita su soglia di XP]
+# ============================================================================
+# La forma nativa per la progressione: 'Quando [contatore] è almeno N' scatta
+# UNA volta sola sul superamento della soglia. (ATTRITO: le soglie sono FISSE e
+# vanno scritte a mano una per livello — niente "ogni 10 XP".)
+Quando l'esperienza è almeno 10: dire ">> SALI AL LIVELLO 2! Il vigore ti gonfia i muscoli, le ferite contano meno. Ora puoi tener testa a qualcosa di peggio di un troll." e adesso aumenta il livello e adesso aumenta la forza e adesso la vita diventa 14.
+Quando l'esperienza è almeno 30: dire ">> SALI AL LIVELLO 3! Sei un campione, ormai." e adesso aumenta il livello e adesso aumenta la forza.
+
+# ============================================================================
+# 8. ESITI  [morte dell'eroe; vittoria con la corona]
+# ============================================================================
+Ogni turno se la vita è al massimo 3: dire "Vedi nero ai bordi degli occhi: un altro colpo come questo e sei finito.".
+Quando la vita è al massimo 0: dire "Le ginocchia cedono, la cripta gira, il freddo ti prende. L'ultima cosa che senti è il riso del Lich." e adesso perdi "Sei caduto sotto la cripta. Le tue ossa faranno compagnia agli altri.".
+
+Quando il giocatore ha la corona: dire "Sollevi la Corona del Re-Lich. È leggera, e fredda, e tua. La cripta è vinta." e adesso vinci "Hai abbattuto il Lich e conquistato la Corona. Il tuo nome correrà di taverna in taverna.".
+
+# ============================================================================
+# 9. LA SCHEDA  [verbo intransitivo: mostra le statistiche, via interpolazione]
+# ============================================================================
+"scheda" è un comando senza oggetto.
+Invece di scheda: dire "=== SCHEDA ===  Vita: [vita]   Forza: [forza]   Oro: [oro]   Esperienza: [esperienza]   Livello: [livello]".

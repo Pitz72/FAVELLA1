@@ -1,0 +1,6 @@
+# FAVELLA 1 — favella.eu
+# Sito statico pre-renderizzato: ogni rotta è un vero file HTML.
+User-agent: *
+Allow: /
+
+Sitemap: https://www.favella.eu/sitemap.xml

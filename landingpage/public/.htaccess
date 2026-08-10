@@ -1,0 +1,68 @@
+# Favella 1 — override della Content-Security-Policy per il sito favella.eu.
+# Il sito ora vive alla radice del proprio dominio (favella.eu). Se l'hosting
+# impone una CSP severa (script-src 'self'; connect-src 'self'), questa blocca
+# il caricamento del motore: Pyodide sta su un CDN esterno (jsdelivr) e la
+# libreria lark viene presa da PyPI a runtime. Qui allentiamo la CSP quel tanto
+# che basta per far girare il motore FAVELLA, lasciando blindato tutto il resto.
+#
+# Nota: Pyodide esegue WebAssembly, quindi serve 'wasm-unsafe-eval'.
+# Se dopo l'upload non cambia nulla, il tuo hosting ignora gli .htaccess
+# (AllowOverride disattivato): in quel caso la CSP va modificata nella config
+# Apache/vhost a monte, con gli stessi valori qui sotto.
+
+<IfModule mod_headers.c>
+  Header unset Content-Security-Policy
+  Header always unset Content-Security-Policy
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https: blob:; connect-src 'self' https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+</IfModule>
+
+# --------------------------------------------------------------------
+#  URL puliti (niente #) + fallback SPA
+# --------------------------------------------------------------------
+#  Il sito è pre-renderizzato: ogni rotta è una cartella con il suo
+#  index.html (es. /progetto/index.html). Serviamo quel file SENZA
+#  aggiungere lo slash finale, così l'indirizzo resta /progetto (coerente
+#  col tag <link rel="canonical">). Qualsiasi percorso che non corrisponde
+#  a un file o a una rotta nota ricade sull'index principale, lasciando che
+#  il router lato client gestisca il resto.
+# index.html ha la priorità sull'eventuale placeholder index.php di Aruba.
+<IfModule mod_dir.c>
+  DirectoryIndex index.html index.htm index.php
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Non aggiungere automaticamente lo slash alle cartelle (manteniamo URL puliti).
+  DirectorySlash Off
+
+  # Se per la rotta esiste la pagina pre-renderizzata, servila internamente.
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  RewriteRule ^([^/.]+)/?$ /$1/index.html [L]
+
+  # Fallback SPA: percorsi senza file/cartella reali → index principale.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+# --------------------------------------------------------------------
+#  Compressione e cache (prestazioni → buon segnale SEO)
+# --------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml application/xml
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # Asset con hash nel nome: cache lunga.
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 6 months"
+  ExpiresByType image/webp "access plus 6 months"
+  ExpiresByType image/svg+xml "access plus 6 months"
+  ExpiresByType font/woff2 "access plus 1 year"
+  # HTML pre-renderizzato: si aggiorna a ogni deploy → cache breve.
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>

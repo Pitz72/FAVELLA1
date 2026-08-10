@@ -1,0 +1,33 @@
+{
+  "name": "favella-landing-premium",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node scripts/prerender.mjs && npm run build:esperimento",
+    "build:spa": "tsc && vite build",
+    "build:esperimento": "npm --prefix esperimento run build",
+    "og": "node scripts/genera-og.mjs",
+    "prerender": "node scripts/prerender.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "basic-ftp": "^6.0.1",
+    "postcss": "^8.5.15",
+    "puppeteer": "^25.1.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

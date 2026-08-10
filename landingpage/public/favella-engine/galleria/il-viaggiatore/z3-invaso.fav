@@ -1,0 +1,163 @@
+# ╔═ MODULO · ZONA 3 — L'INVASO MORTO ════════════════════════════════════════╗
+# ║  «acqua ovunque, niente da bere»: l'unica acqua vera si ottiene risolvendo  ║
+# ║  il puzzle (filtro + pastiglie + pompa). Maggiore: Iole (ASPETTARE), la sua ║
+# ║  fiducia apre il casotto. Minore: Rocco (l'uomo del sale) + trappola del    ║
+# ║  salmastro. Gate verso Z4: pompa attiva + scorta d'acqua vera.              ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+# --- Stato e relazione di zona ---
+La fiducia di Iole è un contatore.
+La fiducia di Iole parte da 1.
+
+Lo stato della pompa è uno stato.
+Lo stato della pompa è secca.
+
+Lo stato della condotta è uno stato.
+Lo stato della condotta è nuova.
+
+# --- Stanze ---
+La conca è una stanza.
+La descrizione della conca è "Il fondo dell'invaso, una piana di fango secco spaccata in lastre che scricchiolano sotto i passi. Il sale acceca, l'aria sa di minerale. A NORD la diga sbarra l'orizzonte; a SUD un fondale dove qualcuno raspa; a OVEST la carcassa di un'auto insabbiata. A EST la sterrata risale verso la piana.".
+
+La diga è una stanza.
+La descrizione della diga è "Lo sbarramento: una parete di cemento striata di calcare, alta e muta. Al piede, un vecchio gruppo di POMPA a mano pesca ancora nell'acqua bassa, ma quell'acqua è veleno salato. IOLE ci sta accanto, china sul meccanismo come su un malato. (PARLA CON Iole.) A NORD il casotto dove vive; a OVEST la condotta scende verso la statale. A SUD si torna nella conca.".
+
+Il casotto è una stanza.
+La descrizione del casotto è "Una stanza sola, tenuta in ordine come una cappella. Una branda, un fornello spento, gli attrezzi appesi a un chiodo. Su una mensola, un tubetto di PASTIGLIE; in un angolo, una DAMIGIANA di vetro impagliato, vuota, che aspetta acqua buona da anni. Si torna a SUD.".
+
+Il fondale è una stanza.
+La descrizione del fondale è "Pozze salmastre che luccicano come specchi e ingannano la sete. ROCCO raspa il sale a mani nude, le labbra spaccate in croste bianche. Tra le incrostazioni si staccano CRISTALLI di sale grosso. (Si può anche BEVI SALMASTRA, se la disperazione vince la testa.) A NORD la conca, a SUD una torre di presa in mezzo al fango.".
+
+Il relitto è una stanza.
+La descrizione del relitto è "La carcassa di un'utilitaria insabbiata fino agli assali, le portiere spalancate. Nel bagagliaio aperto: un FILTRO di tela e carbone, una BATTERIA d'auto pesante, un paio di OCCHIALI da sole. Sul sedile sfondato, un DIARIO smangiato dall'umido. A EST si torna nella conca.".
+
+La torre di presa è una stanza.
+La descrizione della torre di presa è "Una torretta di presa che un tempo pescava al largo del bacino, ora circondata da fango secco. Una scala di ferro arrugginita porta in cima, dove qualcuno ha dimenticato una BORSA di tela robusta. Si torna a NORD, sul fondale.".
+
+La condotta è una stanza.
+La descrizione della condotta è "Una galleria di scarico in leggera discesa; in fondo, lontano, trema il riverbero della statale. Di qui si lascia l'invaso, a OVEST, ma non con la tanica vuota.".
+
+# --- Collegamenti (auto-reciproci). La sterrata è in z2-piana.fav. ---
+La sterrata collega ovest a la conca.
+La conca collega nord a la diga.
+La conca collega sud a il fondale.
+La conca collega ovest a il relitto.
+Il fondale collega sud a la torre di presa.
+
+# --- Oggetti ---
+La pompa è una cosa.
+La pompa è in la diga.
+La descrizione della pompa è "Una pompa a stantuffo, arrugginita ma ancora viva. Tira su acqua salmastra dal fondo della diga: a berla così, è una morte lenta.".
+
+Il filtro è una cosa.
+Il filtro è prendibile.
+Il filtro è in il relitto.
+La descrizione del filtro è "Una calza di tela gonfia di carbone tritato e sabbia. Toglie il torbido e parte del sale, ma da sola non basta a togliere il veleno: ci vuole anche il trattamento.".
+
+Le pastiglie è una cosa.
+Le pastiglie è prendibile.
+Le pastiglie è in il casotto.
+La descrizione delle pastiglie è "Pastiglie di cloro in un tubetto di alluminio ammaccato. Una manciata. Rendono potabile l'acqua già filtrata.".
+
+La damigiana è una cosa.
+La damigiana è prendibile.
+La damigiana è in il casotto.
+La descrizione della damigiana è "Una damigiana da dieci litri, vetro verde dentro la sua veste di paglia. Vuota pesa poco; piena, è acqua per giorni.".
+
+Gli occhiali è una cosa.
+Gli occhiali è prendibile.
+Gli occhiali è in il relitto.
+La descrizione degli occhiali è "Occhiali da sole da quattro soldi, una lente rigata. Contro il riverbero del sale, valgono oro.".
+
+La batteria è una cosa.
+La batteria è prendibile.
+La batteria è in il relitto.
+La descrizione della batteria è "Una batteria d'auto, pesante e ingombrante. Inutile a piedi; ma c'è chi la prende ancora, per scambio.".
+
+Il diario è una cosa.
+Il diario è prendibile.
+Il diario è in il relitto.
+La descrizione del diario è "Il diario di chi ha fatto questa strada prima di te. Le ultime righe parlano di un guado, e di un uomo che non lascia passare. Poi più niente.".
+
+La borsa è una cosa.
+La borsa è prendibile.
+La borsa è in la torre di presa.
+La descrizione della borsa è "Una borsa di tela militare, le cuciture ancora salde. Roba che si baratta volentieri.".
+
+I cristalli è una cosa.
+I cristalli è prendibile.
+I cristalli è in il fondale.
+La descrizione dei cristalli è "Cristalli di sale grosso, duri e netti. Sulla strada il sale è moneta: c'è chi lo conserva, chi lo scambia.".
+
+# --- IOLE  [maggiore: ASPETTARE. Dono d'acqua o cibo → fiducia → apre il casotto] ---
+Iole è un personaggio.
+Iole è in la diga.
+La descrizione di Iole è "Una donna asciutta, l'età difficile da dire. Tiene una mano sul volano della pompa come si tiene la mano a chi sta male. Aspetta qualcosa: un'acqua, o una persona; non lo dice nemmeno a sé.".
+
+Il dialogo di Iole comincia con "iole_inizio".
+Iole al nodo "iole_inizio" dice "«Acqua ne hai intorno a tonnellate, e non una goccia da bere. È la prima cosa che impara, chi arriva.» Ti misura. «Cosa vuoi dal mio meccanismo.»" se la fiducia di Iole è al massimo 1.
+Iole al nodo "iole_inizio" dice "«Sei ancora qui. Buon segno: i frettolosi muoiono prima della statale.» Batte la mano sulla pompa. «Dimmi.»" se la fiducia di Iole è almeno 2.
+
+Al nodo "iole_inizio" l'opzione "Ti lascio dell'acqua, ne hai bisogno anche tu." se l'acqua è almeno 1 conduce al nodo "iole_dono" e adesso diminuisci l'acqua di 1 e adesso aumenta la fiducia di Iole di 2.
+Al nodo "iole_inizio" l'opzione "Ti lascio del cibo." se il cibo è almeno 1 conduce al nodo "iole_dono" e adesso diminuisci il cibo di 1 e adesso aumenta la fiducia di Iole di 2.
+Al nodo "iole_inizio" l'opzione "Come si fa a bere, in questo posto?" conduce al nodo "iole_sapere".
+Al nodo "iole_inizio" l'opzione "Perché se n'è andata l'acqua?" conduce al nodo "iole_secca".
+Al nodo "iole_inizio" l'opzione "Niente, per ora." chiude il dialogo.
+
+Iole al nodo "iole_dono" dice "Prende, soppesa, fa un cenno piccolo. «Pochi danno, di questi tempi. Il casotto è là dietro: prendi quello che ti serve, e fa' funzionare la pompa. Una volta.»".
+Al nodo "iole_dono" l'opzione "Grazie." conduce al nodo "iole_inizio".
+
+Iole al nodo "iole_sapere" dice "«Si filtra, poi si tratta. Il filtro lo monti tu: tela e carbone ce n'è là nella carcassa. Il trattamento sta in casa mia: pastiglie. Ma in casa mia non entra chi non conosco.»".
+Al nodo "iole_sapere" l'opzione "Capito." conduce al nodo "iole_inizio".
+
+Iole al nodo "iole_secca" dice "«Non è crollato niente. Hanno solo chiuso un rubinetto lontano, un anno dopo l'altro, finché la valle ha smesso di valere l'acqua che costava.» Guarda il cemento. «Io sono rimasta a tenere caldo il posto, caso mai tornasse a scorrere.»".
+Al nodo "iole_secca" l'opzione "E torna?" conduce al nodo "iole_attesa".
+Al nodo "iole_secca" l'opzione "Mi dispiace." conduce al nodo "iole_inizio".
+
+Iole al nodo "iole_attesa" dice "«No.» Lo dice senza amarezza, come una cosa del tempo. «Ma aspettare è l'ultimo lavoro rimasto, e lo faccio bene.»".
+Al nodo "iole_attesa" l'opzione "..." conduce al nodo "iole_inizio".
+
+# Il casotto si apre solo con la fiducia: la sua casa è il pegno della fiducia.
+Invece di vai nord se il giocatore è in la diga e la fiducia di Iole è al massimo 1: dire "Iole ti taglia la strada verso il casotto, senza scomporsi. «Casa mia no. Prima dammi un motivo per fidarmi.»".
+La diga collega nord a il casotto.
+
+# --- IL PUZZLE DELL'ACQUA  [climax: usa le pastiglie su la pompa, col filtro] ---
+Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro e il giocatore ha la damigiana: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: viene su un'acqua torbida che si schiarisce nella tela. Ci sciogli una pastiglia, aspetti che il cloro lavori. Poi riempi tanica e damigiana fino all'orlo. Per una volta, hai acqua da non contare." e adesso aumenta l'acqua di 12 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla.
+Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: l'acqua si schiarisce nella tela. Ci sciogli una pastiglia, aspetti. Poi bevi a lungo e riempi la tanica fino all'orlo. Acqua vera, finalmente." e adesso aumenta l'acqua di 8 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla.
+Invece di usa le pastiglie su la pompa se il giocatore non ha le pastiglie: dire "Ti servono le pastiglie per rendere potabile l'acqua. Le tiene Iole, in casa.".
+Invece di usa le pastiglie su la pompa: dire "Le pastiglie da sole non bastano: l'acqua della diga è troppo torbida e salata. Prima ci vuole un filtro.".
+
+# --- ROCCO  [minore: l'uomo del sale, monito vivente e piccolo inganno] ---
+Rocco è un personaggio.
+Rocco è in il fondale.
+La descrizione di Rocco è "Un uomo cotto dal sole e dal sale, le labbra spaccate che parlano a fatica. Raccoglie cristalli come se fossero ancora soldi. Beve di nascosto dalle pozze, e si vede.".
+
+Il dialogo di Rocco comincia con "rocco_inizio".
+Rocco al nodo "rocco_inizio" dice "«Acqua? Qui non si chiede acqua.» Ride, e fa male vederlo ridere. «C'è il sale. Quello sì. Quello non finisce mai.»".
+Al nodo "rocco_inizio" l'opzione "Quella pozza in fondo sembra più chiara: si beve?" conduce al nodo "rocco_inganno".
+Al nodo "rocco_inizio" l'opzione "Stai bevendo dalle pozze, vero?" conduce al nodo "rocco_monito".
+Al nodo "rocco_inizio" l'opzione "Tieniti il sale. Stammi bene." chiude il dialogo.
+
+Rocco al nodo "rocco_inganno" dice "«Quella? Quella è buona.» Ti guarda di sottecchi, troppo svelto. «Più in là è meno salata, fidati. Bevi e cammini meglio.»".
+Al nodo "rocco_inganno" l'opzione "..." conduce al nodo "rocco_inizio".
+
+Rocco al nodo "rocco_monito" dice "Si passa la lingua sulle croste. «Una volta che cominci, non smetti. La sete dopo è peggio. Ma intanto è acqua, no?» Non aspetta risposta.".
+Al nodo "rocco_monito" l'opzione "..." conduce al nodo "rocco_inizio".
+
+# La tentazione del salmastro: sollievo per un attimo, poi sete peggiore e danno.
+"bevi salmastra" è un comando senza oggetto.
+Invece di bevi salmastra se il giocatore è in il fondale: dire "Ti inginocchi e bevi a mani giunte dalla pozza. Per un attimo è sollievo. Poi il sale ti chiude la gola peggio di prima, e lo stomaco si torce in un crampo." e adesso diminuisci la sete di 2 e adesso aumenta la sete di 5 e adesso diminuisci la vita di 2.
+Invece di bevi salmastra: dire "Non c'è acqua salmastra qui a portata di mano.".
+
+# Il riverbero del sale sul fondale: gli occhiali lo mitigano.
+Ogni turno se il giocatore è in il fondale e il giocatore non ha gli occhiali: dire "Il riverbero del sale ti cuoce gli occhi; la gola si secca solo a stare qui." e adesso aumenta la sete di 1.
+
+# --- IL GATE [!] verso Z4: serve la pompa in funzione E una scorta vera ---
+Invece di vai ovest se il giocatore è in la diga e lo stato della pompa è secca: dire "La condotta scende verso la statale, ma di là c'è una traversata peggiore di quella alle spalle. Con la tanica com'è adesso, è suicidio. Fa' prima funzionare la pompa.".
+Invece di vai ovest se il giocatore è in la diga e l'acqua è meno di 6: dire "Hai fatto funzionare la pompa, ma ti sei già bevuto mezza tanica. Riempila bene, prima di scendere.".
+La diga collega ovest a la condotta.
+
+# --- Passaggio a Z4: la condotta sbocca sulla rampa della statale ---
+# (la rampa è la stanza d'ingresso di z4-statale.fav)
+La condotta collega ovest a la rampa.
+Quando il giocatore è in la condotta e lo stato della condotta è nuova: dire "Ti cali nella condotta con la tanica piena e pesante d'acqua vera. L'invaso morto resta dietro, bianco e muto. Davanti, la statale, e chi la tiene." e adesso lo stato della condotta è vista.

@@ -1,0 +1,36 @@
+# ============================================================================
+# bottega.fav — IL BANCO DI GORBAL (compra/vendi via dialogo)
+# Demo «La Cripta del Lich» — FAVELLA 1 v0.29.0
+# ----------------------------------------------------------------------------
+# Il commercio è un albero di dialogo: le opzioni d'acquisto APPAIONO solo se
+# hai l'oro (gating su contatore), e l'acquisto è una conseguenza che SCALA
+# l'oro e CONSEGNA l'oggetto. La vendita è il movimento inverso. È il modo
+# idiomatico di fare un'economia in FAVELLA.
+# (ATTRITO R2: i prezzi sono COSTANTI cablate nelle frasi — niente prezzi
+# variabili, niente "vale [x] oro" calcolato. Vedi README.)
+# Incluso da la-cripta-del-lich.fav.
+# ============================================================================
+
+Il dialogo di Gorbal comincia con "banco".
+Gorbal al nodo "banco" dice "«Allora, che si fa? Ho ferro buono e pozioni migliori. E se hai qualcosa che luccica, l'oro di Gorbal è sempre pronto.» (Hai [oro] oro.)".
+
+# --- ACQUISTI (l'opzione c'è solo se puoi permettertela e non ce l'hai già) ---
+Al nodo "banco" l'opzione "Compro la spada lunga (6 oro)." se l'oro è almeno 6 e il giocatore non ha la spada conduce al nodo "preso_spada" e adesso diminuisci l'oro di 6 e adesso la spada è in inventario.
+Al nodo "banco" l'opzione "Compro una pozione (3 oro)." se l'oro è almeno 3 e il giocatore non ha la pozione conduce al nodo "preso_pozione" e adesso diminuisci l'oro di 3 e adesso la pozione è in inventario.
+
+# --- VENDITA (l'opzione c'è solo se hai la merce) ---
+Al nodo "banco" l'opzione "Ti vendo questa gemma (+5 oro)." se il giocatore ha la gemma conduce al nodo "venduto" e adesso aumenta l'oro di 5 e adesso la gemma è nel nulla.
+
+Al nodo "banco" l'opzione "Niente, per ora." chiude il dialogo.
+
+Gorbal al nodo "preso_spada" dice "«Scelta da uomo che vuole tornare a casa. Falle onore.» (Ti restano [oro] oro.)".
+Al nodo "preso_spada" l'opzione "Torno a guardare la merce." conduce al nodo "banco".
+Al nodo "preso_spada" l'opzione "Basta così." chiude il dialogo.
+
+Gorbal al nodo "preso_pozione" dice "«Tienla per quando il pavimento ti viene incontro.» (Ti restano [oro] oro.)".
+Al nodo "preso_pozione" l'opzione "Torno a guardare la merce." conduce al nodo "banco".
+Al nodo "preso_pozione" l'opzione "Basta così." chiude il dialogo.
+
+Gorbal al nodo "venduto" dice "«Affare fatto. Bella pietra: la rivendo al doppio, ma questo non te l'ho detto.» (Ora hai [oro] oro.)".
+Al nodo "venduto" l'opzione "Torno a guardare la merce." conduce al nodo "banco".
+Al nodo "venduto" l'opzione "Basta così." chiude il dialogo.
