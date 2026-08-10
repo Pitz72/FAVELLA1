@@ -68,11 +68,11 @@ const UpdatesPage = () => {
         <div className="max-w-[760px]">
           <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Novità &amp; Roadmap</p>
           <h1 className="mb-[22px] font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-            Cosa è successo,<br />e cosa <span className="italic text-ink-accent">viene</span>.
+            Quello che è stato,<br />e quello che <span className="italic text-ink-accent">resta aperto</span>.
           </h1>
           <p className="font-serif text-[20px] leading-[1.6] text-favella-text-secondary">
-            Il diario del progetto: il traguardo della 1.0.0, l'ecosistema che gli è cresciuto intorno, e la rotta
-            oltre la chiusura del linguaggio.
+            Il diario del progetto: come FAVELLA è arrivata alla 1.0, e che cosa rimane da fare adesso che il
+            linguaggio non cambia più.
           </p>
         </div>
 

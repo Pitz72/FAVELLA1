@@ -13,7 +13,7 @@ const CookiePage = () => (
   <article className="mx-auto max-w-[760px]">
     <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.24em] text-favella-cyan">Cookie</p>
     <h1 className="mb-2 font-serif text-[clamp(32px,4.6vw,48px)] font-medium leading-[1.1] text-favella-text-primary">
-      Cookie Policy
+      Informativa sui cookie
     </h1>
     <p className="mb-2 text-[13px] text-favella-text-muted">Ultimo aggiornamento: giugno 2026</p>
 

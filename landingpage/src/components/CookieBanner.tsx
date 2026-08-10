@@ -37,7 +37,7 @@ const CookieBanner = () => {
           sito non usa cookie di profilazione e non ti traccia. I font sono ospitati da noi (nessuna
           chiamata a Google) e nessun dato viene condiviso a fini di marketing. Dettagli nella{" "}
           <Link to="/privacy" className="text-favella-cyan hover:underline">Privacy</Link> e nella{" "}
-          <Link to="/cookie" className="text-favella-cyan hover:underline">Cookie Policy</Link>.
+          <Link to="/cookie" className="text-favella-cyan hover:underline">informativa sui cookie</Link>.
         </p>
         <button
           onClick={dismiss}

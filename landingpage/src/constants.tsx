@@ -135,7 +135,7 @@ export const NEWS: NewsItem[] = [
     date: "Agosto 2026",
     emphasis: "primary",
     title: "Un repository solo: motore, sito, IDE, branding",
-    body: "FAVELLA era sparsa. Il linguaggio stava in un repository pubblico, il sito che state leggendo in uno privato sul disco di casa, l'IDE in un terzo repository chiuso, e i file originali del marchio da nessuna parte se non in una cartella locale. Da oggi è tutto in un posto solo, in chiaro, con licenza MIT: il motore, il sorgente completo del sito, l'IDE sperimentale, il manuale, le dieci avventure e perfino i master grafici a piena risoluzione. Non c'è più niente di questo progetto che viva soltanto sul computer di chi l'ha scritto. Il motore passa alla 1.0.1: una patch di sola distribuzione — i moduli installati da pip avevano un nome troppo generico e finivano per pestare i piedi ad altri pacchetti — che non tocca di una virgola il linguaggio.",
+    body: "FAVELLA era sparsa. Il linguaggio stava in un repository pubblico, il sito che stai leggendo in uno privato che esisteva solo sul disco di casa, l'IDE in un terzo repository chiuso a chiave. I file originali del marchio non stavano da nessuna parte: una cartella sul computer, e basta. Adesso è tutto insieme e tutto in chiaro, con licenza MIT: motore, sorgente del sito, IDE, manuale, le dieci avventure, perfino i master grafici a piena risoluzione. Non c'è più un pezzo di FAVELLA che esista soltanto sul computer di chi l'ha scritta. Il motore intanto passa alla 1.0.1. È una patch che riguarda solo il modo in cui il pacchetto viene installato: i moduli avevano nomi troppo generici e finivano per pestare i piedi ad altri pacchetti Python. Il linguaggio non cambia di una virgola.",
     cta: { label: "Apri il repository", href: "https://github.com/Pitz72/FAVELLA1" },
   },
   {
@@ -213,7 +213,7 @@ export const NEWS: NewsItem[] = [
     date: "Agosto 2026",
     emphasis: "secondary",
     title: "Favella Studio: il cantiere aperto, così com'è",
-    body: "Il cantiere di cui non parlavamo era questo: Favella Studio, un tentativo di dare a FAVELLA un ambiente di sviluppo visuale — mappa delle stanze, editor di oggetti, regole e dialoghi, esportazione del gioco in un HTML che gira da solo. Non è un prodotto e non lo diventerà: è un lavoro incompiuto, senza supporto e senza data, fermo alla 0.9. Doveva essere il pezzo a pagamento del progetto; abbiamo preferito aprirlo. Il codice è lì, con licenza MIT, per chiunque voglia guardarci dentro o riprenderlo in mano. Il linguaggio, al contrario, è finito e non si tocca.",
+    body: "Il cantiere di cui non parlavamo era questo. Favella Studio è un tentativo di dare a FAVELLA un ambiente di sviluppo visuale: la mappa delle stanze che si disegna trascinando, gli editor per oggetti, regole e dialoghi, un comando che impacchetta la storia in un HTML giocabile da solo. Funziona, in buona parte. Ma è fermo alla 0.9 da mesi, nessuno lo mantiene e non ha una data d'uscita, perché non ne avrà una. Doveva essere il pezzo a pagamento del progetto; alla fine lo abbiamo aperto. Il codice sta lì, sotto MIT, per chi ha voglia di guardarci dentro o di riprenderlo in mano. Il linguaggio invece è finito, e quello non si tocca.",
   },
 ];
 
@@ -302,7 +302,7 @@ export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
     title: "Il cantiere aperto",
-    body: "Il linguaggio è chiuso e non cambierà: è una promessa, non una resa. Quello che resta da fare vive intorno — l'IDE sperimentale fermo alla 0.9, le traduzioni, gli strumenti d'autore. Il codice è tutto pubblico e sotto MIT: chi vuole raccoglierlo lo trova su GitHub.",
+    body: "Che il linguaggio non cambi più è una promessa fatta a chi ci scrive: quello che funziona oggi funzionerà anche fra dieci anni. Il lavoro che resta sta tutto intorno — l'IDE fermo alla 0.9, le traduzioni, gli strumenti per chi scrive. Il codice è pubblico e sotto MIT: chi ha voglia di raccoglierlo lo trova su GitHub.",
   },
 ];
 
@@ -332,7 +332,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
   {
     version: "1.0.1",
     title: "Un repository solo, e i nomi dei moduli a posto",
-    content: "Patch di sola distribuzione: il linguaggio e la grammatica non cambiano di una virgola. Il pacchetto pip installava i moduli del motore con nomi generici, e «utils» in particolare finiva per pestare i piedi a qualunque altro pacchetto ne avesse uno: adesso si chiama «favella_utils». Intorno, il riordino grosso: il sorgente del sito e l'IDE sperimentale Favella Studio entrano nel repository pubblico — prima vivevano uno in locale e l'altro in un repository chiuso — insieme ai file originali del marchio a piena risoluzione. Tutto sotto MIT, tutto in un posto solo.",
+    content: "Il linguaggio e la grammatica restano quelli della 1.0.0: qui cambia solo come il pacchetto arriva sul computer di chi lo installa. Il motore metteva in «site-packages» un modulo chiamato «utils», nome talmente comune da rischiare di scavalcare, o di farsi scavalcare da, quello di qualunque altro pacchetto: ora si chiama «favella_utils». Accanto, il riordino grosso. Il sorgente del sito e l'IDE sperimentale Favella Studio entrano nel repository pubblico, dove prima stavano uno in locale e l'altro dietro una porta chiusa, e con loro i file originali del marchio a piena risoluzione. Tutto sotto MIT, tutto in un posto solo.",
   },
   {
     version: "1.0.0",

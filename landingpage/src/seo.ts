@@ -124,7 +124,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
     type: "article",
   },
   "/cookie": {
-    title: "Cookie Policy — FAVELLA 1",
+    title: "Informativa sui cookie — FAVELLA 1",
     description:
       "Cookie policy di favella.eu: il sito non usa cookie di profilazione né strumenti di tracciamento. Solo storage tecnico, secondo le linee guida del Garante.",
     og: "/og/home.png",

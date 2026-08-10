@@ -18,7 +18,7 @@ const CARTELLE = [
   {
     path: "/",
     title: "Il motore",
-    body: "Compilatore, interprete, libreria delle azioni e la suite di 681 test. Python puro, l'unica dipendenza è Lark.",
+    body: "Compilatore, interprete, libreria delle azioni e i 681 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
     href: GITHUB_URL,
   },
   {
@@ -30,7 +30,7 @@ const CARTELLE = [
   {
     path: "/studio",
     title: "Favella Studio",
-    body: "L'IDE desktop. Esperimento incompiuto e fermo alla 0.9, aperto perché qualcuno possa riprenderlo. Licenza MIT propria.",
+    body: "L'IDE desktop, fermo alla 0.9 e senza nessuno che lo mantenga. Aperto con licenza MIT proprio perché qualcuno possa riprenderlo.",
     href: GITHUB_IDE_URL,
   },
   {
@@ -48,7 +48,7 @@ const CARTELLE = [
   {
     path: "/branding",
     title: "Il marchio",
-    body: "Logo, banner, icone e favicon — anche i master a piena risoluzione, non solo i derivati per il web.",
+    body: "Logo, banner, icone e favicon. Ci sono anche i master a piena risoluzione, non soltanto le versioni compresse che usa il sito.",
     href: GITHUB_BRANDING_URL,
   },
 ];
@@ -102,8 +102,8 @@ const CollaboratePage = () => (
         Dove sta cosa
       </p>
       <p className="mx-auto mb-7 max-w-[640px] text-center text-[15px] leading-[1.6] text-favella-text-secondary">
-        Dall'agosto 2026 è tutto in un repository solo — motore, sito, IDE, manuale, avventure e marchio.
-        Niente più pezzi sparsi o tenuti da parte.
+        Motore, sito, IDE, manuale, avventure, marchio: dall'agosto 2026 stanno tutti nello stesso
+        repository. Prima erano sparsi fra tre posti diversi, e qualcuno non era pubblico affatto.
       </p>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {CARTELLE.map((c) => (

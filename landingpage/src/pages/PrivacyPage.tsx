@@ -46,7 +46,7 @@ const PrivacyPage = () => (
       profilazione propri o di terze parti. I caratteri tipografici (font) sono <strong>ospitati
       direttamente sul nostro dominio</strong>: non viene effettuata alcuna chiamata a Google Fonts,
       quindi nessun dato è trasmesso a Google al caricamento delle pagine. Per i dettagli sui cookie
-      vedi la <Link to="/cookie" className="text-favella-cyan hover:underline">Cookie Policy</Link>.
+      vedi la <Link to="/cookie" className="text-favella-cyan hover:underline">informativa sui cookie</Link>.
     </P>
 
     <H>Strumenti interattivi (corso, programma, galleria)</H>
