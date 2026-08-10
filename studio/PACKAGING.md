@@ -1,3 +1,8 @@
+> ℹ️ **Build automatico**: il workflow vivo è `/.github/workflows/build-ide.yml`
+> nella radice del repository (Actions → «Build IDE — Favella Studio» → Run
+> workflow, avvio manuale). Quello in `studio/.github/` è storico e non viene
+> eseguito: GitHub legge solo i workflow nella radice.
+
 # Packaging — Favella Studio (Fase 7)
 
 Due artefatti distribuibili:

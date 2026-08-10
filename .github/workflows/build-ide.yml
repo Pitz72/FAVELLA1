@@ -1,20 +1,21 @@
-name: Build IDE (Windows / macOS / Linux) — STORICO, NON ESEGUITO
-
-# ⚠️ QUESTO FILE NON VIENE ESEGUITO. GitHub registra solo i workflow in
-# .github/workflows/ alla RADICE del repository; questo sta in studio/.github/.
-# Vive qui come cronaca di quando l'IDE era un repo privato a sé e serviva un
-# doppio checkout (motore pubblico in root + IDE in studio/).
-# Il workflow VIVO è /.github/workflows/build-ide.yml, con un checkout solo.
+name: Build IDE — Favella Studio (Windows / macOS / Linux)
 
 # AVVIO SOLO MANUALE: nessun trigger automatico (niente push/PR/tag).
-# Si lancia da GitHub → Actions → "Build IDE (Windows / macOS / Linux)" → Run workflow.
+# Si lancia da GitHub → Actions → "Build IDE — Favella Studio" → Run workflow.
+#
+# NB: Favella Studio è un ESPERIMENTO in fase primordiale (vedi studio/README.md).
+# Questo workflow produce installer NON FIRMATI, scaricabili come artefatti: non
+# crea Release e non pubblica niente.
+#
+# STORIA: viveva in .github/workflows/ del repo privato Ecosystem-Runtime/
+# favella-studio e faceva DUE checkout (il motore pubblico in root, l'IDE in
+# studio/). Dal 2026-08-10 motore e IDE stanno nello stesso repo, quindi basta un
+# checkout solo. Il file originale resta in studio/.github/ come cronaca: lì
+# GitHub non lo esegue, perché registra solo i workflow in .github/workflows/
+# alla RADICE del repository.
+
 on:
   workflow_dispatch:
-    inputs:
-      ref_motore:
-        description: "Branch o tag del repo motore pubblico Pitz72/FAVELLA1 da cui congelare il sidecar"
-        required: false
-        default: "main"
 
 jobs:
   build:
@@ -26,39 +27,29 @@ jobs:
         include:
           - os: windows-latest
             sep: ";"      # separatore --add-data di PyInstaller su Windows
-            engine: "favella_engine.exe"
           - os: macos-latest
             sep: ":"
-            engine: "favella_engine"
           - os: ubuntu-latest
             sep: ":"
-            engine: "favella_engine"
 
     steps:
-      # 1) Motore (repo PUBBLICO) nella root: fornisce i .py per congelare il sidecar.
-      - name: Checkout motore (Pitz72/FAVELLA1, pubblico) nella root
-        uses: actions/checkout@v4
-        with:
-          repository: Pitz72/FAVELLA1
-          ref: ${{ inputs.ref_motore }}
-          path: .
+      # Un solo checkout: motore in radice + IDE in studio/, già nel layout giusto.
+      - uses: actions/checkout@v4
 
-      # 2) IDE (QUESTO repo privato) in studio/  → ricrea il layout root + studio.
-      - name: Checkout IDE (Favella Studio) in studio/
-        uses: actions/checkout@v4
-        with:
-          path: studio
-
-      # 3) Python + PyInstaller per congelare il sidecar (favella_server.py).
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      # --- Sidecar Python congelato con PyInstaller ---------------------------
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Installa lark + pyinstaller
         run: python -m pip install --upgrade pip lark pyinstaller
 
-      - name: Congela il sidecar (PyInstaller, dalla root)
+      - name: Suite del motore (blocca le regressioni)
+        run: |
+          python test_linguaggio.py
+          python test_collaudo.py
+
+      - name: Congela il sidecar (PyInstaller, dalla radice)
         shell: bash
         run: |
           python -m PyInstaller --onefile --name favella_engine --collect-all lark \
@@ -74,9 +65,8 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x "dist/favella_engine"
 
-      # 4) Node + dipendenze + build installer (electron-builder).
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # --- Installer Electron -------------------------------------------------
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
@@ -92,7 +82,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist
 
-      # 5) Artefatti scaricabili (un pacchetto per OS).
       - name: Carica gli artefatti
         uses: actions/upload-artifact@v4
         with:
