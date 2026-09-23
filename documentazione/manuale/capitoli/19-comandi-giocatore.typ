@@ -80,6 +80,10 @@ inventario, stati, contatori, persino il caso delle descrizioni a varietà. Puoi
 annullare più turni di fila, tornando indietro passo dopo passo. Una conversazione
 intera conta come un solo passo: un `annulla` ti riporta a prima di averla iniziata.
 
+Una sola cosa `annulla` non tocca: la memoria di `ancora`. Se scrivi `prendi la
+mappa`, poi `annulla`, poi `ancora`, la mappa torna nelle tue mani: `ancora`
+ripete l'ultimo comando che hai dato, anche se l'hai appena disfatto.
+
 #nota[
   `trascrizione` scrive la partita in `trascrizione-favella.txt`, riga per riga. È
   comodo per rileggere una sessione di prova, o per raccogliere le parole esatte che

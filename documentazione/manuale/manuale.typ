@@ -1,7 +1,7 @@
 #import "lib/manuale-template.typ": *
 
 // Versione del motore ed etichetta d'edizione: un solo punto di verità.
-#let MOTORE = "v1.0.0"
+#let MOTORE = "v1.1.0"
 #let EDIZIONE = "Seconda edizione · 2026"
 
 // Due tirature dalla stessa sorgente:

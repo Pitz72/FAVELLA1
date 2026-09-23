@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import BrandMark from "./BrandMark";
+import { ENGINE_VERSION } from "../constants";
 import { avviaGiocoDaSorgente, avviaValidatore } from "../lib/favellaRuntime";
 import type { SessioneGioco, TurnoEsito } from "../lib/favellaRuntime";
 
@@ -326,7 +327,7 @@ const Playground = ({ onExit }: { onExit: () => void }) => {
       </div>
 
       <p className="mt-5 text-center font-mono text-xs text-favella-text-muted">
-        motore FAVELLA v1.0.0 reale nel browser · il file .fav scaricato si apre con la CLI favella1
+        motore FAVELLA v{ENGINE_VERSION} reale nel browser · il file .fav scaricato si apre con la CLI favella1
       </p>
       </div>
     </div>

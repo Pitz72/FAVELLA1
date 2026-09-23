@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Playground from "../components/Playground";
+import { ENGINE_VERSION } from "../constants";
 
 const FEATURES = [
   { color: "border-favella-cyan/40", title: "Errori autentici", body: "Se sbagli, leggi l'errore vero del compilatore, con il numero di riga. È lo stesso motore della CLI." },
@@ -111,7 +112,7 @@ La lanterna <span className="text-favella-cyan">è prendibile</span>.{"\n"}
             Apri il laboratorio
           </button>
           <p className="mt-5 font-mono text-[12px] text-favella-text-muted">
-            motore FAVELLA v1.0.0 reale nel browser · il file .fav scaricato si apre con la CLI favella1
+            motore FAVELLA v{ENGINE_VERSION} reale nel browser · il file .fav scaricato si apre con la CLI favella1
           </p>
         </div>
       </div>

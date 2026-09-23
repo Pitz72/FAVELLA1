@@ -3278,7 +3278,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.0.0.md")
+                          "grammatica-1.1.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3295,7 +3295,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.0.0.md è presente")
+           "documentazione/grammatica-1.1.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -4983,7 +4983,159 @@ def test_robustezza_console_cp1252_non_crasha():
     _check(True, "assicura_console_utf8 è idempotente")
 
 
+# --- [1.1.0] Posto iniziale degli oggetti -------------------------------------
+
+_SRC_POSTO = (
+    "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+    "L'orto è una stanza.\nLa cucina collega nord a l'orto.\n"
+    "La mappa è una cosa.\nLa mappa è prendibile.\nLa mappa è in cucina.\n"
+    'Il posto della mappa è "Sul tavolo, una MAPPA piegata.".\n'
+    "Il secchio è una cosa.\nIl secchio è in cucina.\n")
+
+
+def _riga_elenco(out):
+    return next((r for r in out.splitlines() if r.startswith("Puoi vedere qui")), "")
+
+
+def test_posto_parsing_e_registrazione():
+    print("[1.1.0: 'Il posto della mappa è \"…\".' registra la frase sull'oggetto]")
+    mondo, log = compila(_SRC_POSTO)
+    _check(mondo is not None, "il sorgente con posto compila")
+    _check(mondo and mondo.oggetti["mappa"].posto == "Sul tavolo, una MAPPA piegata.",
+           "la frase è registrata in Oggetto.posto")
+    _check(mondo and not mondo.oggetti["mappa"].spostato,
+           "a inizio partita l'oggetto non risulta spostato")
+
+
+def test_posto_mostrato_e_escluso_dall_elenco():
+    print("[1.1.0: il posto si mostra e l'oggetto esce da «Puoi vedere qui»]")
+    mondo = runtime(_SRC_POSTO)
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo, una MAPPA piegata." in out, "la frase del posto compare")
+    riga = _riga_elenco(out)
+    _check("secchio" in riga and "mappa" not in riga,
+           "l'elenco generico mostra il secchio ma non la mappa")
+
+
+def test_posto_sparisce_dopo_la_presa():
+    print("[1.1.0: preso l'oggetto, il posto sparisce per sempre]")
+    mondo = runtime(_SRC_POSTO)
+    esegui(mondo, "prendi la mappa")
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo" not in out, "dopo la presa la frase non c'è più")
+    esegui(mondo, "lascia la mappa")
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo" not in out and "mappa" in _riga_elenco(out),
+           "lasciata di nuovo, la mappa torna nell'elenco generico")
+
+
+def test_posto_annulla_lo_riporta():
+    print("[1.1.0: ANNULLA dopo la presa riporta la frase in scena]")
+    mondo = runtime(_SRC_POSTO)
+    esegui(mondo, "prendi la mappa")
+    esegui(mondo, "annulla")
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo, una MAPPA piegata." in out, "la frase è tornata")
+
+
+def test_posto_spostamento_da_regola():
+    print("[1.1.0: anche uno spostamento per regola spegne il posto]")
+    src = _SRC_POSTO + (
+        '"soffia" è un comando.\n'
+        "Invece di soffia la mappa: dire \"Vola via.\" e adesso la mappa è nell'orto.\n")
+    mondo = runtime(src)
+    esegui(mondo, "soffia la mappa")
+    esegui(mondo, "nord")
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo" not in out, "nell'orto la frase d'origine non compare")
+    _check("mappa" in _riga_elenco(out), "la mappa è elencata nell'orto")
+
+
+def test_posto_errori_e_avvisi():
+    print("[1.1.0: posto su stanza = errore; fuori da una stanza = avviso]")
+    mondo, log = compila(_SRC_POSTO + 'Il posto della cucina è "Nulla.".\n')
+    _check(mondo is None and "stanza" in log.lower(),
+           "un posto dichiarato per una stanza blocca la compilazione")
+    mondo, log = compila(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La scatola è un contenitore.\nLa scatola è in cella.\n"
+        "La gemma è una cosa.\nLa gemma è nella scatola.\n"
+        'Il posto della gemma è "Brilla.".\n')
+    _check(mondo is not None and "non sarà mai mostrato" in log,
+           "un posto dentro un contenitore produce un avviso")
+
+
+def test_posto_nomi_composti_ammessi():
+    print("[1.1.0: 'posto' è riservata ma «posto di blocco» resta un nome lecito]")
+    mondo, _ = compila(
+        "Il posto di blocco è una stanza.\nIl giocatore comincia in posto di blocco.\n"
+        "La sbarra è una cosa.\nLa sbarra è in posto di blocco.\n"
+        'Il posto della sbarra è "Una SBARRA abbassata.".\n')
+    _check(mondo is not None and "posto di blocco" in mondo.stanze,
+           "la stanza «posto di blocco» compila insieme a un posto")
+
+
+def test_posto_da_inventario_mai_mostrato():
+    print("[1.1.0: un posto su un oggetto che parte in inventario non compare mai]")
+    mondo = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La gemma è una cosa.\nLa gemma è prendibile.\nIl giocatore ha la gemma.\n"
+        'Il posto della gemma è "Brilla sul pavimento.".\n')
+    esegui(mondo, "lascia la gemma")
+    out = esegui(mondo, "guarda")
+    _check("Brilla sul pavimento" not in out and "gemma" in _riga_elenco(out),
+           "posata, la gemma è elencata normalmente e la frase non compare")
+
+
+# --- [1.1.0] Consolidamento: semantica verificata con Il Viaggiatore ----------
+
+def test_quando_riscatta_a_ogni_fronte():
+    print("[1.1.0: 'Quando' scatta a OGNI fronte di salita, non una volta sola]")
+    mondo = runtime(
+        "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+        "L'orto è una stanza.\nLa cucina collega nord a l'orto.\n"
+        "L'orto collega sud a la cucina.\n"
+        'Quando il giocatore è nell\'orto: dire "ORTO!".\n')
+    uscite = [esegui(mondo, c) for c in ("nord", "sud", "nord")]
+    _check(sum(o.count("ORTO!") for o in uscite) == 2,
+           "rientrare nell'orto fa riscattare il demone (2 ingressi: 2 volte)")
+    _check("ORTO!" not in uscite[1], "uscendo (condizione falsa) non scatta")
+
+
+def test_capienza_avviso_su_spostamento_in_inventario():
+    print("[1.1.0: 'è in inventario' con capienza dichiarata: avviso]")
+    base = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La pietra è una cosa.\nLa pietra è in cella.\n"
+        "La piuma è una cosa.\nLa piuma è in cella.\n"
+        'Invece di guarda: dire "Raccogli." e adesso la pietra è in inventario'
+        " e adesso la piuma è in inventario.\n"
+        'Invece di esamina la pietra: dire "Ancora." e adesso la pietra è in inventario.\n')
+    mondo, log = compila(base + "Il giocatore può portare 1 oggetti.\n")
+    _check(mondo is not None and log.count("ignorando la capienza") == 2,
+           "un avviso per oggetto (pietra e piuma), non uno per conseguenza")
+    mondo, log = compila(base)
+    _check(mondo is not None and "ignorando la capienza" not in log,
+           "senza capienza dichiarata nessun avviso")
+    mondo = runtime(base + "Il giocatore può portare 1 oggetti.\n")
+    esegui(mondo, "guarda")
+    _check(len(mondo.inventario) == 2,
+           "a runtime il comportamento 1.0 resta invariato (2 oggetti su 1 posto)")
+
+
+def test_ancora_dopo_annulla_ripete_il_comando_disfatto():
+    print("[1.1.0: ANNULLA non ripristina ultimo_comando (comportamento fissato)]")
+    mondo = runtime(_SRC_POSTO)
+    esegui(mondo, "prendi la mappa")
+    esegui(mondo, "annulla")
+    _check("mappa" not in mondo.inventario, "annullata, la mappa è di nuovo a terra")
+    esegui(mondo, "ancora")
+    _check("mappa" in mondo.inventario,
+           "ANCORA ripete il comando disfatto (ultimo_comando è di sessione)")
+
+
 # --- Runner ------------------------------------------------------------------
+
 
 def main():
     tests = [
@@ -5344,11 +5496,24 @@ def main():
         test_a6_il_canonico_continua_a_funzionare,
         test_a6_bersaglio_sconosciuto_warning,
         test_a6_piu_sinonimi,
+        # [1.1.0] Posto iniziale degli oggetti
+        test_posto_parsing_e_registrazione,
+        test_posto_mostrato_e_escluso_dall_elenco,
+        test_posto_sparisce_dopo_la_presa,
+        test_posto_annulla_lo_riporta,
+        test_posto_spostamento_da_regola,
+        test_posto_errori_e_avvisi,
+        test_posto_nomi_composti_ammessi,
+        test_posto_da_inventario_mai_mostrato,
+        # [1.1.0] Consolidamento
+        test_quando_riscatta_a_ogni_fronte,
+        test_capienza_avviso_su_spostamento_in_inventario,
+        test_ancora_dopo_annulla_ripete_il_comando_disfatto,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.0.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.1.0)")
     print("=" * 60)
     for t in tests:
         t()

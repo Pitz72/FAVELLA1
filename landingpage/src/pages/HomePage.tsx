@@ -1,7 +1,7 @@
 import React from "react";
 import BrandMark from "../components/BrandMark";
 import ManualBanner from "../components/ManualBanner";
-import { STATS, FEATURES, GITHUB_URL } from "../constants";
+import { STATS, FEATURES, GITHUB_URL, ENGINE_VERSION } from "../constants";
 import { navigate } from "../router";
 
 const go = (href: string) => {
@@ -63,7 +63,7 @@ const HomePage = () => (
         <div className="mb-8 flex items-center justify-center gap-4">
           <span className="h-px w-[54px] bg-gradient-to-r from-transparent to-favella-cyan/60" />
           <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-favella-cyan">
-            FAVELLA 1 · v1.0.0 — il linguaggio è completo
+            FAVELLA 1 · v{ENGINE_VERSION} — il linguaggio è completo
           </span>
           <span className="hidden h-px w-[54px] bg-gradient-to-l from-transparent to-favella-cyan/60 sm:block" />
         </div>

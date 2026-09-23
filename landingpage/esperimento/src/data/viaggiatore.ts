@@ -2,7 +2,7 @@
 //  «Il Viaggiatore» — dati dell'esperimento
 // --------------------------------------------------------------------
 //  Un'avventura di sopravvivenza/GDR scritta in FAVELLA 1 (7 zone, 39
-//  location, 15 personaggi, ~44 oggetti, 4 finali). Qui vivono: la
+//  location, 13 personaggi, ~44 oggetti, 6 finali). Qui vivono: la
 //  mappa stanza→zona, il TEMA CROMATICO di ogni zona (la palette cambia
 //  mentre cammini) e i contenuti della presentazione d'intro.
 // ====================================================================
@@ -76,9 +76,9 @@ export function zoneOf(roomId: string | null): ZoneKey {
 export const INTRO_STATS = [
   { n: 7, label: "zone" },
   { n: 39, label: "luoghi" },
-  { n: 15, label: "personaggi" },
+  { n: 13, label: "personaggi" },
   { n: 44, label: "oggetti" },
-  { n: 4, label: "finali" },
+  { n: 6, label: "finali" },
 ];
 
 export const INTRO_ZONES: { k: ZoneKey; nome: string; sub: string; testo: string }[] = [
@@ -107,5 +107,5 @@ export const INTRO_LOGICS: { titolo: string; testo: string }[] = [
   { titolo: "L'acqua è la moneta", testo: "In un mondo secco l'acqua è risorsa e valuta insieme. Ogni baratto è una scelta che costa: dare acqua oggi è sete domani." },
   { titolo: "La fiducia apre le porte", testo: "Cinque personaggi maggiori, un contatore di fiducia ciascuno. Doni e favori la alzano; minacce e furti la abbassano. Decide cosa ti viene concesso." },
   { titolo: "La violenza costa, ed è evitabile", testo: "GDR leggero e narrativo. Pochi scontri, quasi sempre aggirabili. Combattere è la carta più dura, mai la più comoda." },
-  { titolo: "Le scelte viaggiano fino in fondo", testo: "Curare o no, portare via un ragazzo o no, tenere o vendere un ricordo: ogni gesto pesa, e si raccoglie alla fine, in uno dei quattro finali." },
+  { titolo: "Le scelte viaggiano fino in fondo", testo: "Curare o no, portare via un ragazzo o no, tenere o vendere un ricordo: ogni gesto pesa, e si raccoglie alla fine, in uno dei sei finali." },
 ];

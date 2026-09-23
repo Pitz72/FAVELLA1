@@ -4,6 +4,62 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.1.0] - 2026-09-23
+### 📍 Il posto iniziale degli oggetti
+Prima estensione del linguaggio dopo la milestone 1.0. È **additiva**: nessuna
+storia `.fav` esistente cambia comportamento (unica eccezione teorica: un'entità
+che si chiamasse esattamente «posto», ora parola riservata).
+
+Nata da un caso reale, *Il Viaggiatore*: per dare atmosfera l'autore descrive gli
+oggetti dentro la prosa della stanza («Su un mobile, una MAPPA piegata…»), e dopo
+che il giocatore li ha presi la stanza continua a descriverli. Il motore non aveva
+modo di dire «questa frase vale finché l'oggetto è al suo posto».
+
+- **Nuova frase `def_posto`:**
+  `Il posto della mappa è "Su un mobile, una MAPPA piegata della provincia.".`
+  È l'*initial appearance* di Inform 7. Finché l'oggetto non è mai stato spostato,
+  `mostra_stanza` stampa la frase sotto la descrizione della stanza (i posti di più
+  oggetti si raccolgono in un solo capoverso, nell'ordine di collocazione) e toglie l'oggetto da «Puoi vedere qui». Alla prima rimozione dal suo
+  luogo (presa, conseguenza di spostamento, movimento di un PNG) la frase sparisce
+  per sempre; l'oggetto torna nell'elenco generico.
+- **Strutture:** `Oggetto.posto`, `Oggetto.spostato`, `Oggetto.al_suo_posto()`;
+  il segno è acceso da `Mondo.rimuovi_da_posizione` e azzerato a fine compilazione
+  (l'inventario iniziale non conta). ANNULLA-safe per costruzione (istantanee).
+- **Diagnostica:** posto su stanza o su entità inesistente → errore; posto doppio →
+  avviso; posto di un oggetto che non comincia direttamente in una stanza → avviso.
+  Il testo passa per il controllo dei segnaposto `[nome]`.
+- **IDE:** lo snapshot degli oggetti espone `initialAppearance` e
+  `initialAppearanceSpan`; `riordina_sorgente` raggruppa il posto con la posizione.
+- **Documentazione:** spec `documentazione/grammatica-1.1.0.md` (§18), manuale
+  d'autore cap. 6 «Il posto iniziale» e riepilogo; PDF ricompilato (85 pagine).
+- **Correzione:** un oggetto con un posto che comincia in inventario, posato più
+  tardi in una stanza, non mostra più la frase fuori luogo (era l'unico caso in
+  cui l'avviso «non sarà mai mostrato» mentiva).
+
+### 🔎 Consolidamento: ciò che Il Viaggiatore ha insegnato
+Nessuna frase nuova, nessun comportamento cambiato: si fissa il motore com'è.
+- **Spec e manuale corretti sul demone `Quando`:** scatta a *ogni* passaggio da
+  falso a vero, non una volta per partita (la documentazione diceva il contrario
+  dalla 0.x; il codice ha sempre fatto così). Il manuale (cap. 14) mostra come
+  guardarlo con uno stato per un evento una tantum.
+- **Avviso nuovo sulla capienza:** se la storia dichiara `Il giocatore può
+  portare N oggetti` e una conseguenza usa `e adesso X è in inventario`, il
+  compilatore avverte, una volta per oggetto, che quello spostamento ignora il
+  limite. Il comportamento a runtime resta quello della 1.0.
+- **ANCORA dopo ANNULLA** documentato: `ultimo_comando` è stato di sessione e
+  ANNULLA non lo ripristina (manuale cap. 19, spec §19).
+- **Spec §19** «semantica verificata»: precedenza delle regole `Invece di`, il
+  parser che risponde «Non vedo…» prima delle regole, i sinonimi `è come` che non
+  valgono per i verbi d'autore, le varianti con `se`, il determinismo del caso, il
+  limite del collaudo statico sulle scorte. Manuale: nota nuova nel cap. 17.
+
+Suite: **702 asserzioni del linguaggio** (+21) **+ 43 di collaudo**, tutte verdi
+(`pytest`: 323).
+
+> **Non distribuito.** Il sito (favella.eu) e il pacchetto pip restano alla
+> 1.0.1 finché non si decide il rilascio: vedi la nota in
+> `landingpage/public/favella-engine/SYNC.md`.
+
 ## [1.0.1] - 2026-08-10
 ### 🧹 Igiene del namespace nel pacchetto installabile
 Patch di **sola distribuzione**: il linguaggio, la grammatica e il comportamento del

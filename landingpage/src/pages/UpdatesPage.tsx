@@ -59,7 +59,9 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
 
 const UpdatesPage = () => {
   const featured = NEWS.find((n) => n.emphasis === "primary");
-  const rest = NEWS.filter((n) => n.emphasis !== "primary");
+  // In vetrina la PRIMA notizia «primary»; tutte le altre nella griglia (prima
+  // le altre «primary» sparivano: il filtro escludeva l'intera categoria).
+  const rest = NEWS.filter((n) => n !== featured);
 
   return (
     <section className="px-6 pb-28 pt-[74px]">
@@ -71,8 +73,8 @@ const UpdatesPage = () => {
             Quello che è stato,<br />e quello che <span className="italic text-ink-accent">resta aperto</span>.
           </h1>
           <p className="font-serif text-[20px] leading-[1.6] text-favella-text-secondary">
-            Il diario del progetto: come FAVELLA è arrivata alla 1.0, e che cosa rimane da fare adesso che il
-            linguaggio non cambia più.
+            Il diario del progetto: come FAVELLA è arrivata alla 1.0, che cosa è venuto dopo, e che cosa rimane da
+            fare adesso che il linguaggio cresce soltanto aggiungendo.
           </p>
         </div>
 
@@ -112,7 +114,7 @@ const UpdatesPage = () => {
         <div className="mt-24">
           <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">Changelog</p>
           <h2 className="mb-10 font-serif text-[clamp(26px,3.6vw,38px)] font-medium text-favella-text-primary">
-            La strada fino alla 1.0.0
+            La strada fino alla 1.1
           </h2>
           <div className="pl-2">
             {UPDATE_LOGS.map((log, i) => (

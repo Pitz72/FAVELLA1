@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.0.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.1.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -67,6 +67,8 @@ PAROLE_RISERVATE = frozenset({
     # descrizione e relative preposizioni articolate
     "la", "il", "lo", "i", "gli", "le", "l'", "un'",
     "descrizione", "di", "del", "della", "dell'", "degli", "delle",
+    # [1.1.0] posto iniziale di un oggetto: 'Il posto della mappa è "…".'
+    "posto",
     # [0.22.0 / A2] descrizioni a varianti: 'è una di: …' / 'è in sequenza: …'
     # ('una', 'di', 'in' sono già riservate; manca 'sequenza').
     "sequenza",
@@ -326,6 +328,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_capacita_oggetto
                   | def_illumina
                   | def_sinonimo
+                  | def_posto
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -377,6 +380,14 @@ _GRAMMAR_TEMPLATE = r"""
     descr_valore: TESTO_QUOTATO                                            -> descr_singola
                 | "una" "di" ":" TESTO_QUOTATO ( "," TESTO_QUOTATO )*      -> descr_casuale
                 | "in" "sequenza" ":" TESTO_QUOTATO ( "," TESTO_QUOTATO )* -> descr_sequenza
+    // [1.1.0] POSTO INIZIALE di un oggetto (l'«initial appearance» di Inform):
+    // una frase d'ambiente che il motore mostra sotto la descrizione della stanza
+    // finché l'oggetto non è mai stato spostato; in quel tempo l'oggetto non
+    // compare in «Puoi vedere qui». Appena lo si prende (o una regola lo sposta)
+    // la frase sparisce per sempre e l'oggetto torna nell'elenco normale.
+    // Inizia con "Il" come def_giocatore/def_dialogo_inizio: il lookahead
+    // "posto" vs "giocatore"/"dialogo" la distingue → LALR(1) 0-ambiguo.
+    def_posto: "Il" "posto" _PREP_DESCR ENTITA "è" TESTO_QUOTATO "."
     def_posizione: ENTITA _copula PREP_LUOGO ENTITA "."
     // 'è prendibile' è una proprietà speciale gestita nel transformer (vedi
     // def_proprieta): niente regola separata, così la grammatica è 0-ambigua.
@@ -958,6 +969,7 @@ class FavellaTransformer(Transformer):
         self._pending_posizioni = []     # (ogg_grezzo, prep, luogo_grezzo)
         self._pending_proprieta = []     # (ogg_grezzo, proprieta_grezzo)
         self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
+        self._pending_posti = []         # [1.1.0] (nome_grezzo, testo)
         self._pending_conseguenze = []   # liste di Conseguenza da validare
         # [0.34.0 / Tema 3] Coppie (lhs, rhs, raw_lhs, raw_rhs, contesto) dei
         # confronti/copie stato↔stato, validate in valida_post (differito: lo
@@ -1214,6 +1226,28 @@ class FavellaTransformer(Transformer):
         # [0.17.0] Differita a valida_post: l'entità può essere dichiarata dopo.
         self._pending_descrizioni.append((nome_grezzo, condizione, testo))
         return None
+
+    def def_posto(self, nome_grezzo, testo):
+        # [1.1.0] 'Il posto della mappa è "…".' — differita a valida_post come le
+        # descrizioni: l'oggetto e la sua posizione possono venire dichiarati dopo.
+        self._pending_posti.append((nome_grezzo, testo))
+        return None
+
+    def _applica_posto(self, nome_grezzo, testo):
+        id_ogg = normalizza_nome(nome_grezzo)
+        oggetto = self.mondo.trova_oggetto(id_ogg)
+        if oggetto is None:
+            if self.mondo.trova_stanza(id_ogg):
+                self.errori.append(
+                    f"Il posto si dichiara per un oggetto, non per una stanza: "
+                    f"'{nome_grezzo}' è una stanza (usa 'La descrizione di …').")
+            else:
+                self.errori.append(f"Posto per oggetto inesistente: '{nome_grezzo}'")
+            return
+        if oggetto.posto is not None:
+            self.warnings.append(
+                f"'{nome_grezzo}' ha più di un posto dichiarato: vale l'ultimo.")
+        oggetto.posto = testo
 
     def _applica_descrizione(self, nome_grezzo, condizione, testo):
         id_entita = normalizza_nome(nome_grezzo)
@@ -1782,8 +1816,27 @@ class FavellaTransformer(Transformer):
             self._applica_proprieta(ogg, prop)
         for nome, cond, testo in self._pending_descrizioni:
             self._applica_descrizione(nome, cond, testo)
+        for nome, testo in self._pending_posti:
+            self._applica_posto(nome, testo)
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
+        # [1.1.0] 'e adesso X è in inventario' non passa dal controllo della
+        # capienza (lo fa solo il prendere del giocatore): se la storia ne
+        # dichiara una, lo si dice all'autore una volta per oggetto. Il
+        # comportamento a runtime resta quello della 1.0 (compatibilità).
+        if self.mondo.capacita_base is not None:
+            gia_detti = set()
+            for conseguenze in self._pending_conseguenze:
+                for c in conseguenze:
+                    if (isinstance(c, ConseguenzaSpostamento)
+                            and c.destinazione == "inventario"
+                            and c.id_oggetto not in gia_detti):
+                        gia_detti.add(c.id_oggetto)
+                        self.warnings.append(
+                            f"Una conseguenza mette '{c.id_oggetto}' in inventario "
+                            f"ignorando la capienza ('Il giocatore può portare "
+                            f"{self.mondo.capacita_base} oggetti'): se serve, "
+                            f"controllala con una condizione.")
         # [0.34.0 / Tema 3] Coerenza di TIPO nei confronti/copie stato↔stato. Un
         # nome è un CONTATORE se il suo valore nel mondo è un intero (def_contatore
         # → 0, 'parte da N' → N); altrimenti è uno STATO (None o parola-stato).
@@ -1837,6 +1890,22 @@ class FavellaTransformer(Transformer):
             m.rimuovi_da_posizione(oggetto)
             oggetto.posizione = "inventario"
             m.inventario.add(id_ogg)
+
+        # [1.1.0] Il posto iniziale vale per un oggetto collocato DIRETTAMENTE in
+        # una stanza: dentro un contenitore, su un supporto, in inventario o nel
+        # nulla la frase non verrebbe mai mostrata. Gli spostamenti fatti fin qui
+        # dalla compilazione (inventario iniziale) non contano come «toccato»:
+        # si azzera il segno, che d'ora in poi registra solo il gioco.
+        for ogg in m.oggetti.values():
+            ogg.spostato = False
+            if ogg.posto is not None and ogg.posizione not in m.stanze:
+                # Segnato come già spostato: se più tardi lo si posa in una
+                # stanza (dall'inventario iniziale 'lascia' non passa da
+                # rimuovi_da_posizione) la frase non deve comparire fuori luogo.
+                ogg.spostato = True
+                self.warnings.append(
+                    f"Il posto di '{ogg.nome}' non sarà mai mostrato: l'oggetto "
+                    f"non comincia direttamente in una stanza.")
 
         # 1. [GG1] La stanza di partenza dichiarata deve esistere.
         if self.start_dichiarato_raw is not None:
@@ -1918,6 +1987,8 @@ class FavellaTransformer(Transformer):
             testi_autore += testi_di_descrizione(ent.descrizione)
             for _, t in ent.descrizioni_condizionali:
                 testi_autore += testi_di_descrizione(t)
+            if getattr(ent, "posto", None):   # [1.1.0]
+                testi_autore.append(ent.posto)
         testi_autore += [r.risposta for r in m.regole]
         testi_autore += [e.risposta for e in m.eventi]
         segnaposto_sconosciuti = set()
@@ -2171,6 +2242,8 @@ class FavellaTransformer(Transformer):
             testi += testi_di_descrizione(ent.descrizione)
             for _, t in ent.descrizioni_condizionali:
                 testi += testi_di_descrizione(t)
+            if getattr(ent, "posto", None):   # [1.1.0]
+                testi.append(ent.posto)
         testi += [r.risposta for r in m.regole]
         testi += [e.risposta for e in m.eventi]
         testi += [d.risposta for d in m.demoni]   # [Livello 8]
@@ -3019,6 +3092,9 @@ def analizza_outline(percorso_file, sorgente=None):
             "descSpan": _prima("def_descrizione", oid),
             "descConditional": _ha_descr_condizionale(frasi, oid),
             "description": descrizione_display(o.descrizione),
+            # [1.1.0] posto iniziale (None se non dichiarato) e la sua frase.
+            "initialAppearance": getattr(o, "posto", None),
+            "initialAppearanceSpan": _prima("def_posto", oid),
             "location": location,
             "properties": properties,
             "aliases": aliases,
@@ -3816,7 +3892,7 @@ def _autoformat_classifica(data, tok, mondo):
     # 2 — oggetti (raggruppati per oggetto)
     if data in ("def_oggetto", "def_contenitore", "def_supporto", "def_personaggio"):
         return (2, "o:" + (eid or ""), 0)
-    if data == "def_posizione":
+    if data in ("def_posizione", "def_posto"):
         return (2, "o:" + (eid or ""), 2)
     if data == "def_proprieta":
         return (2, "o:" + (eid or ""), 3)

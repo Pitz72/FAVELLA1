@@ -2,16 +2,18 @@ import { useState } from "react";
 import BrandMark from "../components/BrandMark";
 import GamePlayer from "../components/GamePlayer";
 import { GALLERY_STORIES } from "../data/course";
-import { GITHUB_URL } from "../constants";
+import { GITHUB_URL, VIAGGIATORE_RELEASE_URL, VIAGGIATORE_REPO_URL } from "../constants";
 import type { GameCassette } from "../data/course";
 
 // ── Banner dell'esperimento «Il Viaggiatore» — scena desertica in SVG ──
 // NB: porta all'APP SEPARATA (proprio entry/build sotto /esperimento/), non a
 // una rotta della SPA: serve un FULL RELOAD, quindi un vero <a href> (niente
 // Link interno del router). Apertura a pagina piena.
+// Tutta la card porta all'esperimento (link «steso» sull'intera superficie con
+// ::after); i due link del gioco desktop stanno sopra, con z-index proprio: niente
+// <a> annidati.
 const ViaggiatoreBanner = () => (
-  <a
-    href="/esperimento/"
+  <div
     className="group relative mt-[44px] block overflow-hidden rounded-[18px] border border-favella-amber/25 bg-favella-void shadow-glow-card transition-all hover:border-favella-amber/55"
   >
     {/* arte: il deserto, i pali, il viandante che cammina */}
@@ -74,16 +76,36 @@ const ViaggiatoreBanner = () => (
       </h2>
       <p className="max-w-[540px] font-serif text-[16px] leading-[1.6] text-favella-text-secondary">
         Un sud svuotato dall'acqua che ha smesso di tornare. Sopravvivenza, baratto, fiducia, scelte che pesano
-        e quattro finali — tutto scritto in italiano, tutto nel browser. Spingiamo FAVELLA dove di solito non va.
+        e sei finali, tutto scritto in italiano. Si prova qui nel browser; il gioco completo si scarica per
+        Windows e Linux, con i salvataggi e l'aggiornamento automatico.
       </p>
-      <div className="mt-1">
-        <span className="inline-flex items-center gap-2.5 rounded-full bg-brand-gradient px-6 py-2.5 font-display text-[14px] font-bold text-favella-void shadow-glow-cyan transition-transform group-hover:scale-[1.03]">
-          Prova l'esperimento
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <a
+          href="/esperimento/"
+          className="inline-flex items-center gap-2.5 rounded-full bg-brand-gradient px-6 py-2.5 font-display text-[14px] font-bold text-favella-void shadow-glow-cyan transition-transform after:absolute after:inset-0 after:content-[''] group-hover:scale-[1.03]"
+        >
+          Prova nel browser
           <span className="transition-transform group-hover:translate-x-1">→</span>
-        </span>
+        </a>
+        <a
+          href={VIAGGIATORE_RELEASE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative z-20 inline-flex items-center rounded-full border border-favella-amber/45 bg-favella-void/70 px-5 py-2.5 font-display text-[14px] font-bold text-favella-amber transition-colors hover:border-favella-amber hover:text-favella-text-primary"
+        >
+          Scarica per Windows / Linux
+        </a>
+        <a
+          href={VIAGGIATORE_REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative z-20 font-mono text-[12.5px] text-favella-text-secondary underline decoration-favella-amber/40 underline-offset-4 transition-colors hover:text-favella-amber"
+        >
+          il sorgente su GitHub
+        </a>
       </div>
     </div>
-  </a>
+  </div>
 );
 
 // Stili di «copertina» (trama a righe) variati per scheda.

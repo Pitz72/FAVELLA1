@@ -1,321 +1,513 @@
 // ====================================================================
-//  «Il Viaggiatore» — TRAILER d'apertura (direzione «Sete»).
+//  «Il Viaggiatore» — TRAILER d'apertura (seconda versione).
 // --------------------------------------------------------------------
-//  Porting 1:1 del design Claude Design «Il Viaggiatore - Intro», direzione
-//  Sete (il DNA favella: void blu-nerissimo, scanline CRT, accento ciano che
-//  vira per zona, monospazio elevato). È un FILMATO interamente in CSS-
-//  keyframe: ogni beat anima da solo via animation-delay (nessuna timeline
-//  condivisa → nessuna sovrapposizione). Una sola scena continua: deserto a
-//  parallax con camera in pan + push-in, il viandante che cammina, e
-//  l'orizzonte che si ricolora del colore di ogni zona. Letterbox, vignetta,
-//  HUD da terminale. Barra di avanzamento + tasto «salta». Si chiude sul
-//  pulsante d'avvio che apre il full-game.
+//  Un cortometraggio di ~88 s in dieci inquadrature (vedi trailer/scaletta.ts
+//  per il découpage). Architettura:
+//   · UN orologio (rAF) → tempo t. Tutto è funzione di t: canvas, testi,
+//     suono, barra dei capitoli. Pausa, «salta» e «rivedi» sono esatti.
+//   · Canvas 16:9 in coordinate di progetto 1920×1080 per le immagini
+//     (paesaggi procedurali, viandante articolato, mappa, polvere).
+//   · Livello DOM, stessa superficie 1920×1080 scalata, per la tipografia
+//     (nitida a ogni risoluzione) e i controlli nella banda del letterbox.
+//     I testi si animano scrivendo gli stili via ref: niente re-render React
+//     a 60 fps.
+//   · Colonna sonora: il brano src/assets/intro.mp3 (fa anche da orologio)
+//     più il rumorismo sintetizzato; senza brano, tutta sintetizzata. Spenta
+//     di default (tasto «audio»: i browser vietano l'audio senza un gesto).
 // ====================================================================
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { W, H, BANDA, SCENE, DURATA, CAPITOLI, presenza, TAPPE_T0, TAPPE_PASSO, CINQUE_T0, CINQUE_PASSO, REGOLA_DUR } from "../trailer/scaletta";
+import { disegnaScena, precarica, tappaCorrente, REGOLE, FONT, type Cache } from "../trailer/paesaggi";
+import { clamp, seg, easeOut, easeIn, expoOut, inviluppo } from "../trailer/tempo";
+import { ColonnaSonora } from "../trailer/audio";
+import branoIntro from "../assets/intro.mp3";
+import { inDesktop, esciDalGioco } from "../lib/desktop";
+import ComeSiGioca from "../gioco/ComeSiGioca";
 
-const SETE = {
-  bg: "#03060d", text: "#e8f0f8", soft: "#9fb4c9", muted: "#5a728a",
-  accent: "#22d3ee", glow: "rgba(34,211,238,.5)",
-  fSerif: "'Lora',Georgia,serif", fMono: "'Source Code Pro',ui-monospace,monospace",
-};
+// --------------------------------------------------------------------
+//  Testi (cue): tempi, posizione, tipo d'animazione
+// --------------------------------------------------------------------
+type Tipo = "maschera" | "dissolvi" | "timbro";
+interface Riga { testo: React.ReactNode; stile?: React.CSSProperties }
+interface Cue {
+  id: string; da: number; a: number; entra?: number; esce?: number; tipo: Tipo;
+  box: React.CSSProperties; righe: Riga[]; sfalsa?: number;
+}
 
-const ZONES = [
-  { n: "Acquaviva", s: "il capolinea", a: "#7fc8bd" },
-  { n: "La piana", s: "il sole non perdona", a: "#e6a85a" },
-  { n: "L'invaso morto", s: "acqua ovunque, niente da bere", a: "#a9dbe4" },
-  { n: "La statale", s: "chi tiene la strada", a: "#f2ad45" },
-  { n: "Il paese", s: "il posto dove restare", a: "#ec7d54" },
-  { n: "Le colline", s: "l'ultima salita", a: "#9aa6e0" },
-  { n: "Il guado", s: "tuo fratello", a: "#df5f78" },
+const serif = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
+  ({ fontFamily: FONT.serif, fontWeight: 500, fontSize: px, lineHeight: 1.16, letterSpacing: "-0.005em", ...extra });
+const display = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
+  ({ fontFamily: FONT.display, fontWeight: 600, fontSize: px, lineHeight: 1.08, letterSpacing: "-0.02em", ...extra });
+const mono = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
+  ({ fontFamily: FONT.mono, fontWeight: 500, fontSize: px, letterSpacing: "0.32em", textTransform: "uppercase", ...extra });
+
+const centro = (y: number): React.CSSProperties => ({ left: 0, right: 0, top: y, textAlign: "center" });
+
+const regolaScura = { width: 120, height: 2, background: "#3b2415", display: "inline-block" } as const;
+
+const CUES: Cue[] = [
+  { id: "alba1", da: 10.6, a: 16.9, tipo: "maschera", box: centro(250), righe: [{ testo: "Un uomo torna a casa.", stile: serif(88, { color: "#f4ece0" }) }] },
+  { id: "alba2", da: 12.3, a: 16.9, tipo: "maschera", box: centro(360), righe: [{ testo: "A piedi.", stile: serif(88, { color: "#f6b77c", fontStyle: "italic" }) }] },
+  { id: "terra", da: 18.3, a: 22.4, tipo: "maschera", sfalsa: 0.16, box: { left: 170, top: 196 },
+    righe: [{ testo: "Attraverso una terra", stile: serif(70, { color: "#2c1a0e" }) }, { testo: "che l'acqua ha svuotato.", stile: serif(70, { color: "#2c1a0e" }) }] },
+  { id: "secca", da: 22.6, a: 25.1, entra: 0.3, tipo: "timbro", box: { left: 170, top: 400 },
+    righe: [
+      { testo: <span style={{ display: "inline-flex", alignItems: "center", gap: 30 }}>la secca<i style={regolaScura} /></span>, stile: mono(34, { color: "#3b2415", letterSpacing: "0.62em", fontWeight: 600 }) },
+      { testo: "dieci anni senza pioggia", stile: serif(34, { color: "#4a3020", fontStyle: "italic", marginTop: 18 }) },
+    ] },
+  { id: "dom1", da: 27.2, a: 32.9, tipo: "maschera", box: centro(260), righe: [{ testo: "A cosa stai tornando —", stile: serif(72, { color: "#eef2f8", fontStyle: "italic" }) }] },
+  { id: "dom2", da: 28.7, a: 32.9, tipo: "maschera", box: centro(356), righe: [{ testo: "e cosa resterà di te quando ci arrivi?", stile: serif(72, { color: "#eef2f8", fontStyle: "italic" }) }] },
+  { id: "mappa", da: 33.6, a: 36.1, tipo: "dissolvi", box: centro(190), righe: [{ testo: "Sette tappe fino a casa.", stile: serif(64, { color: "#e8eef6" }) }] },
+  { id: "cinque", da: 49.3, a: 52.4, tipo: "maschera", sfalsa: 0.18, box: centro(420),
+    righe: [{ testo: "Cinque modi di stare", stile: serif(78, { color: "#eef2f8" }) }, { testo: "in un mondo che muore.", stile: serif(78, { color: "#eef2f8", fontStyle: "italic" }) }] },
+  { id: "guado1", da: 61.8, a: 67.5, tipo: "maschera", box: centro(214), righe: [{ testo: "E al guado, ad aspettarti,", stile: serif(76, { color: "#f6e6e2" }) }] },
+  { id: "guado2", da: 63.7, a: 67.5, tipo: "maschera", box: centro(318), righe: [{ testo: "tuo fratello.", stile: serif(76, { color: "#ff8f8f", fontStyle: "italic" }) }] },
+  ...REGOLE.map((r, i): Cue => ({
+    id: "regola" + i, da: 67.8 + i * REGOLA_DUR + 0.06, a: 67.8 + (i + 1) * REGOLA_DUR - 0.04, entra: 0.35, esce: 0.12, tipo: "maschera",
+    box: { left: 150, top: 390, width: 980 },
+    righe: [
+      { testo: `0${i + 1} — 05`, stile: mono(20, { color: r.a, marginBottom: 26 }) },
+      { testo: r.testo, stile: display(76, { color: "#f2f4f8", whiteSpace: "pre-line" }) },
+    ],
+  })),
+  { id: "numeritag", da: 78.9, a: 81.7, tipo: "dissolvi", box: centro(760),
+    righe: [{ testo: "Un'avventura testuale in italiano. Si gioca nel browser, col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
 ];
-const VERBS = ["custodire", "aspettare", "predare", "restare", "rinunciare"];
-const LOGICS = ["La sete è la spina dorsale", "L'acqua è la moneta", "La fiducia apre le porte", "La violenza costa, ed è evitabile", "Le scelte arrivano fino in fondo"];
-const STATS = [{ n: 7, l: "zone" }, { n: 39, l: "luoghi" }, { n: 15, l: "personaggi" }, { n: 44, l: "oggetti" }, { n: 4, l: "finali" }];
 
-// Timeline a tempi assoluti (secondi): ogni beat sa quando partire e quanto vive.
-interface Beat { start: number; life: number }
-interface TL {
-  open: Beat; log1: Beat; log2: Beat; secca: Beat; quest: Beat; zonesTitle: Beat;
-  _zones: Beat[]; peoTitle: Beat;
-  verbs: { start: number; life: number; stag: number; vIn: number };
-  brother: Beat; _logics: Beat[]; numbers: Beat; title: { start: number };
-  total: number; numbersStart: number;
+const STATS = [{ n: 7, l: "tappe" }, { n: 39, l: "luoghi" }, { n: 13, l: "personaggi" }, { n: 6, l: "finali" }];
+
+const CINQUE = [
+  { nome: "Saverio", luogo: "il pozzo", verbo: "custodire", a: "#e6a85a",
+    d: ["M28 72 H92 V102 H28 Z", "M34 72 V38", "M86 72 V38", "M24 38 H96", "M60 38 V60", "M51 60 H69 L66 74 H54 Z"] },
+  { nome: "Iole", luogo: "la diga", verbo: "aspettare", a: "#a9dbe4",
+    d: ["M60 104 V36", "M46 104 H74", "M60 46 L96 30", "M60 62 H38 V72", "M38 82 V86", "M38 94 V96"] },
+  { nome: "Vito", luogo: "il casello", verbo: "predare", a: "#f2ad45",
+    d: ["M28 104 V44", "M18 104 H40", "M28 54 L104 40", "M48 51 L54 50", "M66 48 L72 47", "M84 44 L90 43"] },
+  { nome: "Rosaria", luogo: "l'osteria", verbo: "restare", a: "#ec7d54",
+    d: ["M42 36 L50 100 H70 L78 36 Z", "M45 60 H75", "M32 104 H88"] },
+  { nome: "Onofrio", luogo: "la grotta", verbo: "rinunciare", a: "#9aa6e0",
+    d: ["M26 94 L64 56", "M64 56 L84 42 L76 62 Z", "M58 102 Q70 76 96 70", "M36 104 Q42 98 48 104", "M86 96 Q92 90 98 96"] },
+];
+
+// --------------------------------------------------------------------
+//  Grana: rumore generato una volta e fatto scorrere
+// --------------------------------------------------------------------
+function faiGrana(): string {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d")!;
+  const img = g.createImageData(256, 256);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() * 255;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c.toDataURL("image/png");
 }
 
-function buildTL(): TL {
-  const IN = 0.9, OUT = 0.7, OV = 0.35;
-  const b: Record<string, Beat> = {};
-  let t = 0.6;
-  const add = (key: string, hold: number, inn = IN, out = OUT) => {
-    const start = t, life = inn + hold + out;
-    b[key] = { start, life }; t = start + life - OV;
-  };
-  add("open", 2.0); add("log1", 2.0); add("log2", 1.6); add("secca", 1.1); add("quest", 2.4); add("zonesTitle", 1.0);
-  const _zones: Beat[] = [];
-  for (let i = 0; i < 7; i++) { const start = t, life = 0.8 + 0.8 + 0.55; _zones.push({ start, life }); t = start + life - 0.35; }
-  add("peoTitle", 1.4);
-  const vStart = t, stag = 0.42, vIn = 0.5, vLife = vIn + stag * 4 + 1.0 + 0.7;
-  const verbs = { start: vStart, life: vLife, stag, vIn }; t = vStart + vLife - OV;
-  add("brother", 1.8);
-  const _logics: Beat[] = [];
-  for (let i = 0; i < 5; i++) { const start = t, life = 0.6 + 0.5 + 0.45; _logics.push({ start, life }); t = start + life - 0.3; }
-  const nStart = t, nLife = 0.8 + 2.0 + 0.7;
-  const numbers = { start: nStart, life: nLife }; const numbersStart = nStart + 0.25; t = nStart + nLife - 0.3;
-  const tiStart = t; const title = { start: tiStart }; t = tiStart + 3.2;
-  return {
-    open: b.open, log1: b.log1, log2: b.log2, secca: b.secca, quest: b.quest, zonesTitle: b.zonesTitle,
-    _zones, peoTitle: b.peoTitle, verbs, brother: b.brother, _logics, numbers, title,
-    total: t + 0.4, numbersStart,
-  };
-}
-
-const wayfarerSvg = (color: string) =>
-  "<svg width='118' viewBox='-30 -64 60 98' style='overflow:visible'>"
-  + "<ellipse cx='2' cy='31' rx='27' ry='4.6' fill='" + color + "' opacity='.3'/>"
-  + "<g style='animation:kf-bob .31s ease-in-out infinite'>"
-  + "<line x1='-5' y1='-30' x2='-16' y2='-12' stroke='" + color + "' stroke-width='4.4' stroke-linecap='round' style='transform-box:fill-box;transform-origin:50% 0%;animation:kf-walkA .62s ease-in-out infinite'/>"
-  + "<line x1='5' y1='-30' x2='15' y2='-15' stroke='" + color + "' stroke-width='4.4' stroke-linecap='round' style='transform-box:fill-box;transform-origin:50% 0%;animation:kf-walkB .62s ease-in-out infinite'/>"
-  + "<line x1='-3' y1='-3' x2='-11' y2='25' stroke='" + color + "' stroke-width='5.2' stroke-linecap='round' style='transform-box:fill-box;transform-origin:50% 0%;animation:kf-walkA .62s ease-in-out infinite'/>"
-  + "<line x1='3' y1='-3' x2='10' y2='27' stroke='" + color + "' stroke-width='5.2' stroke-linecap='round' style='transform-box:fill-box;transform-origin:50% 0%;animation:kf-walkB .62s ease-in-out infinite'/>"
-  + "<path d='M-7 -38 Q-11 -16 -3 -2 L4 -2 Q11 -18 7 -38 Z' fill='" + color + "'/>"
-  + "<circle cx='0' cy='-46' r='7.6' fill='" + color + "'/>"
-  + "<line x1='15' y1='-44' x2='17' y2='31' stroke='" + color + "' stroke-width='2.1' stroke-linecap='round'/>"
-  + "</g></svg>";
-
-const bgSete = (total: number) =>
-  "<svg viewBox='0 0 1920 800' preserveAspectRatio='xMidYMid slice' style='position:absolute;inset:0;width:100%;height:100%'>"
-  + "<defs>"
-  + "<radialGradient id='skS' cx='52%' cy='30%' r='120%'><stop offset='0%' stop-color='#14323e'/><stop offset='40%' stop-color='#0a1822'/><stop offset='100%' stop-color='#03060d'/></radialGradient>"
-  + "<radialGradient id='hzS' cx='50%' cy='100%' r='60%'><stop offset='0%' stop-color='#22d3ee' stop-opacity='.4'/><stop offset='100%' stop-color='#22d3ee' stop-opacity='0'/></radialGradient>"
-  + "<linearGradient id='gS1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#102733'/><stop offset='1' stop-color='#070f17'/></linearGradient>"
-  + "<linearGradient id='gS2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#0c1d27'/><stop offset='1' stop-color='#050b12'/></linearGradient>"
-  + "<linearGradient id='gS3' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#08141c'/><stop offset='1' stop-color='#03070d'/></linearGradient>"
-  + "<filter id='blS'><feGaussianBlur stdDeviation='6'/></filter>"
-  + "</defs>"
-  + "<g style='--d:-50px;animation:kf-pan " + total + "s linear forwards'><rect x='-200' y='0' width='2400' height='800' fill='url(#skS)'/><ellipse cx='960' cy='470' rx='900' ry='240' fill='url(#hzS)'/><rect x='-200' y='468' width='2400' height='2.4' fill='#5cf3ff' opacity='.65' filter='url(#blS)'/></g>"
-  + "<g style='--d:-150px;animation:kf-pan " + total + "s linear forwards'><path d='M-200 478 Q300 444 800 470 T1900 464 T2200 470 V800 H-200 Z' fill='url(#gS1)' opacity='.9'/></g>"
-  + "<g style='--d:-280px;animation:kf-pan " + total + "s linear forwards'><path d='M-200 566 Q360 516 950 558 T2000 554 V800 H-200 Z' fill='url(#gS2)'/></g>"
-  + "<g style='--d:-440px;animation:kf-pan " + total + "s linear forwards'>"
-  + "<path d='M-200 664 Q300 604 800 652 T1800 646 T2200 656 V800 H-200 Z' fill='url(#gS3)'/>"
-  + "<g stroke='#1e3a52' stroke-width='3' opacity='.6' fill='none'>"
-  + "<line x1='320' y1='638' x2='314' y2='486'/><line x1='296' y1='512' x2='344' y2='510'/>"
-  + "<line x1='900' y1='648' x2='894' y2='498'/><line x1='876' y1='524' x2='924' y2='522'/>"
-  + "<line x1='1500' y1='646' x2='1494' y2='492'/><line x1='1476' y1='518' x2='1524' y2='516'/>"
-  + "</g></g></svg>";
-
+// ====================================================================
 const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLaunch: () => void }) => {
-  const tl = useMemo(buildTL, []);
-  const th = SETE;
-  const [ended, setEnded] = useState(startAtEnd);
-  const [runId, setRunId] = useState(0);
-  const statRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const rafRef = useRef<number | null>(null);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const palcoRef = useRef<HTMLDivElement>(null);
+  const telaRef = useRef<HTMLCanvasElement>(null);
+  const graneRef = useRef<HTMLDivElement>(null);
+  const cueRef = useRef<Record<string, HTMLDivElement | null>>({});
+  const extraRef = useRef<Record<string, HTMLElement | null>>({});
+  const tRef = useRef(startAtEnd ? DURATA : 0);
+  const pausaRef = useRef(false);
+  const cache = useRef<Cache>({});
+  const suono = useRef<ColonnaSonora | null>(null);
+  const buffer = useRef<HTMLCanvasElement | null>(null);
+
+  const [scala, setScala] = useState(1);
+  const [pronto, setPronto] = useState(false);
+  const [finito, setFinito] = useState(startAtEnd);
+  const [pausa, setPausa] = useState(false);
+  const [audio, setAudio] = useState(false);
+  const [capitolo, setCapitolo] = useState(0);
+  const [guida, setGuida] = useState(false);
+  const [esporta, setEsporta] = useState(false);
+  const grana = useMemo(faiGrana, []);
+  const ridotto = useMemo(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, []);
+
+  // palco 16:9 → scala della superficie di progetto + risoluzione del canvas
+  useLayoutEffect(() => {
+    const el = palcoRef.current, tela = telaRef.current;
+    if (!el || !tela) return;
+    const adatta = () => {
+      const s = el.clientWidth / W;
+      setScala(s);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const bw = Math.max(320, Math.min(Math.round(el.clientWidth * dpr), 2560));
+      const bh = Math.round(bw * H / W);
+      if (tela.width !== bw) { tela.width = bw; tela.height = bh; }
+      if (!buffer.current) buffer.current = document.createElement("canvas");
+      if (buffer.current.width !== bw) { buffer.current.width = bw; buffer.current.height = bh; }
+    };
+    const ro = new ResizeObserver(adatta);
+    ro.observe(el);
+    adatta();
+    return () => ro.disconnect();
+  }, []);
+
+  // font (servono al canvas) + tele precalcolate, poi si parte
+  useEffect(() => {
+    let vivo = true;
+    const famiglie = [`500 24px ${FONT.serif}`, `italic 500 24px ${FONT.serif}`, `700 24px ${FONT.display}`, `600 24px ${FONT.display}`, `500 24px ${FONT.mono}`, `600 24px ${FONT.mono}`];
+    const attesa = Promise.all(famiglie.map((f) => document.fonts?.load(f).catch(() => null)));
+    Promise.race([attesa, new Promise((r) => setTimeout(r, 2500))]).then(() => {
+      if (!vivo) return;
+      precarica(cache.current);
+      setPronto(true);
+    });
+    return () => { vivo = false; };
+  }, []);
+
+  // la colonna si crea subito, così il brano si precarica prima del tasto audio
+  useEffect(() => {
+    suono.current = new ColonnaSonora(branoIntro);
+    // Sul desktop l'audio parte da solo (Electron permette l'autoplay): il
+    // trailer è il primo schermo del gioco, non una pagina web.
+    if (inDesktop()) { suono.current.attiva(); setAudio(true); }
+    return () => { suono.current?.chiudi(); suono.current = null; };
+  }, []);
+
+  // solo in sviluppo: posizionare il tempo per controllare le inquadrature
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __trailer?: object };
+    w.__trailer = {
+      vai: (t: number) => { tRef.current = t; pausaRef.current = true; setPausa(true); setFinito(t >= DURATA); },
+      riprendi: () => { pausaRef.current = false; setPausa(false); },
+      // esportazione video: nasconde i comandi, resta solo la pellicola
+      esporta: (si: boolean) => setEsporta(si),
+      t: () => tRef.current,
+      brano: () => suono.current?.diagnosi(),
+    };
+    return () => { delete w.__trailer; };
+  }, []);
+
+  // ── il fotogramma ──────────────────────────────────────────────────
+  const disegna = useCallback((t: number) => {
+    const tela = telaRef.current, buf = buffer.current;
+    if (!tela || !buf) return;
+    const ctx = tela.getContext("2d")!;
+    const k = tela.width / W;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, tela.width, tela.height);
+    const bctx = buf.getContext("2d")!;
+    for (const s of SCENE) {
+      const p = presenza(s, t);
+      if (p <= 0) continue;
+      if (p >= 1) {
+        ctx.save(); ctx.setTransform(k, 0, 0, k, 0, 0);
+        disegnaScena(ctx, s.id, t, cache.current);
+        ctx.restore();
+      } else {
+        // dissolvenza: la scena si compone a parte e si posa con la sua opacità
+        bctx.setTransform(1, 0, 0, 1, 0, 0);
+        bctx.clearRect(0, 0, buf.width, buf.height);
+        bctx.save(); bctx.setTransform(k, 0, 0, k, 0, 0);
+        disegnaScena(bctx, s.id, t, cache.current);
+        bctx.restore();
+        ctx.save(); ctx.globalAlpha = p; ctx.drawImage(buf, 0, 0); ctx.restore();
+      }
+    }
+
+    // testi
+    for (const c of CUES) {
+      const el = cueRef.current[c.id];
+      if (!el) continue;
+      const v = inviluppo(t, c.da, c.a, c.entra ?? 0.7, c.esce ?? 0.5);
+      if (v <= 0) { if (el.style.visibility !== "hidden") el.style.visibility = "hidden"; continue; }
+      el.style.visibility = "visible";
+      const uscita = easeIn(seg(t, c.a - (c.esce ?? 0.5), c.a));
+      el.style.opacity = String(c.tipo === "maschera" ? 1 - uscita : v);
+      el.style.filter = uscita > 0 ? `blur(${uscita * 6}px)` : "none";
+      el.style.transform = uscita > 0 ? `translateY(${-uscita * 14}px)` : "none";
+      el.querySelectorAll<HTMLElement>("[data-riga]").forEach((r, i) => {
+        const t0 = c.da + i * (c.sfalsa ?? 0.12);
+        const e = expoOut(seg(t, t0, t0 + (c.entra ?? 0.9)));
+        if (c.tipo === "maschera") r.style.transform = `translateY(${(1 - e) * 105}%)`;
+        else if (c.tipo === "timbro") { r.style.transform = `scale(${1 + (1 - e) * 0.18})`; r.style.opacity = String(e); }
+        else { r.style.transform = `translateY(${(1 - e) * 18}px)`; r.style.filter = e < 1 ? `blur(${(1 - e) * 8}px)` : "none"; }
+      });
+    }
+
+    // A · la didascalia battuta a macchina
+    const dida = extraRef.current.dida, testo = extraRef.current.didaTesto;
+    if (dida && testo) {
+      const frase = "Le lettere hanno smesso di arrivare.";
+      dida.style.opacity = String(inviluppo(t, 4.9, 9.2, 0.2, 0.6));
+      const n = Math.floor(clamp(seg(t, 5.0, 6.6)) * frase.length);
+      if (testo.textContent !== frase.slice(0, n)) testo.textContent = frase.slice(0, n);
+    }
+
+    // E · il contatore delle tappe
+    const cont = extraRef.current.tappe;
+    if (cont) {
+      cont.style.opacity = String(inviluppo(t, TAPPE_T0 - 0.2, 48.7, 0.5, 0.5));
+      const n = tappaCorrente(t);
+      const txt = t > TAPPE_T0 + 7 * TAPPE_PASSO ? "casa" : `tappa 0${Math.max(1, n)} · 07`;
+      if (cont.textContent !== txt) cont.textContent = txt;
+    }
+
+    // F · le cinque colonne: salgono, poi i segni si disegnano
+    CINQUE.forEach((_, i) => {
+      const col = extraRef.current["col" + i];
+      if (!col) return;
+      const t0 = CINQUE_T0 + i * CINQUE_PASSO;
+      const e = expoOut(seg(t, t0, t0 + 0.9));
+      col.style.opacity = String(e * (1 - easeIn(seg(t, 58.9, 59.5))));
+      col.style.transform = `translateY(${(1 - e) * 60}px)`;
+      const tratto = easeOut(seg(t, t0 + 0.1, t0 + 1.3));
+      col.querySelectorAll<SVGPathElement>("path").forEach((p) => { p.style.strokeDashoffset = String(1 - tratto); });
+    });
+
+    // I · i numeri che contano
+    const num = extraRef.current.numeri;
+    if (num) {
+      num.style.opacity = String(inviluppo(t, 77.2, 81.7, 0.5, 0.6));
+      const e = easeOut(seg(t, 77.5, 79.0));
+      STATS.forEach((s, i) => {
+        const el = extraRef.current["n" + i];
+        const txt = String(Math.round(s.n * e));
+        if (el && el.textContent !== txt) el.textContent = txt;
+      });
+    }
+
+    // J · il titolo: il tracking si stringe, la luce ci passa sopra
+    const tit = extraRef.current.titolo, sub = extraRef.current.sottotitolo;
+    if (tit && sub) {
+      const e = expoOut(seg(t, 82.3, 84.6));
+      tit.style.opacity = String(clamp(seg(t, 82.3, 83.2)));
+      tit.style.letterSpacing = `${0.5 - e * 0.36}em`;
+      tit.style.filter = e < 1 ? `blur(${(1 - e) * 14}px)` : "none";
+      tit.style.backgroundPosition = `${100 - seg(t, 83.4, 85.8) * 100}% 0`;
+      sub.style.opacity = String(clamp(seg(t, 84.3, 85.4)));
+    }
+
+    // letterbox: si apre sul titolo
+    const apre = easeOut(seg(t, 81.8, 84.2));
+    const bs = extraRef.current.bandaSu, bg = extraRef.current.bandaGiu;
+    if (bs && bg) {
+      const h = BANDA * (1 - apre) * clamp(seg(t, 0, 0.9) + (startAtEnd ? 1 : 0));
+      bs.style.height = h + "px"; bg.style.height = h + "px";
+    }
+    const ctr = extraRef.current.controlli;
+    if (ctr) ctr.style.opacity = String(1 - apre);
+    const barra = extraRef.current.barra;
+    if (barra) barra.style.transform = `scaleX(${clamp(t / DURATA)})`;
+
+    // la grana della pellicola si muove a ogni fotogramma
+    const gr = graneRef.current;
+    if (gr) gr.style.backgroundPosition = `${Math.floor(Math.random() * 256)}px ${Math.floor(Math.random() * 256)}px`;
+  }, [startAtEnd]);
+
+  // ── l'orologio ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!pronto) return;
+    if (ridotto) { tRef.current = DURATA; setFinito(true); disegna(DURATA); return; }
+    let raf = 0, prec = performance.now(), capPrec = -1, finePrec = startAtEnd;
+    const passo = (ora: number) => {
+      const dt = Math.min(0.1, (ora - prec) / 1000);
+      prec = ora;
+      const fermo = pausaRef.current || document.hidden;
+      if (!fermo) {
+        // con il brano in riproduzione è lui l'orologio: la pellicola lo insegue.
+        // Uno scarto grande vuol dire un salto appena comandato (rivedi, salta):
+        // allora vale il tempo della pellicola e aggiorna() riposiziona il brano.
+        const tm = suono.current?.orologio();
+        tRef.current = tm != null && Math.abs(tm - tRef.current) < 0.5 ? tm : tRef.current + dt;
+      }
+      const t = tRef.current;
+      disegna(t);
+      suono.current?.aggiorna(t, fermo);
+      let cap = 0;
+      CAPITOLI.forEach((c, i) => { if (t >= c.t) cap = i; });
+      if (cap !== capPrec) { capPrec = cap; setCapitolo(cap); }
+      if (!finePrec && t >= DURATA) { finePrec = true; setFinito(true); }
+      if (finePrec && t < DURATA) finePrec = false;
+      raf = requestAnimationFrame(passo);
+    };
+    raf = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(raf);
+  }, [pronto, disegna, ridotto, startAtEnd]);
+
+  // ── comandi ───────────────────────────────────────────────────────
+  const salta = useCallback(() => {
+    tRef.current = Math.max(tRef.current, DURATA);
+    pausaRef.current = false; setPausa(false);
+    setFinito(true);
+  }, []);
+  const rivedi = () => { tRef.current = 0; pausaRef.current = false; setPausa(false); setFinito(false); };
+  const commutaPausa = useCallback(() => { pausaRef.current = !pausaRef.current; setPausa(pausaRef.current); }, []);
+  const commutaAudio = useCallback(() => {
+    if (!suono.current) suono.current = new ColonnaSonora();
+    if (suono.current.attivo) { suono.current.spegni(); setAudio(false); }
+    else { suono.current.attiva(); setAudio(true); }
+  }, []);
 
   useEffect(() => {
-    const clear = () => {
-      timersRef.current.forEach(clearTimeout); timersRef.current = [];
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const tasto = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && guida) { setGuida(false); return; }
+      if (e.key === " " && !finito) { e.preventDefault(); commutaPausa(); }
+      else if ((e.key === "Escape" || e.key === "Enter") && !finito) salta();
+      else if (e.key === "m" || e.key === "M") commutaAudio();
     };
-    clear();
-    if (startAtEnd) { setEnded(true); return clear; }
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) { setEnded(true); return clear; }
+    window.addEventListener("keydown", tasto);
+    return () => window.removeEventListener("keydown", tasto);
+  }, [finito, salta, commutaPausa, commutaAudio, guida]);
 
-    let cancelled = false;
-    // conta-su dei numeri (rAF), sincronizzato col beat dei numeri
-    const startCounter = () => {
-      const t0 = performance.now(), dur = 1500;
-      const tick = (now: number) => {
-        if (cancelled) return;
-        const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-        STATS.forEach((s, i) => { const el = statRefs.current[i]; if (el) el.textContent = String(Math.round(s.n * e)); });
-        if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    timersRef.current.push(setTimeout(startCounter, tl.numbersStart * 1000));
-    timersRef.current.push(setTimeout(() => { if (!cancelled) setEnded(true); }, tl.total * 1000));
-    return () => { cancelled = true; clear(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId, startAtEnd]);
-
-  const rivedi = () => { setEnded(false); setRunId((n) => n + 1); };
-  const total = tl.total;
-
-  const serif = (size: string, extra?: React.CSSProperties): React.CSSProperties =>
-    ({ fontFamily: th.fSerif, margin: 0, color: th.text, lineHeight: 1.18, fontWeight: 600, fontSize: size, ...extra });
-  const mono = (extra?: React.CSSProperties): React.CSSProperties => ({ fontFamily: th.fMono, margin: 0, ...extra });
-  const beatStyle = (b: Beat, extra?: React.CSSProperties): React.CSSProperties =>
-    ({ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 9%", pointerEvents: "none", opacity: 0, zIndex: 15, animation: `kf-beat ${b.life.toFixed(2)}s ease ${b.start.toFixed(2)}s both`, ...extra });
-
-  const corner = (pos: "tl" | "tr" | "bl" | "br") => {
-    const base: React.CSSProperties = { position: "absolute", width: 18, height: 18, pointerEvents: "none", opacity: .6 };
-    const b = "1px solid rgba(34,211,238,.5)";
-    if (pos === "tl") Object.assign(base, { top: "10.5%", left: 18, borderTop: b, borderLeft: b });
-    if (pos === "tr") Object.assign(base, { top: "10.5%", right: 18, borderTop: b, borderRight: b });
-    if (pos === "bl") Object.assign(base, { bottom: "14.5%", left: 18, borderBottom: b, borderLeft: b });
-    if (pos === "br") Object.assign(base, { bottom: "14.5%", right: 18, borderBottom: b, borderRight: b });
-    return <div key={"c" + pos} style={base} />;
+  const reg = (id: string) => (el: HTMLElement | null) => { extraRef.current[id] = el; };
+  // palco molto piccolo (telefono in verticale): i comandi escono dal palco, a misura d'uomo
+  const compatto = scala < 0.5;
+  const bottoneCompatto: React.CSSProperties = {
+    cursor: "pointer", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)",
+    color: "#c9d2de", fontFamily: FONT.mono, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 16px", borderRadius: 999,
+  };
+  const bottone: React.CSSProperties = {
+    cursor: "pointer", border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.03)",
+    color: "#c9d2de", ...mono(15, { letterSpacing: "0.22em" }), padding: "11px 20px", borderRadius: 999,
   };
 
-  // ── LO STAGE (keyed da runId per riavviare le animazioni CSS) ──
-  const stage = (
-    <div key={th.bg + "-" + runId} style={{ position: "absolute", inset: 0, overflow: "hidden", background: th.bg }}>
-      {/* camera: parallax + push-in */}
-      <div style={{ position: "absolute", inset: 0, transformOrigin: "50% 64%", animation: `kf-push ${total}s linear forwards` }}>
-        <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: bgSete(total) }} />
-        <div style={{ position: "absolute", bottom: "19%", left: "50%", transform: "translateX(-50%)" }} dangerouslySetInnerHTML={{ __html: wayfarerSvg("#06222b") }} />
-      </div>
-
-      {/* atmosfera */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(120% 100% at 50% 42%, transparent 38%, rgba(3,4,9,.72) 100%)" }} />
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "52%", pointerEvents: "none", background: `linear-gradient(to top, ${th.bg}d9, transparent)` }} />
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "repeating-linear-gradient(rgba(34,211,238,.05) 0 1px, transparent 1px 3px)", animation: "kf-flicker 3.5s ease-in-out infinite" }} />
-
-      {/* letterbox */}
-      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "8.5%", background: "#000", transformOrigin: "top", transform: "scaleY(0)", animation: "kf-bar 1.1s ease both", zIndex: 20 }} />
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "8.5%", background: "#000", transformOrigin: "bottom", transform: "scaleY(0)", animation: "kf-bar 1.1s ease both", zIndex: 20 }} />
-
-      {/* veli color-grade + orizzonte ricolorato per zona */}
-      {tl._zones.map((z, i) => (
-        <div key={"vl" + i} style={{ position: "absolute", inset: 0, pointerEvents: "none", background: ZONES[i].a, opacity: 0, mixBlendMode: "soft-light", animation: `kf-veil ${(z.life + 1.4).toFixed(2)}s ease ${(z.start - 0.2).toFixed(2)}s both` }} />
-      ))}
-      {tl._zones.map((z, i) => (
-        <div key={"hz" + i} style={{ position: "absolute", left: 0, right: 0, top: "46%", height: "12%", pointerEvents: "none", opacity: 0, filter: "blur(22px)", background: `radial-gradient(80% 100% at 50% 100%, ${ZONES[i].a}, transparent 70%)`, animation: `kf-veil ${(z.life + 1.4).toFixed(2)}s ease ${(z.start - 0.2).toFixed(2)}s both` }} />
-      ))}
-
-      {!ended ? (
-        <>
-          {/* HUD da terminale */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 18, opacity: 0, animation: "kf-hud 1.2s ease 1.1s both" }}>
-            {corner("tl")}{corner("tr")}{corner("bl")}{corner("br")}
-            <div style={{ position: "absolute", left: 24, bottom: "11.2%", display: "flex", alignItems: "center", gap: 9, fontFamily: th.fMono, fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: th.muted }}>
-              <span style={{ color: th.accent }}>.fav</span><span>il viaggiatore</span>
-              <span style={{ width: 7, height: 14, background: th.accent, display: "inline-block", animation: "kf-caret 1s step-end infinite" }} />
-            </div>
-            <div style={{ position: "absolute", right: 24, bottom: "11.2%", display: "flex", alignItems: "center", gap: 11, fontFamily: th.fMono, fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: th.muted }}>
-              <span>07 tappe</span>
-              <span style={{ display: "flex", gap: 5 }}>
-                {ZONES.map((zn, i) => (
-                  <span key={"tk" + i} style={{ position: "relative", display: "inline-block", width: 16, height: 3, borderRadius: 2, background: "rgba(255,255,255,.12)" }}>
-                    <span style={{ position: "absolute", inset: 0, borderRadius: 2, background: zn.a, boxShadow: `0 0 8px ${zn.a}`, opacity: 0, animation: `kf-on .45s ease ${tl._zones[i].start.toFixed(2)}s both` }} />
-                  </span>
-                ))}
-              </span>
-            </div>
-          </div>
-
-          {/* ── BEATS ── */}
-          <div style={{ position: "absolute", inset: 0 }}>
-            <div style={beatStyle(tl.open)}>
-              <p style={mono({ fontSize: "clamp(15px,2.1vw,28px)", color: th.soft, lineHeight: 1.5, letterSpacing: ".01em" })}>
-                <span style={{ color: th.accent, marginRight: 10 }}>&gt;</span>Le lettere hanno smesso di arrivare.
-                <span style={{ display: "inline-block", width: ".5em", height: "1.05em", marginLeft: 6, background: th.accent, verticalAlign: "-0.16em", animation: "kf-caret 1s step-end infinite" }} />
-              </p>
-            </div>
-
-            <div style={beatStyle(tl.log1)}>
-              <p style={serif("clamp(30px,5vw,66px)", { lineHeight: 1.12 })}>Un uomo torna a casa.<br /><span style={{ color: th.accent }}>A piedi.</span></p>
-            </div>
-            <div style={beatStyle(tl.log2)}>
-              <p style={serif("clamp(20px,3.3vw,42px)", { fontWeight: 500, color: th.soft, lineHeight: 1.35 })}>Attraverso una terra che l'acqua ha svuotato.</p>
-            </div>
-            <div style={beatStyle(tl.secca)}>
-              <p style={mono({ fontSize: "clamp(11px,1.4vw,16px)", letterSpacing: ".44em", textTransform: "uppercase", color: th.accent })}>la Secca</p>
-            </div>
-            <div style={beatStyle(tl.quest)}>
-              <p style={serif("clamp(22px,3.6vw,46px)", { fontStyle: "italic", fontWeight: 500, lineHeight: 1.28 })}>A cosa stai tornando — e cosa resterà di te<br />quando ci arrivi?</p>
-            </div>
-            <div style={beatStyle(tl.zonesTitle)}>
-              <p style={serif("clamp(22px,3.6vw,46px)", { fontWeight: 500 })}>Sette tappe fino a casa.</p>
-            </div>
-
-            {/* le 7 zone */}
-            {ZONES.map((zn, i) => {
-              const z = tl._zones[i];
-              return (
-                <div key={"z" + i} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 9%", pointerEvents: "none", opacity: 0, zIndex: 15, animation: `kf-beat ${z.life.toFixed(2)}s ease ${z.start.toFixed(2)}s both` }}>
-                  <p style={mono({ fontSize: "clamp(10px,1.2vw,13px)", letterSpacing: ".4em", textTransform: "uppercase", color: th.muted })}>tappa {i + 1} di 7</p>
-                  <h2 style={{ fontFamily: "'Sora',sans-serif", margin: "14px 0 0", fontWeight: 700, fontSize: "clamp(38px,6.4vw,82px)", letterSpacing: "-.02em", color: zn.a }}>{zn.n}</h2>
-                  <p style={serif("clamp(16px,2.3vw,28px)", { margin: "14px 0 0", fontStyle: "italic", fontWeight: 500, color: th.soft })}>{zn.s}</p>
-                </div>
-              );
-            })}
-
-            <div style={beatStyle(tl.peoTitle)}>
-              <p style={serif("clamp(24px,3.9vw,50px)", { fontWeight: 500, lineHeight: 1.2 })}>Cinque modi di stare<br />in un mondo che muore.</p>
-            </div>
-
-            {/* i 5 verbi-risposta in cascata */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 8%", pointerEvents: "none", opacity: 0, zIndex: 15, animation: `kf-beat ${tl.verbs.life.toFixed(2)}s ease ${tl.verbs.start.toFixed(2)}s both` }}>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "14px 34px" }}>
-                {VERBS.map((v, i) => (
-                  <span key={v} style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: "clamp(22px,3.6vw,48px)", color: th.text, opacity: 0, animation: `kf-rise .6s ease ${(tl.verbs.start + 0.4 + i * tl.verbs.stag).toFixed(2)}s both` }}>{v}</span>
-                ))}
-              </div>
-            </div>
-
-            <div style={beatStyle(tl.brother)}>
-              <p style={serif("clamp(24px,3.9vw,50px)", { fontWeight: 500, lineHeight: 1.22 })}>E al guado, ad aspettarti,<br /><span style={{ color: "#df5f78" }}>tuo fratello.</span></p>
-            </div>
-
-            {/* le logiche */}
-            {LOGICS.map((lg, i) => {
-              const z = tl._logics[i];
-              return (
-                <div key={"lg" + i} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 9%", pointerEvents: "none", opacity: 0, zIndex: 15, animation: `kf-beat ${z.life.toFixed(2)}s ease ${z.start.toFixed(2)}s both` }}>
-                  <p style={{ fontFamily: "'Sora',sans-serif", margin: 0, fontWeight: 600, fontSize: "clamp(24px,4.2vw,54px)", letterSpacing: "-.01em", color: th.text }}>{lg}<span style={{ color: th.accent }}>.</span></p>
-                </div>
-              );
-            })}
-
-            {/* i numeri (conta-su) */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7%", pointerEvents: "none", opacity: 0, zIndex: 15, animation: `kf-beat ${tl.numbers.life.toFixed(2)}s ease ${tl.numbers.start.toFixed(2)}s both` }}>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "center", gap: "18px clamp(22px,4vw,56px)" }}>
-                {STATS.map((s, i) => (
-                  <div key={s.l} style={{ textAlign: "center", position: "relative", padding: "0 14px" }}>
-                    <span style={{ position: "absolute", left: 0, top: "2%", bottom: "30%", width: 7, borderLeft: `1px solid ${th.accent}66`, borderTop: `1px solid ${th.accent}66`, borderBottom: `1px solid ${th.accent}66` }} />
-                    <span style={{ position: "absolute", right: 0, top: "2%", bottom: "30%", width: 7, borderRight: `1px solid ${th.accent}66`, borderTop: `1px solid ${th.accent}66`, borderBottom: `1px solid ${th.accent}66` }} />
-                    <div style={{ fontFamily: th.fMono, fontWeight: 700, fontSize: "clamp(42px,6.6vw,82px)", lineHeight: 1, color: th.accent }}>
-                      <span ref={(el) => { statRefs.current[i] = el; }}>0</span>
-                    </div>
-                    <div style={{ fontFamily: th.fMono, marginTop: 8, fontSize: "clamp(9px,1.1vw,12px)", letterSpacing: ".24em", textTransform: "uppercase", color: th.muted }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* title card */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 7%", pointerEvents: "none", zIndex: 16 }}>
-              <h1 style={{ fontFamily: "'Sora',sans-serif", margin: 0, fontWeight: 800, fontSize: "clamp(40px,8.4vw,108px)", letterSpacing: ".07em", color: th.text, opacity: 0, animation: `kf-title 1.9s cubic-bezier(.2,.7,.2,1) ${tl.title.start.toFixed(2)}s both` }}>IL VIAGGIATORE</h1>
-              <p style={{ fontFamily: th.fMono, margin: "22px 0 0", fontSize: "clamp(10px,1.2vw,14px)", letterSpacing: ".42em", textTransform: "uppercase", color: th.accent, opacity: 0, animation: `kf-rise 1s ease ${(tl.title.start + 1.2).toFixed(2)}s both` }}>un esperimento in favella 1</p>
-            </div>
-          </div>
-
-          {/* barra di avanzamento */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,.06)", zIndex: 40 }}>
-            <div style={{ height: "100%", transformOrigin: "left", transform: "scaleX(0)", background: th.accent, opacity: .85, animation: `kf-progress ${total}s linear forwards` }} />
-          </div>
-          {/* salta */}
-          <button onClick={() => setEnded(true)} style={{ position: "absolute", right: 18, bottom: "16.5%", zIndex: 40, cursor: "pointer", border: "1px solid rgba(255,255,255,.16)", background: "rgba(0,0,0,.4)", backdropFilter: "blur(4px)", color: th.soft, fontFamily: th.fMono, fontSize: 11, letterSpacing: ".2em", textTransform: "uppercase", padding: "7px 15px", borderRadius: 999 }}>salta →</button>
-        </>
-      ) : (
-        // ── Schermata d'avvio ──
-        <section style={{ position: "absolute", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 8%", background: `radial-gradient(120% 120% at 50% 0%, ${th.bg}88, ${th.bg} 72%)`, animation: "kf-launch .6s ease both" }}>
-          <p style={{ fontFamily: th.fMono, margin: 0, fontSize: "clamp(10px,1.2vw,13px)", letterSpacing: ".3em", textTransform: "uppercase", color: th.accent }}>il motore è pronto</p>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", margin: "16px 0 0", fontWeight: 700, fontSize: "clamp(30px,5vw,62px)", letterSpacing: "-.01em", color: th.text }}>Si parte a piedi.</h2>
-          <p style={{ fontFamily: th.fSerif, margin: "18px auto 0", maxWidth: 520, fontSize: "clamp(14px,1.7vw,18px)", lineHeight: 1.5, color: th.soft }}>Da qui in poi sei tu a scrivere i comandi, in italiano. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.</p>
-          <button onClick={onLaunch} style={{ marginTop: 34, cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", gap: 12, borderRadius: 999, padding: "16px 42px", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: "clamp(16px,1.8vw,20px)", color: th.bg, background: th.accent, ["--gl" as string]: th.glow, animation: "kf-pulse 1.7s ease-in-out infinite" } as React.CSSProperties}>Inizia il viaggio<span>→</span></button>
-          <button onClick={rivedi} style={{ marginTop: 20, cursor: "pointer", border: "none", background: "none", fontFamily: th.fMono, fontSize: 12, letterSpacing: ".14em", color: th.muted }}>↺ rivedi l'intro</button>
-        </section>
-      )}
-    </div>
-  );
-
   return (
-    <div style={{ position: "relative", height: "100%", width: "100%", overflow: "hidden", background: "#000" }}>
-      {stage}
+    <div style={{ position: "relative", height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#000", overflow: "hidden" }}>
+      <div ref={palcoRef} style={{ position: "relative", overflow: "hidden", width: "min(100vw, calc(100dvh * 16 / 9))", height: "min(100dvh, calc(100vw * 9 / 16))", background: "#000" }}>
+        <canvas ref={telaRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+
+        {/* superficie di progetto 1920×1080 per testi e controlli */}
+        <div style={{ position: "absolute", left: 0, top: 0, width: W, height: H, transform: `scale(${scala})`, transformOrigin: "0 0", pointerEvents: "none" }}>
+          {/* la pellicola: vignetta e grana */}
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 48%, transparent 55%, rgba(0,0,0,.55) 100%)" }} />
+          <div ref={graneRef} style={{ position: "absolute", inset: 0, backgroundImage: `url(${grana})`, opacity: 0.075, mixBlendMode: "overlay" }} />
+
+          {/* testi */}
+          {CUES.map((c) => (
+            <div key={c.id} ref={(el) => { cueRef.current[c.id] = el; }} style={{ position: "absolute", visibility: "hidden", ...c.box }}>
+              {c.righe.map((r, i) => (
+                <div key={i} style={{ overflow: c.tipo === "maschera" ? "hidden" : "visible", paddingBottom: c.tipo === "maschera" ? "0.14em" : 0 }}>
+                  <div data-riga style={{ ...r.stile, willChange: "transform" }}>{r.testo}</div>
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {/* A · didascalia a macchina */}
+          <div ref={reg("dida")} style={{ position: "absolute", left: 0, right: 0, top: 860, textAlign: "center", opacity: 0, ...mono(26, { letterSpacing: "0.04em", textTransform: "none", color: "#d7c6ae" }) }}>
+            <span style={{ color: "#f0a867", marginRight: 16 }}>&gt;</span>
+            <span ref={reg("didaTesto")} />
+            <span style={{ display: "inline-block", width: 14, height: 30, marginLeft: 6, verticalAlign: -5, background: "#f0a867", animation: "kf-caret 1s step-end infinite" }} />
+          </div>
+
+          {/* E · contatore delle tappe */}
+          <div ref={reg("tappe")} style={{ position: "absolute", left: 150, top: BANDA + 44, opacity: 0, ...mono(18, { color: "rgba(214,224,238,.6)" }) }} />
+
+          {/* F · cinque colonne */}
+          <div style={{ position: "absolute", left: 0, right: 0, top: 318, display: "flex", justifyContent: "center", gap: 26 }}>
+            {CINQUE.map((c, i) => (
+              <div key={c.nome} ref={reg("col" + i)} style={{ width: 300, textAlign: "center", opacity: 0, borderLeft: i ? "1px solid rgba(255,255,255,.07)" : "none" }}>
+                <svg viewBox="0 0 120 120" width={150} height={150} style={{ display: "block", margin: "0 auto", overflow: "visible", filter: `drop-shadow(0 0 12px ${c.a}55)` }}>
+                  {c.d.map((d, j) => <path key={j} d={d} pathLength={1} fill="none" stroke={c.a} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" style={{ strokeDasharray: 1, strokeDashoffset: 1 }} />)}
+                </svg>
+                <div style={mono(17, { color: c.a, marginTop: 34 })}>{c.nome}</div>
+                <div style={serif(62, { color: "#f1f3f7", fontStyle: "italic", marginTop: 16 })}>{c.verbo}</div>
+                <div style={serif(26, { color: "rgba(214,224,238,.55)", marginTop: 14 })}>{c.luogo}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* I · i numeri */}
+          <div ref={reg("numeri")} style={{ position: "absolute", left: 0, right: 0, top: 360, display: "flex", justifyContent: "center", opacity: 0 }}>
+            {STATS.map((s, i) => (
+              <div key={s.l} style={{ width: 330, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,.1)" : "none" }}>
+                <div ref={reg("n" + i)} style={display(170, { fontWeight: 700, color: "#f4f1ea", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.04em" })}>0</div>
+                <div style={mono(20, { color: "rgba(214,224,238,.6)", marginTop: 18 })}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* J · il titolo */}
+          <div style={{ position: "absolute", left: 0, right: 0, top: finito ? 176 : 262, textAlign: "center", transition: "top 1.1s cubic-bezier(.2,.7,.2,1)" }}>
+            <h1 ref={reg("titolo")} style={{
+              // nowrap: all'inizio la spaziatura (0.5em) supera la larghezza del quadro;
+              // senza, il titolo andrebbe a capo e tornerebbe su una riga (il «glitch»)
+              margin: 0, ...display(156, { fontWeight: 800, letterSpacing: "0.14em" }), opacity: 0, whiteSpace: "nowrap",
+              backgroundImage: "linear-gradient(100deg, #f4ece0 0%, #f4ece0 42%, #fffaf0 50%, #f4ece0 58%, #f4ece0 100%)",
+              backgroundSize: "300% 100%", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+              textShadow: "0 0 60px rgba(255,190,130,.18)", paddingLeft: "0.14em",
+            }}>IL VIAGGIATORE</h1>
+            <div ref={reg("sottotitolo")} style={mono(22, { color: "#ffd2a4", letterSpacing: "0.5em", marginTop: 26, opacity: 0, textShadow: "0 1px 18px rgba(0,0,0,.8)" })}>un esperimento in favella 1</div>
+          </div>
+
+          {/* letterbox, e i controlli nella banda */}
+          <div ref={reg("bandaSu")} style={{ position: "absolute", left: 0, right: 0, top: 0, height: BANDA, background: "#000" }} />
+          <div ref={reg("bandaGiu")} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: BANDA, background: "#000" }} />
+          {!finito && pronto && !compatto && !esporta && (
+            <div ref={reg("controlli")} style={{ position: "absolute", left: 60, right: 60, bottom: 40, height: 58, display: "flex", alignItems: "center", gap: 36, pointerEvents: "auto" }}>
+              <div style={{ width: 250, ...mono(15, { color: "rgba(214,224,238,.7)" }) }}>{CAPITOLI[capitolo].nome}</div>
+              <div style={{ position: "relative", flex: 1, height: 3, background: "rgba(255,255,255,.1)", borderRadius: 2 }}>
+                <div ref={reg("barra")} style={{ position: "absolute", inset: 0, background: "#f0b77e", transformOrigin: "left", transform: "scaleX(0)", borderRadius: 2 }} />
+                {CAPITOLI.slice(1).map((c) => (
+                  <i key={c.t} style={{ position: "absolute", left: `${(c.t / DURATA) * 100}%`, top: -4, width: 2, height: 11, background: "#000" }} />
+                ))}
+              </div>
+              <button onClick={commutaAudio} style={bottone} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
+              <button onClick={commutaPausa} style={bottone} aria-label={pausa ? "Riprendi" : "Pausa"}>{pausa ? "▶ riprendi" : "❚❚ pausa"}</button>
+              <button onClick={salta} style={{ ...bottone, color: "#0a0706", background: "#f0b77e", borderColor: "#f0b77e" }}>salta →</button>
+            </div>
+          )}
+
+          {/* schermata d'avvio */}
+          {finito && !compatto && (
+            <section style={{ position: "absolute", left: 0, right: 0, top: 470, textAlign: "center", pointerEvents: "auto", animation: "kf-launch 1.2s ease .3s both" }}>
+              <div style={{ position: "absolute", left: "50%", top: -140, width: 1500, height: 720, transform: "translateX(-50%)", background: "radial-gradient(50% 50% at 50% 50%, rgba(6,5,10,.78) 0%, rgba(6,5,10,.5) 50%, rgba(6,5,10,0) 100%)", pointerEvents: "none", zIndex: -1 }} />
+              <p style={{ margin: 0, ...serif(40, { color: "#f4ece0" }) }}>Si parte a piedi.</p>
+              <p style={{ margin: "22px auto 0", maxWidth: 820, ...serif(27, { color: "rgba(230,222,208,.72)", lineHeight: 1.5 }) }}>
+                Da qui in poi scrivi tu i comandi, in italiano. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.
+              </p>
+              <button onClick={onLaunch} style={{
+                marginTop: 46, cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", gap: 18, borderRadius: 999,
+                padding: "24px 60px", ...display(28, { fontWeight: 700, letterSpacing: "0.01em" }), color: "#140c06", background: "#f0b77e",
+                ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite",
+              } as React.CSSProperties}>Inizia il viaggio <span>→</span></button>
+              <div style={{ marginTop: 30, display: "flex", justifyContent: "center", gap: 18 }}>
+                <button onClick={() => setGuida(true)} style={{ ...bottone, color: "#f0b77e", borderColor: "rgba(240,183,126,.5)" }}>? come si gioca</button>
+                <button onClick={rivedi} style={bottone}>↺ rivedi il trailer</button>
+                <button onClick={commutaAudio} style={bottone} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
+                {inDesktop() && <button onClick={esciDalGioco} style={bottone}>✕ esci</button>}
+              </div>
+            </section>
+          )}
+          {guida && !compatto && <ComeSiGioca base={19} onChiudi={() => setGuida(false)} />}
+        </div>
+      </div>
+      {guida && compatto && <ComeSiGioca base={14} compatto onChiudi={() => setGuida(false)} />}
+
+      {/* telefono in verticale: comandi e avvio fuori dal palco, a dimensione normale */}
+      {compatto && pronto && (
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: "max(24px, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
+          {finito ? (
+            <>
+              <p style={{ margin: 0, fontFamily: FONT.serif, fontSize: 17, lineHeight: 1.45, color: "rgba(230,222,208,.8)", maxWidth: 340 }}>
+                Si parte a piedi. Da qui in poi scrivi tu i comandi, in italiano. Il gioco rende meglio in orizzontale.
+              </p>
+              <button onClick={onLaunch} style={{ cursor: "pointer", border: "none", borderRadius: 999, padding: "14px 30px", fontFamily: FONT.display, fontWeight: 700, fontSize: 17, color: "#140c06", background: "#f0b77e", ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite" } as React.CSSProperties}>Inizia il viaggio →</button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setGuida(true)} style={{ ...bottoneCompatto, color: "#f0b77e" }}>? come si gioca</button>
+                <button onClick={rivedi} style={bottoneCompatto}>↺ rivedi</button>
+                <button onClick={commutaAudio} style={bottoneCompatto} aria-pressed={audio}>{audio ? "♪ sì" : "♪ no"}</button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={commutaAudio} style={bottoneCompatto} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
+              <button onClick={commutaPausa} style={bottoneCompatto}>{pausa ? "▶" : "❚❚"}</button>
+              <button onClick={salta} style={{ ...bottoneCompatto, color: "#0a0706", background: "#f0b77e", borderColor: "#f0b77e" }}>salta →</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

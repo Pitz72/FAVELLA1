@@ -116,8 +116,51 @@ Spenta o accesa, la stessa torcia racconta due cose diverse. Per farlo ci serviv
 una proprietà — `accesa`, `spenta` — ed è proprio l'argomento del prossimo
 capitolo.
 
+== Il posto iniziale
+
+Quando entri in una stanza, FAVELLA elenca da sé quello che c'è: «Puoi vedere qui:
+una mappa, un coltello.». Funziona, ma è un elenco da inventario, non una pagina di
+racconto. Viene allora la tentazione di scrivere gli oggetti dentro la descrizione
+della stanza — «Su un mobile, una mappa piegata della provincia» — ed è lì che la
+storia si incrina: il giocatore prende la mappa, torna a guardare, e la mappa è
+ancora sul mobile.
+
+La soluzione è dare all'oggetto il suo *posto*: una frase che lo presenta finché
+sta dove l'hai messo tu.
+
+#sintassi[
+  `Il posto di/del/della/... [oggetto] è "[testo]".`
+]
+
+#esempio[
+#fav(```
+La mappa è una cosa.
+La mappa è prendibile.
+La mappa è in casa.
+Il posto della mappa è "Su un mobile, una MAPPA piegata della provincia.".
+```)
+]
+
+Finché la mappa non è mai stata spostata, entrando in casa il giocatore legge la
+descrizione della stanza e subito sotto la frase del posto; la mappa non compare
+in «Puoi vedere qui». Se nella stanza ci sono più oggetti al loro posto, le frasi
+si susseguono in un solo capoverso: scrivile quindi ciascuna completa («Sul
+sedile, un DIARIO…», non «Accanto, un DIARIO…»), perché ognuna deve reggersi
+anche quando le altre non ci sono più. Appena la prende (o una tua regola la
+sposta) la frase sparisce per sempre: se la riposa, anche nello stesso punto, la
+mappa torna nell'elenco normale, perché la tua frase non sarebbe più vera.
+ANNULLA rimette tutto com'era.
+
+#nota[
+  Il posto vale per gli oggetti collocati *direttamente* in una stanza. Dentro un
+  contenitore o sopra un supporto la frase non verrebbe mai mostrata, e FAVELLA te
+  lo segnala con un avviso. Le stanze non hanno un posto: per loro c'è la
+  descrizione.
+]
+
 #prova[
   Crea in cucina un oggetto `straccio`, rendilo prendibile e dàgli una descrizione.
   Poi entra in cucina, esaminalo e prendilo: se compare nell'inventario, l'hai
-  dichiarato bene.
+  dichiarato bene. Infine dàgli un posto («Sul lavello, uno STRACCIO strizzato.») e
+  guarda come cambia la stanza prima e dopo averlo preso.
 ]

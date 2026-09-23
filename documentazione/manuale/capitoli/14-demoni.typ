@@ -53,9 +53,9 @@ calma. Non c'è un'azione che lo provochi: succede perché le condizioni ci sono
   `Quando [condizione] diventa vera: dire "[testo]" e adesso [conseguenza].`
 ]
 
-Scatta *una volta sola*, nell'istante in cui la condizione passa da falsa a vera.
-È fatto per le soglie e le scoperte: il momento in cui un conto raggiunge un
-limite, e tu vuoi segnarlo una volta e non più.
+Scatta nell'istante in cui la condizione passa da falsa a vera: sul
+_passaggio_, non a ogni turno in cui resta vera. È fatto per le soglie e le
+scoperte, il momento in cui un conto raggiunge un limite.
 
 #esempio[
 #fav(```
@@ -65,8 +65,23 @@ Quando la calma è meno di 1 diventa vera: dire "Ti accorgi che le mani ti trema
 ]
 
 Il primo demone fa il punto degli indizi appena ne hai raccolti abbastanza; il
-secondo coglie il momento esatto in cui la calma crolla. Tutti e due parlano una
-volta e poi tacciono, anche se la condizione resta vera nei turni seguenti.
+secondo coglie il momento esatto in cui la calma crolla. Tutti e due parlano e
+poi tacciono finché la condizione resta vera nei turni seguenti.
+
+Se però la condizione torna falsa e poi di nuovo vera, il demone scatta di
+nuovo: ogni passaggio è un passaggio. Con i contatori che salgono soltanto non
+succede mai, ma con una stanza sì. Un demone che dice
+`Quando il giocatore è nell'orto:` parla _ogni volta_ che il giocatore rientra
+nell'orto. Per un evento che deve accadere una volta sola, guardalo con uno
+stato:
+
+#esempio[
+#fav(```
+La visita è uno stato.
+La visita è nuova.
+Quando il giocatore è nell'orto e la visita è nuova: dire "Tra i filari c'è ancora il segno della carriola." e adesso la visita è fatta.
+```)
+]
 
 #nota[
   La parte `diventa vera` si può anche sottintendere: `Quando la calma è meno di 1:

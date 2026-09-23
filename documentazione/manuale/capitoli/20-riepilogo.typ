@@ -24,7 +24,7 @@ porta a est` è un nome valido, anche se `est` è riservata).
   [Definizioni], [#kw[è · sono · una · un · uno · stanza · cosa · contenitore · supporto · personaggio · comando · senza · oggetto · stato · contatore · prendibile]],
   [Articoli], [#kw[il · lo · la · i · gli · le · l' · un']],
   [Preposizioni], [#kw[di · del · dei · della · dell' · degli · delle · dello · in · nel · nella · nello · negli · nelle · nell' · su · sul · sulla · sullo · sui · sugli · sulle · con · contro · a]],
-  [Mondo], [#kw[descrizione · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza]],
+  [Mondo], [#kw[descrizione · posto · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza]],
   [Buio e luce], [#kw[buia · buio · illumina]],
   [Trasporto], [#kw[può · portare · oggetti · dà · spazi]],
   [Regole e logica], [#kw[Invece · se · dire · e · adesso · oppure · non · ha · come]],
@@ -68,6 +68,7 @@ La torcia è sul tavolino.
 La torcia è spenta.
 La torcia illumina.
 La torcia si chiama anche "pila".
+Il posto della torcia è "Sul tavolino, una TORCIA a manovella.".
 Il giocatore ha la torcia.
 Accesa e spenta sono opposte.
 La credenza è un contenitore.

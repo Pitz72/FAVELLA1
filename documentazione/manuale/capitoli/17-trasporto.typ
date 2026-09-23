@@ -51,6 +51,14 @@ dover gestire uno zaino-contenitore a parte.
   contabilità delle tasche, e lo lascia concentrare sulla storia.
 ]
 
+#tranello[
+  Il limite ferma il giocatore che *prende*, non le tue regole. Una conseguenza
+  come `e adesso la borraccia è in inventario` mette l'oggetto nelle tasche anche
+  se sono già piene. Dalla versione 1.1 FAVELLA te lo segnala con un avviso. Se
+  la cosa conta, metti la regola sotto condizione, oppure fai lasciare qualcosa
+  al giocatore prima di dargli l'oggetto.
+]
+
 #prova[
   Metti alla Casa un limite di 3 oggetti e dài al `portaombrelli` la proprietà di
   `dare 2 spazi`. Poi prova a riempire l'inventario e vedi come cambia il numero

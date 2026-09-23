@@ -80,9 +80,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **681
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **702
 asserzioni** del linguaggio + **43** del collaudatore statico, tutte verdi (`pytest`:
-312 passati). Spec tecnica: [`documentazione/grammatica-1.0.0.md`](documentazione/grammatica-1.0.0.md).
+323 passati). Spec tecnica: [`documentazione/grammatica-1.1.0.md`](documentazione/grammatica-1.1.0.md).
 
 > Da qui in avanti l'evoluzione del progetto è di **ecosistema** (distribuzione,
 > libreria di moduli `Includi`-bili, galleria di storie, pacchetto installabile),
@@ -97,6 +97,7 @@ asserzioni** del linguaggio + **43** del collaudatore statico, tutte verdi (`pyt
 - **Casualità d'autore (Tema 2):** scelta casuale fra valori di stato — `il meteo diventa uno fra sereno, pioggia, nebbia`; condizione probabilistica — `Ogni turno se càpita (1 su 4): …`. Tutto riproducibile e **ANNULLA-safe**.
 - **Mondo che cambia in scena (Tema 4):** buio commutabile — `la radura diventa buia`/`illuminata`; battuta di dialogo condizionale — `Anna al nodo "x" dice "…" se …`.
 - **Lo stato parla allo stato (Tema 3):** indirezione fra stati — copia `il corteggiato diventa il preferito` e confronto `se il corteggiato è come il preferito`.
+- **Posto iniziale (1.1):** `Il posto della mappa è "Su un mobile, una MAPPA piegata…".` — una frase d'ambiente che presenta l'oggetto finché nessuno l'ha spostato, poi sparisce.
 - **Mondo vivo:** stati e contatori, eventi a tempo, **demoni** (if-then autonomi), buio/luce, NPC che si muovono, dialoghi ramificati, pronomi/anafora, ANNULLA/ANCORA.
 
 Storia completa in [CHANGELOG.md](CHANGELOG.md). Le sezioni seguenti documentano le tappe precedenti della roadmap.
@@ -107,16 +108,16 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.0.1** | header di modulo |
-| Compilatore (`compilatore.py`) | **1.0.1** | header di modulo |
-| Strutture dati (`strutture.py`) | **1.0.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.0.1** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.0.1** | usa `VERSIONE_MOTORE` |
-| Specifica formale della grammatica | **1.0.0** | [`documentazione/grammatica-1.0.0.md`](documentazione/grammatica-1.0.0.md) — *grammatica invariata dalla 0.34.0* |
-| Suite di test | **1.0.1** | 681 asserzioni linguaggio + 43 collaudo (pytest 312) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.0.1 | — |
+| Motore / interprete (`gioco.py`) | **1.1.0** | header di modulo |
+| Compilatore (`compilatore.py`) | **1.1.0** | header di modulo |
+| Strutture dati (`strutture.py`) | **1.1.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.1.0** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.1.0** | usa `VERSIONE_MOTORE` |
+| Specifica formale della grammatica | **1.1.0** | [`documentazione/grammatica-1.1.0.md`](documentazione/grammatica-1.1.0.md) — *1.0.0 + `def_posto` (§18)* |
+| Suite di test | **1.1.0** | 702 asserzioni linguaggio + 43 collaudo (pytest 323) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.1.0 | — |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 84 pagine, allineato al linguaggio 1.0.0**.
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 85 pagine, allineato al linguaggio 1.1.0**. La **1.1.0** aggiunge una sola frase, il posto iniziale degli oggetti (§18 della spec); non è ancora distribuita sul sito né su pip.
 
 ---
 

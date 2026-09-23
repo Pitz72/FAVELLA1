@@ -12,7 +12,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.0.1"
+VERSIONE_MOTORE = "1.1.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -702,6 +702,17 @@ class Oggetto:
         # «spento» (interagisce con le opposte accesa/spenta: una torcia spenta non
         # illumina). Vedi Mondo.c_e_luce().
         self.illumina: bool = False
+        # [1.1.0] Posto iniziale: 'Il posto della mappa è "Su un mobile, …".'.
+        # Frase d'ambiente mostrata sotto la descrizione della stanza finché
+        # l'oggetto non è mai stato spostato ('spostato' diventa vero alla prima
+        # rimozione dal suo luogo, vedi Mondo.rimuovi_da_posizione, e non torna
+        # più falso). Nel frattempo l'oggetto non compare in «Puoi vedere qui».
+        self.posto: Optional[str] = None
+        self.spostato: bool = False
+
+    def al_suo_posto(self) -> bool:
+        """[1.1.0] True se la frase del posto iniziale va ancora mostrata."""
+        return self.posto is not None and not self.spostato
 
     def aggiungi_proprieta(self, prop: str):
         """Aggiunge una proprietà (aggettivo) all'oggetto."""
@@ -1133,6 +1144,7 @@ class Mondo:
         """Rimuove l'oggetto dalla posizione attuale (stanza, inventario o
         contenitore/supporto) senza riposizionarlo."""
         pos = oggetto.posizione
+        oggetto.spostato = True   # [1.1.0] il posto iniziale non vale più
         if pos == "inventario" or oggetto.nome in self.inventario:
             self.inventario.discard(oggetto.nome)
         elif pos and pos in self.stanze:

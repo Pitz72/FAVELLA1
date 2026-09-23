@@ -28,7 +28,7 @@
 #let fav-keywords = (
   // tipi e dichiarazioni
   "stanza", "cosa", "contenitore", "supporto", "personaggio",
-  "stato", "contatore", "comando", "direzioni", "dialogo",
+  "stato", "contatore", "comando", "direzioni", "dialogo", "posto",
   // copule e connettori semantici
   "è", "sono", "collega", "comincia", "inizia", "parte",
   "dice", "conduce", "diventa", "ha", "dà", "chiama", "anche", "si",

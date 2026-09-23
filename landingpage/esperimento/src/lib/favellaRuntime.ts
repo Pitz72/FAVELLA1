@@ -116,8 +116,35 @@ def fav_stato():
             counters[k] = v
     stanza = _mondo.trova_stanza(_mondo.posizione_giocatore)
     room = stanza.nome_visualizzato if stanza is not None else None
+    # [UI v2] struttura della scena per l'interfaccia: uscite, presenze, dialogo.
+    uscite, presenti = [], []
+    if stanza is not None:
+        for d, sid in stanza.uscite.items():
+            s2 = _mondo.trova_stanza(sid)
+            uscite.append({"dir": d, "verso": s2.nome_visualizzato if s2 is not None else sid})
+        if _mondo.c_e_luce():
+            for og in stanza.oggetti.values():
+                presenti.append({"nome": og.nome_visualizzato, "id": og.nome,
+                                 "persona": bool(og.is_personaggio), "prendibile": bool(og.prendibile)})
+    dialogo = None
+    if _mondo.dialogo_attivo:
+        npc = _mondo.trova_oggetto(_mondo.dialogo_attivo)
+        nodo = _mondo.dialogo_nodi.get(_mondo.nodo_dialogo)
+        if nodo is not None:
+            try:
+                from gioco import rendi_testo as _rt
+            except Exception:
+                _rt = lambda m, t: t
+            dialogo = {"chi": npc.nome_visualizzato if npc is not None else "",
+                       "opzioni": [_rt(_mondo, o.testo) for o in nodo.opzioni if o.disponibile(_mondo)]}
+    try:
+        capienza = _mondo.capacita_attuale()
+    except Exception:
+        capienza = None
     return json.dumps({"inventory": inv, "counters": counters,
-                       "room": room, "roomId": _mondo.posizione_giocatore})
+                       "room": room, "roomId": _mondo.posizione_giocatore,
+                       "exits": uscite, "present": presenti, "dialog": dialogo,
+                       "capacity": capienza, "turn": getattr(_mondo, "turno_corrente", 0)})
 `;
 
 // Driver di VALIDAZIONE per i checkpoint delle lezioni: compila un buffer .fav
@@ -202,6 +229,12 @@ export interface StatoMondo {
   counters: Record<string, number>;
   room: string | null;
   roomId: string | null;
+  // [UI v2] opzionali: la pagina «Programma» del sito usa lo stesso tipo
+  exits?: { dir: string; verso: string }[];
+  present?: { nome: string; id: string; persona: boolean; prendibile: boolean }[];
+  dialog?: { chi: string; opzioni: string[] } | null;
+  capacity?: number | null;
+  turn?: number;
 }
 
 export interface SessioneGioco {

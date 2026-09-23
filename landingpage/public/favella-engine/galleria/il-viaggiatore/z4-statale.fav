@@ -28,13 +28,15 @@ La rampa è una stanza.
 La descrizione della rampa è "La condotta sbuca su una rampa che sale alla superstrada: due corsie di asfalto crepato, i guardrail mangiati dalla ruggine. Il silenzio è diverso, qui: di cose costruite e lasciate. A OVEST il casello; a EST la condotta da cui sei venuto.".
 
 Il casello è una stanza.
-La descrizione del casello è "Un casello di pedaggio in mezzo al nulla, la sbarra abbassata. VITO ci sta dietro come dietro un bancone, un tubo di ferro a portata di mano. (PARLA CON Vito; oppure ATTINGI alla forza, se proprio.) A NORD una piazzola di sosta, a SUD una vecchia area di servizio. A OVEST la strada prosegue, oltre la sbarra. A EST la rampa.".
+La descrizione del casello è "Un casello di pedaggio in mezzo al nulla, la sbarra abbassata. VITO ci sta dietro come dietro un bancone, un tubo di ferro a portata di mano. (PARLA CON Vito; oppure ATTACCA Vito, se proprio.) A NORD una piazzola di sosta, a SUD una vecchia area di servizio. A OVEST la strada prosegue, oltre la sbarra. A EST la rampa.".
+La descrizione del casello se la vita di Vito è al massimo 0 è "Un casello di pedaggio in mezzo al nulla, la sbarra alzata. VITO è seduto a terra contro il palo, il tubo lontano dalla mano. A NORD una piazzola di sosta, a SUD una vecchia area di servizio. A OVEST la strada prosegue. A EST la rampa.".
+La descrizione del casello se lo stato del casello è aperto è "Un casello di pedaggio in mezzo al nulla, la sbarra alzata. VITO ci sta dietro come dietro un bancone e ti guarda passare. A NORD una piazzola di sosta, a SUD una vecchia area di servizio. A OVEST la strada prosegue, oltre la sbarra. A EST la rampa.".
 
 La piazzola è una stanza.
-La descrizione della piazzola è "Una piazzola di sosta con due auto sventrate, gli sportelli aperti come bocche. Nel vano di una: una STECCA di sigarette, una PISTOLA, una scatola di CARTUCCE. Sul sedile, un GIUBBOTTO pesante. Si torna a SUD, al casello.".
+La descrizione della piazzola è "Una piazzola di sosta con due auto sventrate, gli sportelli aperti come bocche. Si torna a SUD, al casello.".
 
 L'area di servizio è una stanza.
-La descrizione dell'area di servizio è "Una stazione di servizio diroccata, le pompe a secco da anni. In un ripostiglio: una tanica di BENZINA, una CHIAVE inglese, una scatola di MEDICINE da un kit di pronto soccorso. A OVEST una GRATA chiude un sottopasso di servizio. A NORD il casello.".
+La descrizione dell'area di servizio è "Una stazione di servizio diroccata, le pompe a secco da anni; la porta del ripostiglio è sfondata. A OVEST una GRATA chiude un sottopasso di servizio. A NORD il casello.".
 
 Il sottopasso è una stanza.
 La descrizione del sottopasso è "Un budello di cemento che passa sotto la carreggiata, l'acqua piovana raggrumata sul fondo. Puzza di chiuso, ma porta dall'altra parte senza dover salutare nessuno. A NORD si risale, oltre il casello. A EST la grata.".
@@ -52,38 +54,45 @@ Il sottopasso collega nord a la discesa.
 La stecca è una cosa.
 La stecca è prendibile.
 La stecca è in la piazzola.
-La descrizione della stecca è "Una stecca di sigarette, ancora sigillata. Sulla strada è moneta forte: c'è chi farebbe di tutto, per fumare.".
+Il posto della stecca è "Nel vano portaoggetti della prima auto, una STECCA di sigarette.".
+La descrizione della stecca è "Una stecca di sigarette, ancora sigillata. Sulla strada c'è chi darebbe acqua, per fumare.".
 
 La pistola è una cosa.
 La pistola è prendibile.
 La pistola è in la piazzola.
-La descrizione della pistola è "Una pistola vera, pesante, e completamente scarica. Non spara: ma chi te la trova puntata addosso non può saperlo.".
+Il posto della pistola è "Sotto il sedile della seconda, una PISTOLA.".
+La descrizione della pistola è "Una pistola vera, pesante, e completamente scarica. Non spara: ma chi se la trova puntata addosso non può saperlo. (Con questa in mano, MINACCIA chi ti sbarra la strada.)".
 
 Le cartucce è una cosa.
 Le cartucce è prendibile.
 Le cartucce è in la piazzola.
+Il posto delle cartucce è "Sul tappetino, una scatola di CARTUCCE.".
 La descrizione delle cartucce è "Cartucce di un altro calibro: nella pistola non entrano. Restano metallo da barattare, o un peso in tasca.".
 
 Il giubbotto è una cosa.
 Il giubbotto è prendibile.
 Il giubbotto è in la piazzola.
+Il posto del giubbotto è "Sul sedile posteriore, un GIUBBOTTO pesante.".
 La descrizione del giubbotto è "Un giubbotto di pelle screpolata, caldo. Le notti, più avanti, si faranno fredde; o lo si baratta.".
 
 # --- Oggetti dell'area di servizio ---
 La benzina è una cosa.
 La benzina è prendibile.
 La benzina è in l'area di servizio.
+Il posto della benzina è "Nel ripostiglio, una tanica di BENZINA.".
 La descrizione della benzina è "Una tanica di benzina, mezza piena. A piedi non serve a niente; ma c'è chi la vorrebbe, e paga.".
 
 La chiave inglese è una cosa.
 La chiave inglese è prendibile.
 La chiave inglese è in l'area di servizio.
+Il posto della chiave inglese è "Appesa a un gancio del ripostiglio, una CHIAVE inglese.".
 La descrizione della chiave inglese è "Una chiave inglese grossa, buona per i bulloni e, all'occorrenza, per le teste.".
 
 Le medicine è una cosa.
 Le medicine è prendibile.
 Le medicine è in l'area di servizio.
-La descrizione delle medicine è "Una scatola di medicine da pronto soccorso: febbre, infezioni. Possono rimetterti in sesto te, o salvare qualcuno che sta peggio di te.".
+Il posto delle medicine è "Su uno scaffale, una scatola di MEDICINE da un kit di pronto soccorso.".
+La descrizione delle medicine è "Una scatola di medicine da pronto soccorso: febbre, infezioni. Possono rimetterti in sesto te (CURATI), o salvare qualcuno che sta peggio di te.".
 
 La grata è una cosa.
 La grata è in l'area di servizio.
@@ -91,28 +100,33 @@ La descrizione della grata è "Una grata di ferro avvitata all'imbocco del sotto
 
 # Il lasciapassare lo consegna Vito (nessun luogo iniziale: grant via conseguenza).
 Il lasciapassare è una cosa.
-La descrizione del lasciapassare è "Un foglio unto con uno scarabocchio di Vito: «pagato». Sulla strada, a volte, basta a evitare un altro pedaggio.".
+Il lasciapassare è prendibile.
+La descrizione del lasciapassare è "Un foglio unto con uno scarabocchio di Vito: «pagato». Nel paese oltre la discesa, dicono, la carta di Vito vale ancora qualcosa.".
 
 # --- VITO  [maggiore: PREDARE. Pedaggio o forza; un accenno su cosa c'è oltre] ---
 Vito è un personaggio.
 Vito è in il casello.
-La descrizione di Vito è "Un uomo largo, affabile come sa esserlo chi tiene il coltello dalla parte del manico. Non ti odia: ti fa pagare. È diverso, e lo sa.".
+La descrizione di Vito è "Un uomo largo, affabile come sa esserlo chi tiene il coltello dalla parte del manico. Ti chiama «amico» prima ancora di sapere come ti chiami.".
+La descrizione di Vito se la vita di Vito è al massimo 0 è "Vito è seduto a terra contro la sbarra, il tubo lontano dalla mano. Respira, ma non si alza.".
 
 Il dialogo di Vito comincia con "vito_inizio".
-Vito al nodo "vito_inizio" dice "«Strada privata, adesso. La mia.» Picchietta il tubo sul bancone, senza minaccia, come una sveglia. «Si paga il pedaggio: qualcosa di buono, e passi. Altrimenti torni indietro.»" se lo stato del casello è chiuso.
-Vito al nodo "vito_inizio" dice "«Ah, sei tu. La sbarra è su, per te. Passa quando vuoi.»" se lo stato del casello è aperto.
+Vito al nodo "vito_inizio" dice "Respira storto, seduto contro la sbarra, una mano sulle costole. Non ti guarda. «Hai vinto tu. Va', che qui non c'è più niente da prendere.»" se la vita di Vito è al massimo 0.
+Vito al nodo "vito_inizio" dice "«Tu.» Non si alza. «La sbarra è su. Passa, e non fermarti.»" se la fiducia di Vito è al massimo 0.
+Vito al nodo "vito_inizio" dice "«Adesso vuoi parlare?» Stringe il tubo. «Paga, e forse ci ripenso.»" se lo stato di Vito è ostile.
+Vito al nodo "vito_inizio" dice "«Strada privata, amico. La mia.» Batte il tubo sul bancone, due colpi, senza cattiveria. «Si paga il pedaggio: qualcosa di buono, e passi. Sennò, dietrofront.»" se lo stato del casello è chiuso.
+Vito al nodo "vito_inizio" dice "«L'amico mio. La sbarra è su, per te: passa quando vuoi.»" se lo stato del casello è aperto.
 
-Al nodo "vito_inizio" l'opzione "Ti do la stecca di sigarette." se il giocatore ha la stecca e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso la stecca è nel nulla e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in inventario.
-Al nodo "vito_inizio" l'opzione "Ti do la tanica di benzina." se il giocatore ha la benzina e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso la benzina è nel nulla e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in inventario.
-Al nodo "vito_inizio" l'opzione "Ti lascio tre d'acqua." se l'acqua è almeno 3 e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso diminuisci l'acqua di 3 e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in inventario.
-Al nodo "vito_inizio" l'opzione "Cosa c'è, oltre il casello?" conduce al nodo "vito_oltre".
+Al nodo "vito_inizio" l'opzione "Ti do la stecca di sigarette." se il giocatore ha la stecca e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso la stecca è nel nulla e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in il casello.
+Al nodo "vito_inizio" l'opzione "Ti do la tanica di benzina." se il giocatore ha la benzina e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso la benzina è nel nulla e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in il casello.
+Al nodo "vito_inizio" l'opzione "Ti lascio tre d'acqua." se l'acqua è almeno 3 e lo stato del casello è chiuso conduce al nodo "vito_pagato" e adesso diminuisci l'acqua di 3 e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta la fiducia di Vito di 1 e adesso il lasciapassare è in il casello.
+Al nodo "vito_inizio" l'opzione "Cosa c'è, oltre il casello?" se la vita di Vito è più di 0 e la fiducia di Vito è almeno 1 conduce al nodo "vito_oltre".
 Al nodo "vito_inizio" l'opzione "Niente, per ora." chiude il dialogo.
 
-Vito al nodo "vito_pagato" dice "Soppesa quello che gli dai, poi solleva la sbarra quel tanto che basta. «Affare fatto. E tieni il foglio: agli altri dici che hai già pagato.»".
+Vito al nodo "vito_pagato" dice "Soppesa quello che gli dai, poi solleva la sbarra quel tanto che basta. «Affare fatto.» Scarabocchia un foglio e lo lascia sul bancone. «Il LASCIAPASSARE, se lo vuoi: agli altri dici che hai già pagato.»".
 Al nodo "vito_pagato" l'opzione "Grazie." chiude il dialogo.
 
-Vito al nodo "vito_oltre" dice "«Il paese? Ancora gente, sì. L'osteria, il mercato.» Si fa serio un istante. «Gira una brutta storia, però, in questi giorni. Roba di uno che torna a casa, e di quello che ci trova. Ma non è cosa mia.»" se la fiducia di Vito è almeno 2.
-Vito al nodo "vito_oltre" dice "«Il paese, sì. Ci arrivi, se paghi.» Ti studia. «Il resto te lo racconti da solo.»" se la fiducia di Vito è al massimo 1.
+Vito al nodo "vito_oltre" dice "«Il paese? Gente ancora ce n'è: l'osteria, il mercato. Ciro ti spenna, ma onesto.» Si fa serio un istante. «Oltre le colline, no. Dicono che al guado ci sta uno che rimanda indietro tutti. Io là non ci vado: non ci guadagno niente.»" se la fiducia di Vito è almeno 2.
+Vito al nodo "vito_oltre" dice "«Il paese, sì. Ci arrivi, se paghi.» Alza le spalle. «Il resto non è merce mia.»" se la fiducia di Vito è al massimo 1.
 Al nodo "vito_oltre" l'opzione "Torniamo a noi." conduce al nodo "vito_inizio".
 
 # --- VIA 2 · AGGIRARE: aprire la grata con la chiave inglese ---
@@ -131,11 +145,11 @@ Invece di attacca Vito: dire "Vito è a terra. La strada è libera.".
 Ogni turno se il giocatore è in il casello e la vita di Vito è più di 0 e lo stato di Vito è ostile: dire "Vito cala il tubo di ferro. Senti le costole protestare." e adesso diminuisci la vita di 2.
 Ogni turno se il giocatore è in il casello e la vita di Vito è più di 0 e lo stato di Vito è ostile e càpita (1 su 4): dire "Un colpo ti prende in pieno: il sapore del ferro in bocca." e adesso diminuisci la vita di 1.
 
-Quando la vita di Vito è al massimo 0: dire "Vito arretra contro la sbarra, la schiena che scivola giù. «...e va'. Va' pure, allora.» Non si rialza. La strada è aperta, e ti è costata." e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo.
+Quando la vita di Vito è al massimo 0: dire "Vito arretra contro la sbarra, la schiena che scivola giù. «…e va'. Va' pure, allora.» Non si rialza. La strada è aperta, e ti è costata." e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo.
 
 # --- VIA 4 · BLUFFARE: la pistola scarica (lui non sa che è vuota) ---
 "minaccia" è un comando.
-Invece di minaccia Vito se il giocatore ha la pistola e lo stato del casello è chiuso: dire "Tiri fuori la pistola e gliela punti in faccia. Vito non sa che è scarica: per un attimo lo legge nei tuoi occhi, poi alza le mani piano e solleva la sbarra. «Calma, calma. Passa. Passa pure.» Non ti perdona, ma ti lascia." e adesso lo stato del casello è aperto e adesso diminuisci la fiducia di Vito di 1.
+Invece di minaccia Vito se il giocatore ha la pistola e lo stato del casello è chiuso: dire "Tiri fuori la pistola e gliela punti in faccia. Vito non sa che è scarica: per un attimo lo legge nei tuoi occhi, poi alza le mani piano e solleva la sbarra. «Calma, calma. Passa. Passa pure.» Mentre passi, ti fissa la faccia per ricordarsela." e adesso lo stato del casello è aperto e adesso diminuisci la fiducia di Vito di 1.
 Invece di minaccia Vito se lo stato del casello è aperto: dire "La sbarra è già su. Inutile fare il duro adesso.".
 Invece di minaccia Vito: dire "Minacciare Vito a mani vuote è il modo più rapido per prenderle.".
 
@@ -152,4 +166,4 @@ Invece di curati: dire "Non hai medicine con cui curarti.".
 # --- Passaggio a Z5: la discesa porta alla porta del paese ---
 # (la porta è la stanza d'ingresso di z5-paese.fav)
 La discesa collega ovest a la porta.
-Quando il giocatore è in la discesa e lo stato della discesa è nuova: dire "Ti fermi dove la strada cambia voce: sotto, il paese fuma piano nel pomeriggio. Hai passato il casello. Quel che gira laggiù, lo saprai entrando." e adesso lo stato della discesa è vista.
+Quando il giocatore è in la discesa e lo stato della discesa è nuova: dire "Ti fermi dove la strada cambia voce. La mano va da sola alla tasca del biglietto, e lì resta." e adesso lo stato della discesa è vista.

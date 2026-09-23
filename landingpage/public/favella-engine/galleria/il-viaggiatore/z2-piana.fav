@@ -27,10 +27,13 @@ La masseria è una stanza.
 La descrizione della masseria è "Una masseria bassa, intonaco scrostato. Un cortile silenzioso. A NORD il pozzo, dove un uomo monta la guardia. A SUD una serra di vetro. A OVEST una sterrata punta verso il bianco di un invaso. A EST si torna sulla provinciale.".
 
 Il pozzo è una stanza.
-La descrizione del pozzo è "Un pozzo vero, di quelli che pescano in fondo. SAVERIO ci sta seduto accanto come su un trono, gli occhi che ti misurano. (PARLA CON Saverio; poi ATTINGI per prendere acqua.) Si torna a SUD.".
+La descrizione del pozzo è "Un pozzo vero, di quelli che pescano in fondo. SAVERIO siede sul bordo di pietra, le gambe verso il buio, gli occhi che ti misurano. (PARLA CON Saverio; poi ATTINGI per prendere acqua.) Si torna a SUD.".
+La descrizione del pozzo se lo stato del pozzo è vuoto è "Un pozzo vero, ma il fondo ormai è fango e la corda è sfilacciata. SAVERIO siede sul bordo di pietra, le gambe verso il buio. (Se sei a secco, ATTINGI: aspettando, il fondo dà ancora un poco.) Si torna a SUD.".
 
 La serra è una stanza.
-La descrizione della serra è "Una serra dai vetri opachi di salsedine. Tra i filari secchi, casse di CONSERVE ancora buone. Ma un CANE rognoso le fa la guardia, il pelo ritto. Si torna a NORD.".
+La descrizione della serra è "Una serra dai vetri opachi di salsedine. Tra i filari secchi, casse di CONSERVE ancora buone. Ma un CANE rognoso le fa la guardia, il pelo ritto. (Col cibo lo puoi distrarre: GETTA CIBO. Oppure ATTACCA il cane.) Si torna a NORD.".
+La descrizione della serra se lo stato del cane è sviato è "Una serra dai vetri opachi di salsedine. Tra i filari secchi, le casse di conserve aperte. Del cane, solo le impronte nella polvere. Si torna a NORD.".
+La descrizione della serra se lo stato del cane è abbattuto è "Una serra dai vetri opachi di salsedine. Tra i filari secchi, le casse di conserve aperte, e il CANE steso su un fianco accanto a quelle che difendeva. Si torna a NORD.".
 
 La sterrata è una stanza.
 La descrizione della sterrata è "La sterrata scollina e, sotto, si apre la conca accecante dell'invaso prosciugato.".
@@ -45,17 +48,17 @@ Ogni turno se il giocatore è in il tratto: dire "Il sole picchia sulla nuca. La
 # --- SAVERIO  [relazione: dargli cibo alza la fiducia → ti lascia il pozzo] ---
 Saverio è un personaggio.
 Saverio è in il pozzo.
-La descrizione di Saverio è "Un uomo cotto dal sole, le mani grosse. Non se n'è andato perché il pozzo è suo padre e suo figlio. Diffida di tutto ciò che cammina.".
+La descrizione di Saverio è "Un uomo con la nuca bruciata e le mani grosse. Non se n'è andato perché il pozzo è suo padre e suo figlio. Diffida di tutto ciò che cammina.".
 
 Il dialogo di Saverio comincia con "guardia".
 Saverio al nodo "guardia" dice "«Cosa vuoi.» Non è una domanda." se la fiducia di Saverio è al massimo 1.
-Saverio al nodo "guardia" dice "«Sei ancora qui. Be', non sei il peggio passato di qua.»" se la fiducia di Saverio è almeno 2.
+Saverio al nodo "guardia" dice "«Tu. Il secchio sai dov'è.»" se la fiducia di Saverio è almeno 2.
 
 Al nodo "guardia" l'opzione "Ti lascio del cibo. Ne hai più bisogno tu di me." se il cibo è almeno 1 conduce al nodo "dono" e adesso diminuisci il cibo di 1 e adesso aumenta la fiducia di Saverio di 2.
 Al nodo "guardia" l'opzione "Mi serve acqua dal pozzo." conduce al nodo "richiesta".
 Al nodo "guardia" l'opzione "Niente." chiude il dialogo.
 
-Saverio al nodo "dono" dice "Prende il cibo, lo soppesa, annuisce piano. «Pochi danno, di questi tempi. Il pozzo... vieni pure, quando ti serve.»".
+Saverio al nodo "dono" dice "Prende il cibo e se lo infila nella camicia, senza ringraziare. «Il pozzo. Una tanica, non di più: la corda è vecchia.»".
 Al nodo "dono" l'opzione "Grazie." chiude il dialogo.
 
 Saverio al nodo "richiesta" dice "«Acqua.» Sputa di lato. «Tutti vogliono acqua. Portami un motivo per fidarmi, e ne parliamo.»".
@@ -64,13 +67,15 @@ Al nodo "richiesta" l'opzione "Capito." conduce al nodo "guardia".
 # --- ATTINGERE AL POZZO  [acqua gated su FIDUCIA + esaurimento] ---
 "attingi" è un comando senza oggetto.
 Invece di attingi se il giocatore è in il pozzo e la fiducia di Saverio è almeno 2 e lo stato del pozzo è pieno: dire "Saverio fa un cenno secco. Cali la tanica: risale mezza piena di acqua vera, fredda di fondo. Ne hai per il tratto che viene." e adesso aumenta l'acqua di 5 e adesso lo stato del pozzo è vuoto.
-Invece di attingi se il giocatore è in il pozzo e lo stato del pozzo è vuoto: dire "Il pozzo ormai dà solo fango. Hai preso quel che c'era.".
-Invece di attingi se il giocatore è in il pozzo: dire "«Giù le mani» ti ferma Saverio, senza alzarsi. «Questo pozzo è la mia vita. Dammi un motivo per fidarmi.»".
+Invece di attingi se il giocatore è in il pozzo e lo stato del pozzo è vuoto e l'acqua è al massimo 3: dire "Cali la tanica e aspetti, a lungo, che il fondo si rischiari. Viene su poca acqua, grigia di fango, ma si beve. Saverio ti guarda aspettare e non dice niente." e adesso aumenta l'acqua di 2 e adesso aumenta la fame di 1.
+Invece di attingi se il giocatore è in il pozzo e lo stato del pozzo è vuoto: dire "Il pozzo ormai dà solo fango. Finché la tanica tiene, non vale la pena di aspettare il fondo.".
+Invece di attingi se il giocatore è in il pozzo: dire "«Giù le mani» ti ferma Saverio, senza alzarsi. «Questo pozzo non è una fontana.»".
 
 # --- IL CANE  [scontro EVITABILE: combatti, o sviàlo col cibo, o non entrare] ---
 Il cane è una cosa.
 Il cane è in la serra.
 La descrizione del cane è "Un cane rimasto solo e tornato mezzo selvatico, le costole in vista. Difende le casse come fossero cuccioli.".
+La descrizione del cane se lo stato del cane è abbattuto è "Il cane è steso su un fianco tra le casse, le costole ferme. Difendeva l'unica cosa che gli era rimasta.".
 
 "attacca" è un comando.
 Invece di attacca il cane se lo stato del cane è minaccioso e il giocatore ha il coltello: dire "Tieni il cane a distanza con la lama e affondi quando si lancia." e adesso diminuisci la vita del cane di 3.
@@ -78,8 +83,25 @@ Invece di attacca il cane se lo stato del cane è minaccioso: dire "Lo colpisci 
 Invece di attacca il cane: dire "Il cane non è più un problema.".
 
 "getta" è un comando senza oggetto.
-Invece di getta se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3.
+"getta cibo" è un comando senza oggetto.
+"getta il cibo" è un comando senza oggetto.
+"lancia cibo" è un comando senza oggetto.
+"lancia il cibo" è un comando senza oggetto.
+Invece di getta se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3 e adesso il cane è nel nulla.
+Invece di getta se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Non hai niente da lanciargli. Il cane lo sente, e ringhia più forte.".
 Invece di getta: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
+Invece di getta cibo se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3 e adesso il cane è nel nulla.
+Invece di getta cibo se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Non hai niente da lanciargli. Il cane lo sente, e ringhia più forte.".
+Invece di getta cibo: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
+Invece di getta il cibo se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3 e adesso il cane è nel nulla.
+Invece di getta il cibo se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Non hai niente da lanciargli. Il cane lo sente, e ringhia più forte.".
+Invece di getta il cibo: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
+Invece di lancia cibo se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3 e adesso il cane è nel nulla.
+Invece di lancia cibo se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Non hai niente da lanciargli. Il cane lo sente, e ringhia più forte.".
+Invece di lancia cibo: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
+Invece di lancia il cibo se il giocatore è in la serra e il cibo è almeno 1 e lo stato del cane è minaccioso: dire "Strappi un boccone e lo lanci lontano tra i filari. Il cane scatta dietro l'odore e sparisce. La serra è tua." e adesso diminuisci il cibo di 1 e adesso lo stato del cane è sviato e adesso aumenta il cibo di 3 e adesso il cane è nel nulla.
+Invece di lancia il cibo se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Non hai niente da lanciargli. Il cane lo sente, e ringhia più forte.".
+Invece di lancia il cibo: dire "Non c'è niente da gettare, o nessuno a cui interessi.".
 
 # Il cane morde finché è minaccioso e tu sei nella serra. Critico raro.
 Ogni turno se il giocatore è in la serra e lo stato del cane è minaccioso: dire "Il cane ti azzanna il polpaccio." e adesso diminuisci la vita di 1.
@@ -94,4 +116,4 @@ Invece di vai ovest se il giocatore è in la masseria e l'acqua è meno di 4: di
 La masseria collega ovest a la sterrata.
 
 # Soglia di passaggio: il crinale sull'invaso (una volta sola).
-Quando il giocatore è in la sterrata e lo stato del crinale è nuovo: dire "Ti fermi sul crinale. Davanti, l'invaso morto luccica di sale fino all'orizzonte. Acquaviva è alle spalle, la piana è attraversata. Il viaggio, vero, comincia adesso. Si scende a OVEST, nella conca." e adesso lo stato del crinale è visto.
+Quando il giocatore è in la sterrata e lo stato del crinale è nuovo: dire "Ti fermi sul crinale. Davanti, l'invaso morto luccica di sale fino all'orizzonte. Acquaviva è alle spalle, la piana è attraversata. Si scende a OVEST, nella conca." e adesso lo stato del crinale è visto.

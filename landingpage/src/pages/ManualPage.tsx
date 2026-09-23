@@ -1,5 +1,5 @@
 import React from "react";
-import { MANUAL_CONTENT, MANUAL_PDF_URL } from "../constants";
+import { MANUAL_CONTENT, MANUAL_PDF_URL, ENGINE_VERSION } from "../constants";
 import CodeBlock from "../components/CodeBlock";
 import ManualBanner from "../components/ManualBanner";
 import { navigate } from "../router";
@@ -166,7 +166,7 @@ const ManualPage = () => {
     <section className="px-6 pb-28 pt-[74px]">
       {/* Hero */}
       <div className="mx-auto max-w-[820px]">
-        <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Guida rapida · v1.0.0</p>
+        <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Guida rapida · v{ENGINE_VERSION}</p>
         <h1 className="mb-[22px] font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
           La sintassi, in <span className="italic text-ink-accent">una panoramica</span>.
         </h1>

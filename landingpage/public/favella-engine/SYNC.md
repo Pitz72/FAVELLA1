@@ -6,6 +6,21 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
+> 🟡 **STATO AL 2026-09-23: motore 1.1.0 copiato qui, NON ancora pubblicato.**
+> I cinque moduli in `engine/` sono stati riallineati al motore **1.1.0** (nuova
+> frase `Il posto della X è "…".`, vedi CHANGELOG), consolidamento compreso
+> (avviso sulla capienza, posto di un oggetto che parte in inventario). Il sito in produzione
+> (runtimeradio.it) serve ancora la **1.0.1**: **nessun deploy è stato fatto**, per
+> scelta dell'autore. Anche `galleria/il-viaggiatore/` è cambiato (revisione del
+> gioco + uso del posto iniziale) e **richiede** la 1.1.0: le due cose vanno
+> pubblicate insieme. Prima del deploy:
+> 1. `npm run build` del sito e dell'`esperimento`, e prova nel browser di almeno
+>    una storia della Galleria e de *Il Viaggiatore*;
+> 2. decidere se allineare anche i testi del sito che citano la 1.0.1 (download,
+>    pagina Programma) — il pacchetto pip e l'IDE desktop sono ancora 1.0.1;
+> 3. solo allora il deploy (credenziali in `~/.favella1-deploy/`).
+> Le altre storie della Galleria funzionano identiche con la 1.1.0 (modifica additiva).
+
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
 > `utils`): rinominato per igiene del namespace nel pacchetto pip. Se risincronizzi
 > devi allineare **tre** posti oltre al file: `ENGINE_FILES` in `src/lib/favellaRuntime.ts`,

@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.0.1)
+# Interprete Interattivo per FAVELLA 1 (v1.1.0)
 
 import sys
 import traceback
@@ -26,7 +26,16 @@ def mostra_stanza(mondo: Mondo):
 
     print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
 
-    oggetti_nella_stanza = list(stanza_corrente.oggetti.values())
+    # [1.1.0] Gli oggetti ancora al loro posto iniziale si presentano con la frase
+    # d'autore e restano fuori dall'elenco generico. Le frasi sono raccolte in UN
+    # capoverso sotto la descrizione, nell'ordine di collocazione degli oggetti:
+    # l'autore le scrive autonome («Sul sedile, un DIARIO…»), così ciascuna regge
+    # anche quando le altre sono sparite.
+    posti = [rendi_testo(mondo, o.posto) for o in stanza_corrente.oggetti.values() if o.al_suo_posto()]
+    if posti:
+        print(" ".join(posti))
+
+    oggetti_nella_stanza = [o for o in stanza_corrente.oggetti.values() if not o.al_suo_posto()]
     if oggetti_nella_stanza:
         # [Livello 5] Articolo indeterminativo concordato (genere/numero inferiti
         # dal nome dichiarato): "Puoi vedere qui: una torcia, un tavolo.".

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "App React separata: l'esperimento «Il Viaggiatore» — trailer cinematografico GSAP + full-game 16:9 col motore FAVELLA reale (Pyodide). Builda dentro la dist del sito (../dist/esperimento) così resta UN solo deploy.",
+  "description": "App React separata: l'esperimento «Il Viaggiatore» — trailer-cortometraggio (canvas procedurale + suono Web Audio, un solo orologio) + full-game 16:9 col motore FAVELLA reale (Pyodide). Builda dentro la dist del sito (../dist/esperimento) così resta UN solo deploy.",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

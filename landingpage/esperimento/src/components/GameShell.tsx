@@ -6,10 +6,12 @@
 //  DENTRO il palco si renderizza una superficie a RISOLUZIONE FISSA
 //  (1280×720) scalata per riempirlo: così la UI di gioco è un layout
 //  desktop PIXEL-PERFECT a qualunque dimensione, come un emulatore — niente
-//  reflow, niente stack mobile. Tasto Fullscreen (Fullscreen API).
+//  reflow, niente stack mobile. Tasto schermo intero: Fullscreen API nel
+//  browser, la finestra stessa nella versione desktop (lib/desktop.ts).
 // ====================================================================
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ViaggiatorePlayer from "./ViaggiatorePlayer";
+import { commutaSchermoIntero, statoSchermoIntero } from "../lib/desktop";
 
 const DESIGN_W = 1280;
 const DESIGN_H = 720;
@@ -31,17 +33,17 @@ const GameShell = ({ onExit }: { onExit: () => void }) => {
   }, []);
 
   useEffect(() => {
-    const sync = () => setFs(!!document.fullscreenElement);
+    const sync = () => { statoSchermoIntero().then(setFs); };
+    sync();
     document.addEventListener("fullscreenchange", sync);
-    return () => document.removeEventListener("fullscreenchange", sync);
+    window.addEventListener("resize", sync);   // desktop: F11 cambia la finestra
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      window.removeEventListener("resize", sync);
+    };
   }, []);
 
-  const toggleFs = () => {
-    const el = shellRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    else el.requestFullscreen?.().catch(() => {});
-  };
+  const toggleFs = () => { commutaSchermoIntero(shellRef.current).then(setFs); };
 
   return (
     <div ref={shellRef} className="relative flex h-full w-full items-center justify-center bg-black">
