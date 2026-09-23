@@ -1,5 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
+import { execSync } from 'node:child_process'
+
+// Identità della build, come nel gioco (sviluppo/VERSIONI.md del suo
+// repository): la versione del gioco da cui è copiato il sorgente
+// (versione.json accanto a questo file, copiata dal gioco), il motore da
+// ../../strutture.py (quello servito in /favella-engine/), il commit del sito.
+const versioni = JSON.parse(fs.readFileSync(new URL('./versione.json', import.meta.url), 'utf8'))
+const motore = /VERSIONE_MOTORE\s*=\s*"([^"]+)"/.exec(
+  fs.readFileSync(new URL('../../strutture.py', import.meta.url), 'utf8'))?.[1] ?? '?'
+const commit = (() => {
+  try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() }
+  catch { return 'locale' }
+})()
+const VERSIONE = {
+  gioco: versioni.gioco as string,
+  motore,
+  formatoSalvataggi: versioni.formatoSalvataggi as number,
+  commit,
+  data: new Date().toISOString().slice(0, 10),
+}
 
 // ====================================================================
 //  App SEPARATA «Il Viaggiatore» — esperimento.
@@ -15,6 +36,7 @@ import react from '@vitejs/plugin-react'
 // ====================================================================
 export default defineConfig(({ command }) => ({
   base: '/esperimento/',
+  define: { __VERSIONE__: JSON.stringify(VERSIONE) },
   plugins: [
     react(),
     // Solo in sviluppo: la public del sito viene servita sotto /esperimento/,

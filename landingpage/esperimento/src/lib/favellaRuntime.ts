@@ -9,6 +9,14 @@
 //  quando si apre una cassetta-gioco. Il browser lo mette in cache.
 // ====================================================================
 
+// [SITO] Copia del sorgente dell'app di «Il Viaggiatore» (repository
+// Pitz72/il-viaggiatore-favella), adattata al sito in DUE punti soltanto:
+//  1. Pyodide dalla CDN (versione pinnata, la stessa del pacchetto npm del
+//     gioco): l'hosting di favella.eu risponde 403 ai .json, quindi
+//     pyodide-lock.json non si può servire da qui. Lark arriva con micropip.
+//  2. Il motore sta in /favella-engine/ alla RADICE del dominio, condiviso col
+//     sito, non sotto /esperimento/.
+// Tutto il resto è identico al gioco: per aggiornarlo si ricopia app/src.
 const PYODIDE_VERSION = "v0.27.2";
 const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
 
@@ -22,12 +30,9 @@ const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`
 // namespace nel pacchetto pip). Deve combaciare col file in /favella-engine/engine/.
 const ENGINE_FILES = ["favella_utils.py", "strutture.py", "libreria_azioni.py", "compilatore.py", "gioco.py"];
 
-// ATTENZIONE — app SEPARATA con base '/esperimento/'. Il MOTORE FAVELLA non
-// vive sotto /esperimento/: sta in /favella-engine/ alla RADICE del dominio
-// (un solo deploy lo carica lì, condiviso col sito). Quindi qui NON usiamo
-// import.meta.env.BASE_URL (sarebbe "/esperimento/" → 404 sul motore), ma il
-// percorso ASSOLUTO. fetchTesto diagnostica comunque l'eventuale HTML del
-// fallback SPA al posto del .fav (vedi memoria favella-motore-trappole).
+// [SITO] Percorso ASSOLUTO: con base '/esperimento/' BASE_URL porterebbe a un
+// 404 sul motore. fetchTesto diagnostica comunque l'eventuale HTML del fallback
+// SPA al posto del .fav.
 const ENGINE_ROOT = "/favella-engine/";
 const asset = (p: string) => `${ENGINE_ROOT}${p}`;
 
@@ -55,122 +60,10 @@ export interface TurnoEsito {
   stato: StatoPartita;
 }
 
-// Il driver Python: definisce fav_boot / fav_step, che restituiscono JSON.
-const DRIVER_PY = `
-import io, contextlib, json, sys
-if '/engine' not in sys.path:
-    sys.path.insert(0, '/engine')
-from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza
-from libreria_azioni import LIBRERIA_AZIONI
-
-_mondo = None
-
-def fav_boot(entry):
-    global _mondo
-    buf = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(buf):
-            _mondo = compila_mondo(entry)
-            # Inizializzazioni che fa il main del gioco (gioco.py), NON
-            # compila_mondo: registrare i verbi/azioni e piazzare il giocatore
-            # nella stanza di partenza. Senza la prima, ogni verbo dà «Non
-            # capisco»; senza la seconda, mostra_stanza dà errore interno.
-            _mondo.carica_azioni(LIBRERIA_AZIONI)
-            _mondo.imposta_posizione_iniziale()
-            mostra_stanza(_mondo)
-    except Exception as e:
-        return json.dumps({"text": buf.getvalue() + "\\n[ERRORE DI COMPILAZIONE] " + str(e),
-                           "continua": False, "stato": "errore"})
-    return json.dumps({"text": buf.getvalue(), "continua": True,
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
-
-def fav_step(cmd):
-    if _mondo is None:
-        return json.dumps({"text": "", "continua": False, "stato": "errore"})
-    buf = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(buf):
-            continua = elabora_comando(_mondo, cmd)
-    except Exception as e:
-        return json.dumps({"text": buf.getvalue() + "\\n[ERRORE] " + str(e),
-                           "continua": True, "stato": getattr(_mondo, "stato_partita", "in_corso")})
-    return json.dumps({"text": buf.getvalue(), "continua": bool(continua),
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
-
-def fav_stato():
-    # Istantanea del mondo per le schede laterali della UI: inventario (nomi
-    # visualizzati), contatori (le variabili a valore INTERO: vita/sete/fame/
-    # acqua/cibo, fiducie, ...) e la stanza corrente (id + nome).
-    if _mondo is None:
-        return json.dumps({"inventory": [], "counters": {}, "room": None, "roomId": None})
-    inv = []
-    for oid in _mondo.inventario:
-        og = _mondo.oggetti.get(oid)
-        inv.append(og.nome_visualizzato if og is not None else oid)
-    counters = {}
-    for k, v in _mondo.variabili.items():
-        if isinstance(v, bool):
-            continue
-        if isinstance(v, int):
-            counters[k] = v
-    stanza = _mondo.trova_stanza(_mondo.posizione_giocatore)
-    room = stanza.nome_visualizzato if stanza is not None else None
-    # [UI v2] struttura della scena per l'interfaccia: uscite, presenze, dialogo.
-    uscite, presenti = [], []
-    if stanza is not None:
-        for d, sid in stanza.uscite.items():
-            s2 = _mondo.trova_stanza(sid)
-            uscite.append({"dir": d, "verso": s2.nome_visualizzato if s2 is not None else sid})
-        if _mondo.c_e_luce():
-            for og in stanza.oggetti.values():
-                presenti.append({"nome": og.nome_visualizzato, "id": og.nome,
-                                 "persona": bool(og.is_personaggio), "prendibile": bool(og.prendibile)})
-    dialogo = None
-    if _mondo.dialogo_attivo:
-        npc = _mondo.trova_oggetto(_mondo.dialogo_attivo)
-        nodo = _mondo.dialogo_nodi.get(_mondo.nodo_dialogo)
-        if nodo is not None:
-            try:
-                from gioco import rendi_testo as _rt
-            except Exception:
-                _rt = lambda m, t: t
-            dialogo = {"chi": npc.nome_visualizzato if npc is not None else "",
-                       "opzioni": [_rt(_mondo, o.testo) for o in nodo.opzioni if o.disponibile(_mondo)]}
-    try:
-        capienza = _mondo.capacita_attuale()
-    except Exception:
-        capienza = None
-    return json.dumps({"inventory": inv, "counters": counters,
-                       "room": room, "roomId": _mondo.posizione_giocatore,
-                       "exits": uscite, "present": presenti, "dialog": dialogo,
-                       "capacity": capienza, "turn": getattr(_mondo, "turno_corrente", 0)})
-`;
-
-// Driver di VALIDAZIONE per i checkpoint delle lezioni: compila un buffer .fav
-// con la stessa diagnostica strutturata dell'IDE (analizza_file_strutturato) e
-// restituisce ok + i messaggi d'errore/warning VERI del motore. Non avvia una
-// partita: serve solo a dire se la riga scritta dall'utente è FAVELLA valida.
-const VALIDATOR_PY = `
-from compilatore import analizza_file_strutturato
-
-def _msg(d):
-    # Antepone la posizione quando c'e': "riga 4: <messaggio del motore>".
-    m = d.get("message", "")
-    riga = d.get("line")
-    return ("riga %s: %s" % (riga, m)) if riga else m
-
-def fav_valida(sorgente):
-    try:
-        res = analizza_file_strutturato('/check/check.fav', sorgente=sorgente)
-        return json.dumps({
-            "ok": bool(res.get("ok")),
-            "errors": [_msg(e) for e in res.get("errors", [])],
-            "warnings": [_msg(w) for w in res.get("warnings", [])],
-        })
-    except Exception as e:
-        return json.dumps({"ok": False, "errors": ["[ERRORE INTERNO] " + str(e)], "warnings": []})
-`;
+// Il ponte Python fra interfaccia e motore (fav_boot, fav_step, fav_stato,
+// fav_salva, fav_carica…): vive in ponte.py, un file Python vero, così lo
+// stesso codice gira qui dentro Pyodide e nel collaudo (collaudo/salvataggi.py).
+import PONTE_PY from "./ponte.py?raw";
 
 type OnStatus = (msg: string) => void;
 
@@ -198,11 +91,10 @@ async function caricaRuntime(onStatus: OnStatus): Promise<any> {
     const pyodide = await (window as any).loadPyodide({ indexURL: PYODIDE_BASE });
 
     onStatus("Installazione di Lark…");
+    // [SITO] Lark da PyPI con micropip, versione PINNATA: la stessa con cui il
+    // motore è testato (una lark futura incompatibile non romperà il sito).
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
-    // Versione PINNATA = quella della .venv con cui il motore è sviluppato e
-    // testato (681 test). Senza pin, una futura lark incompatibile su PyPI
-    // romperebbe il sito da sola, senza alcun deploy.
     await micropip.install("lark==1.3.1");
 
     onStatus("Caricamento del motore FAVELLA…");
@@ -212,7 +104,7 @@ async function caricaRuntime(onStatus: OnStatus): Promise<any> {
       const src = await fetchTesto(asset(`engine/${f.replace(/\.py$/, "")}.fav`));
       pyodide.FS.writeFile(`/engine/${f}`, src);
     }
-    pyodide.runPython(DRIVER_PY);
+    pyodide.runPython(PONTE_PY);
     return pyodide;
   })();
   return pyodidePromise;
@@ -237,9 +129,33 @@ export interface StatoMondo {
   turn?: number;
 }
 
+/** Il cuore di un salvataggio, prodotto dal ponte (vedi ponte.py). */
+export interface PartitaSalvata {
+  comandi: string[];
+  impronta: string;   // impronta dello stato del mondo
+  avventura: string;  // impronta di avventura + motore
+  motore: string;
+  turno: number;
+  ultimo: string | null;
+}
+
+export interface EsitoCaricamento {
+  ok: boolean;
+  errore?: string;
+  text: string;
+  impronta: string;
+  identica: boolean;
+  stato: StatoPartita;
+  comandi: number;
+  annullabili: number;
+}
+
 export interface SessioneGioco {
   boot: () => TurnoEsito;
   step: (cmd: string) => TurnoEsito;
+  salva: () => PartitaSalvata;
+  carica: (p: Pick<PartitaSalvata, "comandi" | "impronta" | "ultimo">) => EsitoCaricamento;
+  motore: () => string;
   stato: () => StatoMondo;
 }
 
@@ -271,84 +187,14 @@ export async function avviaGioco(spec: GiocoSpec, onStatus: OnStatus): Promise<S
       return parse(pyodide.runPython("fav_step(_cmd)"));
     },
     stato: () => JSON.parse(pyodide.runPython("fav_stato()")) as StatoMondo,
-  };
-}
-
-// Sessione di gioco da un sorgente IN MEMORIA (pagina «Programma»): scrive il
-// buffer dell'editor nel FS di Pyodide e ritorna boot/step. fav_boot ricompila
-// a ogni chiamata, quindi la stessa sessione serve anche per ri-compilare dopo
-// una modifica: basta richiamare boot() dopo aver riscritto il sorgente.
-export async function avviaGiocoDaSorgente(
-  sorgente: string,
-  onStatus: OnStatus
-): Promise<SessioneGioco> {
-  const pyodide = await caricaRuntime(onStatus);
-  pyodide.FS.mkdirTree("/playground");
-  const entryPath = "/playground/storia.fav";
-  pyodide.FS.writeFile(entryPath, sorgente);
-
-  const parse = (jsonStr: string): TurnoEsito => {
-    const d = JSON.parse(jsonStr);
-    return { text: d.text ?? "", continua: !!d.continua, stato: d.stato ?? "in_corso" };
-  };
-
-  return {
-    boot: () => {
+    salva: () => JSON.parse(pyodide.runPython("fav_salva()")) as PartitaSalvata,
+    carica: (p) => {
       pyodide.globals.set("_entry", entryPath);
-      return parse(pyodide.runPython("fav_boot(_entry)"));
+      pyodide.globals.set("_comandi", JSON.stringify(p.comandi));
+      pyodide.globals.set("_impronta", p.impronta ?? "");
+      pyodide.globals.set("_ultimo", p.ultimo ?? null);
+      return JSON.parse(pyodide.runPython("fav_carica(_entry, _comandi, _impronta, _ultimo)")) as EsitoCaricamento;
     },
-    step: (cmd: string) => {
-      pyodide.globals.set("_cmd", cmd);
-      return parse(pyodide.runPython("fav_step(_cmd)"));
-    },
-    stato: () => JSON.parse(pyodide.runPython("fav_stato()")) as StatoMondo,
-  };
-}
-
-// --------------------------------------------------------------------
-//  Validatore dei checkpoint delle lezioni — esecuzione VERA del motore.
-//  Compila il .fav scritto dall'utente (innestato in un mondo-base) col
-//  compilatore Python reale e restituisce il verdetto + i messaggi veri.
-// --------------------------------------------------------------------
-export interface EsitoValidazione {
-  ok: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export interface Validatore {
-  valida: (sorgente: string) => EsitoValidazione;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let validatorePromise: Promise<any> | null = null;
-
-// Carica il motore (riusa Pyodide), prepara la cartella /check con stub vuoti
-// per gli Includi del corso, e registra il driver di validazione. Pigro e
-// idempotente: si paga il caricamento una volta sola, condiviso con i giochi.
-export async function avviaValidatore(onStatus: OnStatus): Promise<Validatore> {
-  if (!validatorePromise) {
-    validatorePromise = (async () => {
-      const pyodide = await caricaRuntime(onStatus);
-      pyodide.FS.mkdirTree("/check");
-      // Stub vuoti: l'unica lezione che usa «Includi» referenzia questi file.
-      for (const stub of ["oggetti.fav", "dialoghi.fav"]) {
-        try {
-          pyodide.FS.writeFile(`/check/${stub}`, "");
-        } catch {
-          /* già presente */
-        }
-      }
-      pyodide.runPython(VALIDATOR_PY);
-      return pyodide;
-    })();
-  }
-  const pyodide = await validatorePromise;
-  return {
-    valida: (sorgente: string): EsitoValidazione => {
-      pyodide.globals.set("_src", sorgente);
-      const d = JSON.parse(pyodide.runPython("fav_valida(_src)"));
-      return { ok: !!d.ok, errors: d.errors ?? [], warnings: d.warnings ?? [] };
-    },
+    motore: () => (JSON.parse(pyodide.runPython("fav_info()")) as { motore: string }).motore,
   };
 }

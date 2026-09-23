@@ -10,6 +10,8 @@
 //  A destra, il CORPO (vita, sete, fame con le soglie), le SCORTE, la
 //  BISACCIA a sette posti, la FIDUCIA di chi hai incontrato, il CAMMINO.
 //  La logica è il motore FAVELLA reale (Pyodide), via favellaRuntime.
+//  Il TACCUINO salva e carica (F5 / F9); il posto automatico si scrive a
+//  ogni cambio di luogo e quando si torna all'intro.
 // ====================================================================
 import { useEffect, useMemo, useRef, useState } from "react";
 import { avviaGioco } from "../lib/favellaRuntime";
@@ -17,6 +19,9 @@ import type { SessioneGioco, StatoMondo, TurnoEsito } from "../lib/favellaRuntim
 import { VIAGGIATORE_GAME, ZONE_THEME, type ZoneKey, zoneOf } from "../data/viaggiatore";
 import Panorama, { type Clima } from "../gioco/Panorama";
 import ComeSiGioca from "../gioco/ComeSiGioca";
+import Taccuino from "../gioco/Taccuino";
+import { componi, dataLeggibile, nomePosto, scrivi, type Posto, type Riassunto, type Salvataggio } from "../lib/salvataggi";
+import { annota } from "../lib/desktop";
 import { analizza, spezza, type Blocco } from "../gioco/testo";
 import "../gioco/gioco.css";
 
@@ -31,7 +36,7 @@ type Menu = { tipo: "qui" | "zaino"; id: string; nome: string; persona?: boolean
 // l'id del motore è il nome senza articolo, minuscolo: «esamina chiave inglese»
 const senzaArticolo = (s: string) => s.replace(/^(il|lo|la|i|gli|le|un|uno|una)\s+/i, "").replace(/^(l'|un')/i, "").toLowerCase();
 
-const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
+const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; carica?: Salvataggio | null }) => {
   const [fase, setFase] = useState<"carica" | "gioca" | "errore">("carica");
   const [messaggio, setMessaggio] = useState("Si carica il motore…");
   const [voci, setVoci] = useState<Voce[]>([]);
@@ -44,6 +49,9 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
   const [menu, setMenu] = useState<Menu>(null);
   const [incontrati, setIncontrati] = useState<string[]>([]);
   const [camminaDa, setCamminaDa] = useState(-1e9);
+  const [taccuino, setTaccuino] = useState<null | "salva" | "carica">(null);
+  // comandi dati dopo l'ultimo salvataggio o caricamento: se > 0, caricare fa perdere qualcosa
+  const [nonSalvati, setNonSalvati] = useState(0);
 
   const sessione = useRef<SessioneGioco | null>(null);
   const diarioRef = useRef<HTMLDivElement>(null);
@@ -64,6 +72,7 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
         setVoci([{ id: contatore.current++, blocchi: analizza(e.text) }]);
         setMondo(s.stato());
         setCamminaDa(performance.now());
+        if (carica) riprendi(carica);
         setFase("gioca");
       } catch (err) {
         if (vivo) { setMessaggio(err instanceof Error ? err.message : String(err)); setFase("errore"); }
@@ -72,7 +81,7 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
     return () => { vivo = false; };
   }, []);
 
-  useEffect(() => { if (fase === "gioca" && !finita && !guida) inputRef.current?.focus(); }, [fase, finita, guida, voci]);
+  useEffect(() => { if (fase === "gioca" && !finita && !guida && !taccuino) inputRef.current?.focus(); }, [fase, finita, guida, taccuino, voci]);
   useEffect(() => {
     const el = diarioRef.current;
     if (el) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }));
@@ -98,6 +107,7 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
     const cmd = grezzo.trim();
     if (!cmd || finita || !sessione.current) return;
     setBozza(""); setMenu(null);
+    setNonSalvati((n) => n + 1);
     storia.current = [...storia.current.filter((x) => x !== cmd), cmd].slice(-60);
     iStoria.current = -1;
     // in dialogo: un numero mostra il testo della risposta scelta
@@ -113,7 +123,94 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
     setMondo(sessione.current.stato());
     setFinita(false); setEsito("in_corso"); setFinale(""); setIncontrati([]); setMenu(null);
     setCamminaDa(performance.now());
+    setNonSalvati(0);
   };
+
+  // ── salvare e caricare ─────────────────────────────────────────────
+  const riassunto = (m: StatoMondo): Riassunto => {
+    const z = zoneOf(m.roomId);
+    const n = (k: string) => (typeof m.counters[k] === "number" ? m.counters[k] : 0);
+    return {
+      luogo: m.room ?? "—", zona: z, nomeZona: ZONE_THEME[z].nome, tappa: Math.max(1, ZORDER.indexOf(z) + 1), turno: m.turn ?? 0,
+      vita: n("vita"), sete: n("sete"), fame: n("fame"), acqua: n("acqua"), cibo: n("cibo"),
+    };
+  };
+
+  const salvaIn = async (posto: Posto) => {
+    const s = sessione.current;
+    if (!s) throw new Error("La partita non è ancora pronta.");
+    const partita = s.salva();
+    const dati = componi(posto, partita, riassunto(s.stato()), {
+      voci: voci.map(({ cmd, blocchi }) => ({ cmd, blocchi })), incontrati, storia: storia.current,
+    });
+    await scrivi(posto, dati);
+    if (posto !== "auto") setNonSalvati(0);
+  };
+
+  // il posto automatico: a ogni cambio di luogo, fuori dai dialoghi
+  const autoLuogo = useRef<string | null>(null);
+  useEffect(() => {
+    if (fase !== "gioca" || finita || mondo.dialog || !mondo.roomId) return;
+    if (autoLuogo.current === null) { autoLuogo.current = mondo.roomId; return; }
+    if (autoLuogo.current === mondo.roomId) return;
+    autoLuogo.current = mondo.roomId;
+    salvaIn("auto").catch((e) => annota("warn", `salvataggio automatico non riuscito: ${e?.message ?? e}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mondo.roomId, mondo.dialog, fase, finita]);
+
+  const esci = () => {
+    if (fase === "gioca" && !finita && !mondo.dialog && nonSalvati > 0) {
+      salvaIn("auto").catch(() => {}).finally(onExit);
+    } else onExit();
+  };
+
+  /** Riprende una partita salvata: il motore rigioca la sequenza e verifica l'impronta. */
+  function riprendi(dati: Salvataggio) {
+    const s = sessione.current;
+    if (!s) return;
+    const t0 = performance.now();
+    const esito = s.carica(dati.partita);
+    if (!esito.ok) {
+      annota("error", `caricamento fallito (${nomePosto(dati.posto)}): ${esito.errore}`);
+      setVoci((v) => [...v, { id: contatore.current++, blocchi: [{ tipo: "sistema", testo: `Il salvataggio non si è potuto caricare: ${esito.errore}` }] }]);
+      return;
+    }
+    const nuovoMondo = s.stato();
+    const stessaAvventura = s.salva().avventura === dati.partita.avventura;
+    const note: Blocco[] = [{ tipo: "sistema", testo: `— Ripreso dal ${nomePosto(dati.posto).toLowerCase()}, salvato il ${dataLeggibile(dati.creato)} —` }];
+    if (!esito.identica) {
+      note.push({ tipo: "sistema", testo: stessaAvventura
+        ? "Attenzione: la partita ricostruita non coincide del tutto con quella salvata."
+        : `Salvato con la versione ${dati.gioco}: la partita è stata ricostruita su questa versione del gioco.` });
+      annota("warn", `caricamento con impronta diversa (salvato ${dati.gioco}, stessa avventura: ${stessaAvventura})`);
+    }
+    annota("info", `partita caricata: ${nomePosto(dati.posto)}, ${esito.comandi} comandi in ${Math.round(performance.now() - t0)} ms`);
+    setVoci([
+      ...dati.diario.voci.map((v) => ({ id: contatore.current++, cmd: v.cmd, blocchi: v.blocchi })),
+      { id: contatore.current++, blocchi: [...note, ...analizza(esito.text)] },
+    ]);
+    setMondo(nuovoMondo);
+    autoLuogo.current = nuovoMondo.roomId;
+    setIncontrati(dati.diario.incontrati ?? []);
+    storia.current = dati.diario.storia ?? [];
+    iStoria.current = -1;
+    setMenu(null); setBozza("");
+    const fine = esito.stato !== "in_corso";
+    setFinita(fine); setEsito(esito.stato); setFinale("");
+    setCamminaDa(performance.now());
+    setNonSalvati(0);
+  }
+
+  // F5 salva, F9 carica
+  useEffect(() => {
+    const tasto = (e: KeyboardEvent) => {
+      if (fase !== "gioca" || guida || taccuino) return;
+      if (e.key === "F5") { e.preventDefault(); if (!finita) setTaccuino("salva"); }
+      else if (e.key === "F9") { e.preventDefault(); setTaccuino("carica"); }
+    };
+    window.addEventListener("keydown", tasto);
+    return () => window.removeEventListener("keydown", tasto);
+  }, [fase, guida, taccuino, finita]);
 
   const tasto = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") manda(bozza);
@@ -211,13 +308,13 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
               <h2>Si prepara il viaggio…</h2>
               <p className="vg-carica-msg">{messaggio}</p>
               <div className="vg-carica-barra"><div /></div>
-              <p className="vg-carica-nota">La prima volta serve qualche secondo: si scarica l'interprete Python.</p>
+              <p className="vg-carica-nota">{carica ? `Si riprende il viaggio dal ${nomePosto(carica.posto).toLowerCase()}…` : "Qualche secondo: si avvia l'interprete Python."}</p>
             </>
           ) : (
             <>
               <h2 style={{ color: "#fb923c" }}>Il motore non è partito</h2>
               <p className="vg-carica-msg">{messaggio}</p>
-              <p className="vg-carica-nota">Serve la rete per caricare l'interprete la prima volta.</p>
+              <p className="vg-carica-nota">Se si ripete, il registro tecnico dice perché.</p>
               <button className="vg-bottone" onClick={onExit}>← torna all'intro</button>
             </>
           )}
@@ -236,8 +333,10 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
         <div className="vg-testata">
           <span className="vg-marchio"><b>Il Viaggiatore</b> · {finita ? "fine del viaggio" : `tappa ${Math.max(1, zi + 1)} di 7`}</span>
           <div style={{ display: "flex", gap: 8 }}>
+            <button className="vg-bottone vg-piccolo" onClick={() => setTaccuino("salva")} disabled={finita} title="Salva la partita (F5)">salva</button>
+            <button className="vg-bottone vg-piccolo" onClick={() => setTaccuino("carica")} title="Carica una partita (F9)">carica</button>
             <button className="vg-bottone vg-piccolo" onClick={() => setGuida(true)}>? come si gioca</button>
-            <button className="vg-bottone vg-piccolo" onClick={onExit}>← intro</button>
+            <button className="vg-bottone vg-piccolo" onClick={esci}>← intro</button>
           </div>
         </div>
         <div className="vg-luogo">
@@ -263,6 +362,7 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
                   <p className="vg-finale-testo">{finale || (esito === "vinta" ? "Sei arrivato." : "Il viaggio finisce qui.")}</p>
                   <div className="vg-finale-azioni">
                     <button className="vg-bottone vg-pieno" onClick={ricomincia}>↺ riparti dalla stazione</button>
+                    <button className="vg-bottone" onClick={() => setTaccuino("carica")}>carica una partita</button>
                     <button className="vg-bottone" onClick={onExit}>← intro</button>
                   </div>
                 </section>
@@ -395,6 +495,12 @@ const ViaggiatorePlayer = ({ onExit }: { onExit: () => void }) => {
       </div>
 
       {guida && <ComeSiGioca base={13} accento={accento} onChiudi={() => { setGuida(false); inputRef.current?.focus(); }} />}
+      {taccuino && (
+        <Taccuino base={13} modo={taccuino} accento={accento} puoSalvare={!finita} avvisaPerdita={nonSalvati > 0 && !finita}
+          onSalva={salvaIn}
+          onCarica={(d) => { setTaccuino(null); riprendi(d); }}
+          onChiudi={() => { setTaccuino(null); inputRef.current?.focus(); }} />
+      )}
     </div>
   );
 };

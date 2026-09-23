@@ -6,12 +6,12 @@
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.2.0";
-export const VERSION_LABEL = "v1.2.0 — Il linguaggio è completo";
+export const VERSION = "1.2.1";
+export const VERSION_LABEL = "v1.2.1 — Il linguaggio è completo";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.2.0";
+export const ENGINE_VERSION = "1.2.1";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -27,7 +27,9 @@ export const SITE_URL = "https://favella.eu";
 //   branding), download alla 1.0.1, l'IDE sperimentale annunciato in chiaro.
 // · 2.2.0 = motore 1.2.0 (salvataggi, collaudo che gioca, posto iniziale) e
 //   Il Viaggiatore come gioco a sé, scaricabile.
-export const SITE_VERSION = "2.2.0";
+// · 2.3.0 = motore 1.2.1, banner di Il Viaggiatore ridisegnato sulla sua
+//   identità visiva, /esperimento risincronizzato col gioco (taccuino, loghi).
+export const SITE_VERSION = "2.3.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -36,17 +38,17 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.2.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.2.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.2.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.2.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.2.1";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.2.1-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.2.1-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.2.1-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: il gioco si aggiorna (1.1.0 col motore FAVELLA 1.2.0).
+// Sempre l'ultima release: il gioco si aggiorna (1.1.1 col motore FAVELLA 1.2.1).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
@@ -355,6 +357,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.2.1",
+    title: "ANNULLA riporta indietro anche ANCORA",
+    content: "Una correzione piccola ma che si sente giocando. Prima, dopo «prendi la mappa» e «annulla», il comando «ancora» rifaceva proprio la presa appena disfatta. Adesso «annulla» riporta indietro anche la memoria di «ancora», che ripete il comando precedente, o dice che non c'è nulla da ripetere. La grammatica non cambia.",
+  },
   {
     version: "1.2.0",
     title: "Salvare, collaudare giocando, sinonimi per ogni verbo",

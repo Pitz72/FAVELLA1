@@ -4,24 +4,27 @@
 //  Un cortometraggio di ~88 s in dieci inquadrature (vedi trailer/scaletta.ts
 //  per il découpage). Architettura:
 //   · UN orologio (rAF) → tempo t. Tutto è funzione di t: canvas, testi,
-//     suono, barra dei capitoli. Pausa, «salta» e «rivedi» sono esatti.
+//     suono. Nessun comando a schermo durante il trailer: Esc lo salta.
 //   · Canvas 16:9 in coordinate di progetto 1920×1080 per le immagini
 //     (paesaggi procedurali, viandante articolato, mappa, polvere).
 //   · Livello DOM, stessa superficie 1920×1080 scalata, per la tipografia
-//     (nitida a ogni risoluzione) e i controlli nella banda del letterbox.
+//     (nitida a ogni risoluzione) e il menu d'avvio finale.
 //     I testi si animano scrivendo gli stili via ref: niente re-render React
 //     a 60 fps.
 //   · Colonna sonora: il brano src/assets/intro.mp3 (fa anche da orologio)
-//     più il rumorismo sintetizzato; senza brano, tutta sintetizzata. Spenta
-//     di default (tasto «audio»: i browser vietano l'audio senza un gesto).
+//     più il rumorismo sintetizzato; senza brano, tutta sintetizzata. Sul
+//     desktop parte da sola; nel browser col primo tasto o clic.
 // ====================================================================
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { W, H, BANDA, SCENE, DURATA, CAPITOLI, presenza, TAPPE_T0, TAPPE_PASSO, CINQUE_T0, CINQUE_PASSO, REGOLA_DUR } from "../trailer/scaletta";
+import { W, H, BANDA, SCENE, DURATA, presenza, TAPPE_T0, TAPPE_PASSO, CINQUE_T0, CINQUE_PASSO, REGOLA_DUR } from "../trailer/scaletta";
 import { disegnaScena, precarica, tappaCorrente, REGOLE, FONT, type Cache } from "../trailer/paesaggi";
 import { clamp, seg, easeOut, easeIn, expoOut, inviluppo } from "../trailer/tempo";
 import { ColonnaSonora } from "../trailer/audio";
 import branoIntro from "../assets/intro.mp3";
 import { inDesktop, esciDalGioco } from "../lib/desktop";
+import Taccuino from "../gioco/Taccuino";
+import { piuRecente, type Salvataggio } from "../lib/salvataggi";
+import { etichettaVersione } from "../lib/versione";
 import ComeSiGioca from "../gioco/ComeSiGioca";
 
 // --------------------------------------------------------------------
@@ -71,7 +74,7 @@ const CUES: Cue[] = [
     ],
   })),
   { id: "numeritag", da: 78.9, a: 81.7, tipo: "dissolvi", box: centro(760),
-    righe: [{ testo: "Un'avventura testuale in italiano. Si gioca nel browser, col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
+    righe: [{ testo: "Un'avventura testuale in italiano, scritta e giocata col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
 ];
 
 const STATS = [{ n: 7, l: "tappe" }, { n: 39, l: "luoghi" }, { n: 13, l: "personaggi" }, { n: 6, l: "finali" }];
@@ -107,7 +110,7 @@ function faiGrana(): string {
 }
 
 // ====================================================================
-const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLaunch: () => void }) => {
+const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLaunch: (carica?: Salvataggio | null) => void }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const telaRef = useRef<HTMLCanvasElement>(null);
   const graneRef = useRef<HTMLDivElement>(null);
@@ -122,11 +125,10 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   const [scala, setScala] = useState(1);
   const [pronto, setPronto] = useState(false);
   const [finito, setFinito] = useState(startAtEnd);
-  const [pausa, setPausa] = useState(false);
   const [audio, setAudio] = useState(false);
-  const [capitolo, setCapitolo] = useState(0);
+  const [taccuino, setTaccuino] = useState(false);
+  const [ultimo, setUltimo] = useState<Salvataggio | null>(null);
   const [guida, setGuida] = useState(false);
-  const [esporta, setEsporta] = useState(false);
   const grana = useMemo(faiGrana, []);
   const ridotto = useMemo(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, []);
 
@@ -177,10 +179,8 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     if (!import.meta.env.DEV) return;
     const w = window as unknown as { __trailer?: object };
     w.__trailer = {
-      vai: (t: number) => { tRef.current = t; pausaRef.current = true; setPausa(true); setFinito(t >= DURATA); },
-      riprendi: () => { pausaRef.current = false; setPausa(false); },
-      // esportazione video: nasconde i comandi, resta solo la pellicola
-      esporta: (si: boolean) => setEsporta(si),
+      vai: (t: number) => { tRef.current = t; pausaRef.current = true; setFinito(t >= DURATA); },
+      riprendi: () => { pausaRef.current = false; },
       t: () => tRef.current,
       brano: () => suono.current?.diagnosi(),
     };
@@ -308,7 +308,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   useEffect(() => {
     if (!pronto) return;
     if (ridotto) { tRef.current = DURATA; setFinito(true); disegna(DURATA); return; }
-    let raf = 0, prec = performance.now(), capPrec = -1, finePrec = startAtEnd;
+    let raf = 0, prec = performance.now(), finePrec = startAtEnd;
     const passo = (ora: number) => {
       const dt = Math.min(0.1, (ora - prec) / 1000);
       prec = ora;
@@ -323,9 +323,6 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       const t = tRef.current;
       disegna(t);
       suono.current?.aggiorna(t, fermo);
-      let cap = 0;
-      CAPITOLI.forEach((c, i) => { if (t >= c.t) cap = i; });
-      if (cap !== capPrec) { capPrec = cap; setCapitolo(cap); }
       if (!finePrec && t >= DURATA) { finePrec = true; setFinito(true); }
       if (finePrec && t < DURATA) finePrec = false;
       raf = requestAnimationFrame(passo);
@@ -337,27 +334,40 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   // ── comandi ───────────────────────────────────────────────────────
   const salta = useCallback(() => {
     tRef.current = Math.max(tRef.current, DURATA);
-    pausaRef.current = false; setPausa(false);
+    pausaRef.current = false;
     setFinito(true);
   }, []);
-  const rivedi = () => { tRef.current = 0; pausaRef.current = false; setPausa(false); setFinito(false); };
-  const commutaPausa = useCallback(() => { pausaRef.current = !pausaRef.current; setPausa(pausaRef.current); }, []);
+  const rivedi = () => { tRef.current = 0; pausaRef.current = false; setFinito(false); };
   const commutaAudio = useCallback(() => {
     if (!suono.current) suono.current = new ColonnaSonora();
     if (suono.current.attivo) { suono.current.spegni(); setAudio(false); }
     else { suono.current.attiva(); setAudio(true); }
   }, []);
 
+  // Durante il trailer un solo tasto: Esc lo salta. Nel browser, il primo gesto
+  // (tasto o clic) accende anche la musica: i browser non la lasciano partire da sola.
   useEffect(() => {
     const tasto = (e: KeyboardEvent) => {
+      if (taccuino) return;   // il taccuino gestisce Esc da sé
       if (e.key === "Escape" && guida) { setGuida(false); return; }
-      if (e.key === " " && !finito) { e.preventDefault(); commutaPausa(); }
-      else if ((e.key === "Escape" || e.key === "Enter") && !finito) salta();
-      else if (e.key === "m" || e.key === "M") commutaAudio();
+      if (e.key === "Escape" && !finito) { e.preventDefault(); salta(); }
     };
     window.addEventListener("keydown", tasto);
     return () => window.removeEventListener("keydown", tasto);
-  }, [finito, salta, commutaPausa, commutaAudio, guida]);
+  }, [finito, salta, guida, taccuino]);
+
+  useEffect(() => {
+    if (inDesktop()) return;
+    const accendi = () => {
+      if (suono.current && !suono.current.attivo) { suono.current.attiva(); setAudio(true); }
+      window.removeEventListener("keydown", accendi); window.removeEventListener("pointerdown", accendi);
+    };
+    window.addEventListener("keydown", accendi); window.addEventListener("pointerdown", accendi);
+    return () => { window.removeEventListener("keydown", accendi); window.removeEventListener("pointerdown", accendi); };
+  }, []);
+
+  // il salvataggio più recente, per «continua»
+  useEffect(() => { if (finito) piuRecente().then(setUltimo).catch(() => setUltimo(null)); }, [finito, taccuino]);
 
   const reg = (id: string) => (el: HTMLElement | null) => { extraRef.current[id] = el; };
   // palco molto piccolo (telefono in verticale): i comandi escono dal palco, a misura d'uomo
@@ -366,6 +376,11 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     cursor: "pointer", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)",
     color: "#c9d2de", fontFamily: FONT.mono, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 16px", borderRadius: 999,
   };
+  const pulsantePrincipale: React.CSSProperties = {
+    cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", gap: 18, borderRadius: 999,
+    padding: "24px 60px", ...display(28, { fontWeight: 700, letterSpacing: "0.01em" }), color: "#140c06", background: "#f0b77e",
+    ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite",
+  } as React.CSSProperties;
   const bottone: React.CSSProperties = {
     cursor: "pointer", border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.03)",
     color: "#c9d2de", ...mono(15, { letterSpacing: "0.22em" }), padding: "11px 20px", borderRadius: 999,
@@ -440,24 +455,9 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
             <div ref={reg("sottotitolo")} style={mono(22, { color: "#ffd2a4", letterSpacing: "0.5em", marginTop: 26, opacity: 0, textShadow: "0 1px 18px rgba(0,0,0,.8)" })}>un esperimento in favella 1</div>
           </div>
 
-          {/* letterbox, e i controlli nella banda */}
+          {/* letterbox */}
           <div ref={reg("bandaSu")} style={{ position: "absolute", left: 0, right: 0, top: 0, height: BANDA, background: "#000" }} />
           <div ref={reg("bandaGiu")} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: BANDA, background: "#000" }} />
-          {!finito && pronto && !compatto && !esporta && (
-            <div ref={reg("controlli")} style={{ position: "absolute", left: 60, right: 60, bottom: 40, height: 58, display: "flex", alignItems: "center", gap: 36, pointerEvents: "auto" }}>
-              <div style={{ width: 250, ...mono(15, { color: "rgba(214,224,238,.7)" }) }}>{CAPITOLI[capitolo].nome}</div>
-              <div style={{ position: "relative", flex: 1, height: 3, background: "rgba(255,255,255,.1)", borderRadius: 2 }}>
-                <div ref={reg("barra")} style={{ position: "absolute", inset: 0, background: "#f0b77e", transformOrigin: "left", transform: "scaleX(0)", borderRadius: 2 }} />
-                {CAPITOLI.slice(1).map((c) => (
-                  <i key={c.t} style={{ position: "absolute", left: `${(c.t / DURATA) * 100}%`, top: -4, width: 2, height: 11, background: "#000" }} />
-                ))}
-              </div>
-              <button onClick={commutaAudio} style={bottone} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
-              <button onClick={commutaPausa} style={bottone} aria-label={pausa ? "Riprendi" : "Pausa"}>{pausa ? "▶ riprendi" : "❚❚ pausa"}</button>
-              <button onClick={salta} style={{ ...bottone, color: "#0a0706", background: "#f0b77e", borderColor: "#f0b77e" }}>salta →</button>
-            </div>
-          )}
-
           {/* schermata d'avvio */}
           {finito && !compatto && (
             <section style={{ position: "absolute", left: 0, right: 0, top: 470, textAlign: "center", pointerEvents: "auto", animation: "kf-launch 1.2s ease .3s both" }}>
@@ -466,20 +466,35 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               <p style={{ margin: "22px auto 0", maxWidth: 820, ...serif(27, { color: "rgba(230,222,208,.72)", lineHeight: 1.5 }) }}>
                 Da qui in poi scrivi tu i comandi, in italiano. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.
               </p>
-              <button onClick={onLaunch} style={{
-                marginTop: 46, cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", gap: 18, borderRadius: 999,
-                padding: "24px 60px", ...display(28, { fontWeight: 700, letterSpacing: "0.01em" }), color: "#140c06", background: "#f0b77e",
-                ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite",
-              } as React.CSSProperties}>Inizia il viaggio <span>→</span></button>
+              <div style={{ marginTop: 46, display: "flex", justifyContent: "center", alignItems: "center", gap: 22 }}>
+                {ultimo && (
+                  <button onClick={() => onLaunch(ultimo)} style={{ ...pulsantePrincipale, flexDirection: "column", gap: 4, padding: "16px 54px" } as React.CSSProperties}>
+                    <span>Continua il viaggio →</span>
+                    <span style={serif(19, { color: "rgba(20,12,6,.72)", fontWeight: 500 })}>{ultimo.riassunto.luogo} · turno {ultimo.riassunto.turno}</span>
+                  </button>
+                )}
+                <button onClick={() => onLaunch(null)} style={ultimo ? { ...bottone, ...display(24, { fontWeight: 600, letterSpacing: "0.01em" }), textTransform: "none", padding: "22px 40px", color: "#f4ece0", borderColor: "rgba(240,183,126,.45)" } : pulsantePrincipale}>
+                  {ultimo ? "Nuovo viaggio" : <>Inizia il viaggio <span>→</span></>}
+                </button>
+              </div>
               <div style={{ marginTop: 30, display: "flex", justifyContent: "center", gap: 18 }}>
                 <button onClick={() => setGuida(true)} style={{ ...bottone, color: "#f0b77e", borderColor: "rgba(240,183,126,.5)" }}>? come si gioca</button>
+                <button onClick={() => setTaccuino(true)} style={bottone}>carica</button>
                 <button onClick={rivedi} style={bottone}>↺ rivedi il trailer</button>
                 <button onClick={commutaAudio} style={bottone} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
                 {inDesktop() && <button onClick={esciDalGioco} style={bottone}>✕ esci</button>}
               </div>
             </section>
           )}
+          {finito && !compatto && (
+            <div style={{ position: "absolute", right: 60, bottom: 46, ...mono(14, { color: "rgba(214,224,238,.34)", letterSpacing: "0.14em", textTransform: "none" }) }}>
+              v{etichettaVersione(true)}
+            </div>
+          )}
           {guida && !compatto && <ComeSiGioca base={19} onChiudi={() => setGuida(false)} />}
+          {taccuino && !compatto && (
+            <Taccuino base={19} modo="carica" puoSalvare={false} onCarica={(d) => { setTaccuino(false); onLaunch(d); }} onChiudi={() => setTaccuino(false)} />
+          )}
         </div>
       </div>
       {guida && compatto && <ComeSiGioca base={14} compatto onChiudi={() => setGuida(false)} />}
@@ -492,20 +507,14 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               <p style={{ margin: 0, fontFamily: FONT.serif, fontSize: 17, lineHeight: 1.45, color: "rgba(230,222,208,.8)", maxWidth: 340 }}>
                 Si parte a piedi. Da qui in poi scrivi tu i comandi, in italiano. Il gioco rende meglio in orizzontale.
               </p>
-              <button onClick={onLaunch} style={{ cursor: "pointer", border: "none", borderRadius: 999, padding: "14px 30px", fontFamily: FONT.display, fontWeight: 700, fontSize: 17, color: "#140c06", background: "#f0b77e", ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite" } as React.CSSProperties}>Inizia il viaggio →</button>
+              <button onClick={() => onLaunch(ultimo)} style={{ cursor: "pointer", border: "none", borderRadius: 999, padding: "14px 30px", fontFamily: FONT.display, fontWeight: 700, fontSize: 17, color: "#140c06", background: "#f0b77e", ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite" } as React.CSSProperties}>{ultimo ? "Continua il viaggio →" : "Inizia il viaggio →"}</button>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setGuida(true)} style={{ ...bottoneCompatto, color: "#f0b77e" }}>? come si gioca</button>
                 <button onClick={rivedi} style={bottoneCompatto}>↺ rivedi</button>
                 <button onClick={commutaAudio} style={bottoneCompatto} aria-pressed={audio}>{audio ? "♪ sì" : "♪ no"}</button>
               </div>
             </>
-          ) : (
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={commutaAudio} style={bottoneCompatto} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>
-              <button onClick={commutaPausa} style={bottoneCompatto}>{pausa ? "▶" : "❚❚"}</button>
-              <button onClick={salta} style={{ ...bottoneCompatto, color: "#0a0706", background: "#f0b77e", borderColor: "#f0b77e" }}>salta →</button>
-            </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>

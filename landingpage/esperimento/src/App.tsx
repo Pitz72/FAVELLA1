@@ -1,31 +1,41 @@
 // ====================================================================
-//  App SEPARATA «Il Viaggiatore» — orchestratore.
+//  «Il Viaggiatore» — orchestratore.
 // --------------------------------------------------------------------
-//  Due fasi: il TRAILER (filmato GSAP in auto-play) e il GIOCO (shell 16:9
-//  col motore FAVELLA reale). Il pulsante d'avvio del trailer porta al
-//  gioco; «← intro» dal gioco torna al trailer, ma DIRETTO al pulsante
-//  d'avvio (non si rivede tutto il filmato).
+//  Tre fasi: i LOGHI (Runtime, FAVELLA; solo all'avvio), il TRAILER e il
+//  GIOCO (shell 16:9 col motore FAVELLA reale). Dal menu del trailer si
+//  comincia un nuovo viaggio o se ne riprende uno salvato; «← intro» dal
+//  gioco torna al trailer, ma DIRETTO al menu (non si rivede tutto il filmato).
+//  Sopra tutto, sul desktop, l'avviso dell'aggiornamento automatico.
 // ====================================================================
 import { useState } from "react";
+import Loghi from "./components/Loghi";
 import Trailer from "./components/Trailer";
 import GameShell from "./components/GameShell";
+import AvvisoAggiornamento from "./components/AvvisoAggiornamento";
+import type { Salvataggio } from "./lib/salvataggi";
+
+type Fase = "loghi" | "trailer" | "gioco";
 
 export default function App() {
-  const [fase, setFase] = useState<"trailer" | "gioco">("trailer");
+  const [fase, setFase] = useState<Fase>("loghi");
   // Dopo aver visto il gioco almeno una volta, il trailer riparte dal finale.
   const [giaVisto, setGiaVisto] = useState(false);
+  const [carica, setCarica] = useState<Salvataggio | null>(null);
+  // una partita nuova (o ricaricata) rimonta il gioco da capo
+  const [partita, setPartita] = useState(0);
 
   return (
     <div className="h-full w-full bg-black">
-      {fase === "trailer" ? (
+      {fase === "loghi" && <Loghi onFine={() => setFase("trailer")} />}
+      {fase === "trailer" && (
         <Trailer
-          key={giaVisto ? "end" : "full"}
+          key={giaVisto ? "fine" : "intero"}
           startAtEnd={giaVisto}
-          onLaunch={() => { setGiaVisto(true); setFase("gioco"); }}
+          onLaunch={(daCaricare) => { setCarica(daCaricare ?? null); setPartita((n) => n + 1); setGiaVisto(true); setFase("gioco"); }}
         />
-      ) : (
-        <GameShell onExit={() => setFase("trailer")} />
       )}
+      {fase === "gioco" && <GameShell key={partita} carica={carica} onExit={() => setFase("trailer")} />}
+      <AvvisoAggiornamento />
     </div>
   );
 }

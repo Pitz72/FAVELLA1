@@ -12,11 +12,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ViaggiatorePlayer from "./ViaggiatorePlayer";
 import { commutaSchermoIntero, statoSchermoIntero } from "../lib/desktop";
+import type { Salvataggio } from "../lib/salvataggi";
 
 const DESIGN_W = 1280;
 const DESIGN_H = 720;
 
-const GameShell = ({ onExit }: { onExit: () => void }) => {
+const GameShell = ({ onExit, carica = null }: { onExit: () => void; carica?: Salvataggio | null }) => {
   const shellRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -61,7 +62,7 @@ const GameShell = ({ onExit }: { onExit: () => void }) => {
           className="absolute left-0 top-0 origin-top-left"
           style={{ width: DESIGN_W, height: DESIGN_H, transform: `scale(${scale})` }}
         >
-          <ViaggiatorePlayer onExit={onExit} />
+          <ViaggiatorePlayer onExit={onExit} carica={carica} />
         </div>
 
         {/* Controllo fullscreen, in sovrimpressione sul palco. */}

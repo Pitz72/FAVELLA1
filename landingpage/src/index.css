@@ -164,3 +164,15 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Banner di «Il Viaggiatore» (Galleria): il passo del viandante, l'alone del
+   sole che respira, la polvere sospesa nella luce. */
+@keyframes vb-passo { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes vb-alone { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
+@keyframes vb-polvere { 0% { transform: translate(0,0); opacity: 0; } 20% { opacity: .7; } 100% { transform: translate(-40px,-26px); opacity: 0; } }
+.vb-passo { animation: vb-passo 1.1s ease-in-out infinite; }
+.vb-alone { animation: vb-alone 7s ease-in-out infinite; transform-origin: center; }
+.vb-polvere { animation: vb-polvere 14s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .vb-passo, .vb-alone, .vb-polvere { animation: none; }
+}
