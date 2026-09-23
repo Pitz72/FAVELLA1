@@ -46,7 +46,8 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/tag/v1.0.0`;
+// Sempre l'ultima release: il gioco si aggiorna (1.1.0 col motore FAVELLA 1.2.0).
+export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
 export const GITHUB_MANUALE_URL = `${_REPO}/documentazione/manuale`;
@@ -153,7 +154,7 @@ export const NEWS: NewsItem[] = [
     emphasis: "primary",
     title: "Il Viaggiatore diventa un gioco: 1.0.0 per Windows e Linux",
     body: "Il Viaggiatore era nato come esperimento, una storia lunga scritta in FAVELLA per vedere fin dove il motore regge. Adesso è un gioco completo, con un repository e una release tutti suoi. Sette zone e trentanove luoghi di un sud rimasto senz'acqua, tredici personaggi, sei finali. Si comincia da un trailer montato sulla colonna sonora originale. I salvataggi sono sei, più uno automatico, e si fanno con F5 e F9; ognuno conserva un'impronta dello stato, così al caricamento il gioco controlla di aver ricostruito proprio la partita che avevi lasciato. L'installer per Windows e l'AppImage per Linux si aggiornano da soli quando esce una versione nuova; per chi preferisce ci sono anche la versione portatile per Windows e il pacchetto .deb. Il codice è sotto licenza MIT; storia, testi, musica e grafica sotto CC BY-SA 4.0. Qui sul sito, nella Galleria, resta la versione da provare nel browser.",
-    cta: { label: "Scarica Il Viaggiatore 1.0.0", href: VIAGGIATORE_RELEASE_URL },
+    cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
   },
   {
     tag: "Tutto in chiaro",
