@@ -10,7 +10,7 @@
 >
 > **Versione.** Dalla v0.18.0 grammatica, compilatore e motore condividono **una
 > sola linea di versione**: questa specifica avanza in lockstep col motore.
-> Versione corrente: **1.2.0**.
+> Versione corrente: **1.2.0** (motore 1.2.1: patch di runtime, grammatica identica).
 >
 > **Novità v1.2.0 — salvare, collaudare giocando, sinonimi per ogni verbo.**
 > Una sola modifica di grammatica, additiva: `def_sinonimo` accetta come bersaglio
@@ -1047,9 +1047,12 @@ fissa ciò che è emerso, così che la spec descriva il motore com'è.
 
 - **Opzioni di dialogo.** Si scelgono per numero o per testo, anche parziale.
 
-- **ANCORA e ANNULLA.** `Mondo.ultimo_comando` è stato *di sessione*, fuori dalle
-  istantanee (`_CAMPI_VOLATILI`): ANNULLA non lo ripristina. Dopo `prendi X`,
-  `annulla`, il comando `ancora` ripete proprio `prendi X`. `ultimo_comando` si
+- **ANCORA e ANNULLA.** Fino alla 1.2.0 `Mondo.ultimo_comando` era stato *di
+  sessione*, fuori dalle istantanee: dopo `prendi X`, `annulla`, il comando
+  `ancora` ripeteva proprio `prendi X`. **Dalla 1.2.1** è stato del mondo, dentro
+  le istantanee: ANNULLA lo riporta al valore di prima del turno disfatto, e
+  `ancora` ripete il comando che lo precedeva (o dice che non c'è nulla da
+  ripetere). La grammatica non cambia: la spec resta questa. `ultimo_comando` si
   aggiorna solo quando un comando consuma un turno fuori dialogo (lo stesso
   momento in cui si registra l'istantanea di ANNULLA): i comandi di dialogo e
   quelli di servizio non lo toccano.

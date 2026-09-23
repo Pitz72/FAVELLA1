@@ -5125,14 +5125,21 @@ def test_capienza_avviso_su_spostamento_in_inventario():
 
 
 def test_ancora_dopo_annulla_ripete_il_comando_disfatto():
-    print("[1.1.0: ANNULLA non ripristina ultimo_comando (comportamento fissato)]")
+    print("[1.2.1: ANNULLA riporta indietro anche la memoria di ANCORA]")
     mondo = runtime(_SRC_POSTO)
     esegui(mondo, "prendi la mappa")
     esegui(mondo, "annulla")
     _check("mappa" not in mondo.inventario, "annullata, la mappa è di nuovo a terra")
-    esegui(mondo, "ancora")
-    _check("mappa" in mondo.inventario,
-           "ANCORA ripete il comando disfatto (ultimo_comando è di sessione)")
+    out = esegui(mondo, "ancora")
+    _check("mappa" not in mondo.inventario and "nulla da ripetere" in out,
+           "ANCORA non rifà il turno disfatto: prima non c'era nulla da ripetere")
+    mondo = runtime(_SRC_POSTO)
+    esegui(mondo, "prendi il secchio")
+    esegui(mondo, "prendi la mappa")
+    esegui(mondo, "annulla")
+    out = esegui(mondo, "ancora")
+    _check("mappa" not in mondo.inventario and mondo.ultimo_comando == "prendi il secchio",
+           "ANCORA ripete il comando che precedeva quello disfatto")
 
 
 # --- [1.2.0] Sinonimi dei verbi d'autore -------------------------------------

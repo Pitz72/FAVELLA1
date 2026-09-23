@@ -6,8 +6,8 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ✅ **STATO AL 2026-09-23: motore 1.2.0, pubblicato.** I cinque moduli in
-> `engine/` sono il motore **1.2.0** (posto iniziale degli oggetti, SALVA/CARICA
+> ✅ **STATO AL 2026-09-23: motore 1.2.1, pubblicato.** I cinque moduli in
+> `engine/` sono il motore **1.2.1** (posto iniziale degli oggetti, SALVA/CARICA
 > nel `localStorage`, sinonimi dei verbi d'autore). `galleria/il-viaggiatore/`
 > richiede almeno la 1.1.0. Release GitHub v1.2.0 e sito allineati; se
 > risincronizzi, ricontrolla `scripts/valida_checkpoint.py` (53/53).

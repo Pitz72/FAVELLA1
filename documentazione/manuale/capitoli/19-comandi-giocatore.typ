@@ -82,9 +82,9 @@ inventario, stati, contatori, persino il caso delle descrizioni a varietà. Puoi
 annullare più turni di fila, tornando indietro passo dopo passo. Una conversazione
 intera conta come un solo passo: un `annulla` ti riporta a prima di averla iniziata.
 
-Una sola cosa `annulla` non tocca: la memoria di `ancora`. Se scrivi `prendi la
-mappa`, poi `annulla`, poi `ancora`, la mappa torna nelle tue mani: `ancora`
-ripete l'ultimo comando che hai dato, anche se l'hai appena disfatto.
+`annulla` riporta indietro anche la memoria di `ancora`. Se scrivi `apri la
+porta`, poi `prendi la mappa`, poi `annulla`, un `ancora` ripete `apri la porta`:
+il comando disfatto è come se non l'avessi mai dato.
 
 == Salvare e riprendere
 

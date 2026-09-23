@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.2.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.2.1)
 
 from strutture import Mondo, Azione
 from favella_utils import rendi_testo, frase_indeterminativa, prima_maiuscola

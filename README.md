@@ -61,14 +61,16 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 ## 📘 Il manuale
 
 C'è un **manuale d'autore completo**: 21 capitoli, 86 pagine, dall'installazione fino
-a demoni, dialoghi e casualità d'autore, allineato al linguaggio 1.2.0.
+a demoni, dialoghi e casualità d'autore, allineato al linguaggio 1.2 (motore 1.2.1).
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
 - **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026)
 
 ---
 
-## 🏁 Stato Attuale: v1.2.0 — salvare, collaudare giocando, sinonimi per ogni verbo
+## 🏁 Stato Attuale: v1.2.1 — salvare, collaudare giocando, sinonimi per ogni verbo
+
+La **1.2.1** è una patch: ANNULLA riporta indietro anche la memoria di ANCORA.
 
 La **1.2.0** (settembre 2026) porta nel motore quello che è servito per fare di
 *Il Viaggiatore* un gioco vero: **SALVA/CARICA**, il **collaudo dinamico**
@@ -88,7 +90,7 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **734
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **735
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
 336 passati). Spec tecnica: [`documentazione/grammatica-1.2.0.md`](documentazione/grammatica-1.2.0.md).
 
@@ -119,15 +121,15 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.2.0** | header di modulo |
-| Compilatore (`compilatore.py`) | **1.2.0** | header di modulo |
-| Strutture dati (`strutture.py`) | **1.2.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.2.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.2.0** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.2.0** | nuovo nella 1.2.0 |
+| Motore / interprete (`gioco.py`) | **1.2.1** | header di modulo |
+| Compilatore (`compilatore.py`) | **1.2.1** | header di modulo |
+| Strutture dati (`strutture.py`) | **1.2.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.2.1** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.2.1** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.2.1** | nuovo nella 1.2.0 |
 | Specifica formale della grammatica | **1.2.0** | [`documentazione/grammatica-1.2.0.md`](documentazione/grammatica-1.2.0.md) — *1.0.0 + `def_posto` (§18) + `def_sinonimo` esteso (§20)* |
-| Suite di test | **1.2.0** | 734 asserzioni linguaggio + 50 collaudo (pytest 336) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.2.0 | — |
+| Suite di test | **1.2.1** | 735 asserzioni linguaggio + 50 collaudo (pytest 336) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.2.1 | — |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 86 pagine, allineato al linguaggio 1.2.0**. La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 

@@ -4,6 +4,20 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.2.1] - 2026-09-23
+### ↩️ ANNULLA riporta indietro anche ANCORA
+Patch di runtime, grammatica identica alla 1.2.0.
+
+- `Mondo.ultimo_comando` entra nelle istantanee di ANNULLA. Prima, dopo
+  `prendi X`, `annulla`, il comando `ancora` rifaceva proprio il turno appena
+  disfatto; ora ripete il comando che lo precedeva, o risponde che non c'è nulla
+  da ripetere. Era una delle questioni aperte dal lavoro su *Il Viaggiatore*.
+- Spec `grammatica-1.2.0.md` §19 e manuale cap. 19 aggiornati.
+
+Suite: **735 asserzioni del linguaggio + 50 di collaudo**, tutte verdi
+(`pytest`: 336). SALVA/CARICA ricollaudato su *Il Viaggiatore* (12 partite,
+impronta e risposte identiche, ANNULLA e ANCORA compresi dopo il caricamento).
+
 ## [1.2.0] - 2026-09-23
 ### 💾 Salvare, collaudare giocando, sinonimi per ogni verbo
 La prima versione **distribuita** dopo la 1.0.1: comprende anche tutta la 1.1.0

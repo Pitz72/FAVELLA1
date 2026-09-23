@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.2.0)
+# Interprete Interattivo per FAVELLA 1 (v1.2.1)
 
 import contextlib
 import copy

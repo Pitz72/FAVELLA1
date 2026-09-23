@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.2.0"
+VERSIONE_MOTORE = "1.2.1"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -828,7 +828,8 @@ class Mondo:
         # [0.21.0 / A3] Comandi di servizio. 'ultimo_comando' = ultimo comando
         # del giocatore che ha consumato un turno (per ANCORA); '_storia_stati' =
         # pila di istantanee profonde dello stato PRIMA di ogni turno (per ANNULLA).
-        # Entrambi sono stato di sessione (esclusi dalle istantanee).
+        # La pila è stato di sessione; 'ultimo_comando' dalla 1.2.1 entra nelle
+        # istantanee (ANNULLA lo riporta indietro).
         self.ultimo_comando: Optional[str] = None
         self._storia_stati: List[dict] = []
         # [0.27.0 / D-dialogo] Istantanea pre-dialogo messa da parte mentre una
@@ -922,10 +923,13 @@ class Mondo:
 
     # [0.21.0 / A3] Campi ESCLUSI dalle istantanee di ANNULLA: i riferimenti
     # statici (azioni/mappe, immutabili dopo la compilazione) e lo stato di
-    # sessione (la cronologia stessa, l'ultimo comando). Tutto il resto — stanze,
-    # oggetti, inventario, variabili, demoni, posizione, turno — è stato mutabile
-    # e viene catturato/ripristinato fedelmente.
-    _CAMPI_VOLATILI = ("_storia_stati", "ultimo_comando", "azioni",
+    # sessione (la cronologia stessa). Tutto il resto — stanze, oggetti,
+    # inventario, variabili, demoni, posizione, turno — è stato mutabile e viene
+    # catturato/ripristinato fedelmente.
+    # [1.2.1] 'ultimo_comando' è uscito da qui: ANNULLA riporta anche la memoria
+    # di ANCORA, così dopo 'prendi X', 'annulla', 'ancora' non si rifà il turno
+    # appena disfatto ma quello precedente.
+    _CAMPI_VOLATILI = ("_storia_stati", "azioni",
                        "mappa_verbi_giocatore", "annunci", "_snap_dialogo",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
