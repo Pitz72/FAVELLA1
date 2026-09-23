@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.1.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.2.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -366,7 +366,12 @@ _GRAMMAR_TEMPLATE = r"""
     // comporta IDENTICAMENTE senza una regola per ogni oggetto. Inizia con
     // TESTO_QUOTATO come def_verbo; dopo '"…" è' il lookahead "come" la distingue
     // da "un" (comando) → LALR(1) 0-ambiguo.
+    // [1.2.0] Il bersaglio può essere anche un verbo DICHIARATO dall'autore
+    // ('"lancia" è come getta.'), e — fra virgolette — un comando di più parole
+    // ('"lancia il cibo" è come "getta il cibo".'). Dopo "come" il lookahead
+    // WORD vs TESTO_QUOTATO distingue le due forme → 0-ambiguo.
     def_sinonimo: TESTO_QUOTATO "è" "come" VERBO "."
+                | TESTO_QUOTATO "è" "come" TESTO_QUOTATO "."
     // [Livello 5] La descrizione può essere CONDIZIONALE: con una clausola 'se',
     // si applica solo quando la condizione è vera (più dichiarazioni = varianti
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
@@ -978,6 +983,7 @@ class FavellaTransformer(Transformer):
         # stato↔contatore non ha senso ed è un errore d'autore gentile.
         self._pending_var_coppie = []
         self._pending_regole_target = [] # (id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo)
+        self._pending_sinonimi = []      # [1.2.0] (sinonimo, bersaglio) verso verbi d'autore
         self._pending_inventario_iniziale = []  # [0.19.0/A8] ogg_grezzo da mettere in inventario all'avvio
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
@@ -1166,32 +1172,15 @@ class FavellaTransformer(Transformer):
         # rimappa al verbo di libreria 'verbo_canonico'. Il verbo bersaglio dev'essere
         # noto al motore, altrimenti il sinonimo è morto (warning non bloccante).
         sinonimo = " ".join(sinonimo_testo.lower().split())
-        canonico = verbo_canonico  # già lowercase (metodo VERBO)
+        # VERBO arriva già minuscolo; la forma fra virgolette (1.2.0) va normalizzata.
+        canonico = " ".join(str(verbo_canonico).lower().split())
         if not sinonimo:
             self.warnings.append("Sinonimo di verbo vuoto ignorato.")
             return None
         if canonico not in VERBI_VALIDI:
-            # [0.30.0 / A4] Caso speciale: il bersaglio è una DIREZIONE
-            # ('"sinistra" è come est.'). 'è come' rimappa solo i VERBI; per le
-            # direzioni l'idioma corretto — e più pulito — è dichiarare una coppia
-            # di opposte. Lo si dice esplicitamente invece del generico
-            # 'non è un verbo noto', che disorienterebbe l'autore.
-            forme_direzioni = {f for varianti in DIREZIONI_BASE.values() for f in varianti}
-            forme_direzioni |= set(DIREZIONI_BASE.keys())
-            if canonico in forme_direzioni:
-                self.warnings.append(
-                    f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' è una "
-                    f"DIREZIONE, non un verbo: 'è come' rimappa solo i verbi e il "
-                    f"sinonimo non farà nulla. Per dare un nome a una direzione, "
-                    f"dichiara una coppia di opposte, ad es. "
-                    f"'{sinonimo.capitalize()} e <opposta> sono direzioni opposte.'."
-                )
-                return None
-            self.warnings.append(
-                f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' non è "
-                f"un verbo noto al motore: il sinonimo non farà nulla. Usa un verbo "
-                f"di libreria (es. prendi, esamina, usa, apri, vai)."
-            )
+            # [1.2.0] Può essere un verbo dichiarato dall'autore, magari più avanti
+            # nel sorgente: si decide in valida_post.
+            self._pending_sinonimi.append((sinonimo, canonico))
             return None
         if sinonimo in VERBI_VALIDI:
             self.warnings.append(
@@ -1200,6 +1189,39 @@ class FavellaTransformer(Transformer):
             )
         self.mondo.dichiara_sinonimo(sinonimo, canonico)
         return None
+
+    def _applica_sinonimo_differito(self, sinonimo, canonico):
+        """[1.2.0] Sinonimo il cui bersaglio non è un verbo di libreria: vale se
+        il bersaglio è un comando dichiarato dall'autore, altrimenti è morto."""
+        if canonico in self.mondo.verbi_personalizzati:
+            if sinonimo in self.mondo.verbi_personalizzati:
+                self.warnings.append(
+                    f"'{sinonimo}' è dichiarato sia come comando sia come sinonimo di "
+                    f"'{canonico}': vale il sinonimo.")
+            self.mondo.dichiara_sinonimo(sinonimo, canonico)
+            return
+        # [0.30.0 / A4] Caso speciale: il bersaglio è una DIREZIONE
+        # ('"sinistra" è come est.'). 'è come' rimappa solo i VERBI; per le
+        # direzioni l'idioma corretto — e più pulito — è dichiarare una coppia
+        # di opposte. Lo si dice esplicitamente invece del generico
+        # 'non è un verbo noto', che disorienterebbe l'autore.
+        forme_direzioni = {f for varianti in DIREZIONI_BASE.values() for f in varianti}
+        forme_direzioni |= set(DIREZIONI_BASE.keys())
+        if canonico in forme_direzioni:
+            self.warnings.append(
+                f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' è una "
+                f"DIREZIONE, non un verbo: 'è come' rimappa solo i verbi e il "
+                f"sinonimo non farà nulla. Per dare un nome a una direzione, "
+                f"dichiara una coppia di opposte, ad es. "
+                f"'{sinonimo.capitalize()} e <opposta> sono direzioni opposte.'."
+            )
+            return
+        self.warnings.append(
+            f"Sinonimo '{sinonimo}' è come '{canonico}', ma '{canonico}' non è "
+            f"un verbo noto al motore né un comando dichiarato: il sinonimo non "
+            f"farà nulla. Usa un verbo di libreria (es. prendi, esamina, usa, "
+            f"apri, vai) o dichiara prima il comando ('\"{canonico}\" è un comando.')."
+        )
 
     # [0.22.0 / A2] Valore di una descrizione: stringa singola o più varianti.
     def descr_singola(self, testo):
@@ -1820,6 +1842,8 @@ class FavellaTransformer(Transformer):
             self._applica_posto(nome, testo)
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
+        for sinonimo, canonico in self._pending_sinonimi:   # [1.2.0]
+            self._applica_sinonimo_differito(sinonimo, canonico)
         # [1.1.0] 'e adesso X è in inventario' non passa dal controllo della
         # capienza (lo fa solo il prendere del giocatore): se la storia ne
         # dichiara una, lo si dice all'autore una volta per oggetto. Il

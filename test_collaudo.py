@@ -228,6 +228,39 @@ def test_demo_reali_vincibili():
         _check(rep["vittoria"]["n_sorgenti"] >= 1, f"{nome}: almeno una sorgente di vittoria")
 
 
+def test_scorte_che_non_crescono():
+    print("[1.2.0: una scorta sotto soglia che nessuno fa crescere e' segnalata]")
+    mondo = compila(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il denaro è un contatore.\nIl denaro parte da 1.\n"
+        "L'acqua è un contatore.\nL'acqua parte da 3.\n"
+        "Il pane è una cosa.\nIl pane è in cella.\n"
+        'Invece di prendi il pane se il denaro è almeno 5: dire "Comprato." e adesso vinci.\n'
+        'Invece di mangia il pane se l\'acqua è almeno 1: dire "Bevi." e adesso diminuisci l\'acqua.\n'
+        'Invece di esamina il pane: dire "Spendi." e adesso diminuisci il denaro.\n')
+    _check(mondo is not None, "la storia compila")
+    rep = analizza_vincibilita(mondo)
+    contatori = {s["contatore"] for s in rep["scorte"]}
+    _check("denaro" in contatori, "il denaro (1, ne servono 5, si puo' solo spendere) e' segnalato")
+    _check("acqua" not in contatori, "l'acqua (basta all'avvio) non e' segnalata")
+    _check("SCORTE CHE NON CRESCONO" in rendi_report_testuale(rep), "la sezione compare nel report")
+    _check(rep["vittoria"]["esito"] == "ostruzione-possibile",
+           "la vittoria che chiede 5 di denaro risulta ostruita: diminuirlo non aiuta")
+
+
+def test_scorte_con_ricarica_non_segnalate():
+    print("[1.2.0: se una regola fa crescere la scorta, niente avviso]")
+    mondo = compila(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il denaro è un contatore.\n"
+        "Il pane è una cosa.\nIl pane è in cella.\n"
+        'Invece di prendi il pane se il denaro è almeno 5: dire "Comprato." e adesso vinci.\n'
+        'Invece di esamina il pane: dire "Trovi una moneta." e adesso aumenta il denaro.\n')
+    rep = analizza_vincibilita(mondo)
+    _check(rep["scorte"] == [], "nessuna scorta segnalata")
+    _check(rep["vittoria"]["esito"] == "vincibile-staticamente", "vincibile")
+
+
 def main():
     tests = [
         test_catena_vittoria_vincibile,
@@ -236,6 +269,8 @@ def main():
         test_vittoria_via_evento,
         test_vittoria_via_demone,
         test_demo_reali_vincibili,
+        test_scorte_che_non_crescono,
+        test_scorte_con_ricarica_non_segnalate,
     ]
     print("=" * 60)
     print("TEST COLLAUDO (B1.1 - analisi statica)")

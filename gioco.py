@@ -1,6 +1,12 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.1.0)
+# Interprete Interattivo per FAVELLA 1 (v1.2.0)
 
+import contextlib
+import copy
+import io
+import json
+import os
+import re
 import sys
 import traceback
 from compilatore import analizza_file
@@ -120,8 +126,10 @@ def _match_verbo_multiparola(mondo: Mondo, parole) -> str | None:
     """[0.18.0 / B6] Se il comando del giocatore inizia con un verbo personalizzato
     MULTI-PAROLA dichiarato, restituisce quel verbo (il più lungo che combacia come
     prefisso, in numero di parole); altrimenti None. I verbi monoparola non sono
-    considerati qui (li gestisce il normale parole[0])."""
-    verbi = getattr(mondo, "verbi_personalizzati", None) or ()
+    considerati qui (li gestisce il normale parole[0]). [1.2.0] Valgono anche i
+    sinonimi di più parole ('"lancia il cibo" è come "getta il cibo".')."""
+    verbi = set(getattr(mondo, "verbi_personalizzati", None) or ())
+    verbi |= set(getattr(mondo, "sinonimi_verbo", None) or ())
     candidati = sorted((v for v in verbi if " " in v),
                        key=lambda v: len(v.split()), reverse=True)
     for v in candidati:
@@ -282,6 +290,17 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         print("A presto!")
         return False
 
+    # [1.2.0] SALVA / CARICA: comandi di servizio, validi anche durante una
+    # conversazione; non consumano un turno e non entrano nella sequenza salvata.
+    parole_servizio = comando_pulito.split()
+    archivio = _comando_di_archivio(mondo, parole_servizio)
+    if archivio == "salva":
+        _gestisci_salva(mondo, _nome_salvataggio(parole_servizio))
+        return True
+    if archivio == "carica":
+        _gestisci_carica(mondo, _nome_salvataggio(parole_servizio))
+        return True
+
     # [0.21.0 / A3] Comandi di SERVIZIO (fuori dialogo): non sono azioni sul
     # mondo, agiscono sulla sessione e NON consumano un turno.
     if not era_in_dialogo:
@@ -299,7 +318,10 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     # [0.21.0 / A3] Istantanea PRIMA del turno, per l'ANNULLA. Si cattura solo
     # fuori dialogo (le interazioni di dialogo non consumano un turno); l'istantanea
     # è conservata solo se il comando effettivamente avanza il tempo.
-    snap = mondo.cattura_stato() if not era_in_dialogo else None
+    # [1.2.0] Durante CARICA la testa della sequenza si rigioca senza istantanee.
+    snap = (mondo.cattura_stato()
+            if not era_in_dialogo and not mondo._senza_istantanee else None)
+    lunghezza_registro = len(mondo._registro_comandi)
 
     try:
         continua = _esegui_comando(mondo, comando_grezzo)
@@ -312,6 +334,9 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if snap is not None:
             mondo.ripristina_stato(snap)
         return True
+    # [1.2.0] Il comando è andato a buon fine: entra nella sequenza salvabile
+    # (ANCORA vi entra già risolto nel comando che ripete).
+    mondo._registro_comandi.append(comando_grezzo)
     if not continua:
         return False
     # [Livello 5b] Le interazioni di dialogo non consumano un turno: il tempo del
@@ -324,18 +349,23 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     appena_uscito = era_in_dialogo and (not mondo.in_dialogo())
     if appena_entrato:
         mondo._snap_dialogo = snap
+        mondo._reg_ingresso_dialogo = lunghezza_registro
         return True
     if appena_uscito:
         if mondo._snap_dialogo is not None:
-            _registra_istantanea(mondo, mondo._snap_dialogo)
+            ingresso = mondo._reg_ingresso_dialogo
+            _registra_istantanea(mondo, mondo._snap_dialogo,
+                                 lunghezza_registro if ingresso is None else ingresso)
             mondo._snap_dialogo = None
+        mondo._reg_ingresso_dialogo = None
         # ultimo_comando NON aggiornato: ANCORA non deve ripetere un comando di dialogo.
         return True
     if mondo.in_dialogo():
         return True   # scelta intermedia: ancora in conversazione
     # Turno consumato: registra l'istantanea (per ANNULLA) e il comando (per ANCORA).
     if snap is not None:
-        _registra_istantanea(mondo, snap)
+        _registra_istantanea(mondo, snap, lunghezza_registro)
+    if not era_in_dialogo:
         mondo.ultimo_comando = comando_grezzo
     if avanza_turno_e_processa(mondo):
         return False
@@ -347,13 +377,18 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
 _MAX_ANNULLA = 100
 
 
-def _registra_istantanea(mondo: Mondo, snap: dict):
+def _registra_istantanea(mondo: Mondo, snap: dict, pos_registro: int = 0):
     """[0.27.0] Mette un'istantanea sulla pila di ANNULLA, rispettando il tetto di
     memoria (_MAX_ANNULLA): si scorda la più vecchia. Condiviso dal turno normale
-    e dalla chiusura di un dialogo (vedi elabora_comando)."""
+    e dalla chiusura di un dialogo (vedi elabora_comando). [1.2.0] Accanto
+    all'istantanea si ricorda la lunghezza della sequenza salvabile prima del
+    turno: ANNULLA la riporta lì."""
     mondo._storia_stati.append(snap)
+    mondo._pos_registro.append(pos_registro)
     if len(mondo._storia_stati) > _MAX_ANNULLA:
         mondo._storia_stati.pop(0)
+    while len(mondo._pos_registro) > len(mondo._storia_stati):
+        mondo._pos_registro.pop(0)
 
 
 def _gestisci_annulla(mondo: Mondo):
@@ -362,8 +397,219 @@ def _gestisci_annulla(mondo: Mondo):
         print("Non c'è niente da annullare.")
         return
     mondo.ripristina_stato(mondo._storia_stati.pop())
+    if mondo._pos_registro:   # [1.2.0] il turno disfatto esce dalla sequenza
+        del mondo._registro_comandi[mondo._pos_registro.pop():]
     print("(Hai annullato l'ultimo turno.)")
     mostra_stanza(mondo)
+
+
+# ==============================================================================
+# [1.2.0] SALVA / CARICA
+# ------------------------------------------------------------------------------
+# Il salvataggio NON contiene il mondo (oggetti Python: serializzarli vorrebbe
+# dire pickle, fragile fra versioni e pericoloso con file altrui). Contiene la
+# sequenza EFFETTIVA dei comandi (Mondo._registro_comandi: i turni disfatti con
+# ANNULLA ne sono tolti, ANCORA vi entra col comando che ripete), l'ultimo
+# comando per ANCORA e un'impronta SHA-256 dello stato. Il motore è
+# deterministico (il caso passa da mondo.rng, seme fisso): caricare = ripartire
+# dal mondo iniziale e rigiocare la sequenza, poi confrontare l'impronta.
+# Metodo nato e collaudato con «Il Viaggiatore» (app/src/lib/ponte.py).
+# ==============================================================================
+
+FORMATO_SALVATAGGIO = "favella-salvataggio"
+VERSIONE_FORMATO_SALVATAGGIO = 1
+# Quanti comandi, in coda alla sequenza, si rigiocano con le istantanee di
+# ANNULLA accese: dopo un caricamento si può disfare come nella partita
+# originale. La testa si rigioca senza istantanee (nessuna copia profonda).
+CODA_ANNULLA = 40
+_VERBI_SALVA = ("salva", "salvare")
+_VERBI_CARICA = ("carica", "caricare", "ripristina")
+
+
+class ArchivioFile:
+    """Salvataggi come file di testo «<nome>.salvataggio» in una cartella
+    (predefinita: la cartella di lavoro). È l'archivio del terminale e del
+    playground locale."""
+    ESTENSIONE = ".salvataggio"
+
+    def __init__(self, cartella=None):
+        self.cartella = cartella or os.getcwd()
+
+    def _percorso(self, nome):
+        return os.path.join(self.cartella, nome + self.ESTENSIONE)
+
+    def scrivi(self, nome, testo):
+        with open(self._percorso(nome), "w", encoding="utf-8") as f:
+            f.write(testo)
+        return self._percorso(nome)
+
+    def leggi(self, nome):
+        try:
+            with open(self._percorso(nome), encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return None
+
+
+class ArchivioBrowser:
+    """Salvataggi nel localStorage del browser (motore sotto Pyodide: sito,
+    esportazione HTML). La chiave porta l'impronta della storia, così due storie
+    diverse aperte dallo stesso sito non si pestano i salvataggi."""
+
+    def __init__(self, impronta_storia):
+        from js import localStorage  # disponibile solo sotto Pyodide
+        self._ls = localStorage
+        self._prefisso = f"favella-salvataggio:{(impronta_storia or '')[:16]}:"
+
+    def scrivi(self, nome, testo):
+        self._ls.setItem(self._prefisso + nome, testo)
+        return nome
+
+    def leggi(self, nome):
+        valore = self._ls.getItem(self._prefisso + nome)
+        return None if valore is None else str(valore)
+
+
+def archivio_di(mondo: Mondo):
+    """L'archivio dei salvataggi di questa partita: quello dato dall'host
+    (mondo.archivio_salvataggi) o quello naturale del posto in cui gira."""
+    archivio = getattr(mondo, "archivio_salvataggi", None)
+    if archivio is not None:
+        return archivio
+    if sys.platform == "emscripten":
+        return ArchivioBrowser(getattr(mondo, "_impronta_iniziale", None))
+    return ArchivioFile()
+
+
+def dati_salvataggio(mondo: Mondo) -> dict:
+    """Il contenuto di un salvataggio (un dizionario serializzabile in JSON)."""
+    from strutture import VERSIONE_MOTORE
+    return {
+        "formato": FORMATO_SALVATAGGIO,
+        "versione": VERSIONE_FORMATO_SALVATAGGIO,
+        "motore": VERSIONE_MOTORE,
+        "storia": mondo._impronta_iniziale,
+        "turno": mondo.turno_corrente,
+        "comandi": list(mondo._registro_comandi),
+        # Ciò che ANCORA ripeterebbe: stato di sessione, non ricostruibile dalla
+        # sequenza (dopo un ANNULLA può essere proprio il comando disfatto).
+        "ultimo": mondo.ultimo_comando,
+        "impronta": mondo.impronta_stato(),
+    }
+
+
+def carica_da_dati(mondo: Mondo, dati: dict):
+    """Riporta `mondo` alla partita descritta da `dati` (vedi dati_salvataggio).
+    Restituisce (ok, messaggio). Se il caricamento fallisce, la partita in corso
+    resta com'era. Con ok=True il messaggio avverte anche quando l'impronta non
+    coincide (storia cambiata dopo il salvataggio)."""
+    if not isinstance(dati, dict) or dati.get("formato") != FORMATO_SALVATAGGIO:
+        return False, "Questo non è un salvataggio di FAVELLA."
+    if dati.get("versione", 0) > VERSIONE_FORMATO_SALVATAGGIO:
+        return False, "Il salvataggio viene da una versione più recente di FAVELLA."
+    if mondo._stato_iniziale is None:
+        return False, "Questa partita non ha un punto di partenza da cui ricaricare."
+    if dati.get("storia") != mondo._impronta_iniziale:
+        return False, "Il salvataggio appartiene a un'altra storia (o a una versione diversa di questa)."
+    comandi = dati.get("comandi")
+    if not isinstance(comandi, list) or not all(isinstance(c, str) for c in comandi):
+        return False, "Il salvataggio è danneggiato: manca la sequenza dei comandi."
+
+    # Copia di riserva della partita in corso, stato di sessione compreso.
+    riserva = mondo.cattura_stato()
+    sessione = {k: copy.copy(mondo.__dict__.get(k)) for k in (
+        "_storia_stati", "_pos_registro", "_registro_comandi",
+        "_reg_ingresso_dialogo", "_snap_dialogo", "ultimo_comando")}
+
+    mondo.ripristina_stato(copy.deepcopy(mondo._stato_iniziale))
+    mondo._storia_stati = []
+    mondo._pos_registro = []
+    mondo._registro_comandi = []
+    mondo._reg_ingresso_dialogo = None
+    mondo._snap_dialogo = None
+    mondo.ultimo_comando = None
+    mondo.annunci = []
+    inizio_coda = max(0, len(comandi) - CODA_ANNULLA)
+    buf = io.StringIO()
+    try:
+        mondo._senza_istantanee = True
+        with contextlib.redirect_stdout(buf):
+            for i, c in enumerate(comandi):
+                if mondo.stato_partita != "in_corso":
+                    break
+                # La coda comincia sempre FUORI da una conversazione: una
+                # conversazione è un solo passo di ANNULLA, preso all'ingresso.
+                if mondo._senza_istantanee and i >= inizio_coda and not mondo.in_dialogo():
+                    mondo._senza_istantanee = False
+                elabora_comando(mondo, c)
+    except Exception as e:
+        mondo._senza_istantanee = False
+        mondo.ripristina_stato(riserva)
+        mondo.__dict__.update(sessione)
+        return False, f"Il caricamento si è interrotto ({type(e).__name__}): la partita in corso non è cambiata."
+    finally:
+        mondo._senza_istantanee = False
+    mondo.ultimo_comando = dati.get("ultimo")
+    if dati.get("impronta") and mondo.impronta_stato() != dati["impronta"]:
+        return True, ("Partita caricata, ma non è identica a quella salvata: "
+                      "la storia è cambiata dopo il salvataggio.")
+    return True, f"Partita caricata: turno {mondo.turno_corrente}."
+
+
+def _nome_salvataggio(parole) -> str:
+    grezzo = "-".join(parole[1:]) if len(parole) > 1 else "partita"
+    nome = re.sub(r"[^0-9a-zàèéìòù_-]", "", grezzo.lower())
+    return nome[:40] or "partita"
+
+
+def _gestisci_salva(mondo: Mondo, nome: str):
+    if mondo._impronta_iniziale is None:
+        print("(Questa partita non si può salvare.)")
+        return
+    testo = json.dumps(dati_salvataggio(mondo), ensure_ascii=False, indent=1)
+    try:
+        archivio_di(mondo).scrivi(nome, testo)
+    except Exception as e:
+        print(f"(Salvataggio non riuscito: {e})")
+        return
+    print(f"(Partita salvata come «{nome}», al turno {mondo.turno_corrente}. "
+          f"Per riprenderla: CARICA {nome}.)")
+
+
+def _gestisci_carica(mondo: Mondo, nome: str):
+    try:
+        testo = archivio_di(mondo).leggi(nome)
+    except Exception as e:
+        print(f"(Caricamento non riuscito: {e})")
+        return
+    if testo is None:
+        print(f"(Non c'è nessun salvataggio chiamato «{nome}».)")
+        return
+    try:
+        dati = json.loads(testo)
+    except ValueError:
+        print("(Il salvataggio è danneggiato: non si riesce a leggerlo.)")
+        return
+    ok, messaggio = carica_da_dati(mondo, dati)
+    print(f"({messaggio})")
+    if ok:
+        if mondo.in_dialogo():
+            _mostra_nodo(mondo)
+        else:
+            mostra_stanza(mondo)
+
+
+def _comando_di_archivio(mondo: Mondo, parole):
+    """'salva [nome]' / 'carica [nome]', purché l'autore non abbia dato a quel
+    verbo un significato suo ('"carica" è un comando.' per un fucile)."""
+    if not parole or len(parole) > 3:
+        return None
+    verbo = parole[0]
+    if verbo not in _VERBI_SALVA and verbo not in _VERBI_CARICA:
+        return None
+    if verbo in getattr(mondo, "verbi_personalizzati", ()) or verbo in getattr(mondo, "sinonimi_verbo", {}):
+        return None
+    return "salva" if verbo in _VERBI_SALVA else "carica"
 
 
 # [Livello 5b] Parole che, durante una conversazione, la concludono comunque.
@@ -807,7 +1053,7 @@ def gioca(mondo: Mondo):
         return
 
     print("\n--- BENVENUTO IN FAVELLA 1 ---")
-    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, TRASCRIZIONE.")
+    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA, TRASCRIZIONE.")
     mostra_stanza(mondo)
 
     trascrizione = None   # file aperto della trascrizione, o None

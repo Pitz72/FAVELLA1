@@ -60,7 +60,7 @@ se la cosa nel frattempo è sparita dalla portata, risponde che non la vedi più
 
 == Tornare sui propri passi
 
-Tre comandi non fanno parte della storia, ma del modo in cui la si gioca. Non
+Alcuni comandi non fanno parte della storia, ma del modo in cui la si gioca. Non
 consumano un turno e non fanno scattare eventi o demoni.
 
 #table(
@@ -71,7 +71,9 @@ consumano un turno e non fanno scattare eventi o demoni.
   table.header([*Comando*], [*Effetto*]),
   [#gc[annulla]], [Disfa l'ultimo turno e riporta il mondo com'era (anche `disfa`).],
   [#gc[ancora]], [Ripete l'ultimo comando (anche `ripeti`, `g`).],
-  [#gc[trascrizione]], [Avvia o ferma il salvataggio della partita su file di testo.],
+  [#gc[salva]], [Salva la partita (anche con un nome: `salva mattina`).],
+  [#gc[carica]], [Riprende una partita salvata (`carica mattina`).],
+  [#gc[trascrizione]], [Avvia o ferma la registrazione della partita in un file di testo.],
 )
 
 `annulla` è una piccola macchina del tempo: ogni mossa viene fotografata prima di
@@ -83,6 +85,27 @@ intera conta come un solo passo: un `annulla` ti riporta a prima di averla inizi
 Una sola cosa `annulla` non tocca: la memoria di `ancora`. Se scrivi `prendi la
 mappa`, poi `annulla`, poi `ancora`, la mappa torna nelle tue mani: `ancora`
 ripete l'ultimo comando che hai dato, anche se l'hai appena disfatto.
+
+== Salvare e riprendere
+
+Dalla versione 1.2 una partita si salva e si riprende. `salva` la mette da parte
+col nome `partita`; `salva mattina` le dà un nome, così puoi tenerne più d'una.
+`carica` (o `carica mattina`) la riporta esattamente dov'era: stessa stanza, stesse
+tasche, stessi stati, persino lo stesso caso per le descrizioni a varietà.
+Funziona anche nel mezzo di una conversazione, e dopo aver caricato `annulla` e
+`ancora` si comportano come se non avessi mai smesso di giocare.
+
+Nel terminale la partita finisce in un file, `mattina.salvataggio`, nella cartella
+da cui giochi. Nel browser (il sito, un gioco esportato in HTML) resta nella
+memoria del browser, legata a quella storia.
+
+#nota[
+  Il salvataggio non fotografa il mondo: ricorda i comandi che hai dato, e al
+  caricamento FAVELLA li rigioca da capo, in un attimo. Funziona perché il motore è
+  prevedibile: stessi comandi, stessa partita. Alla fine confronta un'impronta dello
+  stato con quella salvata, e se la storia nel frattempo è cambiata te lo dice.
+  Per questo un salvataggio vale solo per la storia su cui è nato.
+]
 
 #nota[
   `trascrizione` scrive la partita in `trascrizione-favella.txt`, riga per riga. È
@@ -98,7 +121,9 @@ uno, altrimenti termina la partita.
 
 #tranello[
   Quasi ogni comando può essere riscritto con una regola `Invece di`: è così che
-  dài a un verbo un effetto su misura. I tre comandi di servizio qui sopra —
+  dài a un verbo un effetto su misura. I comandi di servizio qui sopra —
   `annulla`, `ancora`, `trascrizione` — fanno eccezione: appartengono al lettore,
-  non alla storia, e non li intercetti.
+  non alla storia, e non li intercetti. `salva` e `carica` sono un caso a parte: se
+  dichiari tu `"carica" è un comando.` (per un fucile, un camion), il verbo resta
+  tuo e il giocatore perde la scorciatoia per ricaricare la partita.
 ]

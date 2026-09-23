@@ -4,7 +4,52 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
-## [1.1.0] - 2026-09-23
+## [1.2.0] - 2026-09-23
+### 💾 Salvare, collaudare giocando, sinonimi per ogni verbo
+La prima versione **distribuita** dopo la 1.0.1: comprende anche tutta la 1.1.0
+(il posto iniziale degli oggetti, qui sotto), che non è mai stata rilasciata da
+sola. Le quattro novità vengono dal lavoro su *Il Viaggiatore*. Nessuna storia
+`.fav` esistente cambia comportamento.
+
+- **SALVA e CARICA** (`salva`, `salva mattina`, `carica`, `carica mattina`), nel
+  terminale, nel playground, sul sito e nei giochi esportati in HTML. Il
+  salvataggio è la sequenza effettiva dei comandi (i turni annullati ne escono,
+  ANCORA vi entra col comando che ripete) più un'impronta SHA-256 dello stato:
+  caricare vuol dire ripartire dal mondo iniziale e rigiocare, poi confrontare
+  l'impronta. Niente `pickle`. ANNULLA e ANCORA funzionano anche subito dopo il
+  caricamento; si salva anche a metà di una conversazione. Nel terminale il file
+  è `<nome>.salvataggio` (JSON) nella cartella di lavoro; sotto Pyodide il
+  salvataggio va nel `localStorage`, legato alla storia. Un host può fornire il
+  proprio archivio (`mondo.archivio_salvataggi`). Se l'autore dichiara `"carica"`
+  come comando suo, il verbo resta suo.
+  Strutture: `Mondo.stato_essenziale()`, `Mondo.impronta_stato()`, fotografia del
+  mondo iniziale in `imposta_posizione_iniziale`; runtime: `dati_salvataggio`,
+  `carica_da_dati`, `ArchivioFile`, `ArchivioBrowser` in `gioco.py`.
+- **Collaudo dinamico**: nuovo modulo `esploratore.py`. `favella1 esplora
+  storia.fav` gioca partite a caso con quattro caratteri di giocatore e segnala
+  eccezioni, segnaposto non risolti, oggetti elencati ma invisibili al parser,
+  uscite elencate ma rifiutate, contatori sotto zero, capienza superata, comandi
+  senza risposta e stalli, con i comandi per riprodurli; misura la copertura di
+  luoghi, nodi di dialogo e oggetti. `favella1 collaudo storia.fav --finali` dice
+  quali finali dichiarati vengono raggiunti e da quale partita. `--percorso FILE`
+  gioca una soluzione scritta a mano e fa esplorare da ogni stanza che tocca.
+- **Sinonimi per i verbi d'autore**: `"lancia" è come getta.` vale anche per un
+  comando dichiarato dall'autore (prima solo per i verbi della libreria), e fra
+  virgolette per un comando di più parole: `"butta via il cibo" è come "getta il
+  cibo".`. Unica modifica di grammatica: seconda forma di `def_sinonimo`.
+- **Collaudo statico e scorte**: la catena della vittoria tiene conto del verso
+  dei contatori (una soglia «almeno N» la avvicina solo chi fa crescere il
+  contatore); nuova sezione «scorte che non crescono mai» per le condizioni su un
+  contatore che parte sotto la soglia e che nessuna conseguenza fa crescere.
+- **Documentazione**: spec `documentazione/grammatica-1.2.0.md` (§20), manuale
+  capp. 2, 10, 19 e riepilogo, PDF a 86 pagine.
+
+Suite: **734 asserzioni del linguaggio + 50 di collaudo**, tutte verdi
+(`pytest`: 336). SALVA/CARICA è stato provato anche su *Il Viaggiatore*: 12
+partite fino a 128 comandi, con ANNULLA e ANCORA, ricaricate in un'istanza nuova
+con impronta e risposte identiche.
+
+## [1.1.0] - 2026-09-23 (non rilasciata: confluita nella 1.2.0)
 ### 📍 Il posto iniziale degli oggetti
 Prima estensione del linguaggio dopo la milestone 1.0. È **additiva**: nessuna
 storia `.fav` esistente cambia comportamento (unica eccezione teorica: un'entità
@@ -56,9 +101,7 @@ Nessuna frase nuova, nessun comportamento cambiato: si fissa il motore com'è.
 Suite: **702 asserzioni del linguaggio** (+21) **+ 43 di collaudo**, tutte verdi
 (`pytest`: 323).
 
-> **Non distribuito.** Il sito (favella.eu) e il pacchetto pip restano alla
-> 1.0.1 finché non si decide il rilascio: vedi la nota in
-> `landingpage/public/favella-engine/SYNC.md`.
+> Non è mai stata rilasciata da sola: è arrivata al pubblico dentro la 1.2.0.
 
 ## [1.0.1] - 2026-08-10
 ### 🧹 Igiene del namespace nel pacchetto installabile

@@ -14,13 +14,15 @@ Un unico eseguibile, **`favella1`**, con sottocomandi:
 | `favella1 gioca <storia.fav>` | compila e gioca una storia da terminale |
 | `favella1 compila <storia.fav>` | compila e mostra errori/avvisi (non gioca) |
 | `favella1 collaudo <storia.fav>` | collaudatore statico (catena della vittoria) |
+| `favella1 collaudo <storia.fav> --finali` | gioca partite vere e dice quali finali si raggiungono (1.2.0) |
+| `favella1 esplora <storia.fav>` | partite a caso: anomalie, copertura, finali (1.2.0) |
 | `favella1 playground [storia.fav]` | apre l'editor + motore nel browser (offline) |
 | `favella1 esporta <storia.fav>` | genera un `.html` autoportante giocabile (Pyodide) |
 | `favella1 libreria [elenca\|copia <nome>]` | elenca o copia i moduli `.fav` riusabili della libreria standard |
 | `favella1 galleria [elenca\|gioca <id>\|copia <id>]` | elenca, gioca o copia le storie brevi della galleria |
 | `favella1 versione` | stampa la versione del motore |
 
-Alias inglesi: `play`, `check`, `test`, `export`, `version`, `library`, `gallery`.
+Alias inglesi: `play`, `check`, `test`, `explore`, `export`, `version`, `library`, `gallery`.
 
 Le avventure ufficiali (`esempi/demo/`) sono incluse nel bundle, così si può
 giocare subito dopo l'installazione.

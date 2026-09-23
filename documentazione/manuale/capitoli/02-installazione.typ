@@ -51,10 +51,21 @@ nella cartella dove tieni le tue storie.
   table.header([*Comando*], [*Cosa fa*]),
   [#cmd[favella1 gioca storia.fav]], [Compila la storia e la fa partire nel terminale.],
   [#cmd[favella1 compila storia.fav]], [Controlla la storia e segnala errori e avvisi, senza giocarla.],
-  [#cmd[favella1 collaudo storia.fav]], [Verifica che la storia sia vincibile (lo vedremo più avanti).],
+  [#cmd[favella1 collaudo storia.fav]], [Verifica che la storia sia vincibile, ragionando sulle frasi senza giocarla.],
+  [#cmd[favella1 collaudo storia.fav --finali]], [Gioca partite vere e dice quali finali si raggiungono.],
+  [#cmd[favella1 esplora storia.fav]], [Gioca molte partite a caso e segnala dove la storia si rompe.],
   [#cmd[favella1 playground]], [Apre il laboratorio nel browser: scrivi e provi sul posto.],
   [#cmd[favella1 esporta storia.fav]], [Crea un singolo file `.html` giocabile, da regalare a chi vuoi.],
 )
+
+`esplora` e `collaudo --finali` sono arrivati con la versione 1.2. Giocano come
+farebbero dei lettori distratti: entrano ovunque, sbagliano a scrivere, annullano,
+parlano con tutti. Alla fine ti dicono quali luoghi, oggetti e battute di dialogo
+hanno toccato e dove qualcosa è andato storto (un nome fra parentesi quadre
+rimasto nel testo, un'uscita elencata che poi non si apre), con i comandi per
+riprodurlo. Un giocatore a caso però non arriva in fondo a una storia lunga: con
+`--percorso soluzione.txt` gli dai un file con un comando per riga, e lui lo
+gioca per intero e poi esplora da ogni stanza che il percorso ha toccato.
 
 Una storia, qui, è semplicemente un file di testo con estensione `.fav`: lo puoi
 scrivere con qualunque editor. Quando una storia è fatta di più file legati da

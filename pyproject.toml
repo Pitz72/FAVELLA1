@@ -62,6 +62,7 @@ py-modules = [
     "compilatore",
     "gioco",
     "collaudo",
+    "esploratore",
     "favella_playground",
 ]
 packages = ["favella1"]

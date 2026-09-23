@@ -76,6 +76,7 @@ Il tavolino è un supporto.
 "accendi" è un comando.
 "accelera" è un comando senza oggetto.
 "ghermisci" è come prendi.
+"butta via il cibo" è come "getta il cibo".
 ```)
 
 *Stati e contatori*
@@ -144,7 +145,8 @@ li racconta per esteso; qui sono raccolti per consultazione.
   [#rip[prendila, aprilo, ...]], [Pronomi: si riferiscono all'ultima cosa nominata (anche `prendi quella`).],
   [#rip[annulla]], [Disfare l'ultimo turno (anche `disfa`).],
   [#rip[ancora]], [Ripetere l'ultimo comando (anche `ripeti`, `g`).],
-  [#rip[trascrizione]], [Avviare o fermare il salvataggio della partita su file.],
+  [#rip[salva], #rip[carica]], [Salvare la partita e riprenderla (anche con un nome).],
+  [#rip[trascrizione]], [Avviare o fermare la registrazione della partita in un file di testo.],
   [#rip[aiuto]], [Elenco dei comandi disponibili.],
   [#rip[esci]], [Chiudere il dialogo in corso, o uscire dal gioco.],
 )

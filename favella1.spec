@@ -52,7 +52,7 @@ a = Analysis(
     binaries=lark_binaries,
     datas=datas,
     hiddenimports=lark_hiddenimports + [
-        "compilatore", "gioco", "collaudo", "strutture",
+        "compilatore", "gioco", "collaudo", "esploratore", "strutture",
         "libreria_azioni", "favella_utils", "favella_playground", "favella1",
     ],
     hookspath=[],

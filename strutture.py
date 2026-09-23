@@ -1,6 +1,8 @@
 # strutture.py
 # Modulo per le strutture dati di base di FAVELLA 1
 import copy
+import hashlib
+import json
 import random
 from typing import Callable, List, Dict, Set, Optional
 from favella_utils import DIREZIONI_BASE, DIREZIONI_OPPOSTE_BASE, radice_proprieta, prima_maiuscola
@@ -12,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.1.0"
+VERSIONE_MOTORE = "1.2.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -834,6 +836,31 @@ class Mondo:
         # 'e adesso …') è un solo passo di ANNULLA. Stato di sessione, sempre None
         # tra un turno e l'altro → escluso dalle istantanee.
         self._snap_dialogo: Optional[dict] = None
+        # [1.2.0] SALVA/CARICA. Il salvataggio è la sequenza EFFETTIVA dei comandi
+        # (i turni disfatti con ANNULLA ne escono, ANCORA vi entra col comando che
+        # ripete): il motore è deterministico, quindi rigiocarla su un mondo
+        # appena compilato riproduce lo stato. Tutto stato di SESSIONE, escluso
+        # dalle istantanee (vedi _CAMPI_VOLATILI):
+        #  - _registro_comandi: la sequenza;
+        #  - _pos_registro: per ogni istantanea di ANNULLA, la lunghezza della
+        #    sequenza prima del suo turno (allineata a _storia_stati);
+        #  - _reg_ingresso_dialogo: lunghezza all'ingresso della conversazione in
+        #    corso (una conversazione è un solo passo di ANNULLA);
+        #  - _stato_iniziale / _impronta_iniziale: il mondo a partita non ancora
+        #    cominciata, da cui CARICA riparte senza ricompilare;
+        #  - _senza_istantanee: vero mentre CARICA rigioca la testa della sequenza
+        #    (niente copia profonda a ogni turno).
+        self._registro_comandi: List[str] = []
+        self._pos_registro: List[int] = []
+        self._reg_ingresso_dialogo: Optional[int] = None
+        self._stato_iniziale: Optional[dict] = None
+        self._impronta_iniziale: Optional[str] = None
+        self._senza_istantanee: bool = False
+        # [1.2.0] Dove SALVA/CARICA leggono e scrivono (oggetto con .scrivi(nome,
+        # testo) e .leggi(nome) -> testo|None). None = scelta automatica del motore
+        # (file nella cartella di lavoro; localStorage nel browser). Un host può
+        # fornirne uno suo.
+        self.archivio_salvataggi = None
         # [0.22.0 / A2] Generatore casuale del mondo, con seme fisso: alimenta le
         # descrizioni 'è una di: …' in modo RIPRODUCIBILE. È stato del mondo →
         # catturato/ripristinato dalle istantanee di ANNULLA (l'undo riavvolge
@@ -899,7 +926,11 @@ class Mondo:
     # oggetti, inventario, variabili, demoni, posizione, turno — è stato mutabile
     # e viene catturato/ripristinato fedelmente.
     _CAMPI_VOLATILI = ("_storia_stati", "ultimo_comando", "azioni",
-                       "mappa_verbi_giocatore", "annunci", "_snap_dialogo")
+                       "mappa_verbi_giocatore", "annunci", "_snap_dialogo",
+                       # [1.2.0] sessione di SALVA/CARICA
+                       "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
+                       "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
+                       "archivio_salvataggi")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
@@ -987,6 +1018,45 @@ class Mondo:
             self.posizione_giocatore = self.posizione_iniziale
         elif self.stanze:
             self.posizione_giocatore = list(self.stanze.keys())[0]
+        # [1.2.0] Il mondo a partita non ancora cominciata: CARICA riparte da qui
+        # e rigioca la sequenza salvata. L'impronta dice se un salvataggio è stato
+        # fatto su questa stessa storia.
+        self._stato_iniziale = self.cattura_stato()
+        self._impronta_iniziale = self.impronta_stato()
+        self._registro_comandi = []
+        self._pos_registro = []
+        self._reg_ingresso_dialogo = None
+
+    def stato_essenziale(self) -> dict:
+        """[1.2.0] Tutto ciò che distingue una partita dall'altra, in forma
+        confrontabile (liste ordinate, repr dei valori): luogo, turno, esito,
+        dialogo, inventario, variabili, oggetti (posizione, proprietà, spostato,
+        contenuto), memoria dei demoni, stato del generatore casuale."""
+        oggetti = []
+        for o in self.oggetti.values():
+            oggetti.append([o.nome, str(o.posizione), sorted(o.proprieta),
+                            bool(getattr(o, "spostato", False)),
+                            sorted(getattr(o, "contenuto", None) or [])])
+        stanze_buie = sorted(s.nome for s in self.stanze.values()
+                             if getattr(s, "buia", False))
+        return {
+            "luogo": self.posizione_giocatore,
+            "turno": self.turno_corrente,
+            "esito": self.stato_partita,
+            "dialogo": [self.dialogo_attivo, self.nodo_dialogo],
+            "inventario": sorted(self.inventario),
+            "variabili": sorted([k, repr(v)] for k, v in self.variabili.items()),
+            "oggetti": sorted(oggetti),
+            "buio": stanze_buie,
+            "demoni": [bool(getattr(d, "era_vera", False)) for d in self.demoni],
+            "caso": repr(self.rng.getstate()),
+        }
+
+    def impronta_stato(self) -> str:
+        """[1.2.0] Impronta SHA-256 dello stato essenziale: due partite con la
+        stessa impronta sono, per il giocatore, la stessa partita."""
+        dati = json.dumps(self.stato_essenziale(), sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(dati.encode("utf-8")).hexdigest()
 
     def carica_azioni(self, libreria: Dict[str, Azione]):
         """Carica la libreria di azioni e costruisce la mappa di ricerca inversa."""

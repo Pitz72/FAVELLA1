@@ -34,6 +34,8 @@ Dopo l'installazione:
 favella1 gioca storia.fav        # gioca una storia
 favella1 playground              # editor + motore nel browser (offline)
 favella1 collaudo storia.fav     # collaudatore statico
+favella1 collaudo storia.fav --finali   # quali finali si raggiungono giocando
+favella1 esplora storia.fav      # partite a caso: anomalie e copertura
 favella1 compila storia.fav      # solo diagnostica
 favella1 esporta storia.fav      # genera un .html giocabile e condivisibile
 ```
@@ -58,18 +60,24 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 
 ## 📘 Il manuale
 
-C'è un **manuale d'autore completo**: 21 capitoli, 84 pagine, dall'installazione fino
-a demoni, dialoghi e casualità d'autore, allineato al linguaggio 1.0.0.
+C'è un **manuale d'autore completo**: 21 capitoli, 86 pagine, dall'installazione fino
+a demoni, dialoghi e casualità d'autore, allineato al linguaggio 1.2.0.
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
 - **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026)
 
 ---
 
-## 🏁 Stato Attuale: v1.0.0 — Il linguaggio è completo e definitivo
+## 🏁 Stato Attuale: v1.2.0 — salvare, collaudare giocando, sinonimi per ogni verbo
 
-**FAVELLA 1 ha raggiunto la versione 1.0.0: il linguaggio è dichiarato completo e
-chiuso.** Sono stati portati a termine i **Livelli 1-8** della roadmap, il
+La **1.2.0** (settembre 2026) porta nel motore quello che è servito per fare di
+*Il Viaggiatore* un gioco vero: **SALVA/CARICA**, il **collaudo dinamico**
+(`favella1 esplora`, `favella1 collaudo --finali`), i **sinonimi per i verbi
+d'autore** e l'avviso sulle **scorte** nel collaudo statico. Comprende la 1.1.0,
+mai rilasciata da sola: il **posto iniziale degli oggetti**. Tutto additivo:
+nessuna storia scritta per la 1.0 cambia comportamento.
+
+**Con la versione 1.0.0 il linguaggio è stato dichiarato completo.** Sono stati portati a termine i **Livelli 1-8** della roadmap, il
 **Consolidamento** (v0.18.0), l'intero **Asse A — «Il mondo vivo»** (v0.19.0→v0.26.0),
 una **revisione totale di solidità** (v0.27.0→v0.28.1) e tutte le espansioni del
 **piano di completamento**: il Cassetto A (v0.30.0) e i quattro Temi —
@@ -80,13 +88,13 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **702
-asserzioni** del linguaggio + **43** del collaudatore statico, tutte verdi (`pytest`:
-323 passati). Spec tecnica: [`documentazione/grammatica-1.1.0.md`](documentazione/grammatica-1.1.0.md).
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **734
+asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
+336 passati). Spec tecnica: [`documentazione/grammatica-1.2.0.md`](documentazione/grammatica-1.2.0.md).
 
-> Da qui in avanti l'evoluzione del progetto è di **ecosistema** (distribuzione,
-> libreria di moduli `Includi`-bili, galleria di storie, pacchetto installabile),
-> **non più di linguaggio**. I Temi **5a** (quantità con plurali) e **5b** (template di
+> Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
+> strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
+> che funziona. I Temi **5a** (quantità con plurali) e **5b** (template di
 > entità) restano **deliberatamente fuori**: la semplicità per l'autore è una feature
 > (una scorta è già esprimibile come contatore; vedi il CHANGELOG).
 
@@ -98,6 +106,9 @@ asserzioni** del linguaggio + **43** del collaudatore statico, tutte verdi (`pyt
 - **Mondo che cambia in scena (Tema 4):** buio commutabile — `la radura diventa buia`/`illuminata`; battuta di dialogo condizionale — `Anna al nodo "x" dice "…" se …`.
 - **Lo stato parla allo stato (Tema 3):** indirezione fra stati — copia `il corteggiato diventa il preferito` e confronto `se il corteggiato è come il preferito`.
 - **Posto iniziale (1.1):** `Il posto della mappa è "Su un mobile, una MAPPA piegata…".` — una frase d'ambiente che presenta l'oggetto finché nessuno l'ha spostato, poi sparisce.
+- **Salvataggi (1.2):** `salva mattina` / `carica mattina`, ovunque giri il motore; la partita si ricostruisce rigiocando i comandi e un'impronta dello stato lo verifica.
+- **Collaudo giocando (1.2):** `favella1 esplora` e `favella1 collaudo --finali` giocano partite vere e dicono dove la storia si rompe e quali finali si raggiungono.
+- **Sinonimi per ogni verbo (1.2):** `"lancia" è come getta.` anche per i comandi d'autore, e `"butta via il cibo" è come "getta il cibo".`
 - **Mondo vivo:** stati e contatori, eventi a tempo, **demoni** (if-then autonomi), buio/luce, NPC che si muovono, dialoghi ramificati, pronomi/anafora, ANNULLA/ANCORA.
 
 Storia completa in [CHANGELOG.md](CHANGELOG.md). Le sezioni seguenti documentano le tappe precedenti della roadmap.
@@ -108,16 +119,17 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.1.0** | header di modulo |
-| Compilatore (`compilatore.py`) | **1.1.0** | header di modulo |
-| Strutture dati (`strutture.py`) | **1.1.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.1.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.1.0** | usa `VERSIONE_MOTORE` |
-| Specifica formale della grammatica | **1.1.0** | [`documentazione/grammatica-1.1.0.md`](documentazione/grammatica-1.1.0.md) — *1.0.0 + `def_posto` (§18)* |
-| Suite di test | **1.1.0** | 702 asserzioni linguaggio + 43 collaudo (pytest 323) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.1.0 | — |
+| Motore / interprete (`gioco.py`) | **1.2.0** | header di modulo |
+| Compilatore (`compilatore.py`) | **1.2.0** | header di modulo |
+| Strutture dati (`strutture.py`) | **1.2.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.2.0** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.2.0** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.2.0** | nuovo nella 1.2.0 |
+| Specifica formale della grammatica | **1.2.0** | [`documentazione/grammatica-1.2.0.md`](documentazione/grammatica-1.2.0.md) — *1.0.0 + `def_posto` (§18) + `def_sinonimo` esteso (§20)* |
+| Suite di test | **1.2.0** | 734 asserzioni linguaggio + 50 collaudo (pytest 336) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.2.0 | — |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 85 pagine, allineato al linguaggio 1.1.0**. La **1.1.0** aggiunge una sola frase, il posto iniziale degli oggetti (§18 della spec); non è ancora distribuita sul sito né su pip.
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 86 pagine, allineato al linguaggio 1.2.0**. La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
 ---
 

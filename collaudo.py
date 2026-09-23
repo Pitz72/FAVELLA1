@@ -188,6 +188,32 @@ def _produttori(mondo):
     return voci
 
 
+def _verso_richiesto(atomo, negato: bool):
+    """[1.2.0] In che verso deve muoversi un contatore per rendere vero
+    l'atomo: 'cresce' (è almeno / è più di), 'cala' (è meno di / al massimo),
+    None per l'uguaglianza (può servire l'uno o l'altro)."""
+    op = atomo.operatore
+    if op in (">=", ">"):
+        verso = "cresce"
+    elif op in ("<", "<="):
+        verso = "cala"
+    else:
+        return None
+    if negato:
+        verso = "cala" if verso == "cresce" else "cresce"
+    return verso
+
+
+def _verso_della_conseguenza(cons):
+    """[1.2.0] 'cresce' per aumenta, 'cala' per diminuisci, None per 'diventa'
+    (può portare il contatore ovunque)."""
+    if cons.modo == "aumenta":
+        return "cresce"
+    if cons.modo == "diminuisci":
+        return "cala"
+    return None
+
+
 def _produce(cons, atomo, negato: bool, mondo) -> bool:
     """Vero se la conseguenza `cons` può rendere VERO l'atomo (tenuto conto della
     negazione). Criterio mirato per tipo; per i contatori è EURISTICO (qualunque
@@ -217,9 +243,14 @@ def _produce(cons, atomo, negato: bool, mondo) -> bool:
         coincide = cons.valore == atomo.valore
         return (not coincide) if negato else coincide
     if isinstance(atomo, CondizioneContatore):
-        # Euristica: una qualunque conseguenza che muta questo contatore può
-        # avvicinarlo al valore-soglia. Non proviamo l'aritmetica.
-        return isinstance(cons, ConseguenzaContatore) and cons.nome == atomo.nome
+        # Euristica: una conseguenza che muta questo contatore NEL VERSO GIUSTO
+        # può avvicinarlo al valore-soglia. Non proviamo l'aritmetica.
+        # [1.2.0] Il verso conta: «è almeno 3» non lo avvicina chi lo diminuisce.
+        if not (isinstance(cons, ConseguenzaContatore) and cons.nome == atomo.nome):
+            return False
+        serve = _verso_richiesto(atomo, negato)
+        fa = _verso_della_conseguenza(cons)
+        return serve is None or fa is None or serve == fa
     if isinstance(atomo, CondizionePosizioneGiocatore):
         if not isinstance(cons, ConseguenzaSpostamentoGiocatore):
             return False
@@ -418,6 +449,56 @@ def _regole_irraggiungibili(mondo, produttori, raggiungibili) -> list:
     return fuori
 
 
+def _condizioni_di_gioco(mondo):
+    """[1.2.0] Le condizioni che decidono che cosa il giocatore può fare:
+    regole, demoni, opzioni di dialogo. [(dove, condizione)]"""
+    out = []
+    for r in mondo.regole:
+        if r.condizione is not None:
+            comando = _descrivi_comando(r.verbo, r.id_oggetto_bersaglio,
+                                        r.preposizione, r.id_oggetto_secondario)
+            out.append((f"regola «Invece di {comando}»", r.condizione))
+    for d in mondo.demoni:
+        out.append((f"demone «{descrivi_condizione(d.condizione)}»", d.condizione))
+    for etichetta, nodo in mondo.dialogo_nodi.items():
+        for opz in nodo.opzioni:
+            if opz.condizione is not None:
+                out.append((f"dialogo, opzione «{opz.testo}» (nodo «{etichetta}»)",
+                            opz.condizione))
+    return out
+
+
+def _scorte_che_non_risalgono(mondo, produttori) -> list:
+    """[1.2.0] Le SCORTE (acqua, munizioni, monete…): una condizione chiede che
+    un contatore sia almeno N, all'avvio è sotto la soglia e nessuna conseguenza
+    lo fa crescere: quel passaggio è chiuso da subito. (Il caso «basta all'avvio
+    ma si consuma» non si segnala: è spesso voluto — la vita di un nemico che
+    scende a zero — e l'analisi della vittoria lo vede già quando conta.)"""
+    fuori, visti = [], set()
+    contatori = [p["conseguenza"] for p in produttori
+                 if isinstance(p["conseguenza"], ConseguenzaContatore)]
+    for dove, cond in _condizioni_di_gioco(mondo):
+        for atomo, negato in _atomi(cond):
+            if not isinstance(atomo, CondizioneContatore):
+                continue
+            if _verso_richiesto(atomo, negato) != "cresce":
+                continue
+            stessi = [c for c in contatori if c.nome == atomo.nome]
+            if any(_verso_della_conseguenza(c) in ("cresce", None) for c in stessi):
+                continue
+            if _vero_all_avvio(atomo, negato, mondo):
+                continue
+            chiave = (dove, atomo.nome, _descrivi_atomo(atomo, negato))
+            if chiave in visti:
+                continue
+            visti.add(chiave)
+            perche = (f"«{atomo.nome}» all'avvio è sotto la soglia e nessuna "
+                      f"conseguenza lo fa crescere: il passaggio è chiuso da subito")
+            fuori.append({"dove": dove, "requisito": _descrivi_atomo(atomo, negato),
+                          "contatore": atomo.nome, "perche": perche})
+    return fuori
+
+
 # ==============================================================================
 # 6. RIUSO DEL LINTER ESISTENTE (FavellaTransformer.analisi_statica)
 # ==============================================================================
@@ -481,6 +562,7 @@ def analizza_vincibilita(mondo) -> dict:
         },
         "linter": _avvisi_linter(mondo),
         "regole_irraggiungibili": _regole_irraggiungibili(mondo, produttori, raggiungibili),
+        "scorte": _scorte_che_non_risalgono(mondo, produttori),   # [1.2.0]
     }
 
 
@@ -573,6 +655,15 @@ def rendi_report_testuale(report: dict) -> str:
         for r in report["regole_irraggiungibili"]:
             R.append(f"  - «Invece di {r['comando']}» (se {r['condizione']})")
             R.append(f"      mai soddisfacibile: {', '.join(r['atomi_mai_soddisfacibili'])}")
+    else:
+        R.append("  (nessuna)")
+    R.append("")
+
+    R.append("--- SCORTE CHE NON CRESCONO MAI (euristica) ---")
+    if report.get("scorte"):
+        for s in report["scorte"]:
+            R.append(f"  - {s['dove']}: {s['requisito']}")
+            R.append(f"      {s['perche']}.")
     else:
         R.append("  (nessuna)")
     R.append("")

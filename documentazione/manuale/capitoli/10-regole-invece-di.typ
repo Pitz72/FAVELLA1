@@ -156,9 +156,26 @@ comportamento di default, le tue regole `Invece di`, perfino i pronomi.
 ```)
 ]
 
-Da qui `ghermisci la torcia` fa esattamente quel che farebbe `prendi la torcia`. Il
-verbo a destra dev'essere uno di quelli che il motore riconosce; se non lo è,
-FAVELLA te lo segnala con un avviso.
+Da qui `ghermisci la torcia` fa esattamente quel che farebbe `prendi la torcia`.
+
+Il verbo a destra può essere uno di quelli che il motore conosce, oppure un comando
+che hai dichiarato tu (dalla versione 1.2). Un comando di più parole va scritto fra
+virgolette, da tutte e due le parti:
+
+#esempio[
+#fav(```
+"getta" è un comando.
+"lancia" è come getta.
+"getta il cibo" è un comando senza oggetto.
+"butta via il cibo" è come "getta il cibo".
+Invece di getta il cibo: dire "Il cane si avventa sul pane secco.".
+```)
+]
+
+Adesso `lancia il sasso` segue le regole di `getta`, e `butta via il cibo` quella di
+`getta il cibo`. L'ordine delle frasi non conta: il sinonimo può comparire prima
+del comando a cui rimanda. Se a destra c'è una parola che FAVELLA non conosce e che
+non hai dichiarato, te lo segnala con un avviso.
 
 #tranello[
   `è come` vale *solo per i verbi*. Per le direzioni non funziona: `"destra" è

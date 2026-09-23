@@ -9,6 +9,8 @@
 #   favella1 gioca   <storia.fav>     gioca/compila una storia da terminale
 #   favella1 compila <storia.fav>     compila e mostra errori/avvisi (non gioca)
 #   favella1 collaudo <storia.fav>    collaudatore statico (catena della vittoria)
+#   favella1 collaudo <storia.fav> --finali   [1.2.0] quali finali si raggiungono
+#   favella1 esplora <storia.fav>     [1.2.0] partite a caso: anomalie e copertura
 #   favella1 playground [storia.fav]  apre l'editor+motore nel browser (offline)
 #   favella1 esporta  <storia.fav>    genera un .html autoportante giocabile
 #   favella1 versione                 stampa la versione del motore
@@ -91,9 +93,21 @@ def cmd_compila(args):
 
 
 def cmd_collaudo(args):
-    """Collaudatore statico: catena della vittoria + avvisi del linter."""
+    """Collaudatore statico: catena della vittoria + avvisi del linter.
+    [1.2.0] Con --finali gioca invece partite vere (vedi esploratore.py)."""
+    if args.finali:
+        from esploratore import esegui
+        return esegui(args.storia, args.partite, args.turni, args.seme,
+                      args.percorso, solo_finali=True, rapporto=args.rapporto)
     from collaudo import main as collaudo_main
     return collaudo_main([args.storia])
+
+
+def cmd_esplora(args):
+    """[1.2.0] Collaudo dinamico: partite a caso con caratteri diversi."""
+    from esploratore import esegui
+    return esegui(args.storia, args.partite, args.turni, args.seme,
+                  args.percorso, solo_finali=False, rapporto=args.rapporto)
 
 
 def cmd_playground(args):
@@ -284,10 +298,20 @@ def costruisci_parser():
     c.add_argument("storia", help="percorso del file .fav radice")
     c.set_defaults(func=cmd_compila)
 
+    from esploratore import argomenti_comuni
     t = sub.add_parser("collaudo", aliases=["test"],
                        help="collaudatore statico (catena della vittoria)")
     t.add_argument("storia", help="percorso del file .fav radice")
+    t.add_argument("--finali", action="store_true",
+                   help="gioca partite vere e dice quali finali dichiarati si raggiungono")
+    argomenti_comuni(t)
     t.set_defaults(func=cmd_collaudo)
+
+    x = sub.add_parser("esplora", aliases=["explore"],
+                       help="partite a caso: anomalie, copertura, finali")
+    x.add_argument("storia", help="percorso del file .fav radice")
+    argomenti_comuni(x)
+    x.set_defaults(func=cmd_esplora)
 
     pg = sub.add_parser("playground", help="apri l'editor + motore nel browser (offline)")
     pg.add_argument("storia", nargs="?", default=None,

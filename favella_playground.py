@@ -84,7 +84,7 @@ def _avvia_partita(sorgente):
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         print("--- BENVENUTO IN FAVELLA 1 ---")
-        print("Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA.")
+        print("Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
         mostra_stanza(mondo)
     _SESSIONE.mondo = mondo
     return {"ok": True, "output": buf.getvalue(), "running": True,

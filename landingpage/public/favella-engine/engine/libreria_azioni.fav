@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.1.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.2.0)
 
 from strutture import Mondo, Azione
 from favella_utils import rendi_testo, frase_indeterminativa, prima_maiuscola
@@ -157,7 +157,7 @@ def aiuto_logica_default(mondo: Mondo):
     print("  - Interazione: esamina <oggetto>, prendi <oggetto>, lascia <oggetto>")
     print("  - Informazioni: inventario (o i, zaino), guarda, aiuto")
     print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'...")
-    print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), trascrizione")
+    print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), salva e carica (anche con un nome: salva mattina), trascrizione")
     print("  - Sistema: esci")
     print("\nCerca di usare verbi semplici e nomi di oggetti.")
 

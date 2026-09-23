@@ -10,6 +10,7 @@
 # Nessuna dipendenza esterna oltre a quelle del progetto (lark).
 
 import io
+import json
 import sys
 import os
 import re
@@ -3278,7 +3279,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.1.0.md")
+                          "grammatica-1.2.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3295,7 +3296,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.1.0.md è presente")
+           "documentazione/grammatica-1.2.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -5134,6 +5135,199 @@ def test_ancora_dopo_annulla_ripete_il_comando_disfatto():
            "ANCORA ripete il comando disfatto (ultimo_comando è di sessione)")
 
 
+# --- [1.2.0] Sinonimi dei verbi d'autore -------------------------------------
+
+_SRC_SIN_AUTORE = (
+    "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+    "Il sasso è una cosa.\nIl sasso è in cucina.\n"
+    '"lancia" è come getta.\n'                     # prima della dichiarazione
+    '"getta" è un comando.\n'
+    '"scaglia" è come "getta".\n'
+    '"getta il cibo" è un comando senza oggetto.\n'
+    '"butta via il cibo" è come "getta il cibo".\n'
+    'Invece di getta il sasso: dire "Il sasso rotola via.".\n'
+    'Invece di getta il cibo: dire "Il cane si avventa sul cibo.".\n')
+
+
+def test_sinonimo_verbo_autore():
+    print("[1.2.0: 'è come' vale anche per i verbi dichiarati dall'autore]")
+    mondo = runtime(_SRC_SIN_AUTORE)
+    _check(mondo is not None and mondo.sinonimi_verbo.get("lancia") == "getta",
+           "'\"lancia\" è come getta.' registrato anche se getta è dichiarato dopo")
+    _check("rotola" in esegui(mondo, "lancia il sasso"), "il sinonimo attiva la regola del verbo d'autore")
+    _check("rotola" in esegui(mondo, "scaglia sasso"), "il bersaglio si può scrivere fra virgolette")
+    _check("avventa" in esegui(mondo, "butta via il cibo"),
+           "sinonimo di più parole verso un comando di più parole")
+    _check("rotola" in esegui(mondo, "getta il sasso"), "il verbo d'autore funziona ancora")
+
+
+def test_sinonimo_verbo_autore_ignoto_avvisa():
+    print("[1.2.0: un sinonimo verso un comando mai dichiarato resta un avviso]")
+    mondo, log = compila("La cella è una stanza.\nIl giocatore comincia in cella.\n"
+                         '"lancia" è come "scaraventa".\n')
+    _check(mondo is not None and "scaraventa" in log and "comando dichiarato" in log,
+           "l'avviso suggerisce di dichiarare prima il comando")
+
+
+# --- [1.2.0] SALVA / CARICA ---------------------------------------------------
+
+class _ArchivioMemoria:
+    def __init__(self):
+        self.d = {}
+
+    def scrivi(self, nome, testo):
+        self.d[nome] = testo
+
+    def leggi(self, nome):
+        return self.d.get(nome)
+
+
+_SRC_SALVA = (
+    "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+    "L'orto è una stanza.\nLa cucina collega nord a l'orto.\n"
+    "La mela è una cosa.\nLa mela è prendibile.\nLa mela è in cucina.\n"
+    "La pera è una cosa.\nLa pera è prendibile.\nLa pera è nell'orto.\n"
+    "I passi è un contatore.\n"
+    "Il meteo è uno stato.\nIl meteo è sereno.\n"
+    'Ogni turno se il giocatore è nell\'orto: aumenta i passi.\n'
+    'Invece di aspetta: dire "Il cielo cambia." e adesso il meteo diventa uno fra sereno, pioggia, nebbia.\n'
+    "La nonna è un personaggio.\nLa nonna è in cucina.\n"
+    'Il dialogo della nonna comincia con "ciao".\n'
+    'La nonna al nodo "ciao" dice "Hai fame?".\n'
+    'Al nodo "ciao" l\'opzione "Sì." conduce al nodo "fame" e adesso aumenta i passi di 10.\n'
+    'Al nodo "ciao" l\'opzione "No." chiude il dialogo.\n'
+    'La nonna al nodo "fame" dice "Prendi una mela.".\n'
+    'Al nodo "fame" l\'opzione "Grazie." chiude il dialogo.\n')
+
+
+def _due_partite(comandi):
+    archivio = _ArchivioMemoria()
+    a = runtime(_SRC_SALVA)
+    a.archivio_salvataggi = archivio
+    for c in comandi:
+        esegui(a, c)
+    esegui(a, "salva prova")
+    b = runtime(_SRC_SALVA)
+    b.archivio_salvataggi = archivio
+    out = esegui(b, "carica prova")
+    return a, b, out
+
+
+def test_salva_carica_stato_identico():
+    print("[1.2.0: SALVA e CARICA riportano la stessa partita]")
+    a, b, out = _due_partite(["prendi la mela", "aspetta", "nord", "aspetta", "prendi la pera",
+                              "sud", "parla con la nonna", "1", "grazie", "aspetta"])
+    _check("Partita caricata" in out, "il caricamento lo dice al giocatore")
+    _check(a.impronta_stato() == b.impronta_stato(), "l'impronta dello stato coincide")
+    _check(b.variabili["passi"] == a.variabili["passi"] and b.variabili["meteo"] == a.variabili["meteo"],
+           "contatori e stati scelti a caso coincidono")
+    _check(all(esegui(a, c) == esegui(b, c) for c in ("aspetta", "nord", "aspetta", "guarda")),
+           "dopo il caricamento le due partite rispondono uguale")
+
+
+def test_salva_carica_annulla_e_ancora():
+    print("[1.2.0: dopo CARICA, ANNULLA e ANCORA funzionano come prima]")
+    a, b, _ = _due_partite(["prendi la mela", "nord", "prendi la pera", "annulla", "aspetta"])
+    _check("pera" not in b.inventario, "il turno disfatto con ANNULLA non rientra nella partita caricata")
+    _check(esegui(a, "annulla") == esegui(b, "annulla"), "ANNULLA subito dopo il caricamento")
+    _check(a.impronta_stato() == b.impronta_stato(), "stesso stato dopo ANNULLA")
+    _check(esegui(a, "ancora") == esegui(b, "ancora"), "ANCORA ripete lo stesso comando")
+    _check(a.impronta_stato() == b.impronta_stato(), "stesso stato dopo ANCORA")
+
+
+def test_salva_carica_durante_un_dialogo():
+    print("[1.2.0: si salva e si carica anche a metà di una conversazione]")
+    a, b, out = _due_partite(["parla con la nonna", "1"])
+    _check(b.in_dialogo() and b.nodo_dialogo == "fame", "la partita caricata è dentro la conversazione")
+    _check("Prendi una mela" in out, "il caricamento ripropone la battuta corrente")
+    _check(esegui(a, "grazie") == esegui(b, "grazie"), "la conversazione prosegue uguale")
+
+
+def test_salva_carica_rifiuti():
+    print("[1.2.0: CARICA rifiuta salvataggi di altre storie o assenti]")
+    archivio = _ArchivioMemoria()
+    a = runtime(_SRC_SALVA)
+    a.archivio_salvataggi = archivio
+    esegui(a, "prendi la mela")
+    esegui(a, "salva")
+    altra = runtime(_SRC_POSTO)
+    altra.archivio_salvataggi = archivio
+    out = esegui(altra, "carica")
+    _check("altra storia" in out and altra.turno_corrente == 0,
+           "un salvataggio di un'altra storia è rifiutato e la partita non cambia")
+    out = esegui(a, "carica inesistente")
+    _check("nessun salvataggio" in out and "mela" in a.inventario,
+           "un nome sconosciuto lo dice e lascia la partita com'è")
+    archivio.d["rotto"] = "{non è json"
+    _check("danneggiato" in esegui(a, "carica rotto"), "un file danneggiato lo dice")
+
+
+def test_salva_non_consuma_turni_ne_entra_nella_sequenza():
+    print("[1.2.0: SALVA è un comando di servizio]")
+    a = runtime(_SRC_SALVA)
+    a.archivio_salvataggi = _ArchivioMemoria()
+    esegui(a, "prendi la mela")
+    turno = a.turno_corrente
+    esegui(a, "salva")
+    _check(a.turno_corrente == turno, "salvare non fa passare il tempo")
+    _check(a._registro_comandi == ["prendi la mela"], "SALVA non entra nella sequenza dei comandi")
+
+
+def test_carica_verbo_d_autore_non_intercettato():
+    print("[1.2.0: se l'autore dichiara 'carica', il verbo resta suo]")
+    mondo = runtime("La stanza è una stanza.\nIl giocatore comincia in stanza.\n"
+                    "Il fucile è una cosa.\nIl fucile è in stanza.\n"
+                    '"carica" è un comando.\n'
+                    'Invece di carica il fucile: dire "Clic.".\n')
+    _check("Clic." in esegui(mondo, "carica il fucile"), "la regola dell'autore vince su CARICA")
+
+
+def test_salva_su_file_nella_cartella_di_lavoro():
+    print("[1.2.0: nel terminale il salvataggio è un file di testo]")
+    from gioco import ArchivioFile
+    cartella = tempfile.mkdtemp()
+    a = runtime(_SRC_SALVA)
+    a.archivio_salvataggi = ArchivioFile(cartella)
+    esegui(a, "prendi la mela")
+    esegui(a, "salva mattina")
+    percorso = os.path.join(cartella, "mattina.salvataggio")
+    _check(os.path.exists(percorso), "esiste mattina.salvataggio")
+    with open(percorso, encoding="utf-8") as f:
+        dati = json.load(f)
+    _check(dati["formato"] == "favella-salvataggio" and dati["comandi"] == ["prendi la mela"],
+           "il file è JSON leggibile, con la sequenza dei comandi")
+    b = runtime(_SRC_SALVA)
+    b.archivio_salvataggi = ArchivioFile(cartella)
+    esegui(b, "carica mattina")
+    _check("mela" in b.inventario, "ricaricato da file")
+
+
+# --- [1.2.0] Collaudo dinamico -------------------------------------------------
+
+def test_esploratore_finali_con_percorso():
+    print("[1.2.0: l'esploratore raggiunge il finale seguendo un percorso]")
+    import esploratore
+    src = (_SRC_SALVA + 'Invece di mangia la pera: dire "Buona." e adesso vinci "Sazio.".\n')
+    mondo, _ = compila(src)
+    r = esploratore.esplora(mondo, partite=2, turni=40, seme=3,
+                            percorsi=[("a mano", ["nord", "prendi la pera", "mangia la pera"])])
+    _check(r["finali"] == [("vinta", "Sazio.", "regola «Invece di mangia»")],
+           "il finale dichiarato è elencato")
+    _check(("vinta", "Sazio.") in r["raggiunti"], "il percorso lo raggiunge")
+    _check(not [a for a in r["anomalie"] if a["tipo"] in esploratore.GRAVI],
+           "nessuna anomalia grave su una storia sana")
+    _check(r["copertura"]["luoghi"] >= {"cucina", "orto"}, "la copertura conta i luoghi")
+
+
+def test_esploratore_trova_un_segnaposto_rotto():
+    print("[1.2.0: l'esploratore segnala un segnaposto non risolto]")
+    import esploratore
+    mondo, _ = compila("La cella è una stanza.\nIl giocatore comincia in cella.\n"
+                       'Invece di guarda: dire "Vedi [qualcosa] qui.".\n')
+    r = esploratore.esplora(mondo, partite=2, turni=30, seme=1)
+    _check(any(a["tipo"] == "SEGNAPOSTO" for a in r["anomalie"]), "SEGNAPOSTO trovato")
+
+
 # --- Runner ------------------------------------------------------------------
 
 
@@ -5509,11 +5703,23 @@ def main():
         test_quando_riscatta_a_ogni_fronte,
         test_capienza_avviso_su_spostamento_in_inventario,
         test_ancora_dopo_annulla_ripete_il_comando_disfatto,
+        # [1.2.0] Sinonimi dei verbi d'autore, SALVA/CARICA, collaudo dinamico
+        test_sinonimo_verbo_autore,
+        test_sinonimo_verbo_autore_ignoto_avvisa,
+        test_salva_carica_stato_identico,
+        test_salva_carica_annulla_e_ancora,
+        test_salva_carica_durante_un_dialogo,
+        test_salva_carica_rifiuti,
+        test_salva_non_consuma_turni_ne_entra_nella_sequenza,
+        test_carica_verbo_d_autore_non_intercettato,
+        test_salva_su_file_nella_cartella_di_lavoro,
+        test_esploratore_finali_con_percorso,
+        test_esploratore_trova_un_segnaposto_rotto,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.1.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.2.0)")
     print("=" * 60)
     for t in tests:
         t()

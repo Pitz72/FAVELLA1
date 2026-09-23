@@ -1,6 +1,6 @@
 # Indice del repository — FAVELLA 1
 
-Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
+Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-23 (motore 1.2.0).
 
 ---
 
@@ -12,12 +12,13 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
 
 | File | Ruolo |
 |---|---|
-| `favella.py` | Entry-point / CLI `favella1` (gioca, compila, collaudo, playground, esporta) |
+| `favella.py` | Entry-point / CLI `favella1` (gioca, compila, collaudo, esplora, playground, esporta) |
 | `compilatore.py` | Compilatore Lark/EBNF: `.fav` → object model |
 | `strutture.py` | Object model del Mondo + `VERSIONE_MOTORE` |
 | `gioco.py` | Interprete / loop di gioco |
 | `libreria_azioni.py` | Verbi e azioni di base |
 | `favella_utils.py` | Utilità condivise |
+| `esploratore.py` | Collaudo dinamico: `favella1 esplora`, `favella1 collaudo --finali` (1.2.0) |
 | `collaudo.py` | Collaudatore statico di storie (catena della vittoria) |
 | `favella_playground.py` | Playground locale offline |
 | `favella_server.py` | Server (escluso dal pacchetto pip) |
@@ -36,7 +37,7 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-08-10.
 
 | Percorso | Contenuto |
 |---|---|
-| `documentazione/grammatica-*.md` | Specifiche EBNF per versione (la `1.0.0` è quella viva) |
+| `documentazione/grammatica-*.md` | Specifiche EBNF per versione (la `1.2.0` è quella viva) |
 | `documentazione/0.*.md` | Note di rilascio storiche per versione |
 | `documentazione/progettazione-*.md`, `espansione-oltre-0.29.md` | Documenti di progettazione |
 | `documentazione/manuale/` | Manuale (Typst → PDF) + `manuale.pdf` pubblico |
@@ -87,8 +88,8 @@ virtualenv, build e cache. Per rimetterlo in moto:
 ```bash
 # motore: serve solo Lark
 pip install lark
-python test_linguaggio.py     # 681 asserzioni
-python test_collaudo.py       # 43 asserzioni
+python test_linguaggio.py     # 734 asserzioni
+python test_collaudo.py       # 50 asserzioni
 python favella.py gioca favella1/galleria/il-faro/il-faro.fav
 
 # pacchetto pip (artefatti in dist/)
