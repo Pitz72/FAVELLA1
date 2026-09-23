@@ -2206,7 +2206,7 @@ export const LESSONS: Record<string, Lesson> = {
       {
         tipo: "narr",
         testo:
-          "Tre comodità da veri smanettoni. «ANNULLA» (o «disfa») disfa l'ultimo turno e riporta il mondo esattamente com'era: una macchina del tempo a un passo. «ANCORA» (o «ripeti», o «g») ripete l'ultimo comando, utile quando aspetti che qualcosa succeda. «TRASCRIZIONE» comincia a salvare la partita su un file di testo, per rileggersela poi — questa vale quando giochi da riga di comando.",
+          "Alcune comodità da veri smanettoni. «ANNULLA» (o «disfa») disfa l'ultimo turno e riporta il mondo esattamente com'era: una macchina del tempo a un passo. «ANCORA» (o «ripeti», o «g») ripete l'ultimo comando, utile quando aspetti che qualcosa succeda. «TRASCRIZIONE» comincia a registrare la partita in un file di testo, per rileggersela poi — questa vale quando giochi da riga di comando. E dalla versione 1.2 c'è la coppia più preziosa: «salva mattina» mette da parte la partita, «carica mattina» la riprende esattamente dov'era.",
       },
       {
         tipo: "tranello",

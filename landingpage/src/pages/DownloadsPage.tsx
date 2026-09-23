@@ -135,7 +135,7 @@ const DownloadsPage = () => (
         </p>
         <div className="mb-5">
           <span className="rounded-full border border-favella-amber/25 px-2.5 py-1 font-mono text-[11px] text-favella-amber">
-            84 pp · 21 capp · v{VERSION}
+            86 pp · 21 capp · v{VERSION}
           </span>
         </div>
         <ExtBtn href={MANUAL_PDF_URL}>↓ Scarica il manuale</ExtBtn>

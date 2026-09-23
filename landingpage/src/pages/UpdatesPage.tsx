@@ -114,7 +114,7 @@ const UpdatesPage = () => {
         <div className="mt-24">
           <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">Changelog</p>
           <h2 className="mb-10 font-serif text-[clamp(26px,3.6vw,38px)] font-medium text-favella-text-primary">
-            La strada fino alla 1.1
+            La strada fino alla 1.2
           </h2>
           <div className="pl-2">
             {UPDATE_LOGS.map((log, i) => (

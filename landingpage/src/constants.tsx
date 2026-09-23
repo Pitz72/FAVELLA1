@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.1.0)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.2.0)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.0.1";
-export const VERSION_LABEL = "v1.0.1 — Il linguaggio è completo";
+export const VERSION = "1.2.0";
+export const VERSION_LABEL = "v1.2.0 — Il linguaggio è completo";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.1.0";
+export const ENGINE_VERSION = "1.2.0";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -25,7 +25,9 @@ export const SITE_URL = "https://favella.eu";
 // · 2.0.1 = motore vendorato risincronizzato alla 1.0.1 (utils → favella_utils).
 // · 2.1.0 = aggiornamento finale: tutto in un repository solo (motore, sito, IDE,
 //   branding), download alla 1.0.1, l'IDE sperimentale annunciato in chiaro.
-export const SITE_VERSION = "2.1.0";
+// · 2.2.0 = motore 1.2.0 (salvataggi, collaudo che gioca, posto iniziale) e
+//   Il Viaggiatore come gioco a sé, scaricabile.
+export const SITE_VERSION = "2.2.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -34,10 +36,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.0.1";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.0.1-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.0.1-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.0.1-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.2.0";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.2.0-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.2.0-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.2.0-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -74,7 +76,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 //  Statistiche di colpo d'occhio
 // --------------------------------------------------------------------
 export const STATS = [
-  { value: "702", label: "test verdi", hint: "+ 43 di collaudo" },
+  { value: "734", label: "test verdi", hint: "+ 50 di collaudo" },
   { value: ENGINE_VERSION, label: "linguaggio completo", hint: "dalla 1.0 si aggiunge, non si rompe" },
   { value: "0", label: "ambiguità", hint: "grammatica LALR(1)" },
   { value: "100%", label: "italiano", hint: "le frasi SONO il codice" },
@@ -108,7 +110,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "parser",
     title: "Un motore solido",
-    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 702 test, più 43 di collaudo, garantisce ogni costrutto.",
+    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 734 test, più 50 di collaudo, garantisce ogni costrutto.",
   },
   {
     icon: "open",
@@ -141,9 +143,9 @@ export const NEWS: NewsItem[] = [
     tag: "Linguaggio",
     date: "Settembre 2026",
     emphasis: "primary",
-    title: "FAVELLA 1.1: il posto iniziale degli oggetti",
-    body: "Chi scrive un'avventura descrive gli oggetti dentro la stanza: «Su un mobile, una mappa piegata della provincia». Il guaio arriva dopo. Il giocatore prende la mappa, e la stanza continua a raccontarla sul mobile. La 1.1 risolve con una frase sola: Il posto della mappa è \"Su un mobile, una MAPPA piegata della provincia.\". Finché nessuno la tocca, la mappa si presenta con quella frase, sotto la descrizione della stanza, e resta fuori dall'elenco «Puoi vedere qui». La prima volta che viene spostata, che la prenda il giocatore o che la porti via una regola, la frase sparisce e non torna più: da lì la mappa è un oggetto come gli altri. Un «annulla» subito dopo la presa la rimette al suo posto. Se nella stanza gli oggetti al loro posto sono più d'uno, le frasi si leggono di seguito, in un capoverso solo. L'esigenza è venuta fuori scrivendo Il Viaggiatore. Le storie già scritte funzionano come prima: nessuna frase della 1.0 cambia significato. Nella stessa versione è stata corretta la documentazione dei demoni: «Quando» scatta ogni volta che la condizione diventa vera, non una volta per partita.",
-    cta: { label: "Leggi il capitolo 6 del manuale", href: MANUAL_PDF_URL },
+    title: "FAVELLA 1.2: le partite si salvano, il collaudo gioca",
+    body: "La 1.2 porta nel linguaggio quello che è servito per fare di Il Viaggiatore un gioco vero. Anzitutto le partite si salvano: «salva mattina» mette da parte la partita, «carica mattina» la riporta esattamente dov'era, nel terminale, qui sul sito e nei giochi esportati in HTML, e dopo il caricamento «annulla» e «ancora» funzionano come prima. FAVELLA non fotografa il mondo: ricorda i comandi dati, al caricamento li rigioca in un attimo e controlla con un'impronta dello stato che la partita sia proprio quella. Poi il collaudo gioca: «favella1 esplora» fa girare decine di partite a caso, con giocatori che sbagliano a scrivere, parlano con tutti e annullano, e ti dice dove la storia si rompe, con i comandi per riprodurlo; «favella1 collaudo --finali» dice quali finali si raggiungono davvero. Arriva anche il posto iniziale degli oggetti: con Il posto della mappa è \"Su un mobile, una MAPPA piegata della provincia.\" la mappa si presenta dentro la scena finché nessuno la tocca, poi la frase sparisce e la mappa entra nell'elenco come ogni altro oggetto. E i sinonimi valgono anche per i comandi che dichiari tu («\"lancia\" è come getta.»). Le storie già scritte funzionano come prima.",
+    cta: { label: "Scarica FAVELLA 1.2", href: "/download" },
   },
   {
     tag: "Galleria",
@@ -338,9 +340,9 @@ L'intuizione che muove FAVELLA è radicale nella sua semplicità: e se l'italian
 
 Con l'avvento dei Large Language Models quel sogno è diventato un progetto concreto. FAVELLA 1 non è stato scritto in solitudine, ma in un dialogo costante con un'intelligenza artificiale: non un semplice strumento, ma un partner di sviluppo con cui definire le specifiche, esplorare il design della grammatica, generare codice e fare refactoring. Un approccio ibrido che lascia all'autore umano la visione e le decisioni, e accelera tutto il resto.
 
-Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 702 test, più 43 di collaudo.
+Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 734 test, più 50 di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona; la 1.1 ha portato una frase, il posto iniziale degli oggetti, venuta fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 85 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 86 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -353,8 +355,13 @@ export interface UpdateLog {
 
 export const UPDATE_LOGS: UpdateLog[] = [
   {
+    version: "1.2.0",
+    title: "Salvare, collaudare giocando, sinonimi per ogni verbo",
+    content: "La prima versione distribuita dopo la 1.0.1, e contiene anche la 1.1. Le partite si salvano e si riprendono («salva mattina», «carica mattina») ovunque giri il motore: il salvataggio è la sequenza dei comandi più un'impronta dello stato, e al caricamento la partita si ricostruisce rigiocandola. Il collaudo impara a giocare: «favella1 esplora» lancia partite a caso e segnala testi rotti, uscite che non si aprono, oggetti che il parser non vede; «favella1 collaudo --finali» dice quali finali si raggiungono. I sinonimi valgono anche per i comandi dichiarati dall'autore, e il collaudo statico avvisa quando una scorta parte sotto la soglia che le serve e nessuna regola la fa crescere. Nessuna storia esistente cambia comportamento. Manuale a 86 pagine; suite a 734 test più 50 di collaudo.",
+  },
+  {
     version: "1.1.0",
-    title: "Il posto iniziale degli oggetti",
+    title: "Il posto iniziale degli oggetti (arrivato con la 1.2)",
     content: "La prima frase nuova dopo la 1.0: «Il posto della mappa è \"…\".» dà a un oggetto una presentazione d'autore, mostrata sotto la descrizione della stanza finché nessuno lo sposta. Alla prima presa la frase sparisce per sempre e l'oggetto torna nell'elenco normale; «annulla» la riporta. Dal lavoro su Il Viaggiatore vengono anche un avviso nuovo (una regola che mette un oggetto in inventario ignorando il limite di trasporto dichiarato) e una correzione della documentazione: il demone «Quando» scatta a ogni passaggio da falso a vero, non una volta sola. Nessuna storia esistente cambia comportamento. Il manuale sale a 85 pagine; la suite a 702 test più 43 di collaudo.",
   },
   {
@@ -464,7 +471,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.1.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 85 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.2.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 86 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -498,7 +505,7 @@ La spada antica è nella grotta.
 La spada antica è prendibile.
 \`\`\`
 
-### Il posto iniziale (dalla 1.1)
+### Il posto iniziale (dalla 1.2)
 Se vuoi presentare un oggetto dentro la scena, invece che nell'elenco «Puoi vedere qui», dagli un **posto**. La frase compare sotto la descrizione della stanza finché nessuno sposta l'oggetto; alla prima presa sparisce.
 
 \`\`\`favella
@@ -597,7 +604,13 @@ Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.1.0** (la grammatica della 1.0 più una frase, il posto iniziale).*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.2.0**.*
+
+### Il giocatore può salvare la partita?
+Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
+
+### Come controllo che la mia storia non si rompa da qualche parte?
+Con \`favella1 esplora storia.fav\`: gioca decine di partite a caso, con giocatori che sbagliano a scrivere e annullano, e ti elenca i punti in cui qualcosa non va (un \`[nome]\` rimasto nel testo, un'uscita elencata che non si apre, un oggetto che il parser non vede), con i comandi per riprodurli. \`favella1 collaudo storia.fav --finali\` ti dice invece quali finali si raggiungono. Per le storie lunghe dagli la soluzione in un file, un comando per riga: \`--percorso soluzione.txt\`.
 
 ### Posso far comparire un messaggio quando voglio, senza legarlo a un comando del giocatore?
 Sì. FAVELLA ha tre modi per mostrare testo durante il gioco senza agganciarlo a un verbo o a un oggetto:
@@ -725,4 +738,4 @@ Nei **nomi** (di stanze, oggetti, stati, contatori) puoi usare solo lettere — 
 
 ---
 
-> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (85 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
+> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (86 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
