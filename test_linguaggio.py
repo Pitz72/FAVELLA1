@@ -5835,6 +5835,83 @@ def test_consiglio_su_o_per_oppure():
     _check("scrivi «oppure»" in log, "l'errore spiega che «o» vuol dire ovest")
 
 
+# --- [1.3.0] Blocco C: invarianti del mondo e moduli (G-3, M-11) ---------------
+
+_BASE_C = "La cucina è una stanza.\nIl giardino è una stanza.\nLa cucina collega nord a il giardino.\n"
+
+
+def test_nomi_che_si_scontrano_con_la_grammatica():
+    print("[1.3.0 G-3: nomi vietati e collisioni fra stanze, oggetti e stati]")
+    casi = {
+        "Il posto è una cosa.": "parola riservata",
+        "Il giocatore è una cosa.": "parola riservata",
+        "L'inventario è una cosa.": "parola riservata",
+        "La cucina è una cosa.": "sia una stanza sia un oggetto",
+        "La mela è una cosa.\nIl giardino collega sud a la mela.": "sia una stanza sia un oggetto",
+        "La luce è una cosa.\nLa luce è uno stato.": "sia un'entità",
+    }
+    for frase, atteso in casi.items():
+        mondo, log = compila(_BASE_C + frase + "\n")
+        _check(mondo is None and atteso in log, f"errore chiaro per: {frase.splitlines()[-1]}")
+    mondo, _ = compila(_BASE_C + "La stanza del trono è una stanza.\nLa cosa è una cosa.\n")
+    _check(mondo is not None, "le altre parole riservate restano nomi leciti ('la cosa')")
+
+
+def test_oggetto_collocato_in_due_posti():
+    print("[1.3.0 G-3: un oggetto collocato in due posti diversi è un errore]")
+    mondo, log = compila(_BASE_C + "La mela è una cosa.\nLa mela è in cucina.\nLa mela è nel giardino.\n")
+    _check(mondo is None and "collocato in due posti" in log, "errore con i due posti")
+    mondo, _ = compila(_BASE_C + "La mela è una cosa.\nLa mela è in cucina.\nLa mela è in cucina.\n")
+    _check(mondo is not None, "ripetere lo stesso posto è innocuo")
+    mondo, _ = compila(_BASE_C + "La mela è una cosa.\nLa mela è in cucina.\nIl giocatore ha la mela.\n")
+    _check(mondo is not None and "mela" in mondo.inventario,
+           "'Il giocatore ha X' dopo una collocazione resta lecito (vince l'inventario)")
+
+
+def test_dichiarazioni_doppie_avvisano():
+    print("[1.3.0 G-3: due descrizioni o due valori iniziali diversi: avviso]")
+    _, log = compila(_BASE_C + 'La descrizione della cucina è "A".\nLa descrizione della cucina è "B".\n')
+    _check("due descrizioni di base diverse" in log, "descrizione doppia")
+    _, log = compila(_BASE_C + "Il punteggio è un contatore.\nIl punteggio parte da 5.\n"
+                     "Il punteggio parte da 0.\nIl meteo è uno stato.\nIl meteo è sereno.\nIl meteo è nuvoloso.\n")
+    _check("due valori iniziali diversi (5 e 0)" in log and "(sereno e nuvoloso)" in log,
+           "valori iniziali doppi di contatori e stati")
+
+
+def test_stanza_nata_da_un_refuso_in_collega():
+    print("[1.3.0 G-3: una stanza nata solo da 'collega' e vuota è segnalata]")
+    _, log = compila("La cucina è una stanza.\nIl giardino è una stanza.\n"
+                     "La cucina collega nord a il giardno.\n")
+    _check("«giardno» esiste solo perché compare in «collega»" in log and "giardino" in log,
+           "avviso con il nome giusto suggerito")
+
+
+def test_includi_la_libreria():
+    print("[1.3.0 M-11: 'Includi la libreria \"verbi\".' senza copiare il modulo]")
+    mondo, log = compila("La cella è una stanza.\nIncludi la libreria \"verbi\".\n"
+                         'La lampada è una cosa.\nLa lampada è in cella.\n'
+                         'Invece di accendi la lampada: dire "Luce.".\n')
+    _check(mondo is not None and "accendi" in mondo.verbi_personalizzati,
+           "il modulo della libreria standard è incluso")
+    _, log = compila('La cella è una stanza.\nIncludi la libreria "inesistente".\n')
+    _check("non ha il modulo" in log and "verbi" in log, "un modulo sconosciuto elenca quelli disponibili")
+
+
+def test_partenza_implicita_con_piu_file():
+    print("[1.3.0 M-11: senza 'Il giocatore comincia' e con più file, avviso]")
+    cartella = tempfile.mkdtemp()
+    with open(os.path.join(cartella, "luoghi.fav"), "w", encoding="utf-8") as f:
+        f.write("La soffitta è una stanza.\n")
+    radice = os.path.join(cartella, "storia.fav")
+    with open(radice, "w", encoding="utf-8") as f:
+        f.write('Includi "luoghi.fav".\nLa cucina è una stanza.\n')
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        mondo = analizza_file(radice)
+    _check(mondo is not None and "Manca 'Il giocatore comincia" in buf.getvalue()
+           and "soffitta" in buf.getvalue(), "l'avviso dice da dove partirà la partita")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6252,6 +6329,13 @@ def main():
         test_errori_di_sintassi_in_italiano,
         test_tutti_gli_errori_in_una_volta,
         test_consiglio_su_o_per_oppure,
+        # [1.3.0] Blocco C: invarianti e moduli
+        test_nomi_che_si_scontrano_con_la_grammatica,
+        test_oggetto_collocato_in_due_posti,
+        test_dichiarazioni_doppie_avvisano,
+        test_stanza_nata_da_un_refuso_in_collega,
+        test_includi_la_libreria,
+        test_partenza_implicita_con_piu_file,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

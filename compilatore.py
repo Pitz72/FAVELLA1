@@ -1214,6 +1214,13 @@ class FavellaTransformer(Transformer):
         # 'La gemma è nella scatola.' funziona anche PRIMA di 'La scatola è un
         # contenitore.'. Ogni voce conserva l'ordine sorgente (contenuto/varianti).
         self._pending_posizioni = []     # (ogg_grezzo, prep, luogo_grezzo)
+        # [1.3.0 / G-3] Per riconoscere dichiarazioni contraddittorie: dove è
+        # stato collocato ogni oggetto, i valori iniziali di stati e contatori,
+        # le stanze dichiarate con 'è una stanza' (le altre nascono da 'collega').
+        self._luogo_iniziale = {}
+        self._descritte = set()
+        self._valori_iniziali = {}
+        self._stanze_dichiarate = set()
         self._pending_proprieta = []     # (ogg_grezzo, proprieta_grezzo)
         self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
         self._pending_posti = []         # [1.1.0] (nome_grezzo, testo)
@@ -1279,6 +1286,7 @@ class FavellaTransformer(Transformer):
 
     def def_stanza(self, nome_grezzo):
         id_stanza = normalizza_nome(nome_grezzo)
+        self._stanze_dichiarate.add(id_stanza)
         stanza = self.mondo.trova_stanza(id_stanza)
         if not stanza:
             stanza = Stanza(id_stanza)
@@ -1547,6 +1555,14 @@ class FavellaTransformer(Transformer):
 
         if condizione is None:
             # Descrizione di base (fallback se nessuna condizionale è vera).
+            # [1.3.0 / G-3] Due descrizioni di base diverse (tipico di due moduli
+            # che definiscono la stessa cosa): vale l'ultima, ma lo si dice.
+            if (id_entita in self._descritte and descrizione_display(bersaglio.descrizione)
+                    != descrizione_display(testo)):
+                self.warnings.append(
+                    f"'{nome_grezzo}' ha due descrizioni di base diverse: vale "
+                    f"l'ultima («{descrizione_display(testo)[:40]}…»).")
+            self._descritte.add(id_entita)
             bersaglio.descrizione = testo
         else:
             # [Livello 5] Variante condizionale, valutata in ordine a runtime.
@@ -1565,6 +1581,17 @@ class FavellaTransformer(Transformer):
         stanza = self.mondo.trova_stanza(id_luogo)
         contenitore = self.mondo.trova_oggetto(id_luogo)
 
+        if oggetto and (stanza or contenitore):
+            # [1.3.0 / G-3] Un oggetto collocato in due posti diversi compariva
+            # in entrambe le stanze ma si poteva prendere solo nell'ultima.
+            precedente = self._luogo_iniziale.get(id_ogg)
+            if precedente is not None and precedente[0] != id_luogo:
+                self.errori.append(
+                    f"'{ogg_grezzo}' è collocato in due posti: '{precedente[1]}' e "
+                    f"'{luogo_grezzo}'. Un oggetto comincia in un posto solo (per "
+                    f"qualcosa che si vede da più stanze scrivi «… è anche in …»).")
+                return
+            self._luogo_iniziale[id_ogg] = (id_luogo, luogo_grezzo)
         if not oggetto:
             self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
         elif stanza:
@@ -1622,8 +1649,18 @@ class FavellaTransformer(Transformer):
         # [Livello 3] Valore iniziale di uno 'stato' a livello di dichiarazione.
         nome = normalizza_nome(var_grezzo)
         self.mondo.dichiara_variabile(nome)  # idempotente, per sicurezza
+        self._avvisa_valore_doppio(nome, var_grezzo, normalizza_nome(valore_grezzo))
         self.mondo.variabili[nome] = normalizza_nome(valore_grezzo)
         return None
+
+    def _avvisa_valore_doppio(self, nome, grezzo, valore):
+        """[1.3.0 / G-3] Due valori iniziali diversi per lo stesso stato o
+        contatore: vale l'ultimo, ma lo si dice."""
+        if nome in self._valori_iniziali and self._valori_iniziali[nome] != valore:
+            self.warnings.append(
+                f"'{grezzo}' ha due valori iniziali diversi ({self._valori_iniziali[nome]} "
+                f"e {valore}): vale l'ultimo.")
+        self._valori_iniziali[nome] = valore
 
     def def_contatore(self, var_grezzo):
         # [Livello 3] Dichiarazione di un contatore numerico (valore iniziale 0).
@@ -1635,6 +1672,7 @@ class FavellaTransformer(Transformer):
         # 3.'). Order-independent: scriviamo direttamente il valore; una eventuale
         # 'X è un contatore.' successiva usa setdefault e non lo sovrascrive.
         nome = normalizza_nome(var_grezzo)
+        self._avvisa_valore_doppio(nome, var_grezzo, numero)
         self.mondo.variabili[nome] = numero
         return None
 
@@ -2198,6 +2236,18 @@ class FavellaTransformer(Transformer):
                     f"Il posto di '{ogg.nome}' non sarà mai mostrato: l'oggetto "
                     f"non comincia direttamente in una stanza.")
 
+        # [1.3.0 / G-3] Una stanza che nasce solo da 'collega', senza descrizione
+        # né oggetti, è quasi sempre un refuso nel nome ('il giardno').
+        for sid, stanza in m.stanze.items():
+            if (sid not in self._stanze_dichiarate
+                    and stanza.descrizione == Stanza(sid).descrizione
+                    and not stanza.descrizioni_condizionali and not stanza.oggetti):
+                simili = difflib.get_close_matches(sid, sorted(self._stanze_dichiarate), n=1, cutoff=0.6)
+                forse = f" Forse intendevi «{simili[0]}»?" if simili else ""
+                self.warnings.append(
+                    f"La stanza «{sid}» esiste solo perché compare in «collega» e non ha "
+                    f"descrizione né oggetti: è un refuso?{forse}")
+
         # 1. [GG1] La stanza di partenza dichiarata deve esistere.
         if self.start_dichiarato_raw is not None:
             if not m.trova_stanza(m.posizione_iniziale):
@@ -2695,6 +2745,49 @@ def valida_nomi_dichiarati(simboli, testo):
     return errori
 
 
+# [1.3.0 / G-3] Parole che non possono essere, da sole, il nome di un'entità o
+# di uno stato: stanno dove la grammatica accetta ANCHE un nome (inizio di
+# frase, di condizione o di conseguenza), e il nome le oscurerebbe. 'Il posto è
+# una cosa.' rompeva ogni 'Il posto di …'; un oggetto 'giocatore' rompeva 'Il
+# giocatore comincia…'. Le altre parole riservate ('stanza', 'cosa', 'stato'…)
+# compaiono solo dove un nome non è atteso, e restano nomi leciti.
+NOMI_VIETATI = frozenset({
+    "giocatore", "posto", "dialogo", "descrizione", "quando", "ogni", "invece",
+    "non", "se", "e", "dire", "adesso", "oppure", "càpita",
+    "aumenta", "diminuisci", "vinci", "perdi", "termina",
+    "inventario", "nulla",
+})
+
+
+def valida_collisioni_nomi(simboli, testo):
+    """[1.3.0 / G-3] Nomi che la grammatica non può tenere distinti. Un nome
+    fatto di una sola parola riservata ('Il posto è una cosa.') oscurava le frasi
+    che usano quella parola ('Il posto della mappa…'); una stanza e un oggetto,
+    o un'entità e uno stato, con lo stesso nome producevano errori
+    incomprensibili o un mondo incoerente (una cucina dentro la cucina). Un
+    nome usato in 'collega' diventa una stanza: se è anche un oggetto, di
+    solito è un refuso. Restituisce una lista di (messaggio, riga, colonna)."""
+    errori = []
+    for nome in sorted(simboli.tutti | simboli.variabili):
+        if nome in NOMI_VIETATI:
+            riga, col = _localizza_nome(testo, nome, 0)
+            errori.append((
+                f"«{nome}» è una parola riservata del linguaggio e non può essere, da "
+                f"sola, un nome: usane uno composto (per esempio «{nome} di pietra»).",
+                riga, col))
+    for nome in sorted(simboli.stanze & simboli.oggetti):
+        riga, col = _localizza_nome(testo, nome, 0)
+        errori.append((
+            f"«{nome}» è sia una stanza sia un oggetto (una stanza nasce anche da "
+            f"«collega»): dai loro nomi diversi.", riga, col))
+    for nome in sorted(simboli.tutti & simboli.variabili):
+        riga, col = _localizza_nome(testo, nome, 0)
+        errori.append((
+            f"«{nome}» è sia un'entità (stanza, oggetto o personaggio) sia uno stato "
+            f"o un contatore: dai loro nomi diversi.", riga, col))
+    return errori
+
+
 # ==============================================================================
 # 0bis. PREPROCESSORE DEGLI IMPORT MULTI-FILE (Passata 0) — Livello 6 / 0.11.2
 # ==============================================================================
@@ -2708,7 +2801,22 @@ def valida_nomi_dichiarati(simboli, testo):
 
 # Una direttiva occupa un'INTERA riga: 'Includi "percorso".' (spazi ai lati
 # ammessi). Il path è quotato (vocabolario nuovo tra virgolette, come alias/verbi).
-_RE_INCLUDI = re.compile(r'^\s*Includi\s+"((?:\\.|[^"\\])*)"\s*\.\s*$')
+_RE_INCLUDI = re.compile(r'^\s*Includi\s+"((?:\\.|[^"\\])*)"\s*\.\s*$', re.IGNORECASE)
+# [1.3.0 / M-11] 'Includi la libreria "verbi".' prende il modulo dalla libreria
+# standard installata con FAVELLA (favella1/libreria), senza doverlo copiare
+# accanto alla storia.
+_RE_INCLUDI_LIBRERIA = re.compile(
+    r'^\s*Includi\s+la\s+libreria\s+"((?:\\.|[^"\\])*)"\s*\.\s*$', re.IGNORECASE)
+
+
+def cartella_libreria():
+    """[1.3.0] La cartella della libreria standard, o None se non è installata
+    (per esempio nel motore che gira nel browser)."""
+    try:
+        from favella1 import LIBRERIA_DIR
+    except Exception:
+        return None
+    return LIBRERIA_DIR if os.path.isdir(LIBRERIA_DIR) else None
 
 
 def _aggiorna_stato_stringa(linea: str, dentro: bool) -> bool:
@@ -2773,6 +2881,24 @@ def espandi_inclusioni(percorso_radice: str, sorgente_radice: str | None = None)
         dentro_stringa = False
         for n, linea in enumerate(testo.split("\n"), 1):
             if not dentro_stringa:
+                m = _RE_INCLUDI_LIBRERIA.match(linea)
+                if m:
+                    cartella = cartella_libreria()
+                    nome = m.group(1).strip()
+                    if not nome.lower().endswith(".fav"):
+                        nome += ".fav"
+                    if cartella is None:
+                        errori.append(f"La libreria standard non è disponibile qui: "
+                                      f"copia '{nome}' accanto alla storia e usa "
+                                      f"'Includi \"{nome}\".'.")
+                    elif not os.path.isfile(os.path.join(cartella, nome)):
+                        disponibili = ", ".join(sorted(f[:-4] for f in os.listdir(cartella)
+                                                       if f.endswith(".fav")))
+                        errori.append(f"La libreria standard non ha il modulo '{nome[:-4]}' "
+                                      f"(ci sono: {disponibili}).")
+                    else:
+                        _espandi(os.path.join(cartella, nome), catena + [real], False)
+                    continue
                 m = _RE_INCLUDI.match(linea)
                 if m:
                     _espandi(os.path.join(base, m.group(1)), catena + [real], False)
@@ -2793,6 +2919,23 @@ def _posizione_origine(mappa_righe, linea) -> str:
         file_o, riga_o = mappa_righe[linea - 1]
         return f"  [{file_o}, riga {riga_o}]"
     return ""
+
+
+def _avvisa_partenza_implicita(transformer, mappa_righe):
+    """[1.3.0 / M-11] Senza 'Il giocatore comincia in …' la partita parte dalla
+    prima stanza dichiarata; con più file (Includi) quale sia la prima dipende
+    dall'ordine delle inclusioni, e un modulo può spostare l'inizio del gioco
+    senza che l'autore se ne accorga. Lo si dice."""
+    m = transformer.mondo
+    if transformer.start_dichiarato_raw is not None or not m.stanze:
+        return
+    file_sorgente = {f for f, _ in (mappa_righe or [])}
+    if len(file_sorgente) > 1:
+        prima = next(iter(m.stanze.values()))
+        transformer.warnings.append(
+            f"Manca 'Il giocatore comincia in …': la partita comincia in "
+            f"«{prima.nome_visualizzato}», la prima stanza dichiarata, che con più "
+            f"file dipende dall'ordine degli 'Includi'. Dichiara la partenza.")
 
 
 def analizza_file(percorso_file: str) -> Mondo | None:
@@ -2828,7 +2971,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): intercettati QUI,
         # prima di costruire il parser, con un errore d'autore localizzato (il '/'
         # corromperebbe la grammatica generata con un GrammarError incomprensibile).
-        nomi_errori = valida_nomi_dichiarati(simboli, testo)
+        nomi_errori = valida_nomi_dichiarati(simboli, testo) or valida_collisioni_nomi(simboli, testo)
         if nomi_errori:
             print("\n[FAVELLA 1] Errore: nome non valido")
             for msg, riga, _col in nomi_errori:
@@ -2873,6 +3016,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 4. VALIDAZIONE SEMANTICA GLOBALE
         transformer.valida_post()
+        _avvisa_partenza_implicita(transformer, mappa_righe)
 
         # Estrae i log dal transformer
         errori.extend(transformer.errori)
@@ -3041,7 +3185,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
         simboli = costruisci_symbol_table(testo)
         # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): diagnostica
         # localizzata invece del GrammarError grezzo che ne deriverebbe.
-        for msg, riga, col in valida_nomi_dichiarati(simboli, testo):
+        for msg, riga, col in (valida_nomi_dichiarati(simboli, testo)
+                               or valida_collisioni_nomi(simboli, testo)):
             f_o, r_o = _posizione_da_linea_espansa(riga)
             errors.append(_diag(msg, file=f_o, line=r_o, col=col,
                                 code="nome-non-valido"))
@@ -3079,6 +3224,7 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
         transformer = FavellaTransformer(coppie_dir)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
+        _avvisa_partenza_implicita(transformer, mappa_righe)
 
         for msg in transformer.errori:
             f_o, r_o, imp = _risolvi_semantica(msg)
