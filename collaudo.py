@@ -29,9 +29,11 @@ from strutture import (
     VERSIONE_MOTORE,
     Condizione, CondizionePossesso, CondizioneProprieta, CondizioneVariabile,
     CondizioneContatore, CondizionePosizioneGiocatore,
+    CondizionePosizioneOggetto, CondizionePngHa, QUI,
     CondizioneNot, CondizioneAnd, CondizioneOr,
     Conseguenza, ConseguenzaProprieta, ConseguenzaVariabile, ConseguenzaSceltaStato,
-    ConseguenzaContatore,
+    ConseguenzaContatore, ConseguenzaTogliProprieta, ConseguenzaCollegamento,
+    ConseguenzaPngRiceve, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaSpostamento, ConseguenzaSpostamentoGiocatore,
 )
 from favella_utils import radice_proprieta
@@ -83,6 +85,13 @@ def _descrivi_atomo(atomo, negato: bool) -> str:
     if isinstance(atomo, CondizionePosizioneGiocatore):
         verbo = "non è" if negato else "è"
         return f"il giocatore {verbo} in «{atomo.id_stanza}»"
+    if isinstance(atomo, CondizionePosizioneOggetto):   # [1.3.0 / G-6]
+        verbo = "non è" if negato else "è"
+        dove = "qui" if atomo.luogo == QUI else f"in «{atomo.luogo}»"
+        return f"«{atomo.id_oggetto}» {verbo} {dove}"
+    if isinstance(atomo, CondizionePngHa):              # [1.3.0 / M-10]
+        verbo = "non ha" if negato else "ha"
+        return f"«{atomo.id_png}» {verbo} «{atomo.id_oggetto}»"
     # Fallback difensivo per eventuali atomi non previsti.
     base = type(atomo).__name__
     return f"non ({base})" if negato else base
@@ -185,6 +194,11 @@ def _produttori(mondo):
                 voci.append({"conseguenza": cons, "contesto": ctx,
                              "condizione_sblocco": opz.condizione,
                              "comando": f"scegli «{opz.testo}»"})
+    for arg in getattr(mondo, "argomenti", ()):   # [1.3.0 / M-10]
+        comando = f"chiedi a «{arg.id_png}» di «{arg.chiavi[0] if arg.chiavi else ''}»"
+        for cons in arg.conseguenze:
+            voci.append({"conseguenza": cons, "contesto": f"argomento ({comando})",
+                         "condizione_sblocco": arg.condizione, "comando": comando})
     return voci
 
 
@@ -224,6 +238,9 @@ def _produce(cons, atomo, negato: bool, mondo) -> bool:
         in_inventario = cons.destinazione == "inventario"
         return (not in_inventario) if negato else in_inventario
     if isinstance(atomo, CondizioneProprieta):
+        if (isinstance(cons, ConseguenzaTogliProprieta) and cons.id_oggetto == atomo.id_oggetto):
+            # [1.3.0 / M-2] 'non è più P' rende vero «X non è P».
+            return negato and radice_proprieta(cons.proprieta) == radice_proprieta(atomo.proprieta)
         if not isinstance(cons, ConseguenzaProprieta) or cons.id_oggetto != atomo.id_oggetto:
             return False
         stessa = radice_proprieta(cons.proprieta) == radice_proprieta(atomo.proprieta)
@@ -256,6 +273,17 @@ def _produce(cons, atomo, negato: bool, mondo) -> bool:
             return False
         stessa = cons.id_stanza == atomo.id_stanza
         return (not stessa) if negato else stessa
+    if isinstance(atomo, (CondizionePosizioneOggetto, CondizionePngHa)):
+        # [1.3.0 / G-6, M-10] Chi sposta l'oggetto (o il personaggio) verso quel
+        # luogo lo rende vero; negato, qualunque suo spostamento.
+        luogo = atomo.luogo if isinstance(atomo, CondizionePosizioneOggetto) else atomo.id_png
+        if isinstance(cons, ConseguenzaSpostamento) and cons.id_oggetto == atomo.id_oggetto:
+            return negato or cons.destinazione == luogo or luogo == QUI
+        if isinstance(cons, ConseguenzaMovimentoPNG) and cons.id_png == atomo.id_oggetto:
+            return negato or cons.destinazione in (luogo, None) or luogo == QUI
+        if isinstance(cons, ConseguenzaPngRiceve) and cons.id_oggetto == atomo.id_oggetto:
+            return negato or cons.id_png == luogo or luogo == QUI
+        return False
     return False
 
 
@@ -294,6 +322,9 @@ def _stanze_raggiungibili(mondo, partenza) -> set:
     for cons in _tutte_le_conseguenze(mondo):
         if isinstance(cons, ConseguenzaSpostamentoGiocatore):
             raggiunte.add(cons.id_stanza)
+        # [1.3.0 / M-8] Un passaggio aperto in partita porta alla sua stanza.
+        if isinstance(cons, ConseguenzaCollegamento) and cons.destinazione:
+            raggiunte.add(cons.destinazione)
     return raggiunte
 
 
@@ -323,6 +354,19 @@ def _produttori_per(atomo, negato, mondo, produttori, raggiungibili):
             res.append({"contesto": "raccolta dell'oggetto (comando «prendi»)",
                         "condizione_sblocco": None,
                         "comando": f"prendi «{atomo.id_oggetto}»"})
+    if isinstance(atomo, CondizioneProprieta) and not negato:
+        # [1.3.0 / G-4] I verbi della libreria aprono, chiudono, accendono e
+        # spengono gli oggetti che lo permettono.
+        oggetto = mondo.trova_oggetto(atomo.id_oggetto)
+        radici = {radice_proprieta(p) for p in (oggetto.proprieta if oggetto else ())}
+        for abilitante, esiti in (("apribile", {"aperta": "apri", "chiusa": "chiudi"}),
+                                  ("accendibile", {"accesa": "accendi", "spenta": "spegni"})):
+            if radice_proprieta(abilitante) in radici:
+                for esito, verbo in esiti.items():
+                    if radice_proprieta(esito) == radice_proprieta(atomo.proprieta):
+                        res.append({"contesto": f"verbo della libreria «{verbo}»",
+                                    "condizione_sblocco": None,
+                                    "comando": f"{verbo} «{atomo.id_oggetto}»"})
     for p in produttori:
         if _produce(p["conseguenza"], atomo, negato, mondo):
             res.append(p)

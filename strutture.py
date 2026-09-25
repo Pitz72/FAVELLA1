@@ -110,6 +110,10 @@ class CondizioneProprieta(Condizione):
         oggetto = mondo.trova_oggetto(self.id_oggetto)
         if oggetto is None:
             return False
+        # [1.3.0 / M-2] 'prendibile' non vive fra le proprietà ma in un campo:
+        # 'se la mela è prendibile' era sempre falsa.
+        if self.proprieta == "prendibile":
+            return bool(oggetto.prendibile)
         # [Concordanza] Confronto per RADICE: «è aperto» combacia con «aperta» e
         # viceversa (genere/numero ignorati). I refusi veri cambiano la radice.
         r = radice_proprieta(self.proprieta)
@@ -206,6 +210,45 @@ class CondizionePosizioneGiocatore(Condizione):
     def valuta(self, mondo: 'Mondo') -> bool:
         return mondo.posizione_giocatore == self.id_stanza
 
+QUI = "<qui>"
+
+
+class CondizionePosizioneOggetto(Condizione):
+    """[1.3.0 / G-6] Dove sta un oggetto o un personaggio: 'se la guardia è in
+    cucina', 'se la chiave è nella scatola' (anche dentro qualcos'altro che sta
+    nella scatola), 'se la mela è in inventario', 'se il gatto è qui' (nella
+    stanza del giocatore). Prima si poteva chiedere solo dove fosse il giocatore."""
+    def __init__(self, id_oggetto: str, luogo: str):
+        self.id_oggetto = id_oggetto
+        self.luogo = luogo   # id di stanza o di oggetto, 'inventario', 'nulla' o QUI
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if oggetto is None:
+            return False
+        if self.luogo == QUI:
+            return (mondo.stanza_di(self.id_oggetto) == mondo.posizione_giocatore
+                    or mondo.posizione_giocatore in oggetto.anche_in)
+        if self.luogo == "inventario":
+            return mondo.giocatore_possiede(self.id_oggetto)
+        if self.luogo == "nulla":
+            return not oggetto.posizione
+        if self.luogo in mondo.stanze:
+            return mondo.stanza_di(self.id_oggetto) == self.luogo or self.luogo in oggetto.anche_in
+        return self.luogo in mondo.contenitori_di(self.id_oggetto)
+
+
+class CondizionePngHa(Condizione):
+    """[1.3.0 / M-10] 'se la guardia ha la chiave' (anche dentro una borsa che
+    la guardia porta)."""
+    def __init__(self, id_png: str, id_oggetto: str):
+        self.id_png = id_png
+        self.id_oggetto = id_oggetto
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        return self.id_png in mondo.contenitori_di(self.id_oggetto)
+
+
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
     """Negazione: 'se il giocatore non ha X', 'se X non è Y'."""
@@ -244,6 +287,9 @@ class ConseguenzaProprieta(Conseguenza):
 
     def esegui(self, mondo: 'Mondo'):
         oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if oggetto and self.proprieta == "prendibile":
+            oggetto.prendibile = True   # [1.3.0 / M-2] un campo, non una proprietà
+            return
         if oggetto:
             oggetto.aggiungi_proprieta(self.proprieta)
             # [Livello 3 / M5] Le proprietà opposte si escludono a vicenda.
@@ -257,6 +303,75 @@ class ConseguenzaProprieta(Conseguenza):
                 for p in list(oggetto.proprieta):
                     if radice_proprieta(p) in opp_radici:
                         oggetto.proprieta.discard(p)
+
+class ConseguenzaTogliProprieta(Conseguenza):
+    """[1.3.0 / M-2] 'e adesso il panno non è più bagnato': toglie una proprietà
+    (per radice: 'bagnato' toglie anche 'bagnata'). Prima si potevano solo
+    aggiungere, e senza una coppia di opposte il panno restava bagnato e
+    asciutto insieme."""
+    def __init__(self, id_oggetto: str, proprieta: str):
+        self.id_oggetto = id_oggetto
+        self.proprieta = proprieta
+
+    def esegui(self, mondo: 'Mondo'):
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if not oggetto:
+            return
+        if self.proprieta == "prendibile":
+            oggetto.prendibile = False
+            return
+        r = radice_proprieta(self.proprieta)
+        for p in list(oggetto.proprieta):
+            if radice_proprieta(p) == r:
+                oggetto.proprieta.discard(p)
+
+
+class ConseguenzaCollegamento(Conseguenza):
+    """[1.3.0 / M-8] Le uscite cambiano durante la partita: 'e adesso la cucina
+    collega nord a la dispensa' apre un passaggio (con il ritorno, come la
+    dichiarazione); 'e adesso la cucina non collega più nord' lo chiude (e
+    chiude il ritorno, se porta di nuovo qui)."""
+    def __init__(self, id_stanza: str, direzione: str, destinazione: Optional[str]):
+        self.id_stanza = id_stanza
+        self.direzione = direzione
+        self.destinazione = destinazione   # None = il passaggio si chiude
+
+    def esegui(self, mondo: 'Mondo'):
+        stanza = mondo.trova_stanza(self.id_stanza)
+        if stanza is None:
+            return
+        opposta = mondo.opposta_di(self.direzione)
+        if self.destinazione is None:
+            vecchia = stanza.uscite.pop(self.direzione, None)
+            dest = mondo.trova_stanza(vecchia) if vecchia else None
+            if dest is not None and opposta and dest.uscite.get(opposta) == self.id_stanza:
+                dest.uscite.pop(opposta, None)
+            return
+        dest = mondo.trova_stanza(self.destinazione)
+        if dest is None:
+            return
+        stanza.uscite[self.direzione] = self.destinazione
+        if opposta:
+            dest.uscite[opposta] = self.id_stanza
+
+
+class ConseguenzaPngRiceve(Conseguenza):
+    """[1.3.0 / M-10] 'e adesso la guardia ha la chiave': l'oggetto passa al
+    personaggio (lo porta con sé quando si muove; non è alla portata del
+    giocatore)."""
+    def __init__(self, id_png: str, id_oggetto: str):
+        self.id_png = id_png
+        self.id_oggetto = id_oggetto
+
+    def esegui(self, mondo: 'Mondo'):
+        png = mondo.trova_oggetto(self.id_png)
+        oggetto = mondo.trova_oggetto(self.id_oggetto)
+        if png is None or oggetto is None or png is oggetto:
+            return
+        mondo.rimuovi_da_posizione(oggetto)
+        png.contenuto.add(self.id_oggetto)
+        oggetto.posizione = self.id_png
+
 
 class ConseguenzaVariabile(Conseguenza):
     """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
@@ -636,6 +751,25 @@ class OpzioneDialogo:
     def disponibile(self, mondo: 'Mondo') -> bool:
         return self.condizione is None or self.condizione.valuta(mondo)
 
+class Argomento:
+    """[1.3.0 / M-10] Un argomento di conversazione: 'Se chiedi alla guardia di
+    "chiave" oppure "custode": dire "…" e adesso …'. Il giocatore scrive
+    'chiedi alla guardia della chiave'; la prima risposta la cui condizione è
+    vera vince. Accanto ai dialoghi a menù, non al loro posto."""
+    def __init__(self, id_png: str, chiavi: List[str], risposta: str,
+                 condizione: Optional['Condizione'] = None,
+                 conseguenze: Optional[List[Conseguenza]] = None):
+        self.id_png = id_png
+        self.chiavi = chiavi
+        self.risposta = risposta
+        self.condizione = condizione
+        self.conseguenze: List[Conseguenza] = conseguenze or []
+
+    def esegui_conseguenze(self, mondo: 'Mondo'):
+        for c in self.conseguenze:
+            c.esegui(mondo)
+
+
 class NodoDialogo:
     """Un nodo del grafo di dialogo: la battuta dell'NPC più le opzioni offerte."""
     def __init__(self, etichetta: str):
@@ -717,6 +851,11 @@ class Oggetto:
         # più falso). Nel frattempo l'oggetto non compare in «Puoi vedere qui».
         self.posto: Optional[str] = None
         self.spostato: bool = False
+        # [1.3.0 / M-8] Oggetto DI SCENA ('Il cielo è di scena.'): si esamina ma
+        # non compare in «Puoi vedere qui». Presente ANCHE in altre stanze ('Il
+        # cielo è anche nel cortile.'): cielo, mare, una porta vista dai due lati.
+        self.di_scena: bool = False
+        self.anche_in: Set[str] = set()
 
     def al_suo_posto(self) -> bool:
         """[1.1.0] True se la frase del posto iniziale va ancora mostrata."""
@@ -836,6 +975,13 @@ class Mondo:
         # della conversazione in corso è runtime: 'dialogo_attivo' = id dell'NPC con
         # cui si sta parlando (o None), 'nodo_dialogo' = etichetta del nodo corrente.
         self.dialogo_nodi: Dict[str, 'NodoDialogo'] = {}
+        # [1.3.0 / M-10] Argomenti di conversazione ('Se chiedi alla guardia di
+        # "chiave": …'), in ordine di dichiarazione.
+        self.argomenti: List['Argomento'] = []
+        # [1.3.0 / M-8] 'Le uscite nominano solo le stanze visitate.': la riga
+        # «Uscite:» tace il nome delle stanze non ancora viste.
+        self.uscite_solo_visitate: bool = False
+        self.stanze_visitate: Set[str] = set()
         self.dialogo_attivo: Optional[str] = None
         self.nodo_dialogo: Optional[str] = None
         # [0.20.0 / A1] Anafora: l'ULTIMO oggetto riferito, indicizzato per
@@ -1260,6 +1406,41 @@ class Mondo:
             portati |= self.racchiusi_in(id_ogg)
         return portati
 
+    def contenitori_di(self, id_oggetto: str) -> List[str]:
+        """[1.3.0] Tutto ciò che contiene l'oggetto, dal più vicino al più
+        lontano: contenitori, supporti, personaggi e infine la stanza (o
+        'inventario'). La chiave nella scatola sul tavolo in cucina →
+        ['scatola', 'tavolo', 'cucina']."""
+        catena, visti = [], set()
+        oggetto = self.trova_oggetto(id_oggetto)
+        pos = oggetto.posizione if oggetto else None
+        while pos and pos not in visti:
+            visti.add(pos)
+            catena.append(pos)
+            if pos in self.stanze or pos == "inventario":
+                break
+            contenitore = self.trova_oggetto(pos)
+            pos = contenitore.posizione if contenitore else None
+        return catena
+
+    def stanza_di(self, id_oggetto: str) -> Optional[str]:
+        """[1.3.0] La stanza in cui si trova l'oggetto, attraverso contenitori,
+        supporti e personaggi; per ciò che il giocatore porta, la sua stanza."""
+        catena = self.contenitori_di(id_oggetto)
+        if not catena:
+            return None
+        ultimo = catena[-1]
+        if ultimo == "inventario":
+            return self.posizione_giocatore
+        return ultimo if ultimo in self.stanze else None
+
+    def oggetti_anche_qui(self) -> List['Oggetto']:
+        """[1.3.0 / M-8] Gli oggetti presenti ANCHE nella stanza del giocatore
+        ('Il cielo è anche nel cortile.'), nell'ordine della storia."""
+        stanza = self.posizione_giocatore
+        return [o for o in self.oggetti.values()
+                if stanza in o.anche_in and o.posizione != stanza]
+
     def giocatore_possiede(self, id_oggetto: str) -> bool:
         """Vero se il giocatore ha l'oggetto addosso (vedi oggetti_portati). È
         la semantica di 'se il giocatore ha X'."""
@@ -1339,7 +1520,7 @@ class Mondo:
         if id_oggetto in self.inventario:
             return True
         pos = oggetto.posizione
-        if pos == self.posizione_giocatore:
+        if pos == self.posizione_giocatore or self.posizione_giocatore in oggetto.anche_in:
             return True
         if not pos or pos == "inventario":
             return pos == "inventario"
@@ -1361,6 +1542,7 @@ class Mondo:
         stanza = self.trova_stanza(self.posizione_giocatore)
         if stanza:
             coda += list(stanza.oggetti.keys())
+            coda += [o.nome for o in self.oggetti_anche_qui()]
         while coda:
             id_ogg = coda.pop()
             if id_ogg in risultato:

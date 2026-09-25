@@ -34,7 +34,14 @@ def _imposta(mondo: Mondo, oggetto, proprieta: str):
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
-    uno e (per i contenitori) se è aperto."""
+    uno e (per i contenitori) se è aperto. [1.3.0 / M-10] Di un personaggio,
+    ciò che tiene con sé."""
+    if oggetto.is_personaggio:
+        nomi = [frase_indeterminativa(mondo.oggetti[c].nome_visualizzato)
+                for c in mondo.oggetti if c in oggetto.contenuto]
+        if nomi:
+            print(f"Ha con sé: {', '.join(nomi)}.")
+        return
     if oggetto.is_contenitore and not mondo.contenitore_aperto(oggetto):
         print(f"È {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
         return

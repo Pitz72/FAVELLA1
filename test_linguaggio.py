@@ -3289,7 +3289,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.2.0.md")
+                          "grammatica-1.3.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3306,7 +3306,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.2.0.md è presente")
+           "documentazione/grammatica-1.3.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -6142,6 +6142,209 @@ def test_la_stanza_mostra_cio_che_sta_sui_supporti():
            "un supporto vuoto non ha la sua riga")
 
 
+# --- [1.3.0] Blocco E: il modello del mondo --------------------------------
+
+_SRC_E = (
+    "La cucina è una stanza.\nIl corridoio è una stanza.\nLa dispensa è una stanza.\n"
+    "Il giocatore comincia in cucina.\nLa cucina collega nord a il corridoio.\n"
+    "La guardia è un personaggio.\nLa guardia è in corridoio.\n"
+    "Il tavolo è una cosa.\nIl tavolo è in cucina.\nIl tavolo è un supporto.\n"
+    "La scatola è una cosa.\nLa scatola è sul tavolo.\nLa scatola è un contenitore.\n"
+    "La chiave è una cosa.\nLa chiave è nella scatola.\nLa chiave è prendibile.\n"
+    "La mela è una cosa.\nLa mela è in cucina.\nLa mela è prendibile.\n"
+)
+
+
+def test_condizioni_sulla_posizione_degli_oggetti():
+    print("[1.3.0 G-6: 'se la guardia è in cucina', 'è nella scatola', 'è qui']")
+    src = _SRC_E + (
+        'Invece di esamina il tavolo se la guardia è in cucina: dire "La guardia ti osserva.".\n'
+        'Invece di esamina il tavolo se la chiave è sul tavolo e la guardia non è qui: dire "Sul tavolo, la chiave.".\n'
+        'Invece di esamina la mela se la mela è in inventario: dire "In mano.".\n'
+        'Invece di esamina la mela se la chiave non è nella scatola: dire "La scatola è vuota.".\n'
+        'Invece di fischia: dire "Fiii." e adesso la guardia va in cucina.\n'
+        '"fischia" è un comando senza oggetto.\n'
+        "L'umore è uno stato.\nL'umore è qui.\n")
+    mondo = runtime(src)
+    _check(mondo is not None, "le condizioni di posizione compilano ('L'umore è qui.' resta un valore)")
+    _check("Sul tavolo, la chiave." in esegui(mondo, "esamina il tavolo"),
+           "'la chiave è sul tavolo' vale anche dentro la scatola sul tavolo")
+    esegui(mondo, "fischia")
+    _check("La guardia ti osserva." in esegui(mondo, "esamina il tavolo"),
+           "'se la guardia è in cucina' dopo che la guardia si è mossa")
+    esegui(mondo, "prendi la mela")
+    _check("In mano." in esegui(mondo, "esamina la mela"), "'è in inventario'")
+    mondo.oggetti["scatola"].contenuto.discard("chiave")
+    mondo.oggetti["chiave"].posizione = "cucina"
+    mondo.stanze["cucina"].oggetti["chiave"] = mondo.oggetti["chiave"]
+    esegui(mondo, "lascia la mela")
+    _check("La scatola è vuota." in esegui(mondo, "esamina la mela"), "'non è nella scatola'")
+
+
+def test_togliere_una_proprieta():
+    print("[1.3.0 M-2: 'non è più' e 'prendibile' come proprietà vera]")
+    src = _SRC_E + (
+        "Il panno è una cosa.\nIl panno è in cucina.\nIl panno è bagnato.\n"
+        'Invece di strizza il panno se il panno è bagnato: dire "Strizzato." e adesso il panno non è più bagnato.\n'
+        'Invece di strizza il panno: dire "È già asciutto.".\n'
+        '"strizza" è un comando.\n'
+        'Invece di esamina la mela se la mela è prendibile: dire "Si può prendere." e adesso la mela non è più prendibile.\n'
+        'Invece di esamina la mela: dire "Ora no.".\n')
+    mondo, log = compila(src)
+    _check(mondo is not None and "prendibile" not in log, "'se la mela è prendibile' non è un refuso")
+    mondo = runtime(src)
+    _check("Strizzato." in esegui(mondo, "strizza il panno"), "la condizione vale")
+    _check("bagnato" not in mondo.oggetti["panno"].proprieta, "la proprietà è tolta")
+    _check("È già asciutto." in esegui(mondo, "strizza il panno"), "e resta tolta")
+    _check("Si può prendere." in esegui(mondo, "esamina la mela"), "'è prendibile' in una condizione")
+    _check(not mondo.oggetti["mela"].prendibile, "'non è più prendibile' in una conseguenza")
+    _check("Non puoi prenderla." in esegui(mondo, "prendi la mela"), "e il motore lo rispetta")
+
+
+def test_uscite_che_cambiano():
+    print("[1.3.0 M-8: 'X collega D a Y' e 'X non collega più D' come conseguenze]")
+    src = _SRC_E + (
+        "La leva è una cosa.\nLa leva è in cucina.\n"
+        'Invece di tira la leva: dire "Si apre un passaggio." e adesso la cucina collega est a la dispensa.\n'
+        'Invece di spingi la leva: dire "Si chiude." e adesso la cucina non collega più est.\n')
+    mondo, log = compila(src)
+    _check(mondo is not None and "irraggiungibile" not in log,
+           "la dispensa, aperta da una regola, non è segnalata irraggiungibile")
+    _check("invece di tira la leva" not in " ".join(mondo.stanze),
+           "un 'collega' dentro una regola non crea stanze")
+    mondo = runtime(src)
+    _check("Non puoi andare" in esegui(mondo, "est"), "prima il passaggio non c'è")
+    esegui(mondo, "tira la leva")
+    esegui(mondo, "est")
+    _check(mondo.posizione_giocatore == "dispensa", "dopo, si passa")
+    esegui(mondo, "ovest")
+    _check(mondo.posizione_giocatore == "cucina", "con il ritorno automatico")
+    esegui(mondo, "spingi la leva")
+    _check("est" not in mondo.stanze["cucina"].uscite
+           and "ovest" not in mondo.stanze["dispensa"].uscite, "chiuso, anche il ritorno")
+    mondo, log = compila(_SRC_E + 'Invece di tira la mela: dire "x" e adesso la cucina collega est a la cantina.\n')
+    _check(mondo is None and "cantina" in log,
+           "una stanza mai dichiarata in una conseguenza è un errore")
+
+
+def test_oggetti_di_scena_e_in_piu_stanze():
+    print("[1.3.0 M-8: 'è di scena' e 'è anche in']")
+    src = _SRC_E + ("Il cielo è una cosa.\nIl cielo è in cucina.\nIl cielo è anche nel corridoio.\n"
+                    "Il cielo è di scena.\nLa descrizione del cielo è \"Azzurro.\".\n")
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("cielo" not in out, "un oggetto di scena non si elenca")
+    _check("Azzurro." in esegui(mondo, "esamina il cielo"), "ma si esamina")
+    esegui(mondo, "nord")
+    _check("Azzurro." in esegui(mondo, "esamina il cielo"), "anche dall'altra stanza")
+    _check("Non c'è niente da prendere." in esegui(mondo, "prendi tutto"),
+           "'prendi tutto' non tocca gli oggetti di scena")
+    mondo, log = compila(_SRC_E + "Il cielo è una cosa.\nIl cielo è anche nella scatola.\n")
+    _check(mondo is None and "«anche in» una stanza" in log, "'è anche in' vuole una stanza")
+
+
+def test_uscite_solo_verso_stanze_visitate():
+    print("[1.3.0 M-8: 'Le uscite nominano solo le stanze visitate.']")
+    mondo = runtime(_SRC_E + "Le uscite nominano solo le stanze visitate.\n")
+    _check("Uscite: Nord." in esegui(mondo, "guarda"), "una stanza mai vista resta senza nome")
+    esegui(mondo, "nord")
+    out = esegui(mondo, "sud")
+    _check("Uscite: Nord (Il corridoio)." in out, "vista una volta, ha il suo nome")
+    mondo = runtime(_SRC_E)
+    _check("Uscite: Nord (Il corridoio)." in esegui(mondo, "guarda"), "senza la frase, come prima")
+
+
+def test_personaggi_che_tengono_oggetti():
+    print("[1.3.0 M-10: 'La guardia ha la chiave.', condizione e conseguenza]")
+    src = (
+        "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+        "La guardia è un personaggio.\nLa guardia è in cucina.\n"
+        "La chiave è una cosa.\nLa guardia ha la chiave.\nLa chiave è prendibile.\n"
+        "La mela è una cosa.\nLa mela è in cucina.\nLa mela è prendibile.\n"
+        'Invece di dai la mela alla guardia: dire "Grazie." e adesso la guardia ha la mela e adesso la chiave è in inventario.\n'
+        'Invece di esamina la guardia se la guardia ha la mela: dire "Mangia.".\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check("Ha con sé: una chiave." in esegui(mondo, "esamina la guardia"), "esaminarla dice cosa tiene")
+    _check("Non vedo" in esegui(mondo, "prendi la chiave") and "chiave" not in mondo.inventario,
+           "ciò che tiene non si prende")
+    esegui(mondo, "prendi la mela")
+    esegui(mondo, "dai la mela alla guardia")
+    _check("chiave" in mondo.inventario and mondo.oggetti["mela"].posizione == "guardia",
+           "'e adesso la guardia ha la mela' e la chiave passa al giocatore")
+    _check("Mangia." in esegui(mondo, "esamina la guardia"), "'se la guardia ha la mela'")
+    mondo, log = compila(src + "Il tavolo è una cosa.\nIl tavolo è in cucina.\nIl tavolo ha la mela.\n")
+    _check(mondo is None and "non è un personaggio" in log, "solo i personaggi hanno oggetti")
+
+
+def test_argomenti_di_conversazione():
+    print("[1.3.0 M-10: 'Se chiedi alla guardia di \"chiave\": …' e 'chiedi alla guardia della chiave']")
+    src = (
+        "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+        "La guardia è un personaggio.\nLa guardia è in cucina.\n"
+        "La fiducia è un contatore.\n"
+        'Se chiedi alla guardia di "chiave" oppure "custode": dire "È del custode." e adesso aumenta la fiducia.\n'
+        'Se chiedi alla guardia di "tesoro" se la fiducia è almeno 1: dire "Sotto il pino.".\n'
+        'Se chiedi alla guardia di "tesoro": dire "Non ti conosco.".\n')
+    mondo, log = compila(src)
+    _check(mondo is not None and "non ha un dialogo" not in log,
+           "compila, e un personaggio con argomenti non chiede un dialogo")
+    mondo = runtime(src)
+    _check("Non ti conosco." in esegui(mondo, "chiedi alla guardia del tesoro"),
+           "la condizione dell'argomento conta")
+    _check("È del custode." in esegui(mondo, "chiedi alla guardia della chiave"), "prima parola chiave")
+    _check("È del custode." in esegui(mondo, "domanda del custode"),
+           "'domanda', e senza nominarla se è l'unico personaggio")
+    _check("Sotto il pino." in esegui(mondo, "chiedi alla guardia del tesoro"),
+           "le conseguenze valgono ('e adesso aumenta la fiducia')")
+    _check("La guardia non sa niente di questo." in esegui(mondo, "chiedi alla guardia del meteo"),
+           "argomento sconosciuto")
+    t = mondo.turno_corrente
+    _check("Cosa vuoi chiedere alla guardia?" in esegui(mondo, "chiedi alla guardia")
+           and mondo.turno_corrente == t, "senza argomento: domanda, nessun turno")
+
+
+def test_il_linter_vede_tutto_il_mondo():
+    print("[1.3.0 M-3: proprietà da demoni e verbi; segnaposto in tutti i testi]")
+    src = _SRC_E + (
+        "La porta è una cosa.\nLa porta è in cucina.\nLa porta è apribile.\nLa porta è chiusa.\n"
+        "Il fuoco è una cosa.\nIl fuoco è in cucina.\n"
+        'Quando il giocatore è in corridoio: dire "Fa caldo." e adesso il fuoco è acceso.\n'
+        'Invece di esamina il fuoco se il fuoco è acceso: dire "Arde.".\n'
+        'Invece di esamina la porta se la porta è aperta: dire "Aperta.".\n'
+        'Quando il fuoco è acceso: dire "[fumo] ovunque.".\n'
+        'Invece di esamina la mela: dire "Fine." e adesso vinci "Hai vinto con [mele].".\n'
+        'Invece di esamina il tavolo: dire "Il cartello: [Vietato entrare.]".\n')
+    mondo, log = compila(src)
+    _check("'acceso'" not in log and "'aperta'" not in log,
+           "una proprietà assegnata da un demone o da un verbo non è un refuso")
+    _check("[fumo]" in log and "[mele]" in log,
+           "i segnaposto dei demoni e dei testi di vittoria sono controllati")
+    _check("Vietato entrare" not in log, "testo fra parentesi con punteggiatura: non è un segnaposto")
+
+
+def test_forme_nuove_nell_ide():
+    print("[1.3.0: l'IDE rilegge e riscrive le forme nuove]")
+    from compilatore import (_cond_to_json, _conseq_to_json, _serializza_condizione,
+                             _serializza_conseguenza)
+    src = _SRC_E + ("Il sigillo è una cosa.\nLa guardia ha il sigillo.\nLa mela è rossa.\n"
+                    'Invece di tocca la guardia se la guardia è in cucina e la mela non è qui '
+                    'e la guardia ha il sigillo e la chiave è nella scatola: dire "x" e adesso '
+                    'la mela non è più rossa e adesso la cucina collega est a la dispensa e adesso '
+                    'la cucina non collega più nord e adesso la guardia ha la mela.\n')
+    mondo, _ = compila(src)
+    regola = [r for r in mondo.regole if r.verbo == "tocca"][0]
+    cond = _serializza_condizione(_cond_to_json(regola.condizione, mondo))
+    cons = [_serializza_conseguenza(_conseq_to_json(c, mondo)) for c in regola.conseguenze]
+    _check("La mela non è qui" in cond and "La guardia ha Il sigillo" in cond,
+           "condizioni di posizione e di possesso dei personaggi")
+    _check(cons == ["La mela non è più rossa", "La cucina collega est a La dispensa",
+                    "La cucina non collega più nord", "La guardia ha La mela"],
+           "conseguenze nuove")
+    src2 = src + f'Invece di premi la guardia se {cond}: dire "y" e adesso {" e adesso ".join(cons)}.\n'
+    _check(compila(src2)[0] is not None, "il testo riscritto compila di nuovo")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6576,6 +6779,16 @@ def main():
         test_tutto_ed_elenchi,
         test_italiano_dei_messaggi,
         test_la_stanza_mostra_cio_che_sta_sui_supporti,
+        # [1.3.0] Blocco E: il modello del mondo
+        test_condizioni_sulla_posizione_degli_oggetti,
+        test_togliere_una_proprieta,
+        test_uscite_che_cambiano,
+        test_oggetti_di_scena_e_in_piu_stanze,
+        test_uscite_solo_verso_stanze_visitate,
+        test_personaggi_che_tengono_oggetti,
+        test_argomenti_di_conversazione,
+        test_il_linter_vede_tutto_il_mondo,
+        test_forme_nuove_nell_ide,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

@@ -195,15 +195,24 @@ class Esploratore:
             cand.append((f"esamina {n}", 1.0))
             if o.is_personaggio:
                 cand.append((f"parla con {n}", 1.5 * c["lingua"]))
+                # [1.3.0 / M-10] Gli argomenti di conversazione del personaggio.
+                for arg in getattr(m, "argomenti", ()):
+                    if arg.id_png == o.nome and arg.chiavi:
+                        cand.append((f"chiedi a {n} di {arg.chiavi[0]}", 0.8 * c["lingua"]))
             else:
                 cand.append((f"prendi {n}", 1.5 if o.prendibile else 0.3))
-                if o.is_contenitore:
+                proprieta = " ".join(o.proprieta)
+                if o.is_contenitore or "apribil" in proprieta:
                     cand += [(f"apri {n}", 0.8), (f"chiudi {n}", 0.2)]
+                if "accendibil" in proprieta:   # [1.3.0 / G-4]
+                    cand += [(f"accendi {n}", 0.8), (f"spegni {n}", 0.2)]
         for o in inv:
             n = _nome(o)
             cand += [(f"esamina {n}", 0.4), (f"lascia {n}", 0.3)]
             for bersaglio in presenti:
                 cand.append((f"usa {n} su {_nome(bersaglio)}", 0.6))
+                if bersaglio.is_personaggio:   # [1.3.0 / G-7]
+                    cand.append((f"dai {n} a {_nome(bersaglio)}", 0.6))
             if rng.random() < 0.2:
                 cand.append((f"{rng.choice(VERBI_SULLE_COSE)} {n}", 0.3))
         for v in VERBI_SEMPLICI:

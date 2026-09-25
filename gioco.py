@@ -42,7 +42,10 @@ def mostra_stanza(mondo: Mondo):
     if posti:
         print(" ".join(posti))
 
-    oggetti_nella_stanza = [o for o in stanza_corrente.oggetti.values() if not o.al_suo_posto()]
+    # [1.3.0 / M-8] Gli oggetti DI SCENA non si elencano (si esaminano); quelli
+    # presenti anche in altre stanze ('Il cielo è anche nel cortile.') sì.
+    in_vista = list(stanza_corrente.oggetti.values()) + mondo.oggetti_anche_qui()
+    oggetti_nella_stanza = [o for o in in_vista if not o.al_suo_posto() and not o.di_scena]
     if oggetti_nella_stanza:
         # [Livello 5] Articolo indeterminativo concordato (genere/numero inferiti
         # dal nome dichiarato): "Puoi vedere qui: una torcia, un tavolo.".
@@ -62,10 +65,18 @@ def mostra_stanza(mondo: Mondo):
     for id_ogg in nominati:
         mondo.registra_riferito(id_ogg)
 
-    # Mostra le uscite disponibili
+    # Mostra le uscite disponibili. [1.3.0 / M-8] Con 'Le uscite nominano solo
+    # le stanze visitate.' una stanza mai vista resta senza nome.
+    mondo.stanze_visitate.add(stanza_corrente.nome)
     if stanza_corrente.uscite:
-        uscite_str = ", ".join([f"{prima_maiuscola(d)} ({prima_maiuscola(mondo.trova_stanza(id_s).nome_visualizzato)})" for d, id_s in stanza_corrente.uscite.items()])
-        print(f"Uscite: {uscite_str}.")
+        voci = []
+        for d, id_s in stanza_corrente.uscite.items():
+            dest = mondo.trova_stanza(id_s)
+            if dest is None or (mondo.uscite_solo_visitate and id_s not in mondo.stanze_visitate):
+                voci.append(prima_maiuscola(d))
+            else:
+                voci.append(f"{prima_maiuscola(d)} ({prima_maiuscola(dest.nome_visualizzato)})")
+        print(f"Uscite: {', '.join(voci)}.")
 
 def _elenca_appoggiati(mondo: Mondo, oggetto, nominati, visti):
     """[1.3.0 / M-5] Stampa «Sul tavolo: una mela, un coltello.» per un supporto
@@ -1193,6 +1204,12 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         if sinonimi and verbo_giocatore in sinonimi:
             verbo_giocatore = sinonimi[verbo_giocatore]
 
+        # [1.3.0 / M-10] 'chiedi alla guardia della chiave': gli argomenti di
+        # conversazione ('Se chiedi alla guardia di "chiave": …').
+        if (verbo_giocatore in _VERBI_CHIEDI
+                and verbo_giocatore not in mondo.mappa_verbi_giocatore):
+            return _chiedi(mondo, parole[1:])
+
         # [Livello 5b] 'parla con X' (o 'parla X') avvia un dialogo con un NPC.
         if verbo_giocatore in ("parla", "parlare", "conversa", "conversare"):
             bersaglio = " ".join(p for p in parole[1:] if p != "con")
@@ -1403,6 +1420,73 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         raise
 
 
+# [1.3.0 / M-10] ARGOMENTI DI CONVERSAZIONE
+_VERBI_CHIEDI = ("chiedi", "chiedere", "domanda", "domandare")
+_PAROLE_DI_RACCORDO = (_PAROLE_VUOTE | frozenset(p.rstrip("'") for p in PREPOSIZIONI)
+                       | frozenset(("ad", "dell", "nell", "sull", "all", "dall",
+                                    "riguardo", "circa", "informazioni", "notizie")))
+
+
+def _chiedi(mondo: Mondo, parole) -> bool:
+    """[1.3.0 / M-10] 'chiedi alla guardia della chiave', 'chiedi ad Anna di
+    Bea', 'chiedi della chiave' (se qui c'è un solo personaggio). Cerca, fra
+    gli argomenti del personaggio la cui condizione è vera, il primo che
+    combacia con le parole scritte."""
+    parole = _parole_di(" ".join(parole))
+    raggiungibili = mondo.oggetti_raggiungibili()
+    presenti = [o for o in mondo.oggetti.values() if o.is_personaggio and o.nome in raggiungibili]
+    png = None
+    for o in sorted(presenti, key=lambda o: -len(o.nome)):
+        del_nome = [p for p in _parole_di(o.nome) if p not in _PAROLE_VUOTE]
+        if del_nome and all(p in parole for p in del_nome):
+            png = o
+            for p in del_nome:
+                parole.remove(p)
+            break
+    if png is None:
+        if len(presenti) != 1:
+            print("A chi vuoi chiedere?" if presenti else "Qui non c'è nessuno a cui chiedere.")
+            _senza_turno(mondo)
+            return True
+        png = presenti[0]
+    mondo.registra_riferito(png.nome)
+    argomento = [p for p in parole if p not in _PAROLE_DI_RACCORDO]
+    if not argomento:
+        print(f"Cosa vuoi chiedere {con_preposizione('a', png.nome_visualizzato)}?")
+        _senza_turno(mondo)
+        return True
+    for arg in mondo.argomenti:
+        if arg.id_png != png.nome:
+            continue
+        if arg.condizione is not None and not arg.condizione.valuta(mondo):
+            continue
+        if any(_parla_di(argomento, chiave) for chiave in arg.chiavi):
+            if arg.risposta:
+                print(rendi_testo(mondo, arg.risposta))
+            pos_prima = mondo.posizione_giocatore
+            arg.esegui_conseguenze(mondo)
+            _stampa_annunci(mondo)
+            if partita_finita(mondo):
+                return False
+            if mondo.posizione_giocatore != pos_prima:
+                mostra_stanza(mondo)
+            return True
+    print(f"{prima_maiuscola(nome_in_frase(png.nome_visualizzato))} non sa niente di questo.")
+    return True
+
+
+def _parla_di(scritte, chiave: str) -> bool:
+    """Le parole scritte dal giocatore toccano l'argomento `chiave`: tutte le
+    parole scritte sono (l'inizio di) parole della chiave, o tutte le parole
+    della chiave sono fra quelle scritte."""
+    della_chiave = [p for p in _parole_di(chiave) if p not in _PAROLE_VUOTE]
+    if not della_chiave:
+        return False
+    tutte_scritte = all(any(p == k or (len(p) >= 3 and k.startswith(p)) for k in della_chiave)
+                        for p in scritte)
+    return tutte_scritte or all(k in scritte for k in della_chiave)
+
+
 # Le azioni dopo le quali NON si ristampa la stanza (la risposta basta).
 # [1.3.0] Tutte quelle nuove: ristampano solo 'lascia' e poche altre, come sempre.
 _SENZA_RISTAMPA = frozenset((
@@ -1456,6 +1540,7 @@ def _comandi_di_elenco(mondo: Mondo, verbo: str, nome_azione: str, argomento: st
                    and not mondo.giocatore_possiede(i)
                    and mondo.oggetti[i].prendibile
                    and not mondo.oggetti[i].is_personaggio
+                   and not mondo.oggetti[i].di_scena
                    and (id_dx is None or mondo.oggetti[i].posizione == id_dx)]
             coda = ""   # 'prendi tutto dal tavolo': gli oggetti sono già quelli
             vuoto = "Non c'è niente da prendere."
