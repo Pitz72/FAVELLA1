@@ -5767,6 +5767,74 @@ def test_salva_e_carica_non_intercettano_azioni_sugli_oggetti():
     _check("mattina" in archivio.d, "'salva mattina' salva come sempre")
 
 
+# --- [1.3.0] Blocco B: lessico e diagnostica (G-1, G-2, L-9) -------------------
+
+_BASE_B = ("La cucina è una stanza.\nLa mela è una cosa.\nLa mela è in cucina.\n"
+           "Il livello è uno stato.\nIl livello è basso.\n")
+
+
+def test_parole_chiave_non_spezzano_gli_aggettivi():
+    print("[1.3.0 G-1: 'unta', 'unica', 'alto', 'cometa'… non vengono spezzati]")
+    for agg in ("unta", "unica", "unito", "alto", "allegro", "cometa", "menomato", "allarme"):
+        contesti = (f"La mela è {agg}.",
+                    f'Invece di esamina la mela se la mela è {agg}: dire "x".',
+                    f'Invece di esamina la mela: dire "x" e adesso la mela è {agg}.',
+                    f"Il livello è {agg}.",
+                    f'Invece di esamina la mela se il livello è {agg}: dire "x".',
+                    f'Invece di esamina la mela: dire "x" e adesso il livello è {agg}.')
+        falliti = [c for c in contesti if compila(_BASE_B + c + "\n")[0] is None]
+        _check(not falliti, f"«{agg}» compila in tutti e sei i contesti")
+    mondo = runtime(_BASE_B + 'Invece di esamina la mela se il livello è alto: dire "ALTO".\n'
+                    'Invece di prendi la mela: dire "su" e adesso il livello è alto.\n')
+    esegui(mondo, "prendi la mela")
+    _check("ALTO" in esegui(mondo, "esamina la mela"), "e la condizione funziona a runtime")
+
+
+def test_parole_chiave_senza_distinzione_di_maiuscole():
+    print("[1.3.0 G-2: 'invece di', 'la descrizione', 'Il giocatore' in condizione…]")
+    frasi = ('invece di prendi la mela: dire "no".',
+             'la descrizione della cucina è "x".',
+             'il giocatore comincia in cucina.',
+             'INVECE DI esamina la mela SE Il giocatore ha la mela: dire "x".',
+             'ogni 3 turni: dire "tic".')
+    for f in frasi:
+        _check(compila(_BASE_B + f + "\n")[0] is not None, f"compila: {f}")
+
+
+def test_errori_di_sintassi_in_italiano():
+    print("[1.3.0 G-2: i messaggi non mostrano i nomi interni del parser]")
+    casi = ('invece di prendi la mela dire "no".',
+            'Invece di esamina la mela se Il giocatore ha: dire "x".',
+            "La luce è una cosa.\nLa luce è in cucina.\nLa luce è molto accesa.")
+    for c in casi:
+        _, log = compila(_BASE_B + c + "\n")
+        _check("Mi aspettavo" in log and not re.search(r"__ANON|_KW_|\bLPAR\b|\bDOT\b|\bCOLON\b", log),
+               f"messaggio leggibile per: {c.splitlines()[-1]}")
+    _, log = compila(_BASE_B + "La mela è molto rossa.\n")
+    _check("Entità sconosciuta" not in log and "una sola parola" in log,
+           "'molto rossa' non è scambiata per un'entità: si spiega la proprietà")
+    _, log = compila(_BASE_B + 'Invece di prendi la mela: dire "no."\n')
+    _check("fuori dalle virgolette" in log, "il punto dentro le virgolette ha il suo consiglio")
+
+
+def test_tutti_gli_errori_in_una_volta():
+    print("[1.3.0 G-2: il compilatore mostra tutti gli errori, non solo il primo]")
+    src = _BASE_B + ("La mela è rossa!\nLa pera è in cucina.\n"
+                     'Invece di prendi la mela dire "x".\nLa mela è lucida.\n')
+    mondo, log = compila(src)
+    _check(mondo is None and "3 frasi da correggere" in log, "tre errori in una compilazione")
+    _check("Riga 6" in log and "Riga 7" in log and "Riga 8" in log, "ognuno con la sua riga")
+    r = strutturato(src)
+    _check(not r["ok"] and [e["line"] for e in r["errors"]] == [6, 7, 8],
+           "anche l'IDE riceve i tre errori con le righe giuste")
+
+
+def test_consiglio_su_o_per_oppure():
+    print("[1.3.0 L-9: «o» al posto di «oppure» ha un consiglio]")
+    _, log = compila(_BASE_B + 'Invece di esamina la mela se la mela è rossa o la mela è verde: dire "x".\n')
+    _check("scrivi «oppure»" in log, "l'errore spiega che «o» vuol dire ovest")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6178,6 +6246,12 @@ def main():
         test_quando_non_scatta_se_vero_in_partenza,
         test_preparare_i_demoni_non_consuma_il_caso,
         test_salva_e_carica_non_intercettano_azioni_sugli_oggetti,
+        # [1.3.0] Blocco B: lessico e diagnostica
+        test_parole_chiave_non_spezzano_gli_aggettivi,
+        test_parole_chiave_senza_distinzione_di_maiuscole,
+        test_errori_di_sintassi_in_italiano,
+        test_tutti_gli_errori_in_una_volta,
+        test_consiglio_su_o_per_oppure,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

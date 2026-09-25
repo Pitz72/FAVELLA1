@@ -851,6 +851,71 @@ def _costruisci_alt_verbi_multi(verbi_multi=()) -> str:
     return "|".join(_pattern_nome(v) for v in verbi)
 
 
+# ------------------------------------------------------------------------------
+# [1.3.0] PAROLE CHIAVE CON CONFINE DI PAROLA, SENZA DISTINZIONE DI MAIUSCOLE
+# ------------------------------------------------------------------------------
+# Nel template le parole chiave sono letterali ("un", "al", "Invece"…). Il lexer
+# di Lark prova i terminali per priorità, non per lunghezza: una parola chiave
+# (priorità 0) batteva la proprietà coniata (PROPRIETA, priorità -1) anche quando
+# era solo l'INIZIO di una parola più lunga. 'La padella è unta.' diventava
+# 'un' + 'ta'; '… se il livello è alto' diventava 'al' + 'to' (criticità G-1).
+# La 0.28.0 aveva già risolto lo stesso difetto per PREP_LUOGO ('incisa').
+# Qui ogni parola chiave diventa un terminale filtrato (nome con '_') con un
+# confine destro, e insensibile alle maiuscole: 'invece di', 'la descrizione',
+# 'Il giocatore' e 'il giocatore' valgono uguale (G-2). La grammatica, le sue
+# regole e l'albero prodotto non cambiano: i letterali erano già filtrati.
+_CONFINE = "(?![a-zA-ZÀ-ÿ0-9'])"
+_RE_DEFINIZIONE_GRAMMATICA = re.compile(r"^\s*(?P<nome>[?!]?[A-Za-z_][A-Za-z0-9_]*)(?:\.-?\d+)?\s*:")
+_RE_LETTERALE_GRAMMATICA = re.compile(r'"((?:[^"\\]|\\.)*)"')
+_RE_PAROLA_CHIAVE = re.compile(r"[a-zà-ÿ]+", re.IGNORECASE)
+# Nome del terminale -> parola chiave (per i messaggi d'errore in italiano).
+PAROLE_CHIAVE_TERMINALI: dict = {}
+
+
+def _nome_terminale_parola(parola: str) -> str:
+    import unicodedata
+    senza_accenti = "".join(c for c in unicodedata.normalize("NFD", parola)
+                            if unicodedata.category(c) != "Mn")
+    nome = "_KW_" + senza_accenti.upper()
+    if senza_accenti != parola:
+        nome += "_ACC"          # 'è' e 'e', 'dà' e 'da' restano distinte
+    return nome
+
+
+def _parole_chiave_con_confine(grammatica: str) -> str:
+    """[1.3.0] Riscrive i letterali-parola delle REGOLE come terminali con
+    confine destro e flag /i (vedi sopra). Le definizioni di terminali
+    (PREP_LUOGO, _PREP_DESCR…) e i letterali di punteggiatura restano intatti."""
+    righe_out = []
+    usate = {}
+    in_regola = False
+
+    def _sostituisci(m):
+        parola = m.group(1)
+        if not _RE_PAROLA_CHIAVE.fullmatch(parola):
+            return m.group(0)                    # '.', ':', "l'", '(' …
+        chiave = parola.lower()
+        nome = _nome_terminale_parola(chiave)
+        usate[nome] = chiave
+        return nome
+
+    for riga in grammatica.split("\n"):
+        m = _RE_DEFINIZIONE_GRAMMATICA.match(riga)
+        if m:
+            nome = m.group("nome").lstrip("?!").lstrip("_")
+            in_regola = nome[:1].islower()
+        elif riga.strip().startswith("%"):
+            in_regola = False
+        if in_regola:
+            codice, sep, commento = riga.partition("//")
+            riga = _RE_LETTERALE_GRAMMATICA.sub(_sostituisci, codice) + sep + commento
+        righe_out.append(riga)
+    definizioni = [f"    {nome}: /(?:{re.escape(parola)}){_CONFINE}/i"
+                   for nome, parola in sorted(usate.items())]
+    PAROLE_CHIAVE_TERMINALI.update(usate)
+    return "\n".join(righe_out) + "\n" + "\n".join(definizioni) + "\n"
+
+
 def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
     ENTITA, VARIABILE, DIREZIONE e VERBO_MULTI risolti dai simboli noti (Passata 2).
@@ -860,7 +925,7 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
-    return grammatica
+    return _parole_chiave_con_confine(grammatica)
 
 
 # [0.29.0 / perf] Cache dei parser LALR già costruiti, indicizzati per (grammatica,
@@ -939,6 +1004,170 @@ def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
         msg += (f" Dichiarala prima dell'uso, ad es. «{parola} è una cosa.» "
                 f"oppure «{parola} è una stanza.».")
     return msg
+
+# ------------------------------------------------------------------------------
+# [1.3.0] DIAGNOSTICA PER CHI SCRIVE (G-2, L-9)
+# ------------------------------------------------------------------------------
+# Fino alla 1.2.2 un errore di sintassi elencava i nomi interni di Lark
+# ('Mi aspettavo: E', 'LPAR, VARIABILE, __ANON_2, CÀPITA'), la diagnosi
+# «entità sconosciuta» scattava su qualunque parola imprevista ('«rossa» non è
+# mai stata dichiarata' per 'La mela è molto rossa.') e la compilazione si
+# fermava al primo errore. Qui: nomi dei simboli attesi in italiano, diagnosi
+# dell'entità solo dove la grammatica si aspetta davvero un nome, suggerimenti
+# per gli sbagli più comuni, e recupero: si salta la frase sbagliata e si
+# continua, così un file mostra tutti i suoi errori in una volta.
+
+_DESCRIZIONI_ATTESI = {
+    "ENTITA": "il nome di una stanza o di un oggetto dichiarati",
+    "VARIABILE": "il nome di uno stato o di un contatore",
+    "PROPRIETA": "una proprietà (una sola parola)",
+    "NUMERO": "un numero",
+    "NUMERO_PAROLA": "un numero",
+    "TESTO_QUOTATO": "un testo fra virgolette",
+    "VERBO": "un verbo",
+    "VERBO_MULTI": "un comando di più parole",
+    "DIREZIONE": "una direzione",
+    "PREP_LUOGO": "una preposizione di luogo (in, nel, sul…)",
+    "PREP_AZIONE": "una preposizione (su, con, in, a, da…)",
+    "_PREP_DESCR": "«di», «del», «della»…",
+    "WORD": "una parola",
+}
+_DESCRIZIONI_PUNTEGGIATURA = {".": "il punto finale «.»", ":": "i due punti «:»",
+                              ",": "una virgola «,»"}
+
+
+def descrivi_attesi(attesi, parser=None) -> str:
+    """[1.3.0] I simboli che il parser si aspettava, in italiano."""
+    terminali = {}
+    if parser is not None:
+        try:
+            terminali = {t.name: t for t in parser.terminals}
+        except Exception:
+            terminali = {}
+    voci = set()
+    for nome in attesi or ():
+        nome = str(nome)
+        if nome in PAROLE_CHIAVE_TERMINALI:
+            voci.add(f"«{PAROLE_CHIAVE_TERMINALI[nome]}»")
+        elif nome in _DESCRIZIONI_ATTESI:
+            voci.add(_DESCRIZIONI_ATTESI[nome])
+        elif nome in terminali and type(terminali[nome].pattern).__name__ == "PatternStr":
+            valore = terminali[nome].pattern.value
+            voci.add(_DESCRIZIONI_PUNTEGGIATURA.get(valore, f"«{valore}»"))
+        else:
+            voci.add(nome)
+    return ", ".join(sorted(voci))
+
+
+def _fine_frasi(testo: str) -> list:
+    """[1.3.0] Le posizioni subito dopo ogni punto che chiude una frase (fuori
+    da virgolette e commenti)."""
+    fini, dentro, commento, i = [], False, False, 0
+    while i < len(testo):
+        c = testo[i]
+        if commento:
+            if c == "\n":
+                commento = False
+        elif dentro:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                dentro = False
+        elif c == '"':
+            dentro = True
+        elif c == "#":
+            commento = True
+        elif c in ".!?;":
+            # '!', '?' e ';' non chiudono una frase FAVELLA, ma fuori dalle
+            # virgolette sono sempre un errore: per il recupero valgono come fine
+            # frase, così l'errore non si trascina dietro la frase successiva.
+            fini.append(i + 1)
+        i += 1
+    return fini
+
+
+def _posizione_errore(errore, testo: str) -> int:
+    pos = getattr(errore, "pos_in_stream", None)
+    if pos is None:
+        token = getattr(errore, "token", None)
+        pos = getattr(token, "start_pos", None)
+    return len(testo) if pos is None else pos
+
+
+def _frase_attorno(testo: str, pos: int):
+    fini = _fine_frasi(testo)
+    inizio = max([f for f in fini if f <= pos], default=0)
+    fine = min([f for f in fini if f > pos], default=len(testo))
+    return inizio, fine
+
+
+def analizza_con_recupero(parser, testo: str, massimo: int = 20):
+    """[1.3.0] Analizza il sorgente; a ogni errore di sintassi lo annota, svuota
+    la frase che lo contiene (spazi al posto dei caratteri, così righe e colonne
+    restano quelle vere) e riprova. Restituisce (albero, errori): l'albero è
+    None se c'è almeno un errore."""
+    errori, lavoro = [], testo
+    while True:
+        try:
+            albero = parser.parse(lavoro)
+            return (albero if not errori else None), errori
+        except UnexpectedInput as e:
+            errori.append(e)
+            if len(errori) >= massimo:
+                return None, errori
+            inizio, fine = _frase_attorno(lavoro, _posizione_errore(e, lavoro))
+            svuotato = re.sub(r"[^\n]", " ", lavoro[inizio:fine])
+            nuovo = lavoro[:inizio] + svuotato + lavoro[fine:]
+            if nuovo == lavoro or not _RE_COMMENTO.sub("", nuovo).strip():
+                return None, errori
+            lavoro = nuovo
+
+
+def _a_inizio_frase(testo: str, pos: int) -> bool:
+    """Vero se la posizione cade nelle prime due parole della sua frase."""
+    inizio, _ = _frase_attorno(testo, pos)
+    return len(testo[inizio:pos].split()) <= 1
+
+
+def diagnosi_errore(testo, errore, simboli, parser=None):
+    """[1.3.0] (titolo, messaggio, codice) per un errore di sintassi."""
+    attesi = set(getattr(errore, "expected", None) or getattr(errore, "allowed", None) or ())
+    pos = _posizione_errore(errore, testo)
+    if simboli is not None and ("ENTITA" in attesi or _a_inizio_frase(testo, pos)):
+        diagnosi = diagnostica_entita_sconosciuta(testo, errore, simboli)
+        if diagnosi:
+            return "Errore: entità non dichiarata", diagnosi, "entita-sconosciuta"
+    messaggio = "Errore di sintassi."
+    if attesi:
+        messaggio += f" Mi aspettavo: {descrivi_attesi(attesi, parser)}."
+    for consiglio in _consigli(testo, pos, attesi, errore):
+        messaggio += f" {consiglio}"
+    return "ERRORE DI SINTASSI FAVELLA", messaggio, "sintassi"
+
+
+def _consigli(testo, pos, attesi, errore):
+    """[1.3.0] Suggerimenti per gli sbagli più comuni."""
+    dopo = testo[pos:pos + 40]
+    prima = testo[:pos].rstrip()[-2:]
+    parola = (re.match(r"[\wÀ-ÿ']+", dopo) or [""])[0].lower() if dopo else ""
+    nomi_attesi = {PAROLE_CHIAVE_TERMINALI.get(str(a), str(a)) for a in attesi}
+    consigli = []
+    if parola == "o" and "oppure" in nomi_attesi:
+        consigli.append("Per dire «oppure» scrivi «oppure»: da sola «o» vuol dire ovest.")
+    if dopo[:1] in ("!", "?", ";"):
+        consigli.append("Ogni frase finisce con il punto «.».")
+    inizio_frase, fine_frase = _frase_attorno(testo, pos)
+    if prima.endswith('."') or testo[inizio_frase:fine_frase].rstrip().endswith('."'):
+        consigli.append('Il punto finale va fuori dalle virgolette: dire "…". e non dire "….".')
+    token = getattr(errore, "token", None)
+    if (any(str(a) == "DOT" for a in attesi) and token is not None
+            and (getattr(token, "type", "") in ("PROPRIETA", "WORD", "VERBO")
+                 or str(getattr(token, "value", "")).lower() == "e")
+            and re.search(r"\b(?:è|sono)\s+[\wÀ-ÿ']+\s*$", testo[max(0, pos - 60):pos])):
+        consigli.append("Una proprietà è una sola parola: per dirne due scrivi due "
+                        "frasi («La mela è rossa. La mela è lucida.»).")
+    return consigli
+
 
 # ==============================================================================
 # 2. IL TRANSFORMER DELL'AST
@@ -2621,7 +2850,22 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    verbi_multi=simboli.verbi_multi)
-        tree = parser.parse(testo)
+        # [1.3.0] Tutti gli errori di sintassi in una volta (analizza_con_recupero).
+        tree, errori_sintassi = analizza_con_recupero(parser, testo)
+        if errori_sintassi:
+            for e in errori_sintassi:
+                titolo, messaggio, codice = diagnosi_errore(testo, e, simboli, parser)
+                print(f"\n[FAVELLA 1] {titolo}" if codice == "entita-sconosciuta"
+                      else f"\n[{titolo}]")
+                print(f"Riga {e.line}, Colonna {e.column}{_posizione_origine(mappa_righe, e.line)}")
+                if codice != "entita-sconosciuta":
+                    print("-" * 40)
+                    print(e.get_context(testo, span=40).strip())
+                    print("-" * 40)
+                print(f" - {messaggio}")
+            if len(errori_sintassi) > 1:
+                print(f"\n[FAVELLA 1] {len(errori_sintassi)} frasi da correggere.")
+            return None
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer(coppie_dir)
@@ -2817,7 +3061,21 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    verbi_multi=simboli.verbi_multi)
-        tree = parser.parse(testo)
+        # [1.3.0] Tutti gli errori di sintassi, ciascuno con la sua posizione.
+        tree, errori_sintassi = analizza_con_recupero(parser, testo)
+        if errori_sintassi:
+            for e in errori_sintassi:
+                _titolo, messaggio, codice = diagnosi_errore(testo, e, simboli, parser)
+                f_o, r_o = _posizione_da_linea_espansa(getattr(e, "line", None))
+                col = getattr(e, "column", 1) or 1
+                if codice == "sintassi":
+                    try:
+                        messaggio += "\n" + e.get_context(testo, span=40).strip()
+                    except Exception:
+                        pass
+                errors.append(_diag(messaggio, file=f_o, line=r_o, col=col, code=codice))
+            return {"ok": False, "errors": errors, "warnings": warnings,
+                    "worldSummary": None}
         transformer = FavellaTransformer(coppie_dir)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
