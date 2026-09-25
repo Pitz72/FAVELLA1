@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.2.1"
+VERSIONE_MOTORE = "1.2.2"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -91,12 +91,14 @@ class Condizione:
         raise NotImplementedError("La valutazione deve essere implementata da una sottoclasse.")
 
 class CondizionePossesso(Condizione):
-    """Rappresenta la condizione 'se il giocatore ha [oggetto]'."""
+    """Rappresenta la condizione 'se il giocatore ha [oggetto]'. [1.2.2] Vera
+    anche se l'oggetto è dentro o sopra qualcosa che il giocatore porta (la
+    chiave nello zaino): vedi Mondo.giocatore_possiede."""
     def __init__(self, id_oggetto: str):
         self.id_oggetto = id_oggetto
-    
+
     def valuta(self, mondo: 'Mondo') -> bool:
-        return self.id_oggetto in mondo.inventario
+        return mondo.giocatore_possiede(self.id_oggetto)
 
 class CondizioneProprieta(Condizione):
     """Rappresenta la condizione 'se [oggetto] è [proprietà]'."""
@@ -737,6 +739,10 @@ class Mondo:
         self.regole: List[Regola] = []
         self.azioni: Dict[str, Azione] = {}
         self.mappa_verbi_giocatore: Dict[str, str] = {}
+        # [1.2.2] Verbo → TUTTE le azioni che lo elencano, in ordine di libreria.
+        # Serve ai verbi presenti in due azioni ('guarda': esamina X / guarda la
+        # stanza), risolti dall'argomento del comando: vedi azione_del_verbo().
+        self.azioni_del_verbo: Dict[str, List[str]] = {}
         self.posizione_giocatore: str | None = None
         # ID della stanza di partenza dichiarata esplicitamente dall'autore
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
@@ -930,7 +936,8 @@ class Mondo:
     # di ANCORA, così dopo 'prendi X', 'annulla', 'ancora' non si rifà il turno
     # appena disfatto ma quello precedente.
     _CAMPI_VOLATILI = ("_storia_stati", "azioni",
-                       "mappa_verbi_giocatore", "annunci", "_snap_dialogo",
+                       "mappa_verbi_giocatore", "azioni_del_verbo",
+                       "annunci", "_snap_dialogo",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
@@ -1064,10 +1071,17 @@ class Mondo:
 
     def carica_azioni(self, libreria: Dict[str, Azione]):
         """Carica la libreria di azioni e costruisce la mappa di ricerca inversa."""
-        self.azioni = libreria
+        # [1.2.2] Una COPIA: più sotto vi si aggiungono le azioni dei verbi
+        # d'autore. Fino alla 1.2.1 si scriveva nel dizionario globale della
+        # libreria, e i verbi di una storia restavano attaccati alle storie
+        # caricate dopo nello stesso processo (sito, IDE): dopo una storia con
+        # '"leggi" è un comando.', in un'altra 'leggi il diario' non leggeva più.
+        self.azioni = dict(libreria)
+        self.azioni_del_verbo = {}
         for nome_azione, azione_obj in libreria.items():
             for verbo in azione_obj.nomi:
                 self.mappa_verbi_giocatore[verbo] = nome_azione
+                self.azioni_del_verbo.setdefault(verbo, []).append(nome_azione)
 
         # [Livello 4] Instrada i verbi personalizzati a un'azione generica priva
         # di logica di default (logica=None): il runtime, se nessuna regola
@@ -1083,11 +1097,43 @@ class Mondo:
                 nomi=transitivi, logica=None, richiede_oggetto=True)
             for verbo in transitivi:
                 self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata")
+                self.azioni_del_verbo.setdefault(verbo, ["_personalizzata"])
         if intransitivi:
             self.azioni["_personalizzata_intransitiva"] = Azione(
                 nomi=intransitivi, logica=None, richiede_oggetto=False)
             for verbo in intransitivi:
                 self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata_intransitiva")
+                self.azioni_del_verbo.setdefault(verbo, ["_personalizzata_intransitiva"])
+
+    # [1.2.2] Azioni generiche dei verbi d'autore: raccolgono verbi DIVERSI
+    # ('spingi', 'tira'…), quindi non hanno un verbo principale né sinonimi.
+    AZIONI_PERSONALIZZATE = ("_personalizzata", "_personalizzata_intransitiva")
+
+    def azione_del_verbo(self, verbo: str, con_oggetto: bool) -> Optional[str]:
+        """[1.2.2] L'azione che il verbo del giocatore compie. Un verbo elencato da
+        due azioni ('guarda', 'osserva') si risolve con l'argomento del comando:
+        con un oggetto vale l'azione che lo richiede (esaminare), senza vale
+        quella che non lo richiede (guarda la stanza). Fino alla 1.2.1 vinceva
+        sempre l'ultima azione della libreria, e 'guarda il quadro' ristampava
+        la stanza senza guardare il quadro. None se il verbo è ignoto."""
+        candidate = getattr(self, "azioni_del_verbo", None) or {}
+        nomi = candidate.get(verbo)
+        if nomi and len(nomi) > 1:
+            for nome in nomi:
+                azione = self.azioni.get(nome)
+                if azione is not None and azione.richiede_oggetto == con_oggetto:
+                    return nome
+        return self.mappa_verbi_giocatore.get(verbo)
+
+    def verbo_principale(self, nome_azione: Optional[str]) -> Optional[str]:
+        """[1.2.2] Il verbo principale di un'azione della libreria (il primo dei
+        suoi nomi: 'prendi' per «prendere»). Una regola scritta con questo verbo
+        vale per tutti i sinonimi dell'azione. None per le azioni dei verbi
+        d'autore, che non hanno sinonimi (vedi AZIONI_PERSONALIZZATE)."""
+        if not nome_azione or nome_azione in self.AZIONI_PERSONALIZZATE:
+            return None
+        azione = self.azioni.get(nome_azione)
+        return azione.nomi[0] if azione is not None and azione.nomi else None
 
     def aggiungi_regola(self, regola: Regola):
         self.regole.append(regola)
@@ -1123,10 +1169,71 @@ class Mondo:
         return self.capacita_base + bonus
 
     def puo_portare_altro(self) -> bool:
-        """Vero se il giocatore può prendere ancora un oggetto. Senza capacità
-        dichiarata è sempre vero (illimitato)."""
+        """Vero se il giocatore ha ancora un posto libero. Senza capacità
+        dichiarata è sempre vero (illimitato). [1.2.2] Conta tutto ciò che il
+        giocatore porta, anche dentro zaini e borse (numero_oggetti_portati)."""
         cap = self.capacita_attuale()
-        return cap is None or len(self.inventario) < cap
+        return cap is None or self.numero_oggetti_portati() < cap
+
+    # --- [1.2.2] Ciò che il giocatore ha addosso -------------------------------
+    # Fino alla 1.2.1 «avere» voleva dire «stare nell'inventario»: una chiave
+    # messa nello zaino che il giocatore porta non contava per 'il giocatore ha
+    # la chiave', e la capienza contava solo gli oggetti in mano, così uno zaino
+    # contenitore portava oggetti senza limite. Ora si possiede ciò che si ha
+    # ADDOSSO: l'inventario più, a ogni livello, quello che sta dentro o sopra
+    # gli oggetti portati (anche in un contenitore chiuso: ce l'hai, anche se
+    # per usarlo devi aprirlo).
+
+    def racchiusi_in(self, id_oggetto: str) -> Set[str]:
+        """Gli oggetti dentro o sopra `id_oggetto`, a ogni livello di
+        annidamento (l'oggetto stesso escluso; cicli patologici ignorati)."""
+        risultato: Set[str] = set()
+        ogg = self.trova_oggetto(id_oggetto)
+        coda = list(ogg.contenuto) if ogg is not None else []
+        while coda:
+            c = coda.pop()
+            if c in risultato or c == id_oggetto:
+                continue
+            risultato.add(c)
+            figlio = self.trova_oggetto(c)
+            if figlio is not None:
+                coda += list(figlio.contenuto)
+        return risultato
+
+    def oggetti_portati(self) -> Set[str]:
+        """Tutto ciò che il giocatore ha addosso: l'inventario e il contenuto,
+        a ogni livello, degli oggetti portati."""
+        portati: Set[str] = set(self.inventario)
+        for id_ogg in list(self.inventario):
+            portati |= self.racchiusi_in(id_ogg)
+        return portati
+
+    def giocatore_possiede(self, id_oggetto: str) -> bool:
+        """Vero se il giocatore ha l'oggetto addosso (vedi oggetti_portati). È
+        la semantica di 'se il giocatore ha X'."""
+        if id_oggetto in self.inventario:
+            return True
+        return id_oggetto in self.oggetti_portati()
+
+    def numero_oggetti_portati(self) -> int:
+        """Quanti oggetti pesano sulla capienza: tutti quelli addosso."""
+        return len(self.oggetti_portati())
+
+    def puo_prendere(self, oggetto: 'Oggetto') -> bool:
+        """Vero se la capienza permette di prendere `oggetto`. Senza capacità
+        dichiarata è sempre vero. Serve un posto libero, come sempre; in più,
+        dopo la presa, tutto ciò che si porta (l'oggetto e quello che contiene)
+        deve stare nella capienza, contando il bonus dell'oggetto stesso: uno
+        zaino che «dà 5 spazi» copre il proprio contenuto. Tirare fuori un
+        oggetto da una borsa che si porta non aggiunge nulla."""
+        cap = self.capacita_attuale()
+        if cap is None or self.giocatore_possiede(oggetto.nome):
+            return True
+        portati = self.numero_oggetti_portati()
+        if portati >= cap:
+            return False
+        dopo = portati + 1 + len(self.racchiusi_in(oggetto.nome))
+        return dopo <= cap + (getattr(oggetto, "bonus_capacita", 0) or 0)
 
     # --- [0.24.0 / A4] Buio e luce ---
 

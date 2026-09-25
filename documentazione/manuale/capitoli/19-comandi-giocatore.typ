@@ -15,7 +15,9 @@ modo in cui la storia si lascia esplorare.
 Ci si sposta nominando la direzione: `nord`, `sud`, `est`, `ovest`, e le loro
 iniziali `n`, `s`, `e`, `o`; valgono anche le direzioni personalizzate che hai
 dichiarato (`alto`, `dentro`...). In alternativa, `vai nord`. Per rivedere dove ci
-si trova c'è `guarda`; per osservare un oggetto da vicino, `esamina [oggetto]`.
+si trova c'è `guarda`; per osservare un oggetto da vicino, `esamina [oggetto]`,
+oppure `guarda [oggetto]` e `osserva [oggetto]`, che dalla versione 1.2.2 guardano
+davvero l'oggetto (e fanno scattare le tue regole su `esamina`).
 
 == Maneggiare gli oggetti
 
@@ -26,7 +28,7 @@ si trova c'è `guarda`; per osservare un oggetto da vicino, `esamina [oggetto]`.
   align: (left + top, left + top),
   table.header([*Comando*], [*Effetto*]),
   [#gc[prendi / lascia]], [Raccogliere o posare un oggetto prendibile.],
-  [#gc[inventario]], [Vedere cosa si porta con sé (anche `i`).],
+  [#gc[inventario]], [Vedere cosa si porta con sé (anche `i`), compreso quel che sta negli zaini.],
   [#gc[usa X con Y]], [Far interagire due oggetti.],
   [#gc[metti X in/su Y]], [Posare un oggetto in un contenitore o su un supporto.],
   [#gc[parla con X]], [Avviare il dialogo con un personaggio.],

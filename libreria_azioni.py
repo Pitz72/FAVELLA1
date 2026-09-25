@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.2.1)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.2.2)
 
 from strutture import Mondo, Azione
 from favella_utils import rendi_testo, frase_indeterminativa, prima_maiuscola
@@ -52,7 +52,9 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str):
     # [Livello 7] Capacità di trasporto opzionale: se l'autore l'ha dichiarata,
     # l'inventario non può superarla (la base più i bonus degli oggetti già
     # portati, es. uno zaino). Senza dichiarazione → illimitato.
-    if not mondo.puo_portare_altro():
+    # [1.2.2] Conta tutto ciò che il giocatore ha addosso, anche dentro zaini e
+    # borse, e il contenuto dell'oggetto preso (Mondo.puo_prendere).
+    if not mondo.puo_prendere(oggetto):
         print("Hai le mani troppo piene: lascia qualcosa prima di prenderlo.")
         return
 
@@ -89,6 +91,15 @@ def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None
     if dest.is_contenitore and not mondo.contenitore_aperto(dest):
         print(f"{prima_maiuscola(dest.nome_visualizzato)} è chiuso.")
         return
+    # [1.2.2] Mettere qualcosa da terra in uno zaino che si porta significa
+    # portarlo: pesa sulla capienza come prenderlo (fino alla 1.2.1 uno zaino
+    # contenitore portava oggetti senza limite).
+    cap = mondo.capacita_attuale()
+    if (cap is not None and mondo.giocatore_possiede(id_oggetto2)
+            and not mondo.giocatore_possiede(id_oggetto1)
+            and mondo.numero_oggetti_portati() + 1 + len(mondo.racchiusi_in(id_oggetto1)) > cap):
+        print("Porti già troppe cose: non c'è posto per altro.")
+        return
 
     mondo.rimuovi_da_posizione(oggetto)
     dest.contenuto.add(id_oggetto1)
@@ -104,14 +115,19 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     if not mondo.c_e_luce():
         print("È troppo buio per vederci.")
         return
-    if id_oggetto not in mondo.inventario:
+    if not mondo.giocatore_possiede(id_oggetto):
         print("Non ce l'hai.")
         return
-    
+
     oggetto = mondo.trova_oggetto(id_oggetto)
     stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
-    
-    mondo.inventario.remove(id_oggetto)
+
+    if id_oggetto in mondo.inventario:
+        mondo.inventario.remove(id_oggetto)
+    else:
+        # [1.2.2] È dentro o sopra qualcosa che il giocatore porta (la chiave
+        # nello zaino): lo si tira fuori e lo si posa.
+        mondo.rimuovi_da_posizione(oggetto)
     oggetto.posizione = stanza_corrente.nome
     stanza_corrente.oggetti[id_oggetto] = oggetto
     print(f"Lasciato: {oggetto.nome_visualizzato}.")
@@ -119,16 +135,30 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
 def inventario_logica_default(mondo: Mondo):
     """Logica di default per l'azione INVENTARIO."""
     # [Livello 7] Se l'autore ha dichiarato una capacità, mostriamo «(usati/max)».
+    # [1.2.2] Il conteggio include ciò che sta negli zaini e nelle borse portati,
+    # e l'elenco lo mostra rientrato sotto il suo contenitore (se è aperto: di un
+    # contenitore chiuso si vede solo il contenitore).
     cap = mondo.capacita_attuale()
-    suffisso = f" ({len(mondo.inventario)}/{cap})" if cap is not None else ""
+    suffisso = f" ({mondo.numero_oggetti_portati()}/{cap})" if cap is not None else ""
     if not mondo.inventario:
         print(f"Non stai portando nulla.{suffisso}")
     else:
         print(f"Stai portando:{suffisso}")
         for id_ogg in sorted(list(mondo.inventario)):
-            # Prendiamo il nome originale dell'oggetto per una visualizzazione più gradevole
-            nome_visualizzato = mondo.oggetti[id_ogg].nome_visualizzato
-            print(f"  - {nome_visualizzato}")
+            _stampa_portato(mondo, id_ogg, 1, set())
+
+
+def _stampa_portato(mondo: Mondo, id_ogg: str, livello: int, visti: set):
+    """[1.2.2] Una riga dell'inventario e, rientrato, il contenuto visibile."""
+    if id_ogg in visti or id_ogg not in mondo.oggetti:
+        return
+    visti.add(id_ogg)
+    oggetto = mondo.oggetti[id_ogg]
+    rientro = "  " + "    " * (livello - 1)   # livello 1: '  - ' come sempre
+    print(f"{rientro}- {oggetto.nome_visualizzato}")
+    if oggetto.is_supporto or (oggetto.is_contenitore and mondo.contenitore_aperto(oggetto)):
+        for figlio in sorted(oggetto.contenuto):
+            _stampa_portato(mondo, figlio, livello + 1, visti)
 
 def muovi_logica_default(mondo: Mondo, direzione: str):
     """Logica di default per l'azione di MOVIMENTO."""
@@ -169,6 +199,16 @@ def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = 
         print("Con cosa vuoi usarlo?")
 
 # --- DEFINIZIONE DELLA LIBRERIA ---
+# Il PRIMO nome di ogni azione è il suo VERBO PRINCIPALE, cioè l'imperativo che
+# il manuale insegna a usare nelle regole: 'esamina', 'prendi', 'lascia', 'metti'…
+# [1.2.2] Una regola 'Invece di prendi …' vale per tutti i sinonimi della sua
+# azione ('raccogli', 'afferra', 'prendere'…): vedi gioco._cerca_regola. Una
+# regola scritta con un altro nome ('Invece di leggi …') resta legata a quella
+# sola parola. Perciò due significati diversi non devono stare nella stessa
+# azione: ognuno ha la sua, anche se la logica di default è la stessa.
+# Un verbo può comparire in due azioni solo se una richiede un oggetto e l'altra
+# no ('guarda' = esamina X oppure guarda la stanza): decide l'argomento del
+# comando (Mondo.azione_del_verbo). Un test della suite lo verifica.
 LIBRERIA_AZIONI = {
     "esaminare": Azione(
         nomi=["esamina", "esaminare", "guarda", "guardare", "osserva", "osservare", "leggi", "leggere"],
@@ -187,8 +227,10 @@ LIBRERIA_AZIONI = {
         logica=inventario_logica_default, 
         richiede_oggetto=False
     ),
+    # 'guarda' e 'osserva' stanno anche in «esaminare»: senza oggetto ristampano
+    # la stanza, con un oggetto lo esaminano ([1.2.2], Mondo.azione_del_verbo).
     "guarda": Azione(
-        nomi=["guarda", "osserva", "descrivi"], # Alias per ristampare la descrizione della stanza
+        nomi=["guarda", "osserva", "descrivi"],
         logica=guarda_logica_default,
         richiede_oggetto=False
     ),
@@ -197,8 +239,27 @@ LIBRERIA_AZIONI = {
         logica=aiuto_logica_default,
         richiede_oggetto=False
     ),
+    # [1.2.2] Fino alla 1.2.1 'apri', 'mangia' e 'sposta' erano nomi dell'azione
+    # «usare»: con le regole agganciate all'azione, 'Invece di mangia la mela'
+    # sarebbe scattata anche su 'apri la mela'. Ora ognuno ha la sua azione. La
+    # logica di default resta quella di prima (nessuna risposta cambia).
     "usare": Azione(
-        nomi=["usa", "usare", "apri", "aprire", "mangia", "mangiare", "sposta", "spostare"],
+        nomi=["usa", "usare"],
+        logica=usare_con_logica_default,
+        richiede_oggetto=True
+    ),
+    "aprire": Azione(
+        nomi=["apri", "aprire"],
+        logica=usare_con_logica_default,
+        richiede_oggetto=True
+    ),
+    "mangiare": Azione(
+        nomi=["mangia", "mangiare"],
+        logica=usare_con_logica_default,
+        richiede_oggetto=True
+    ),
+    "spostare": Azione(
+        nomi=["sposta", "spostare"],
         logica=usare_con_logica_default,
         richiede_oggetto=True
     ),

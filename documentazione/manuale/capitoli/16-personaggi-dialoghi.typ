@@ -48,6 +48,14 @@ I nomi dei nodi (`"tavolo"`, `"salute"`, `"lettere"`…) sono vocabolario nuovo,
 come ogni vocabolario nuovo stanno *tra virgolette*. Non li vedrà mai il giocatore:
 servono solo a te, per cucire insieme la conversazione.
 
+#tranello[
+  I nomi dei nodi valgono per *tutta la storia*, non per il singolo personaggio.
+  Se Anna e Marco hanno entrambi battute al nodo `"saluto"`, le due conversazioni
+  si fonderebbero: dalla versione 1.2.2 FAVELLA lo segnala come errore e ti
+  propone nomi distinti, come `"saluto anna"` e `"saluto marco"`. Un nodo con le
+  battute di un solo personaggio può invece essere raggiunto da più dialoghi.
+]
+
 == Le battute
 
 #sintassi[

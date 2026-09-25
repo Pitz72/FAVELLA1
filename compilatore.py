@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.2.1)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.2.2)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -24,6 +24,7 @@ from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
     DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo, radice_proprieta,
+    prima_maiuscola,
 )
 import os
 import sys
@@ -33,6 +34,13 @@ import json
 # validare a compile-time i verbi delle regole "Invece di" (un verbo non in
 # questo insieme genera una regola morta che non si attiverà mai a runtime).
 VERBI_VALIDI = {verbo for azione in LIBRERIA_AZIONI.values() for verbo in azione.nomi}
+
+# [1.2.2] Verbo di libreria → nomi delle azioni che lo elencano ('guarda' ne ha
+# due). Serve all'avviso sui sinonimi dichiarati per parole già note al motore.
+_AZIONI_DI_VERBO = {}
+for _nome_azione, _azione in LIBRERIA_AZIONI.items():
+    for _verbo in _azione.nomi:
+        _AZIONI_DI_VERBO.setdefault(_verbo, set()).add(_nome_azione)
 
 # ==============================================================================
 # 0. PAROLE RISERVATE E SCANNER DELLE DICHIARAZIONI (Passata 1) — Livello 2.5
@@ -966,6 +974,11 @@ class FavellaTransformer(Transformer):
         #   _nodo_speaker:   etichetta del nodo -> npc_id che vi parla (per validare).
         self._dialogo_inizio = {}
         self._nodo_speaker = {}
+        # [1.2.2] etichetta del nodo -> TUTTI i personaggi che vi hanno una
+        # battuta ({id: nome grezzo}, in ordine di scrittura). _nodo_speaker
+        # ricorda solo l'ultimo e non poteva vedere due personaggi sullo stesso
+        # nodo: vedi il controllo in valida_post.
+        self._nodo_parlanti = {}
         # [0.17.0 — robustezza d'ordine] Operazioni che RISOLVONO entità per nome
         # (posizioni, proprietà, descrizioni) e la validazione delle conseguenze
         # vengono DIFFERITE a valida_post, così l'ordine delle frasi non conta più:
@@ -1113,6 +1126,8 @@ class FavellaTransformer(Transformer):
         else:
             nodo.battute_condizionali.append((condizione, battuta))
         self._nodo_speaker[etichetta] = normalizza_nome(npc_grezzo)
+        self._nodo_parlanti.setdefault(etichetta, {}).setdefault(
+            normalizza_nome(npc_grezzo), str(npc_grezzo))
         return None
 
     def esito_conduce(self, dest_etichetta):
@@ -1183,10 +1198,25 @@ class FavellaTransformer(Transformer):
             self._pending_sinonimi.append((sinonimo, canonico))
             return None
         if sinonimo in VERBI_VALIDI:
-            self.warnings.append(
-                f"Il sinonimo '{sinonimo}' è già un verbo del motore: la "
-                f"dichiarazione è superflua."
-            )
+            # [1.2.2] Due casi, che fino alla 1.2.1 ricevevano lo stesso avviso
+            # («superflua»): se la parola è già nella stessa azione del bersaglio
+            # la dichiarazione non serve davvero (le regole sul verbo principale
+            # valgono per tutti i sinonimi); se è in un'altra azione, la
+            # dichiarazione le CAMBIA significato, e va detto.
+            azioni_sinonimo = _AZIONI_DI_VERBO.get(sinonimo, set())
+            azioni_bersaglio = _AZIONI_DI_VERBO.get(canonico, set())
+            if azioni_sinonimo & azioni_bersaglio:
+                principale = LIBRERIA_AZIONI[sorted(azioni_sinonimo & azioni_bersaglio)[0]].nomi[0]
+                self.warnings.append(
+                    f"'{sinonimo}' è già un sinonimo di '{principale}' nella libreria: "
+                    f"le regole 'Invece di {principale} …' valgono anche per "
+                    f"'{sinonimo}', quindi la dichiarazione non serve.")
+            else:
+                principali = ", ".join(sorted(f"'{LIBRERIA_AZIONI[a].nomi[0]}'"
+                                              for a in azioni_sinonimo))
+                self.warnings.append(
+                    f"'{sinonimo}' è già un verbo del motore (fa come {principali}): "
+                    f"con questa dichiarazione farà invece come '{canonico}'.")
         self.mondo.dichiara_sinonimo(sinonimo, canonico)
         return None
 
@@ -1198,6 +1228,14 @@ class FavellaTransformer(Transformer):
                 self.warnings.append(
                     f"'{sinonimo}' è dichiarato sia come comando sia come sinonimo di "
                     f"'{canonico}': vale il sinonimo.")
+            elif sinonimo in _AZIONI_DI_VERBO:
+                # [1.2.2] Come in def_sinonimo: una parola di libreria che diventa
+                # sinonimo di un comando d'autore cambia significato.
+                principali = ", ".join(sorted(f"'{LIBRERIA_AZIONI[a].nomi[0]}'"
+                                              for a in _AZIONI_DI_VERBO[sinonimo]))
+                self.warnings.append(
+                    f"'{sinonimo}' è già un verbo del motore (fa come {principali}): "
+                    f"con questa dichiarazione farà invece come '{canonico}'.")
             self.mondo.dichiara_sinonimo(sinonimo, canonico)
             return
         # [0.30.0 / A4] Caso speciale: il bersaglio è una DIREZIONE
@@ -2053,6 +2091,24 @@ class FavellaTransformer(Transformer):
                     f"Al nodo '{etichetta}' parla '{npc_id}', che non è un "
                     f"personaggio: la battuta non sarà mai mostrata."
                 )
+
+        # [1.2.2] Le etichette dei nodi valgono per TUTTA la storia: se due
+        # personaggi scrivono battute allo stesso nodo, le loro conversazioni si
+        # fondono (la battuta dell'uno sovrascrive quella dell'altro, le opzioni
+        # si sommano) e fino alla 1.2.1 accadeva in silenzio. Un nodo condiviso
+        # resta lecito se le battute sono di un solo personaggio (per esempio un
+        # congedo comune raggiunto da più dialoghi).
+        for etichetta, parlanti in self._nodo_parlanti.items():
+            if len(parlanti) > 1:
+                nomi = ", ".join(prima_maiuscola(n) for n in parlanti.values())
+                primo, secondo = [prima_maiuscola(n) for n in list(parlanti.values())[:2]]
+                self.errori.append(
+                    f"Il nodo di dialogo '{etichetta}' ha battute di più personaggi "
+                    f"({nomi}). Le etichette dei nodi valgono per tutta la storia: "
+                    f"le loro conversazioni si fonderebbero, con le battute "
+                    f"sovrascritte e le opzioni sommate. Dai a ciascuno un nodo "
+                    f"suo, per esempio \"{etichetta} {normalizza_nome(primo)}\" e "
+                    f"\"{etichetta} {normalizza_nome(secondo)}\".")
 
         for id_ogg, ogg in m.oggetti.items():
             if ogg.is_personaggio and not ogg.dialogo_iniziale:

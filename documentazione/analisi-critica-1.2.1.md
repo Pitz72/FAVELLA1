@@ -2,6 +2,13 @@
 
 > Motore **1.2.1**, grammatica **1.2.0**. Analisi del 25 settembre 2026.
 >
+> **Stato.** Le quattro criticità gravissime (GS-1…GS-4) sono **corrette nel
+> motore 1.2.2**. Il lavoro ha portato alla luce anche un difetto non elencato
+> qui: i verbi d'autore di una storia passavano alle storie caricate dopo nello
+> stesso processo; è corretto anche quello. Dettagli e verifica nel `CHANGELOG.md`
+> (voce 1.2.2) e nella spec `grammatica-1.2.0.md` §21. Il resto del documento
+> descrive il motore 1.2.1, così com'era al momento dell'analisi.
+>
 > Documento di lavoro: elenca criticità, limiti, implementazioni mancanti e
 > possibili evoluzioni del **linguaggio** (grammatica d'autore, semantica,
 > interprete, libreria dei verbi, parser del giocatore). Sito, Studio e
@@ -79,6 +86,9 @@ volte senza alcun avviso.
 
 ### GS-1 — Le regole si agganciano alla parola, non all'azione ✅
 
+> **Corretta nella 1.2.2.** Le regole scritte col verbo principale valgono per
+> tutti i sinonimi dell'azione; «usare» è divisa; l'avviso sui sinonimi dice il vero.
+
 **Cosa.** `Invece di prendi la mela: …` scatta solo se il giocatore digita
 esattamente `prendi`. Con `raccogli`, `afferra` o `prendere`, sinonimi che la
 libreria riconosce da sé, parte la logica di default e **la regola viene
@@ -133,6 +143,9 @@ significati che non hanno nulla in comune (vedi G-4).
 
 ### GS-2 — «guarda X» e «osserva X» non guardano X ✅
 
+> **Corretta nella 1.2.2.** Con un oggetto presente i due verbi lo esaminano;
+> altrimenti guardano la stanza come prima.
+
 **Cosa.** `guarda il quadro` e `osserva il quadro` ignorano l'oggetto e
 ristampano la stanza. Le regole `Invece di guarda il quadro: …` e `Invece di
 osserva …` **non scattano mai**, e il compilatore non avverte.
@@ -165,6 +178,10 @@ azioni.
 ---
 
 ### GS-3 — I nodi di dialogo sono globali: due personaggi si fondono ✅
+
+> **Corretta nella 1.2.2** con la soluzione minima: due personaggi con battute
+> allo stesso nodo sono un errore di compilazione. I nodi per personaggio restano
+> un'evoluzione possibile.
 
 **Cosa.** Le etichette dei nodi appartengono a un unico spazio globale. Se due
 personaggi usano lo stesso nodo (`"saluto"`, `"inizio"`, `"fine"`, cioè le
@@ -202,6 +219,9 @@ possiede il nodo. Per i nodi già unici non cambia nulla.
 ---
 
 ### GS-4 — «Il giocatore ha» non guarda nello zaino, e la capienza si aggira con un contenitore ✅
+
+> **Corretta nella 1.2.2.** Possesso transitivo; la capienza conta anche gli
+> oggetti annidati; `lascia` e `inventario` ne tengono conto.
 
 **Cosa.** Se la chiave è dentro lo zaino che il giocatore porta,
 `se il giocatore ha la chiave` risulta **falso**. Inoltre con
@@ -695,12 +715,14 @@ della casa («dopo la 1.0 si cresce solo aggiungendo»); dove una correzione
 
 ### 8.1 Patch di correttezza (1.2.2): difetti, nessuna frase nuova
 
+Le righe segnate ✅ sono state realizzate nel motore 1.2.2.
+
 | # | Intervento | Dove | Compatibilità | Sforzo |
 |---|---|---|---|---|
-| 1 | Regole confrontate per **azione** e non per parola; «superflua» diventa un'informazione e non un invito a cancellare (GS-1) | `def_regola`, `gioco._esegui_comando`, `def_sinonimo` | Cambia il comportamento **nel senso voluto dall'autore**: le regole su `prendi` intercettano anche `raccogli`/`afferra` | S |
-| 2 | `guarda X`/`osserva X` = esamina; test «nessun verbo in due azioni» (GS-2) | `libreria_azioni`, `carica_azioni` | Rende vive regole finora morte | S |
-| 3 | Errore su un nodo di dialogo con due personaggi (GS-3) | `valida_post` | Solo le storie già corrotte smettono di compilare | S |
-| 4 | Possesso transitivo e capienza con gli oggetti annidati (GS-4) | `CondizionePossesso`, `capacita_attuale` | Cambia l'esito solo con contenitori portati | S |
+| 1 ✅ | Regole confrontate per **azione** e non per parola; «superflua» diventa un'informazione e non un invito a cancellare (GS-1) | `def_regola`, `gioco._esegui_comando`, `def_sinonimo` | Cambia il comportamento **nel senso voluto dall'autore**: le regole su `prendi` intercettano anche `raccogli`/`afferra` | S |
+| 2 ✅ | `guarda X`/`osserva X` = esamina; test «nessun verbo in due azioni» (GS-2) | `libreria_azioni`, `carica_azioni` | Rende vive regole finora morte | S |
+| 3 ✅ | Errore su un nodo di dialogo con due personaggi (GS-3) | `valida_post` | Solo le storie già corrotte smettono di compilare | S |
+| 4 ✅ | Possesso transitivo e capienza con gli oggetti annidati (GS-4) | `CondizionePossesso`, `capacita_attuale` | Cambia l'esito solo con contenitori portati | S |
 | 5 | Confine di parola sulle parole chiave (G-1) + test su una lista di aggettivi | `_GRAMMAR_TEMPLATE` | Solo aggiunte: compilano frasi prima rifiutate | S–M |
 | 6 | Valore di partenza dei demoni `Quando` dopo aver collocato il giocatore (G-9) | `imposta_posizione_iniziale` | Allinea il codice alla spec §6 | S |
 | 7 | I fallimenti del parser non consumano turni (G-5) | `elabora_comando` | Cambia il ritmo delle storie a tempo, **a favore** del giocatore | S |
@@ -792,10 +814,10 @@ Uno per criticità, ricavati dalle sonde di questa analisi:
 
 | ID | Gravità | Titolo | Verifica |
 |---|---|---|---|
-| GS-1 | Gravissima | Regole agganciate alla parola, non all'azione | ✅ (anche sulla demo *Relitto*) |
-| GS-2 | Gravissima | `guarda X` / `osserva X` ignorano l'oggetto; regole morte | ✅ |
-| GS-3 | Gravissima | Nodi di dialogo globali: personaggi fusi | ✅ |
-| GS-4 | Gravissima | Possesso non transitivo; capienza aggirabile | ✅ |
+| GS-1 | Gravissima | Regole agganciate alla parola, non all'azione | ✅ (anche sulla demo *Relitto*) — **corretta nella 1.2.2** |
+| GS-2 | Gravissima | `guarda X` / `osserva X` ignorano l'oggetto; regole morte | ✅ — **corretta nella 1.2.2** |
+| GS-3 | Gravissima | Nodi di dialogo globali: personaggi fusi | ✅ — **corretta nella 1.2.2** |
+| GS-4 | Gravissima | Possesso non transitivo; capienza aggirabile | ✅ — **corretta nella 1.2.2** |
 | G-1 | Grave | Parole chiave che spezzano gli aggettivi (`un-`, `al-`) | ✅ |
 | G-2 | Grave | Diagnostica per addetti ai lavori; un errore alla volta; maiuscole | ✅ |
 | G-3 | Grave | Spazio di nomi unico, fusioni e incoerenze silenziose | ✅ |

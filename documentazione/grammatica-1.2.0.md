@@ -10,7 +10,14 @@
 >
 > **Versione.** Dalla v0.18.0 grammatica, compilatore e motore condividono **una
 > sola linea di versione**: questa specifica avanza in lockstep col motore.
-> Versione corrente: **1.2.0** (motore 1.2.1: patch di runtime, grammatica identica).
+> Versione corrente: **1.2.0** (motore 1.2.2: patch di runtime e di validazione,
+> grammatica identica).
+>
+> **Motore 1.2.2 — le quattro criticità gravissime.** Nessuna modifica di
+> grammatica. Le regole `Invece di` scritte col verbo principale di un'azione
+> valgono per tutti i suoi sinonimi; `guarda X`/`osserva X` esaminano X; due
+> personaggi con battute allo stesso nodo di dialogo sono un errore; il possesso
+> e la capienza tengono conto di ciò che sta negli oggetti portati. Vedi §21.
 >
 > **Novità v1.2.0 — salvare, collaudare giocando, sinonimi per ogni verbo.**
 > Una sola modifica di grammatica, additiva: `def_sinonimo` accetta come bersaglio
@@ -1138,3 +1145,63 @@ la grammatica.
   opzione chiede un contatore almeno N, all'avvio è sotto la soglia e nessuna
   conseguenza lo fa crescere. Il caso «basta all'avvio ma si consuma» non si
   segnala: spesso è voluto (la vita di un nemico).
+
+## 21. Le quattro criticità gravissime (motore 1.2.2)
+
+Nessuna regola di grammatica nuova: il motore 1.2.2 corregge quattro punti in cui
+faceva, in silenzio, altro da ciò che l'autore aveva scritto (criticità GS-1…GS-4
+di `analisi-critica-1.2.1.md`). Dove una regola scattava già, scatta identica.
+
+- **Regole e sinonimi di libreria (GS-1).** Ogni azione della libreria ha un
+  **verbo principale**, il primo dei suoi nomi (`LIBRERIA_AZIONI`): `esamina`,
+  `prendi`, `lascia`, `metti`, `usa`, `apri`, `mangia`, `sposta`, `vai`, `guarda`,
+  `inventario`, `aiuto`. La ricerca della regola (`gioco._cerca_regola`, con le
+  fasi di precedenza di §7: due oggetti, condizionali, semplici, globali) avviene
+  in due passate. Nella prima valgono le regole scritte con la parola digitata o
+  col nome dell'azione (il comportamento fino alla 1.2.1). Solo se nessuna si
+  applica, nella seconda valgono quelle scritte col verbo principale. Così
+  `Invece di prendi la mela` vale per `raccogli`, `afferra`, `prendere la mela`;
+  `Invece di raccogli la mela`, se c'è, vince su di essa per `raccogli`; `Invece di
+  leggi il libro` resta legata a `leggi`. Le azioni dei verbi d'autore
+  (`_personalizzata`) non hanno verbo principale: due comandi d'autore non
+  diventano sinonimi. L'azione «usare» della 1.2.1 è divisa in `usare`, `aprire`,
+  `mangiare`, `spostare`, con la stessa logica di default. Il sinonimo `"x" è come
+  y.` resta come in §12 e §20; se `x` è già un verbo di libreria l'avviso dice se
+  la dichiarazione non serve (stessa azione) o se ne cambia il significato.
+
+- **Verbi in due azioni (GS-2).** Un verbo può comparire in due azioni della
+  libreria solo se una richiede un oggetto e l'altra no (un test lo verifica):
+  oggi `guarda` e `osserva`, in «esaminare» e in «guarda». `Mondo.azione_del_verbo`
+  sceglie in base all'argomento del comando. Con un oggetto presente vale
+  «esaminare». Senza argomento, con `intorno`/`attorno`/`qui`/`qua`/`tutto`, o con
+  un argomento che non nomina un oggetto presente (`guarda adesso`, `guarda nord`),
+  vale «guarda» (la stanza), come prima. Un nome ambiguo fa la domanda «Quale
+  intendi?».
+
+- **Nodi di dialogo (GS-3).** Le etichette dei nodi sono globali (§16). Se due
+  personaggi scrivono battute allo stesso nodo, `valida_post` dà un **errore** che
+  nomina il nodo e i personaggi: prima battute e opzioni si fondevano in silenzio.
+  Resta lecito un nodo comune raggiunto da più dialoghi, se le sue battute sono di
+  un solo personaggio.
+
+- **Possesso e capienza (GS-4).** Il giocatore **possiede** ciò che ha addosso
+  (`Mondo.giocatore_possiede`): l'inventario e, a ogni livello, il contenuto dei
+  contenitori e dei supporti portati, anche chiusi. È la semantica di `se il
+  giocatore ha X`. La capienza (`Il giocatore può portare N oggetti.`) conta tutti
+  gli oggetti addosso (`numero_oggetti_portati`):
+  - `prendi` chiede un posto libero, come prima, e che dopo la presa tutto stia
+    nella capienza, contando il contenuto dell'oggetto preso e il suo bonus (uno
+    zaino che «dà N spazi» copre ciò che contiene). Tirare fuori un oggetto da uno
+    zaino portato non chiede posto (`Mondo.puo_prendere`).
+  - `metti X in Y`, con Y portato e X da terra, chiede posto per X e il suo
+    contenuto.
+  - `lascia X` vale anche per ciò che sta negli oggetti portati.
+  - `inventario` conta tutto e mostra, rientrato, il contenuto dei supporti e dei
+    contenitori aperti portati.
+
+  Le conseguenze d'autore (`e adesso X è in inventario`) continuano a ignorare la
+  capienza (§19).
+
+- **Libreria per mondo.** `Mondo.carica_azioni` lavora su una **copia** della
+  libreria: fino alla 1.2.1 le azioni dei verbi d'autore finivano nel dizionario
+  globale e passavano alle storie caricate dopo nello stesso processo.

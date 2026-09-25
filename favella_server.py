@@ -361,7 +361,9 @@ def _snapshot_mondo(mondo):
         "turn": getattr(mondo, "turno_corrente", 0),
         "status": getattr(mondo, "stato_partita", "in_corso"),
         "inDialogue": mondo.in_dialogo(),
-        "carryUsed": len(getattr(mondo, "inventario", set())),
+        # [1.2.2] Anche ciò che sta negli zaini portati pesa sulla capienza.
+        "carryUsed": (mondo.numero_oggetti_portati() if hasattr(mondo, "numero_oggetti_portati")
+                      else len(getattr(mondo, "inventario", set()))),
         "carryMax": carry_max,
         "variables": sorted(variabili, key=lambda v: v["name"]),
         "inventory": sorted(inventario, key=lambda i: i["name"]),

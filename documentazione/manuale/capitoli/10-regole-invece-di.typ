@@ -140,10 +140,24 @@ Invece di accelera: dire "Premi a fondo. Il motore sale di giri, il paesaggio si
 
 == Sinonimi di un verbo
 
-Chi gioca non indovina sempre la tua parola. Dove tu hai previsto `prendi`, qualcuno
-scriverà `afferra` o `raccogli`. Invece di duplicare le regole, dichiari che una
-parola nuova vale *come* un verbo che FAVELLA conosce già: ne eredita tutto — il
-comportamento di default, le tue regole `Invece di`, perfino i pronomi.
+Chi gioca non indovina sempre la tua parola. Molte alternative FAVELLA le conosce
+già: dove tu hai previsto `prendi`, chi gioca può scrivere `raccogli`, `afferra` o
+`prendere`, e la tua regola scatta lo stesso.
+
+#nota[
+  Una regola scritta col *verbo principale* di un'azione vale per tutti i suoi
+  sinonimi (dalla versione 1.2.2): `Invece di prendi …` intercetta anche
+  `raccogli`, `afferra` e `prendere`; `Invece di esamina …` anche `guarda`,
+  `osserva` e `leggi`; `Invece di lascia …` anche `molla`, `posa` e `butta`;
+  `Invece di metti …` anche `inserisci`, `infila` e `appoggia`. Una regola scritta
+  con un sinonimo, come `Invece di leggi il libro`, vale solo per quella parola, e
+  per quella parola ha la precedenza: così leggere e guardare possono dire cose
+  diverse.
+]
+
+Per una parola che FAVELLA non conosce, invece di duplicare le regole dichiari che
+vale *come* un verbo noto: ne eredita tutto — il comportamento di default, le tue
+regole `Invece di`, perfino i pronomi.
 
 #sintassi[
   `"[parola nuova]" è come [verbo].`

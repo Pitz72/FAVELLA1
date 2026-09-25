@@ -4,6 +4,87 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.2.2] - 2026-09-25
+### 🛡️ Le quattro criticità gravissime
+Patch di runtime e di validazione, grammatica identica alla 1.2.0. Corregge le
+criticità gravissime GS-1…GS-4 di `documentazione/analisi-critica-1.2.1.md`:
+in tutti e quattro i casi il motore faceva, in silenzio, altro da ciò che
+l'autore aveva scritto. Dove una regola scattava già, scatta identica.
+
+- **GS-1 — le regole valgono per tutti i sinonimi della loro azione.**
+  `Invece di prendi la mela: …` scattava solo su `prendi`: con `raccogli`,
+  `afferra` o `prendere`, sinonimi che la libreria conosce da sé, partiva la
+  presa di default e la regola veniva scavalcata. Capitava anche nelle storie
+  ufficiali: in *Il Viaggiatore* `posa la tanica` faceva lasciare la tanica
+  dell'acqua nonostante la regola «La tanica non la molli»; in *Il Relitto
+  Silente* `raccogli il disco` saltava il testo dell'autore. Ora, se nessuna
+  regola è scritta con la parola digitata (o col nome dell'azione), valgono
+  quelle scritte col **verbo principale** dell'azione (il primo dei suoi nomi:
+  `esamina`, `prendi`, `lascia`, `metti`…). Una regola scritta con un sinonimo
+  (`Invece di leggi il libro`) resta legata a quella parola e ha la precedenza.
+  I verbi dichiarati dall'autore non diventano sinonimi fra loro. Codice:
+  `gioco._cerca_regola` (le quattro fasi di precedenza di sempre, in una
+  funzione), `Mondo.verbo_principale`.
+  - L'azione «usare» è divisa: `apri`, `mangia` e `sposta` hanno ciascuno la sua
+    (`aprire`, `mangiare`, `spostare`). Prima `Invece di usare la porta`
+    catturava anche `mangia la porta`. Le risposte di default non cambiano.
+  - L'avviso sui sinonimi dichiarati per parole già note dice il vero: «già un
+    sinonimo di 'prendi'… la dichiarazione non serve» se la parola è nella
+    stessa azione, «farà invece come 'prendi'» se ne cambia il significato.
+    Prima diceva sempre «superflua», anche quando la dichiarazione era l'unica
+    difesa contro il difetto qui sopra.
+- **GS-2 — `guarda X` e `osserva X` esaminano X.** I due verbi stavano in due
+  azioni e vinceva sempre «guarda la stanza»: `guarda il quadro` ristampava la
+  stanza e le regole `Invece di guarda il quadro` non scattavano mai. Ora un
+  verbo elencato da due azioni sceglie in base all'argomento
+  (`Mondo.azione_del_verbo`): con un oggetto presente lo esamina; senza
+  argomento, con `intorno`/`qui` o con parole che non sono oggetti presenti
+  (`guarda adesso`, `guarda nord`) guarda la stanza come prima.
+- **GS-3 — i nodi di dialogo non si fondono più in silenzio.** Le etichette dei
+  nodi valgono per tutta la storia: se due personaggi scrivevano battute allo
+  stesso nodo (`"saluto"`), le battute si sovrascrivevano e le opzioni si
+  sommavano. Ora è un **errore** di compilazione che nomina il nodo e i
+  personaggi e propone due etichette distinte. Un nodo comune raggiunto da più
+  dialoghi resta lecito se le battute sono di un solo personaggio.
+- **GS-4 — si possiede ciò che si ha addosso.** `se il giocatore ha la chiave`
+  era falsa se la chiave stava nello zaino portato, e la capienza contava solo
+  gli oggetti in mano, per cui uno zaino contenitore portava oggetti senza
+  limite. Ora il possesso comprende, a ogni livello, il contenuto degli oggetti
+  portati (anche di un contenitore chiuso). La capienza conta tutto: prendere
+  un contenitore pieno pesa quanto il suo contenuto (uno zaino che «dà N spazi»
+  copre il proprio contenuto), mettere un oggetto da terra in uno zaino portato
+  chiede un posto, tirarlo fuori no. `lascia X` vale anche per ciò che sta nello
+  zaino, e `inventario` conta e mostra il contenuto (rientrato) di ciò che si
+  porta. Senza contenitori portati il comportamento è identico a prima. Codice:
+  `Mondo.giocatore_possiede`, `oggetti_portati`, `racchiusi_in`,
+  `numero_oggetti_portati`, `puo_prendere`; esploratore (anomalia CAPIENZA) e
+  sidecar dell'IDE (`carryUsed`) usano il nuovo conteggio.
+- **Difetto trovato durante il lavoro: verbi d'autore che passavano da una
+  storia all'altra.** `carica_azioni` scriveva le azioni dei verbi d'autore nel
+  dizionario **globale** della libreria. In un processo che carica più storie
+  (il sito quando si cambia gioco, l'IDE, la suite) i verbi di una storia
+  restavano attaccati alle successive: dopo una storia con `"leggi" è un
+  comando.`, in un'altra `leggi il diario` rispondeva «Non succede nulla di
+  particolare.». Nella stessa storia, la risposta a un verbo d'autore omonimo di
+  uno di libreria cambiava fra la prima partita e le successive. Ora ogni mondo
+  ha la sua copia.
+- **Compatibilità.** La grammatica non cambia. Il comportamento cambia solo
+  dove prima era sbagliato: sinonimi che scavalcavano le regole, `guarda X`,
+  possesso e capienza con i contenitori portati; e una storia con due personaggi
+  sullo stesso nodo non compila più. I salvataggi fatti con la 1.2.1 si caricano:
+  se la partita salvata passava da uno di questi casi, CARICA avvisa che la
+  partita ricostruita non è identica.
+- **Verifica.** Undici storie ufficiali rigiocate con gli stessi comandi prima e
+  dopo (4 caratteri × 4 partite × 150 turni ciascuna): nessuna risposta cambia,
+  tranne quella dovuta alla contaminazione fra storie qui sopra. Con i sinonimi
+  (`raccogli`, `guarda X`, `posa`) ogni partita diverge nel punto atteso.
+- **Documentazione**: spec `grammatica-1.2.0.md` §21, manuale capp. 10, 16, 17 e
+  19 (sorgenti; il PDF va rigenerato con `build.ps1`, che richiede il font Inter
+  installato), `analisi-critica-1.2.1.md` aggiornata.
+
+Suite: **795 asserzioni del linguaggio + 50 di collaudo**, tutte verdi
+(`pytest`: 353). I nuovi test falliscono sul motore 1.2.1.
+
 ## [1.2.1] - 2026-09-23
 ### ↩️ ANNULLA riporta indietro anche ANCORA
 Patch di runtime, grammatica identica alla 1.2.0.

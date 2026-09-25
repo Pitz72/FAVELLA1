@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.2.1)
+# Interprete Interattivo per FAVELLA 1 (v1.2.2)
 
 import contextlib
 import copy
@@ -726,6 +726,80 @@ def _gestisci_scelta_dialogo(mondo: Mondo, comando: str) -> bool:
     return True
 
 
+def _cerca_regola(mondo: Mondo, verbi, con_oggetto: bool, id_oggetto1=None,
+                  id_oggetto2=None, preposizione=None):
+    """La regola 'Invece di' da applicare fra quelle scritte con uno dei `verbi`,
+    oppure None. Precedenza (invariata dalla 0.18.0):
+      FASE 0  regole a DUE oggetti (preposizione esatta, poi qualunque; in
+              ciascun gruppo le condizionali soddisfatte prima delle semplici);
+      FASE 1  regole a un oggetto con condizione soddisfatta;
+      FASE 2  regole a un oggetto senza condizione;
+      GLOBALE regole senza bersaglio (anche per le azioni senza oggetto, es.
+              'Invece di guarda se …'), nell'ordine in cui sono scritte.
+    Le fasi 0–2 valgono solo se l'azione richiede un oggetto. Una regola
+    specifica ha sempre la precedenza su una globale."""
+    if con_oggetto:
+        if id_oggetto2:
+            def _combacia_due_oggetti(regola, prep_esatta):
+                if not (regola.verbo in verbi and
+                        regola.id_oggetto_bersaglio == id_oggetto1 and
+                        regola.id_oggetto_secondario == id_oggetto2):
+                    return False
+                return regola.preposizione == preposizione if prep_esatta else True
+
+            for prep_esatta in (True, False):
+                for regola in mondo.regole:  # condizionali soddisfatte
+                    if (_combacia_due_oggetti(regola, prep_esatta)
+                            and regola.condizione
+                            and regola.condizione.valuta(mondo)):
+                        return regola
+                for regola in mondo.regole:  # poi le semplici
+                    if _combacia_due_oggetti(regola, prep_esatta) and not regola.condizione:
+                        return regola
+
+        def _combacia_un_oggetto(regola):
+            return (regola.verbo in verbi
+                    and regola.id_oggetto_bersaglio == id_oggetto1
+                    and regola.id_oggetto_secondario is None)
+
+        for regola in mondo.regole:
+            if (_combacia_un_oggetto(regola) and regola.condizione
+                    and regola.condizione.valuta(mondo)):
+                return regola
+        for regola in mondo.regole:
+            if _combacia_un_oggetto(regola) and not regola.condizione:
+                return regola
+
+    for regola in mondo.regole:
+        if regola.id_oggetto_bersaglio is None and regola.verbo in verbi:
+            if regola.condizione is None or regola.condizione.valuta(mondo):
+                return regola
+    return None
+
+
+# [1.2.2] Argomenti che, dopo 'guarda'/'osserva', non nominano un oggetto: il
+# giocatore si guarda intorno ('guarda intorno' ristampa la stanza). Sono
+# esclusi PRIMA di cercare l'oggetto, perché la ricerca per sottostringa li
+# troverebbe dentro altri nomi ('qui' in 'liquido').
+_GUARDARSI_INTORNO = ("intorno", "attorno", "qui", "qua", "tutto", "tutto intorno", "tutt'intorno")
+
+
+def _ripiego_senza_oggetto(mondo: Mondo, verbo: str, id_risolto):
+    """[1.2.2] Per un verbo che ha anche un'azione SENZA oggetto ('guarda',
+    'osserva'): se l'argomento non nomina un oggetto presente — non trovato, o una
+    direzione — il comando vale come quell'azione. 'guarda adesso', 'guarda bene',
+    'guarda nord' guardano la stanza, come fino alla 1.2.1; solo 'guarda <oggetto
+    presente>' esamina l'oggetto. Un nome ambiguo resta ambiguo (la domanda
+    «Quale intendi?» è già stata posta). None se non c'è ripiego."""
+    if id_risolto == "<ambiguo>" or (id_risolto is not None and id_risolto in mondo.oggetti):
+        return None
+    for nome in mondo.azioni_del_verbo.get(verbo, ()):
+        azione = mondo.azioni.get(nome)
+        if azione is not None and not azione.richiede_oggetto:
+            return nome
+    return None
+
+
 def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     """Elabora un singolo comando (parsing + applicazione di regole/azioni),
     senza gestire l'avanzamento dei turni. Restituisce True per continuare."""
@@ -849,7 +923,14 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             return True
 
         # --- Gestione Azioni Standard ---
-        nome_azione = mondo.mappa_verbi_giocatore.get(verbo_giocatore)
+        # [1.2.2] Un verbo elencato da due azioni ('guarda', 'osserva') compie
+        # quella indicata dall'argomento: 'guarda il quadro' esamina il quadro;
+        # 'guarda', 'guarda intorno' o un argomento che non nomina un oggetto
+        # presente ('guarda adesso') ristampano la stanza, come prima.
+        if (argomento_sx in _GUARDARSI_INTORNO
+                and len(mondo.azioni_del_verbo.get(verbo_giocatore, ())) > 1):
+            argomento_sx = ""
+        nome_azione = mondo.azione_del_verbo(verbo_giocatore, con_oggetto=bool(argomento_sx))
         if not nome_azione:
             print("Non capisco questo verbo.")
             return True
@@ -864,11 +945,17 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 return True
             
             id_oggetto1 = risolvi_nome_oggetto(mondo, argomento_sx)
+            # [1.2.2] 'guarda adesso' non nomina un oggetto: si guarda la stanza.
+            ripiego = _ripiego_senza_oggetto(mondo, verbo_giocatore, id_oggetto1)
+            if ripiego:
+                nome_azione, azione, id_oggetto1 = ripiego, mondo.azioni[ripiego], None
+
+        if azione.richiede_oggetto:
             if not id_oggetto1 or id_oggetto1 == "<ambiguo>":
                 if id_oggetto1 is None:
                     print(f"Non vedo '{argomento_sx}' qui.")
                 return True
-            
+
             if preposizione_trovata and argomento_dx:
                 id_oggetto2 = risolvi_nome_oggetto(mondo, argomento_dx)
                 if not id_oggetto2 or id_oggetto2 == "<ambiguo>":
@@ -884,108 +971,36 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 mondo.registra_riferito(id_oggetto2)
 
         # --- MOTORE DI GIOCO (Supporto 2 Oggetti; il 'se' è valutato, 0.18.0/A1) ---
-        regola_applicata = False
-        regola_da_eseguire = None # Memorizza la regola trovata per eseguirne la conseguenza
-        
-        if azione.richiede_oggetto:
-            verbi_da_controllare = {verbo_giocatore, nome_azione}
-            
-            # FASE 0: Regole a DUE OGGETTI (Priorità Massima). [0.18.0] Come le
-            # regole a un oggetto (FASE 1/2), ora VALUTANO la clausola 'se': fra
-            # più regole che combaciano su verbo+ogg1+prep+ogg2 vince la prima
-            # CONDIZIONALE soddisfatta; in assenza, la prima SEMPLICE. Prima si
-            # privilegia la preposizione esatta, poi (fallback tollerante) si
-            # accetta qualunque preposizione sugli stessi due oggetti. Senza
-            # questa valutazione del 'se', più 'Invece di usa X su Y se …'
-            # collassavano (vinceva sempre la prima dichiarata).
-            if id_oggetto2:
-                def _combacia_due_oggetti(regola, prep_esatta):
-                    if not (regola.verbo in verbi_da_controllare and
-                            regola.id_oggetto_bersaglio == id_oggetto1 and
-                            regola.id_oggetto_secondario == id_oggetto2):
-                        return False
-                    if prep_esatta:
-                        return regola.preposizione == preposizione_trovata
-                    return True
+        # Prima le regole scritte con la parola digitata o col nome dell'azione
+        # (la ricerca di sempre: dove una regola scattava, scatta identica).
+        # [1.2.2] Se nessuna si applica, quelle scritte col VERBO PRINCIPALE
+        # dell'azione: 'Invece di prendi la mela' vale anche per 'raccogli la
+        # mela', 'afferra la mela', 'prendere la mela'. Fino alla 1.2.1 questi
+        # sinonimi, che la libreria conosce da sé, scavalcavano la regola e
+        # facevano partire l'azione di default. I verbi d'autore non hanno
+        # sinonimi impliciti (verbo_principale → None).
+        verbi_scritti = {verbo_giocatore, nome_azione}
+        regola_da_eseguire = _cerca_regola(mondo, verbi_scritti, azione.richiede_oggetto,
+                                           id_oggetto1, id_oggetto2, preposizione_trovata)
+        if regola_da_eseguire is None:
+            principale = mondo.verbo_principale(nome_azione)
+            if principale and principale not in verbi_scritti:
+                regola_da_eseguire = _cerca_regola(mondo, {principale}, azione.richiede_oggetto,
+                                                   id_oggetto1, id_oggetto2, preposizione_trovata)
 
-                # Quattro tier, in ordine di precedenza: per la preposizione
-                # esatta prima e poi tollerante, dentro ciascuna le condizionali
-                # soddisfatte prima delle semplici.
-                for prep_esatta in (True, False):
-                    if regola_applicata:
-                        break
-                    for regola in mondo.regole:  # condizionali soddisfatte
-                        if (_combacia_due_oggetti(regola, prep_esatta)
-                                and regola.condizione
-                                and regola.condizione.valuta(mondo)):
-                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                            regola_applicata = True
-                            regola_da_eseguire = regola
-                            break
-                    if regola_applicata:
-                        break
-                    for regola in mondo.regole:  # poi le semplici
-                        if _combacia_due_oggetti(regola, prep_esatta) and not regola.condizione:
-                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                            regola_applicata = True
-                            regola_da_eseguire = regola
-                            break
-            
-            # FASE 1: Regole Condizionali (1 Oggetto)
-            if not regola_applicata:
-                for regola in mondo.regole:
-                    if (regola.verbo in verbi_da_controllare and 
-                        regola.id_oggetto_bersaglio == id_oggetto1 and
-                        regola.id_oggetto_secondario is None): # Importante: solo regole a 1 oggetto
-                        
-                        if regola.condizione and regola.condizione.valuta(mondo):
-                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                            regola_applicata = True
-                            regola_da_eseguire = regola
-                            break
-            
-            # FASE 2: Regole Semplici (1 Oggetto)
-            if not regola_applicata:
-                for regola in mondo.regole:
-                    if (regola.verbo in verbi_da_controllare and 
-                        regola.id_oggetto_bersaglio == id_oggetto1 and
-                        regola.id_oggetto_secondario is None):
-                        
-                        if not regola.condizione:
-                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                            regola_applicata = True
-                            regola_da_eseguire = regola
-                            break
-
-        # FASE GLOBALE: Regole senza oggetto bersaglio (Livello 5). Scattano sul
-        # solo verbo, se la loro condizione è soddisfatta, quando nessuna regola
-        # specifica si è attivata. Valgono anche per le azioni che NON richiedono
-        # un oggetto (es. 'Invece di guarda se il punteggio è almeno 3: ...'), per
-        # cui le fasi 0–2 sopra non vengono nemmeno eseguite. Una regola specifica
-        # ha sempre la precedenza su una globale (questa fase viene dopo).
-        if not regola_applicata:
-            verbi_da_controllare = {verbo_giocatore, nome_azione}
-            for regola in mondo.regole:
-                if (regola.id_oggetto_bersaglio is None
-                        and regola.verbo in verbi_da_controllare):
-                    if regola.condizione is None or regola.condizione.valuta(mondo):
-                        if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                        regola_applicata = True
-                        regola_da_eseguire = regola
-                        break
-
-        if regola_applicata:
-            if regola_da_eseguire:
-                # [0.18.0 / B2] Se una conseguenza teletrasporta il giocatore, dopo
-                # l'esecuzione mostriamo la nuova stanza (come per il movimento via
-                # direzioni), così l'effetto è visibile e non muto.
-                pos_prima = mondo.posizione_giocatore
-                regola_da_eseguire.esegui_conseguenze(mondo)
-                _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
-                if partita_finita(mondo):
-                    return False
-                if mondo.posizione_giocatore != pos_prima:
-                    mostra_stanza(mondo)
+        if regola_da_eseguire is not None:
+            if regola_da_eseguire.risposta:   # [0.30.0/A3] regola muta: niente riga vuota
+                print(rendi_testo(mondo, regola_da_eseguire.risposta))
+            # [0.18.0 / B2] Se una conseguenza teletrasporta il giocatore, dopo
+            # l'esecuzione mostriamo la nuova stanza (come per il movimento via
+            # direzioni), così l'effetto è visibile e non muto.
+            pos_prima = mondo.posizione_giocatore
+            regola_da_eseguire.esegui_conseguenze(mondo)
+            _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
+            if partita_finita(mondo):
+                return False
+            if mondo.posizione_giocatore != pos_prima:
+                mostra_stanza(mondo)
             return True
 
         # 2. Esecuzione Logica di Default
@@ -1005,7 +1020,9 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         
         # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
-        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare", "inventario", "_personalizzata", "_personalizzata_intransitiva", "mettere"]:
+        if nome_azione not in ["guarda", "aiuto", "esaminare", "prendere", "usare",
+                               "aprire", "mangiare", "spostare",   # [1.2.2] ex «usare»
+                               "inventario", "_personalizzata", "_personalizzata_intransitiva", "mettere"]:
             mostra_stanza(mondo)
         
         return True

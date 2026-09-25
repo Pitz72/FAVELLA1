@@ -1,5 +1,5 @@
 # esploratore.py
-# Collaudo DINAMICO per FAVELLA 1 (v1.2.0): partite vere, giocate dal motore.
+# Collaudo DINAMICO per FAVELLA 1 (v1.2.2): partite vere, giocate dal motore.
 #
 # Il collaudo statico (collaudo.py) ragiona sulle frasi senza giocare; questo
 # modulo gioca. Due usi, dalla CLI:
@@ -290,8 +290,10 @@ def controlla(p, cmd, out, reg, prima):
         cap = m.capacita_attuale()
     except Exception:
         cap = None
-    if cap is not None and len(m.inventario) > cap:
-        reg.segnala("CAPIENZA", f"{len(m.inventario)} oggetti su {cap} posti dopo «{cmd}»", p,
+    # [1.2.2] Conta anche ciò che sta negli zaini portati (Mondo.numero_oggetti_portati).
+    portati = m.numero_oggetti_portati() if hasattr(m, "numero_oggetti_portati") else len(m.inventario)
+    if cap is not None and portati > cap:
+        reg.segnala("CAPIENZA", f"{portati} oggetti su {cap} posti dopo «{cmd}»", p,
                     ("CAPIENZA", cmd.split()[0] if cmd.split() else ""))
     if cmd.startswith("esamina ") and cmd[8:] in prima["presenti"] and out.lstrip().startswith("Non vedo"):
         reg.segnala("INVISIBILE", f"«{cmd[8:]}» è fra i presenti ma il parser non lo vede", p,

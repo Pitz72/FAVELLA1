@@ -5338,6 +5338,297 @@ def test_esploratore_trova_un_segnaposto_rotto():
 # --- Runner ------------------------------------------------------------------
 
 
+# --- [1.2.2] Criticità gravissime (documentazione/analisi-critica-1.2.1.md) ---
+
+_SRC_GS1 = (
+    "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+    "La mela è una cosa.\nLa mela è prendibile.\nLa mela è in cella.\n"
+    "La tanica è una cosa.\nLa tanica è prendibile.\nIl giocatore ha la tanica.\n"
+    "La scatola è un contenitore.\nLa scatola è in cella.\n"
+    "La chiave è una cosa.\nLa chiave è prendibile.\nIl giocatore ha la chiave.\n"
+    'Invece di prendi la mela: dire "AVVELENATA".\n'
+    'Invece di lascia la tanica: dire "LA TANICA NON LA MOLLI".\n'
+    'Invece di metti la chiave nella scatola: dire "LA CHIAVE NON ENTRA".\n')
+
+
+def test_regola_vale_per_i_sinonimi_di_libreria():
+    print("[1.2.2 GS-1: 'Invece di prendi X' vale per raccogli/afferra/prendere X]")
+    for comando in ("prendi la mela", "raccogli la mela", "afferra la mela", "prendere la mela"):
+        mondo = runtime(_SRC_GS1)
+        out = esegui(mondo, comando)
+        _check("AVVELENATA" in out and "mela" not in mondo.inventario,
+               f"«{comando}» fa scattare la regola e la mela resta dov'è")
+    for comando in ("posa la tanica", "molla la tanica", "butta la tanica"):
+        mondo = runtime(_SRC_GS1)
+        out = esegui(mondo, comando)
+        _check("NON LA MOLLI" in out and "tanica" in mondo.inventario,
+               f"«{comando}» fa scattare la regola su 'lascia'")
+    mondo = runtime(_SRC_GS1)
+    _check("NON ENTRA" in esegui(mondo, "infila la chiave nella scatola"),
+           "vale anche per le regole a due oggetti (infila → metti)")
+
+
+def test_regola_sul_sinonimo_ha_la_precedenza():
+    print("[1.2.2 GS-1: la regola scritta con la parola digitata vince su quella del verbo principale]")
+    src = _SRC_GS1 + 'Invece di raccogli la mela: dire "RACCOLTA SPECIFICA".\n'
+    mondo = runtime(src)
+    _check("RACCOLTA SPECIFICA" in esegui(mondo, "raccogli la mela"),
+           "'raccogli' trova la sua regola, come nella 1.2.1")
+    _check("AVVELENATA" in esegui(mondo, "prendi la mela"), "'prendi' trova la sua")
+    _check("AVVELENATA" in esegui(mondo, "afferra la mela"),
+           "'afferra', che non ha una regola sua, usa quella del verbo principale")
+
+
+def test_regola_scritta_con_un_sinonimo_resta_sua():
+    print("[1.2.2 GS-1: 'Invece di leggi X' non cambia 'esamina X']")
+    mondo = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il libro è una cosa.\nIl libro è in cella.\n"
+        'La descrizione del libro è "Una copertina di cuoio.".\n'
+        'Invece di leggi il libro: dire "C\'era una volta.".\n')
+    _check("C'era una volta" in esegui(mondo, "leggi il libro"), "'leggi' trova la sua regola")
+    _check("cuoio" in esegui(mondo, "esamina il libro"),
+           "'esamina' mostra la descrizione, come prima")
+
+
+def test_apri_mangia_sposta_sono_azioni_distinte():
+    print("[1.2.2 GS-1: apri, mangia, sposta e usa non si confondono più]")
+    mondo = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "La porta è una cosa.\nLa porta è in cella.\n"
+        "La torta è una cosa.\nLa torta è in cella.\n"
+        'Invece di mangia la torta: dire "GNAM".\n'
+        'Invece di usare la porta: dire "USATA".\n'
+        'Invece di aprire la porta: dire "APERTA".\n')
+    _check("GNAM" not in esegui(mondo, "apri la torta"), "'apri la torta' non la mangia")
+    _check("GNAM" in esegui(mondo, "mangia la torta"), "'mangia la torta' sì")
+    _check("APERTA" in esegui(mondo, "apri la porta"),
+           "'Invece di aprire' (nome dell'azione) vale per 'apri'")
+    _check("USATA" not in esegui(mondo, "sposta la porta"),
+           "'Invece di usare' non cattura più 'sposta'")
+    _check("USATA" in esegui(mondo, "usa la porta"), "'Invece di usare' vale per 'usa'")
+    _check("con cosa vuoi usarlo" in esegui(mondo, "sposta la torta").lower(),
+           "senza regole la risposta di default è quella di sempre")
+
+
+def test_verbi_d_autore_non_diventano_sinonimi():
+    print("[1.2.2 GS-1: due verbi d'autore restano distinti]")
+    mondo = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il masso è una cosa.\nIl masso è in cella.\n"
+        '"spingi" è un comando.\n"tira" è un comando.\n'
+        'Invece di spingi il masso: dire "ROTOLA".\n')
+    _check("ROTOLA" in esegui(mondo, "spingi il masso"), "'spingi' trova la sua regola")
+    _check("ROTOLA" not in esegui(mondo, "tira il masso"), "'tira' non la eredita")
+
+
+def test_avviso_sui_sinonimi_gia_noti():
+    print("[1.2.2 GS-1: l'avviso sui sinonimi dice il vero]")
+    base = "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+    _, log = compila(base + '"raccogli" è come prendi.\n')
+    _check("già un sinonimo di 'prendi'" in log and "non serve" in log,
+           "stessa azione: la dichiarazione non serve")
+    _, log = compila(base + '"leggi" è come prendi.\n')
+    _check("farà invece come 'prendi'" in log,
+           "azione diversa: l'avviso dice che il verbo cambia significato")
+    _, log = compila(base + '"leggi" è come getta.\n"getta" è un comando.\n')
+    _check("farà invece come 'getta'" in log,
+           "anche verso un comando d'autore dichiarato dopo")
+    _, log = compila(base + '"ghermisci" è come prendi.\n')
+    _check("ghermisci" not in log, "una parola nuova non riceve avvisi")
+
+
+def test_verbi_d_autore_non_passano_alla_storia_successiva():
+    print("[1.2.2: i verbi d'autore di una storia non contaminano la successiva]")
+    from libreria_azioni import LIBRERIA_AZIONI
+    runtime("La cella è una stanza.\n\"leggi\" è un comando.\n\"spingi\" è un comando.\n")
+    _check(not any(k.startswith("_") for k in LIBRERIA_AZIONI),
+           "la libreria globale non riceve le azioni dei verbi d'autore")
+    mondo = runtime(
+        "La cucina è una stanza.\nIl diario è una cosa.\nIl diario è in cucina.\n"
+        'La descrizione del diario è "Pagine fitte.".\n')
+    _check("Pagine fitte" in esegui(mondo, "leggi il diario"),
+           "nella storia successiva 'leggi' legge ancora")
+    _check("non capisco" in esegui(mondo, "spingi il diario").lower(),
+           "e 'spingi' non è un verbo che conosce")
+
+
+def test_guarda_e_osserva_con_un_oggetto_lo_esaminano():
+    print("[1.2.2 GS-2: 'guarda X' / 'osserva X' esaminano X]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        'La descrizione della cella è "Muri di pietra.".\n'
+        "Il quadro è una cosa.\nIl quadro è in cella.\n"
+        'La descrizione del quadro è "Un paesaggio marino.".\n'
+        "La lettera è una cosa.\nLa lettera è in cella.\n"
+        'La descrizione della lettera è "Poche righe.".\n'
+        'Invece di guarda la lettera: dire "LA LETTERA TI GUARDA".\n')
+    mondo = runtime(src)
+    _check("paesaggio marino" in esegui(mondo, "guarda il quadro"), "'guarda il quadro' lo esamina")
+    _check("paesaggio marino" in esegui(mondo, "osserva il quadro"), "'osserva il quadro' lo esamina")
+    _check("LA LETTERA TI GUARDA" in esegui(mondo, "guarda la lettera"),
+           "una regola 'Invece di guarda X' scatta")
+    _check("paesaggio marino" in esegui(mondo, "guardalo"), "'guardalo' esamina l'ultimo riferito")
+    for comando in ("guarda", "osserva", "guarda intorno", "guarda adesso", "guarda nord"):
+        out = esegui(mondo, comando)
+        _check("Muri di pietra" in out and "paesaggio" not in out,
+               f"«{comando}» guarda la stanza, come prima")
+
+
+def test_guarda_x_attiva_le_regole_di_esamina():
+    print("[1.2.2 GS-1+2: 'guarda X' attiva 'Invece di esamina X']")
+    mondo = runtime(
+        "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+        "Il quadro è una cosa.\nIl quadro è in cella.\n"
+        'Invece di esamina il quadro: dire "UN VOLTO NEL QUADRO".\n')
+    _check("UN VOLTO NEL QUADRO" in esegui(mondo, "guarda il quadro"),
+           "la regola sul verbo principale 'esamina' vale per 'guarda'")
+
+
+def test_libreria_verbi_in_due_azioni_distinti_dall_argomento():
+    print("[1.2.2 GS-2: un verbo in due azioni solo se una vuole l'oggetto e l'altra no]")
+    from libreria_azioni import LIBRERIA_AZIONI
+    azioni_di = {}
+    for nome, azione in LIBRERIA_AZIONI.items():
+        for verbo in azione.nomi:
+            azioni_di.setdefault(verbo, []).append(azione)
+    for verbo, azioni in sorted(azioni_di.items()):
+        if len(azioni) > 1:
+            _check(len(azioni) == 2 and azioni[0].richiede_oggetto != azioni[1].richiede_oggetto,
+                   f"'{verbo}' si risolve con l'argomento del comando")
+
+
+_SRC_GS3 = (
+    "La piazza è una stanza.\nIl giocatore comincia in piazza.\n"
+    "Anna è un personaggio.\nAnna è in piazza.\n"
+    "Marco è un personaggio.\nMarco è in piazza.\n"
+    'Il dialogo di Anna comincia con "saluto".\n'
+    'Anna al nodo "saluto" dice "Ciao, sono Anna.".\n'
+    'Al nodo "saluto" l\'opzione "Arrivederci." chiude il dialogo.\n')
+
+
+def test_nodo_con_battute_di_due_personaggi_e_un_errore():
+    print("[1.2.2 GS-3: due personaggi allo stesso nodo di dialogo = errore]")
+    mondo, log = compila(
+        _SRC_GS3 + 'Il dialogo di Marco comincia con "saluto".\n'
+        'Marco al nodo "saluto" dice "Salve, sono Marco.".\n')
+    _check(mondo is None, "la storia non compila più (prima i dialoghi si fondevano)")
+    _check("'saluto'" in log and "Anna" in log and "Marco" in log,
+           "l'errore nomina il nodo e i due personaggi")
+    _check('"saluto anna"' in log and '"saluto marco"' in log,
+           "e propone due etichette distinte")
+    diag = strutturato(_SRC_GS3 + 'Marco al nodo "saluto" dice "Salve.".\n')
+    _check(not diag["ok"] and any("saluto" in e["message"] for e in diag["errors"]),
+           "anche il percorso dell'IDE lo segnala come errore")
+
+
+def test_nodo_condiviso_da_un_solo_parlante_resta_lecito():
+    print("[1.2.2 GS-3: un nodo comune raggiunto da più dialoghi resta lecito]")
+    mondo = runtime(
+        _SRC_GS3 + 'Il dialogo di Marco comincia con "marco".\n'
+        'Marco al nodo "marco" dice "Salve.".\n'
+        'Al nodo "marco" l\'opzione "Anna?" conduce al nodo "saluto".\n'
+        'Anna al nodo "saluto" dice "Ciao, di nuovo." se il giocatore è in piazza.\n')
+    _check(mondo is not None, "compila: al nodo 'saluto' parla solo Anna (anche con una variante 'se')")
+    out = esegui(mondo, "parla con marco") + esegui(mondo, "1")
+    _check("Salve." in out and "di nuovo" in out,
+           "dal dialogo di Marco si raggiunge il nodo comune")
+
+
+_SRC_GS4 = (
+    "La cella è una stanza.\nIl giocatore comincia in cella.\n"
+    "Il corridoio è una stanza.\nLa cella collega nord a il corridoio.\n"
+    "Lo zaino è un contenitore.\nLo zaino è prendibile.\nLo zaino è in cella.\n"
+    "La sacca è un contenitore.\nLa sacca è prendibile.\nLa sacca è in cella.\n"
+    "La chiave è una cosa.\nLa chiave è prendibile.\nLa chiave è in cella.\n"
+    "La mela è una cosa.\nLa mela è prendibile.\nLa mela è in cella.\n"
+    "La pera è una cosa.\nLa pera è prendibile.\nLa pera è in cella.\n"
+    'Invece di vai nord se il giocatore non ha la chiave: dire "SERVE LA CHIAVE".\n')
+
+
+def test_possesso_vale_dentro_cio_che_si_porta():
+    print("[1.2.2 GS-4: 'il giocatore ha X' vale anche se X è nello zaino portato]")
+    mondo = runtime(_SRC_GS4)
+    for c in ("prendi lo zaino", "prendi la chiave", "metti la chiave nello zaino"):
+        esegui(mondo, c)
+    _check("chiave" not in mondo.inventario and mondo.giocatore_possiede("chiave"),
+           "la chiave è nello zaino, e il giocatore ce l'ha")
+    out = esegui(mondo, "nord")
+    _check("SERVE LA CHIAVE" not in out and mondo.posizione_giocatore == "corridoio",
+           "la porta riconosce la chiave nello zaino")
+    mondo = runtime(_SRC_GS4)
+    esegui(mondo, "prendi la chiave")
+    esegui(mondo, "metti la chiave nella sacca")   # la sacca resta a terra
+    _check(not mondo.giocatore_possiede("chiave") and "SERVE" in esegui(mondo, "nord"),
+           "una chiave in una sacca lasciata a terra non la si ha")
+
+
+def test_capienza_conta_il_contenuto_degli_zaini():
+    print("[1.2.2 GS-4: la capienza conta anche ciò che sta negli zaini]")
+    mondo = runtime(_SRC_GS4 + "Il giocatore può portare 2 oggetti.\n")
+    esegui(mondo, "prendi la sacca")
+    esegui(mondo, "prendi la mela")
+    esegui(mondo, "metti la mela nella sacca")
+    _check(mondo.numero_oggetti_portati() == 2, "sacca + mela dentro: 2 posti usati")
+    _check("piene" in esegui(mondo, "prendi la pera").lower() and "pera" not in mondo.inventario,
+           "la pera non si prende: la capienza è piena")
+    out = esegui(mondo, "metti la pera nella sacca")
+    _check("troppe cose" in out and not mondo.giocatore_possiede("pera"),
+           "né la si infila nella sacca portata (prima entrava senza limite)")
+    inv = esegui(mondo, "inventario")
+    _check("(2/2)" in inv and "      - La mela" in inv,
+           "l'inventario conta 2/2 e mostra la mela dentro la sacca")
+    _check("Preso" in esegui(mondo, "prendi la mela") and "mela" in mondo.inventario,
+           "tirare fuori la mela dalla sacca non richiede posto")
+
+
+def test_capienza_contenitore_gia_pieno():
+    print("[1.2.2 GS-4: un contenitore pieno pesa quanto il suo contenuto]")
+    src = _SRC_GS4 + (
+        "Il giocatore può portare 2 oggetti.\n"
+        "La cassetta è un contenitore.\nLa cassetta è prendibile.\nLa cassetta è in cella.\n"
+        "Il sale è una cosa.\nIl sale è nella cassetta.\n"
+        "Il pepe è una cosa.\nIl pepe è nella cassetta.\n"
+        "La bisaccia è un contenitore.\nLa bisaccia è prendibile.\nLa bisaccia è in cella.\n"
+        "La bisaccia dà 3 spazi.\n"
+        "Il pane è una cosa.\nIl pane è nella bisaccia.\n"
+        "Il vino è una cosa.\nIl vino è nella bisaccia.\n")
+    mondo = runtime(src)
+    _check("piene" in esegui(mondo, "prendi la cassetta").lower(),
+           "una cassetta con due oggetti dentro chiede tre posti su due")
+    _check("Preso" in esegui(mondo, "prendi la bisaccia"),
+           "una bisaccia che dà 3 spazi copre il proprio contenuto (3 su 5)")
+    _check(mondo.numero_oggetti_portati() == 3 and mondo.capacita_attuale() == 5,
+           "3 oggetti portati, capienza 2 + 3")
+
+
+def test_lascia_un_oggetto_dallo_zaino():
+    print("[1.2.2 GS-4: 'lascia X' vale anche per ciò che sta nello zaino]")
+    mondo = runtime(_SRC_GS4)
+    for c in ("prendi lo zaino", "prendi la chiave", "metti la chiave nello zaino"):
+        esegui(mondo, c)
+    out = esegui(mondo, "lascia la chiave")
+    _check("Lasciato" in out and not mondo.giocatore_possiede("chiave")
+           and "chiave" in mondo.stanze["cella"].oggetti
+           and "chiave" not in mondo.oggetti["zaino"].contenuto,
+           "la chiave esce dallo zaino e resta nella cella")
+
+
+def test_capienza_inventario_piatto_invariato():
+    print("[1.2.2 GS-4: senza contenitori la capienza si comporta come prima]")
+    src = (
+        "L'atrio è una stanza.\nIl giocatore comincia in atrio.\n"
+        "Il giocatore può portare 1 oggetti.\n"
+        "Uno zaino è una cosa.\nLo zaino è in atrio.\nLo zaino è prendibile.\n"
+        "Lo zaino dà 2 spazi.\n"
+        "Una mela è una cosa.\nLa mela è in atrio.\nLa mela è prendibile.\n")
+    mondo = runtime(src)
+    esegui(mondo, "prendi la mela")
+    _check("piene" in esegui(mondo, "prendi lo zaino").lower(),
+           "con le mani piene lo zaino non si prende, nemmeno se darebbe spazio (come prima)")
+    _check("Stai portando: (1/1)" in esegui(mondo, "inventario"), "l'inventario dice 1/1")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -5722,11 +6013,29 @@ def main():
         test_salva_su_file_nella_cartella_di_lavoro,
         test_esploratore_finali_con_percorso,
         test_esploratore_trova_un_segnaposto_rotto,
+        # [1.2.2] Criticità gravissime (documentazione/analisi-critica-1.2.1.md)
+        test_regola_vale_per_i_sinonimi_di_libreria,
+        test_regola_sul_sinonimo_ha_la_precedenza,
+        test_regola_scritta_con_un_sinonimo_resta_sua,
+        test_apri_mangia_sposta_sono_azioni_distinte,
+        test_verbi_d_autore_non_diventano_sinonimi,
+        test_avviso_sui_sinonimi_gia_noti,
+        test_verbi_d_autore_non_passano_alla_storia_successiva,
+        test_guarda_e_osserva_con_un_oggetto_lo_esaminano,
+        test_guarda_x_attiva_le_regole_di_esamina,
+        test_libreria_verbi_in_due_azioni_distinti_dall_argomento,
+        test_nodo_con_battute_di_due_personaggi_e_un_errore,
+        test_nodo_condiviso_da_un_solo_parlante_resta_lecito,
+        test_possesso_vale_dentro_cio_che_si_porta,
+        test_capienza_conta_il_contenuto_degli_zaini,
+        test_capienza_contenitore_gia_pieno,
+        test_lascia_un_oggetto_dallo_zaino,
+        test_capienza_inventario_piatto_invariato,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.2.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.2.2)")
     print("=" * 60)
     for t in tests:
         t()

@@ -1,6 +1,6 @@
 # Indice del repository — FAVELLA 1
 
-Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-23 (motore 1.2.1).
+Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-25 (motore 1.2.2).
 
 ---
 
@@ -40,6 +40,7 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-23 (motore 1.2.1).
 | `documentazione/grammatica-*.md` | Specifiche EBNF per versione (la `1.2.0` è quella viva) |
 | `documentazione/0.*.md` | Note di rilascio storiche per versione |
 | `documentazione/progettazione-*.md`, `espansione-oltre-0.29.md` | Documenti di progettazione |
+| `documentazione/analisi-critica-1.2.1.md` | Analisi critica del linguaggio: criticità per gravità, limiti, evoluzioni (le gravissime sono corrette nella 1.2.2) |
 | `documentazione/manuale/` | Manuale (Typst → PDF) + `manuale.pdf` pubblico |
 
 > Resta piatta di proposito: un test-guardia in `test_linguaggio.py` e ~40 link
@@ -88,7 +89,7 @@ virtualenv, build e cache. Per rimetterlo in moto:
 ```bash
 # motore: serve solo Lark
 pip install lark
-python test_linguaggio.py     # 735 asserzioni
+python test_linguaggio.py     # 795 asserzioni
 python test_collaudo.py       # 50 asserzioni
 python favella.py gioca favella1/galleria/il-faro/il-faro.fav
 
