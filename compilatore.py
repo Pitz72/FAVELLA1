@@ -739,7 +739,11 @@ _GRAMMAR_TEMPLATE = r"""
     // solo in regola_target; PREP_LUOGO solo in posizione/spostamento), come già
     // accade per 'in'. La preposizione esatta conta solo per la priorità di
     // match: il fallback prep-tollerante (stessi due oggetti) fa comunque da rete.
-    PREP_AZIONE: "sull'" | "sul" | "sullo" | "sulla" | "sui" | "sugli" | "sulle" | "su" | "con" | "contro" | "nell'" | "nel" | "nello" | "nella" | "nei" | "negli" | "nelle" | "in"
+    // [1.3.0 / G-7] Regex con CONFINE DESTRO (come PREP_LUOGO) e con le
+    // preposizioni di TERMINE e di PROVENIENZA e quelle di luogo improprie: 'dai la
+    // mela ALLA guardia', 'prendi la mela DAL tavolo', 'metti la tazza SOPRA il
+    // mobile'. Le forme più lunghe vengono prima (nello prima di nel prima di ne…).
+    PREP_AZIONE: /(?:sull'|nell'|all'|dall')|(?:sullo|sulla|sugli|sulle|sul|sui|su|contro|con|nello|nella|negli|nelle|nel|nei|in|allo|alla|agli|alle|al|ai|a|dallo|dalla|dagli|dalle|dal|dai|da|sopra|sotto|dentro|dietro|verso)(?![a-zA-ZÀ-ÿ0-9'])/i
     // [Livello 5] Preposizioni articolate della descrizione come TERMINALE UNICO
     // (maximal-munch: 'della' non si spezza più in 'del'+'la') e FILTRATO dal
     // tree (prefisso '_'): elimina alla radice un'ambiguità preesistente di

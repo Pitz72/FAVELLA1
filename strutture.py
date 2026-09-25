@@ -469,10 +469,14 @@ class ConseguenzaBuioStanza(Conseguenza):
 
 class Azione:
     """Rappresenta un'azione standard, la sua logica e se richiede un oggetto."""
-    def __init__(self, nomi: List[str], logica: Callable[..., None], richiede_oggetto: bool = True):
+    def __init__(self, nomi: List[str], logica: Callable[..., None], richiede_oggetto: bool = True,
+                 cede: bool = False):
         self.nomi = nomi
         self.logica_di_default = logica
         self.richiede_oggetto = richiede_oggetto
+        # [1.3.0] Un'azione che CEDE lascia i suoi verbi a un verbo omonimo
+        # dichiarato dall'autore (vedi Mondo.carica_azioni).
+        self.cede = cede
 
 class Regola:
     """Rappresenta una regola 'Invece di', con supporto per due oggetti,
@@ -749,6 +753,10 @@ class Mondo:
         self._turno_libero: bool = False
         self._in_conferma: Optional[str] = None
         self._uscita_richiesta: bool = False
+        # [1.3.0] La logica di default ha fatto ciò che doveva (per 'Dopo di');
+        # la domanda «Quale intendi…?» in attesa di risposta.
+        self._azione_riuscita: bool = False
+        self._ambiguita: Optional[dict] = None
         self.posizione_giocatore: str | None = None
         # ID della stanza di partenza dichiarata esplicitamente dall'autore
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
@@ -946,6 +954,7 @@ class Mondo:
                        "annunci", "_snap_dialogo",
                        # [1.3.0] sessione del comando in corso
                        "_turno_libero", "_in_conferma", "_uscita_richiesta",
+                       "_azione_riuscita", "_ambiguita",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
@@ -1106,7 +1115,15 @@ class Mondo:
         # '"leggi" è un comando.', in un'altra 'leggi il diario' non leggeva più.
         self.azioni = dict(libreria)
         self.azioni_del_verbo = {}
+        # [1.3.0] Precedenza: prima le azioni storiche della libreria (un verbo
+        # d'autore omonimo non le scavalca, come sempre), poi i verbi d'autore,
+        # poi le azioni che CEDONO (i verbi aggiunti nella 1.3.0: chiudi, accendi,
+        # aspetta…), che valgono solo per i verbi che l'autore non ha dichiarato.
+        cedevoli = []
         for nome_azione, azione_obj in libreria.items():
+            if getattr(azione_obj, "cede", False):
+                cedevoli.append((nome_azione, azione_obj))
+                continue
             for verbo in azione_obj.nomi:
                 self.mappa_verbi_giocatore[verbo] = nome_azione
                 self.azioni_del_verbo.setdefault(verbo, []).append(nome_azione)
@@ -1132,6 +1149,13 @@ class Mondo:
             for verbo in intransitivi:
                 self.mappa_verbi_giocatore.setdefault(verbo, "_personalizzata_intransitiva")
                 self.azioni_del_verbo.setdefault(verbo, ["_personalizzata_intransitiva"])
+        dell_autore = set(self.verbi_personalizzati) | set(getattr(self, "sinonimi_verbo", {}) or {})
+        for nome_azione, azione_obj in cedevoli:
+            for verbo in azione_obj.nomi:
+                if verbo in dell_autore:
+                    continue
+                self.mappa_verbi_giocatore.setdefault(verbo, nome_azione)
+                self.azioni_del_verbo.setdefault(verbo, []).append(nome_azione)
 
     # [1.2.2] Azioni generiche dei verbi d'autore: raccolgono verbi DIVERSI
     # ('spingi', 'tira'…), quindi non hanno un verbo principale né sinonimi.

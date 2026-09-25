@@ -46,12 +46,24 @@ DIREZIONI_BASE = {
     "sud": ("sud", "s"),
     "est": ("est", "e"),
     "ovest": ("ovest", "o"),
+    # [1.3.0 / G-4] Su e giù e le direzioni intermedie. Niente abbreviazioni
+    # ('ne', 'no', 'se', 'so'): 'se' e 'no' sono parole del linguaggio e del
+    # giocatore. 'su' non si poteva nemmeno dichiarare (parola riservata).
+    "su": ("su",),
+    "giù": ("giù", "giu"),
+    "nordest": ("nordest", "nord-est"),
+    "nordovest": ("nordovest", "nord-ovest"),
+    "sudest": ("sudest", "sud-est"),
+    "sudovest": ("sudovest", "sud-ovest"),
 }
 
 # Coppie di direzioni opposte di base (per l'auto-ritorno delle connessioni).
 DIREZIONI_OPPOSTE_BASE = {
     "nord": "sud", "sud": "nord",
     "est": "ovest", "ovest": "est",
+    "su": "giù", "giù": "su",
+    "nordest": "sudovest", "sudovest": "nordest",
+    "nordovest": "sudest", "sudest": "nordovest",
 }
 
 
@@ -89,18 +101,34 @@ def rendi_testo(mondo, testo: str) -> str:
         return testo
 
     def _sostituisci(match):
-        norm = normalizza_nome(match.group(1).strip())
+        grezzo = match.group(1).strip()
+        norm = normalizza_nome(grezzo)
+        # [1.3.0 / M-4] Maiuscola se l'autore ha scritto il segnaposto con la
+        # maiuscola ('[Mela]') o se apre la frase; altrimenti il nome va a metà
+        # frase: «c'è la mela rossa», non più «c'è La mela rossa».
+        maiuscolo = grezzo[:1].isupper()
+        a_inizio = maiuscolo or _apre_la_frase(testo, match.start())
         variabili = getattr(mondo, "variabili", {})
         if norm in variabili:
             valore = variabili[norm]
-            return "" if valore is None else str(valore)
+            valore = "" if valore is None else str(valore)
+            return prima_maiuscola(valore) if maiuscolo else valore
         trova = getattr(mondo, "trova_oggetto", None)
         ogg = trova(norm) if trova else None
         if ogg is not None:
-            return ogg.nome_visualizzato
+            nome = nome_in_frase(ogg.nome_visualizzato)
+            return prima_maiuscola(nome) if a_inizio else nome
         return match.group(0)  # sconosciuto: resta il letterale [nome]
 
     return _RE_PLACEHOLDER.sub(_sostituisci, testo)
+
+
+def _apre_la_frase(testo: str, posizione: int) -> bool:
+    """[1.3.0] Il segnaposto in `posizione` apre una frase: prima c'è solo
+    spazio, oppure la fine di una frase (. ! ?) o un a capo, anche seguiti
+    da virgolette o trattino di dialogo."""
+    prima = testo[:posizione].rstrip(" \t«\"'“—-")
+    return not prima or prima[-1] in ".!?\n"
 
 
 # [Livello 5] CONCORDANZA GRAMMATICALE ITALIANA (genere/numero) — minima.
@@ -183,6 +211,67 @@ def frase_indeterminativa(nome_visualizzato: str) -> str:
         return f"un'{nucleo}" if inizia_vocale else f"una {nucleo}"
     # maschile, oppure genere ignoto ("l'..."): 'uno' davanti a s impura, 'un' altrove
     return f"uno {nucleo}" if s_impura else f"un {nucleo}"
+
+
+# [1.3.0 / M-4] L'ITALIANO DEI MESSAGGI DEL MOTORE
+# Il nome visualizzato conserva l'articolo come l'autore l'ha scritto, cioè
+# quasi sempre maiuscolo (ogni dichiarazione apre una frase: «La mela è una
+# cosa.»). A metà frase il motore stampava quindi «Preso: La mela.», «Hai messo
+# La chiave in Lo zaino.». Queste funzioni rendono l'articolo minuscolo a metà
+# frase, contraggono le preposizioni (nello, sul, dall'…) e accordano aggettivi
+# e pronomi con genere e numero del nome.
+
+def nome_in_frase(nome_visualizzato: str) -> str:
+    """Il nome come va scritto a metà frase: articolo iniziale in minuscolo,
+    il resto intatto ('La Guardia Reale' -> 'la Guardia Reale'). Un nome senza
+    articolo (un nome proprio: 'Anna') resta com'è."""
+    art, nucleo = _scomponi_articolo(nome_visualizzato)
+    if art is None:
+        return nome_visualizzato
+    if art.endswith("'"):
+        return f"{art}{nucleo}"
+    return f"{art} {nucleo}"
+
+
+_PREPOSIZIONI_ARTICOLATE = {
+    # preposizione -> {articolo: forma contratta}
+    "di": {"il": "del", "lo": "dello", "la": "della", "l'": "dell'", "i": "dei", "gli": "degli", "le": "delle"},
+    "a": {"il": "al", "lo": "allo", "la": "alla", "l'": "all'", "i": "ai", "gli": "agli", "le": "alle"},
+    "da": {"il": "dal", "lo": "dallo", "la": "dalla", "l'": "dall'", "i": "dai", "gli": "dagli", "le": "dalle"},
+    "in": {"il": "nel", "lo": "nello", "la": "nella", "l'": "nell'", "i": "nei", "gli": "negli", "le": "nelle"},
+    "su": {"il": "sul", "lo": "sullo", "la": "sulla", "l'": "sull'", "i": "sui", "gli": "sugli", "le": "sulle"},
+}
+
+
+def con_preposizione(prep: str, nome_visualizzato: str) -> str:
+    """'in' + 'Lo zaino' -> 'nello zaino'; 'su' + "L'altare" -> "sull'altare";
+    con un articolo indeterminativo o senza articolo la preposizione resta
+    staccata ('in una scatola', 'a Anna')."""
+    art, nucleo = _scomponi_articolo(nome_visualizzato)
+    forma = _PREPOSIZIONI_ARTICOLATE.get(prep, {}).get(art) if art else None
+    if forma is None:
+        return f"{prep} {nome_in_frase(nome_visualizzato)}"
+    return f"{forma}{nucleo}" if forma.endswith("'") else f"{forma} {nucleo}"
+
+
+def accorda(nome_visualizzato: str, aggettivo: str) -> str:
+    """Accorda un aggettivo in -o col nome: 'chiuso' -> 'chiusa', 'chiusi',
+    'chiuse'. Genere o numero ignoti: resta maschile singolare."""
+    genere, numero = genere_numero(nome_visualizzato)
+    if not aggettivo.endswith("o"):
+        return aggettivo
+    radice = aggettivo[:-1]
+    if numero == "p":
+        return radice + ("e" if genere == "f" else "i")
+    return radice + ("a" if genere == "f" else "o")
+
+
+def pronome_oggetto(nome_visualizzato: str) -> str:
+    """Il clitico oggetto del nome: lo, la, li, le ('prenderla')."""
+    genere, numero = genere_numero(nome_visualizzato)
+    if numero == "p":
+        return "le" if genere == "f" else "li"
+    return "la" if genere == "f" else "lo"
 
 
 # Aggettivi-proprietà invarianti o irregolari che NON vanno troncati sulla

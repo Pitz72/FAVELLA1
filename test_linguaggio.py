@@ -677,9 +677,14 @@ def test_direzione_regola_canonicalizza_abbreviazione():
 
 def test_direzione_conflitto_parola_riservata_errore():
     print("[direzioni: conflitto con parola riservata = errore bloccante]")
+    # [1.3.0 / G-4] 'Su e giù' sono ora direzioni di base: la frase è accettata
+    # (e non fa nulla di nuovo). Il conflitto si verifica con parole che restano
+    # riservate.
+    mondo, _ = compila("La cella è una stanza.\nSu e giù sono direzioni opposte.\n")
+    _check(mondo is not None, "'Su e giù' ora sono direzioni di base")
     src = (
         "La cella è una stanza.\n"
-        "Su e giù sono direzioni opposte.\n"  # 'su' è una preposizione riservata
+        "Con e contro sono direzioni opposte.\n"  # 'con' e 'contro' sono riservate
     )
     mondo, log = compila(src)
     _check(mondo is None, "la compilazione fallisce (conflitto bloccante)")
@@ -1015,7 +1020,7 @@ def test_runtime_metti_in_contenitore_chiuso_rifiutato():
     mondo = runtime(src)
     esegui(mondo, "prendi gemma")
     out = esegui(mondo, "metti gemma in scatola")
-    _check("chiuso" in out.lower(), "il motore rifiuta: la scatola è chiusa")
+    _check("chiusa" in out.lower(), "il motore rifiuta: la scatola è chiusa (accordato, 1.3.0)")
     _check("gemma" not in mondo.trova_oggetto("scatola").contenuto,
            "la gemma non è entrata nella scatola chiusa")
 
@@ -2475,7 +2480,8 @@ def test_interpolazione_nome_oggetto():
     src = _SRC_INTERP + 'Invece di esamina la chiave: dire "Vedo [chiave] qui.".\n'
     mondo = runtime(src)
     out = esegui(mondo, "esamina chiave")
-    _check("Vedo La chiave qui." in out, "l'oggetto è reso col suo nome visualizzato")
+    # [1.3.0 / M-4] A metà frase l'articolo è minuscolo (prima: «Vedo La chiave»).
+    _check("Vedo la chiave qui." in out, "l'oggetto è reso col suo nome visualizzato")
 
 
 def test_interpolazione_in_descrizione():
@@ -4076,7 +4082,7 @@ def test_verbo_intransitivo_scatta_senza_oggetto():
            "'accelera' è registrato come intransitivo")
     out = esegui(mondo, "accelera")
     _check("Vroom!" in out, "'accelera' (da solo) attiva la regola globale")
-    _check("Cosa vorresti" not in out,
+    _check("che cosa?" not in out and "Cosa vuoi" not in out,
            "il motore NON chiede un oggetto per un verbo intransitivo")
 
 
@@ -4105,7 +4111,8 @@ def test_verbo_transitivo_resta_default():
     mondo = runtime(src)
     _check(mondo and "spingi" not in mondo.verbi_intransitivi,
            "'spingi' NON è intransitivo")
-    _check("Cosa vorresti" in esegui(mondo, "spingi"),
+    # [1.3.0 / M-4] «Spingi che cosa?» (prima: «Cosa vorresti spingi?»).
+    _check("Spingi che cosa?" in esegui(mondo, "spingi"),
            "'spingi' da solo chiede ancora un oggetto (transitivo)")
 
 
@@ -4242,7 +4249,7 @@ def test_anafora_mismatch_genere():
     mondo = runtime(src)
     esegui(mondo, "esamina la collana")   # solo f.sing. è riferito
     out = esegui(mondo, "prendilo")       # m.sing. → nessun riferente
-    _check("Cosa vorresti" in out and "collana" not in mondo.inventario,
+    _check("Cosa vuoi prendere?" in out and "collana" not in mondo.inventario,
            "'prendilo' senza riferente maschile non prende nulla")
 
 
@@ -5411,8 +5418,8 @@ def test_apri_mangia_sposta_sono_azioni_distinte():
     _check("USATA" not in esegui(mondo, "sposta la porta"),
            "'Invece di usare' non cattura più 'sposta'")
     _check("USATA" in esegui(mondo, "usa la porta"), "'Invece di usare' vale per 'usa'")
-    _check("con cosa vuoi usarlo" in esegui(mondo, "sposta la torta").lower(),
-           "senza regole la risposta di default è quella di sempre")
+    _check("con cosa vuoi usarla" in esegui(mondo, "usa la torta").lower(),
+           "senza regole 'usa' chiede con cosa (pronome accordato, 1.3.0)")
 
 
 def test_verbi_d_autore_non_diventano_sinonimi():
@@ -5445,7 +5452,7 @@ def test_avviso_sui_sinonimi_gia_noti():
 def test_verbi_d_autore_non_passano_alla_storia_successiva():
     print("[1.2.2: i verbi d'autore di una storia non contaminano la successiva]")
     from libreria_azioni import LIBRERIA_AZIONI
-    runtime("La cella è una stanza.\n\"leggi\" è un comando.\n\"spingi\" è un comando.\n")
+    runtime("La cella è una stanza.\n\"leggi\" è un comando.\n\"sventola\" è un comando.\n")
     _check(not any(k.startswith("_") for k in LIBRERIA_AZIONI),
            "la libreria globale non riceve le azioni dei verbi d'autore")
     mondo = runtime(
@@ -5453,8 +5460,8 @@ def test_verbi_d_autore_non_passano_alla_storia_successiva():
         'La descrizione del diario è "Pagine fitte.".\n')
     _check("Pagine fitte" in esegui(mondo, "leggi il diario"),
            "nella storia successiva 'leggi' legge ancora")
-    _check("non capisco" in esegui(mondo, "spingi il diario").lower(),
-           "e 'spingi' non è un verbo che conosce")
+    _check("non capisco" in esegui(mondo, "sventola il diario").lower(),
+           "e 'sventola' non è un verbo che conosce")
 
 
 def test_guarda_e_osserva_con_un_oggetto_lo_esaminano():
@@ -5912,6 +5919,229 @@ def test_partenza_implicita_con_piu_file():
            and "soffitta" in buf.getvalue(), "l'avviso dice da dove partirà la partita")
 
 
+# --- [1.3.0] Blocco D: verbi, preposizioni, parser, italiano -----------------
+
+_SRC_D = (
+    "La cucina è una stanza.\n"
+    "La cantina è una stanza.\n"
+    "La soffitta è una stanza.\n"
+    "Il giocatore comincia in cucina.\n"
+    "La cucina collega giù a la cantina.\n"
+    "La cucina collega nordest a la soffitta.\n"
+    "Il tavolo è una cosa.\nIl tavolo è in cucina.\nIl tavolo è un supporto.\n"
+    "La mela è una cosa.\nLa mela è sul tavolo.\nLa mela è prendibile.\n"
+    "La mela è commestibile.\n"
+    "La chiave rossa è una cosa.\nLa chiave rossa è in cucina.\nLa chiave rossa è prendibile.\n"
+    "La chiave blu è una cosa.\nLa chiave blu è in cucina.\nLa chiave blu è prendibile.\n"
+    "La scatola è una cosa.\nLa scatola è in cucina.\nLa scatola è un contenitore.\n"
+    "La scatola è chiusa.\nLa scatola è apribile.\n"
+    "La moneta è una cosa.\nLa moneta è nella scatola.\nLa moneta è prendibile.\n"
+    "La tazza con il manico è una cosa.\nLa tazza con il manico è in cucina.\n"
+    "La tazza con il manico è prendibile.\n"
+    "La lampada è una cosa.\nLa lampada è in cucina.\nLa lampada è accendibile.\n"
+    "La lampada è spenta.\n"
+    "Il vino è una cosa.\nIl vino è in cucina.\nIl vino è bevibile.\nIl vino è prendibile.\n"
+)
+
+
+def test_direzioni_su_giu_e_intermedie():
+    print("[1.3.0 G-4: su, giù e le direzioni intermedie; entra, sali, scendi]")
+    mondo = runtime(_SRC_D)
+    _check(mondo is not None, "la storia con 'giù' e 'nordest' compila")
+    esegui(mondo, "giù")
+    _check(mondo.posizione_giocatore == "cantina", "'giù' porta in cantina")
+    esegui(mondo, "sali")
+    _check(mondo.posizione_giocatore == "cucina", "'sali' torna su (ritorno automatico)")
+    esegui(mondo, "scendi")
+    _check(mondo.posizione_giocatore == "cantina", "'scendi' va giù")
+    esegui(mondo, "vai su")
+    esegui(mondo, "nord-est")
+    _check(mondo.posizione_giocatore == "soffitta", "'nord-est' vale 'nordest'")
+    esegui(mondo, "sudovest")
+    _check(mondo.posizione_giocatore == "cucina", "'sudovest' è l'opposta di 'nordest'")
+    out = esegui(mondo, "entra")
+    _check("Non puoi andare in quella direzione." in out, "'entra' senza un'uscita «dentro»")
+    src = ("L'aia è una stanza.\nLa stalla è una stanza.\nIl giocatore comincia in aia.\n"
+           "Dentro e fuori sono direzioni opposte.\nL'aia collega dentro a la stalla.\n")
+    mondo = runtime(src)
+    esegui(mondo, "entra nella stalla")
+    _check(mondo.posizione_giocatore == "stalla", "'entra nella stalla' va dentro")
+    esegui(mondo, "esci dalla stalla")
+    _check(mondo.posizione_giocatore == "aia", "'esci dalla stalla' va fuori")
+
+
+def test_verbi_nuovi_della_libreria():
+    print("[1.3.0 G-4: apri, chiudi, accendi, spegni, mangia, bevi, aspetta, x, l]")
+    mondo = runtime(_SRC_D)
+    out = esegui(mondo, "apri la scatola")
+    _check("Apri la scatola." in out and "Dentro vedi: una moneta." in out,
+           "'apri' apre un contenitore apribile e ne mostra il contenuto")
+    out = esegui(mondo, "chiudi la scatola")
+    _check("Chiudi la scatola." in out and "chiusa" in mondo.oggetti["scatola"].proprieta,
+           "'chiudi' la richiude")
+    out = esegui(mondo, "chiudi la scatola")
+    _check("È già chiusa." in out, "già chiusa, al femminile")
+    esegui(mondo, "accendi la lampada")
+    _check("accesa" in mondo.oggetti["lampada"].proprieta
+           and "spenta" not in mondo.oggetti["lampada"].proprieta, "'accendi' accende")
+    esegui(mondo, "spegnila")
+    _check("spenta" in mondo.oggetti["lampada"].proprieta, "'spegnila' spegne la lampada")
+    out = esegui(mondo, "apri il tavolo")
+    _check("Non si apre." in out, "un oggetto non apribile non si apre")
+    esegui(mondo, "mangia la mela")
+    _check("mela" not in mondo.oggetti_raggiungibili(), "'mangia' consuma un oggetto commestibile")
+    esegui(mondo, "bevi il vino")
+    _check("vino" not in mondo.oggetti_raggiungibili(), "'bevi' consuma un oggetto bevibile")
+    t = mondo.turno_corrente
+    _check("Il tempo passa." in esegui(mondo, "z") and mondo.turno_corrente == t + 1,
+           "'z' fa passare un turno")
+    _check("È un oggetto come tanti." in esegui(mondo, "x tavolo"), "'x' esamina")
+    _check("--- La cucina ---" in esegui(mondo, "l"), "'l' guarda")
+
+
+def test_verbi_nuovi_cedono_ai_verbi_d_autore():
+    print("[1.3.0 G-4: un verbo d'autore omonimo vince sui verbi nuovi]")
+    src = ("La cella è una stanza.\nIl giocatore comincia in cella.\n"
+           "La porta è una cosa.\nLa porta è in cella.\n"
+           '"chiudi" è un comando.\n"aspetta" è un comando senza oggetto.\n'
+           'Invece di chiudi la porta: dire "Sbam.".\n'
+           'Invece di aspetta: dire "Aspetti a modo tuo.".\n')
+    mondo = runtime(src)
+    _check("Sbam." in esegui(mondo, "chiudi la porta"), "la regola d'autore su 'chiudi'")
+    _check("Aspetti a modo tuo." in esegui(mondo, "aspetta"), "la regola d'autore su 'aspetta'")
+    # 'z' resta l'azione di libreria «aspettare», il cui verbo principale è
+    # 'aspetta': vale la regola d'autore scritta con 'aspetta' (come in GS-1).
+    _check("Aspetti a modo tuo." in esegui(mondo, "z"), "'z' segue la regola scritta con 'aspetta'")
+
+
+def test_preposizioni_di_termine_e_provenienza():
+    print("[1.3.0 G-7: 'a', 'da', 'sopra' nei comandi e nelle regole]")
+    src = _SRC_D + (
+        "La guardia è un personaggio.\nLa guardia è in cucina.\n"
+        'Il dialogo della guardia comincia con "saluto".\n'
+        'La guardia al nodo "saluto" dice "Salve.".\n'
+        'Al nodo "saluto" l\'opzione "Addio." chiude il dialogo.\n'
+        'Invece di dai la mela alla guardia: dire "La guardia ringrazia.".\n'
+        'Invece di mostra la moneta alla guardia: dire "La guardia annuisce.".\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "'Invece di dai la mela alla guardia' compila")
+    out = esegui(mondo, "prendi la mela dal tavolo")
+    _check("Preso: la mela." in out, "'prendi la mela dal tavolo'")
+    _check("La guardia ringrazia." in esegui(mondo, "dai la mela alla guardia"),
+           "'dai la mela alla guardia' trova la regola")
+    esegui(mondo, "apri la scatola")
+    esegui(mondo, "prendi la moneta")
+    _check("La guardia annuisce." in esegui(mondo, "mostrala alla guardia"),
+           "'mostrala alla guardia': pronome e preposizione insieme")
+    out = esegui(mondo, "metti la moneta sopra il tavolo")
+    _check("Hai messo la moneta sul tavolo." in out, "'sopra' vale come 'su'")
+    out = esegui(mondo, "prendi la moneta dalla scatola")
+    _check("La moneta non è nella scatola." in out, "'dalla scatola' controlla da dove")
+    esegui(mondo, "prendi la moneta")
+    out = esegui(mondo, "lascia la moneta sull'altare")
+    _check("Non vedo 'altare' qui." in out, "'sull'altare' si divide in preposizione e nome")
+    out = esegui(mondo, "lascia la moneta sulla scatola")
+    _check("Hai messo la moneta nella scatola." in out,
+           "'lascia X su Y' mette X in/su Y")
+
+
+def test_nomi_con_preposizioni_e_ricerca_per_parole():
+    print("[1.3.0 M-5: nomi con preposizioni; ricerca per parole, non per lettere]")
+    src = _SRC_D + ("Il manico di scopa è una cosa.\nIl manico di scopa è in cucina.\n"
+                    "Il manico di scopa è prendibile.\n")
+    mondo = runtime(src)
+    esegui(mondo, "prendi la tazza con il manico")
+    _check(mondo.giocatore_possiede("tazza con il manico")
+           and not mondo.giocatore_possiede("manico di scopa"),
+           "'la tazza con il manico' è un nome, anche con un altro 'manico' in scena")
+    out = esegui(mondo, "prendi a")
+    _check("Non vedo 'a' qui." in out, "'prendi a' non propone ogni oggetto con una a")
+    out = esegui(mondo, "prendi ave")
+    _check("Non vedo 'ave' qui." in out, "'ave' non trova le chiAVi")
+    esegui(mondo, "prendi lamp")
+    _check("Non puoi prenderla." in esegui(mondo, "prendi lamp"),
+           "l'inizio di una parola ('lamp') trova la lampada")
+
+
+def test_disambiguazione_con_seguito():
+    print("[1.3.0 M-4, M-5: «Quale intendi…?» con i nomi e con la risposta]")
+    mondo = runtime(_SRC_D)
+    out = esegui(mondo, "prendi la chiave")
+    _check("Quale intendi: la chiave rossa o la chiave blu?" in out,
+           "la domanda usa i nomi della storia, nell'ordine della storia")
+    _check(mondo.turno_corrente == 0, "la domanda non consuma un turno")
+    out = esegui(mondo, "blu")
+    _check("Preso: la chiave blu." in out, "la risposta 'blu' completa il comando")
+    _check(mondo.ultimo_comando == "prendi chiave blu", "ANCORA ripeterà il comando completato")
+    out = esegui(mondo, "prendi chiave")
+    _check("Preso: la chiave rossa." in out, "'prendi' sceglie da sé la chiave non ancora presa")
+    esegui(mondo, "esamina la chiave")
+    out = esegui(mondo, "2")
+    _check("chiave blu" in mondo.ultimo_comando, "la risposta può essere un numero d'ordine")
+    esegui(mondo, "esamina la chiave")
+    out = esegui(mondo, "inventario")
+    _check("Stai portando" in out, "una risposta che non nomina un candidato è un comando nuovo")
+
+
+def test_tutto_ed_elenchi():
+    print("[1.3.0 M-5: 'prendi tutto', 'lascia tutto', elenchi di oggetti]")
+    mondo = runtime(_SRC_D)
+    out = esegui(mondo, "prendi tutto")
+    _check("Preso: la mela." in out and "Preso: la chiave rossa." in out
+           and "Preso: il vino." in out and "lampada" not in mondo.inventario,
+           "'prendi tutto' prende ciò che si può prendere")
+    _check(mondo.turno_corrente == 1, "tutto in un solo turno")
+    out = esegui(mondo, "lascia tutto")
+    _check(not mondo.inventario and out.count("Lasciato:") == 5, "'lascia tutto'")
+    out = esegui(mondo, "prendi la mela e la chiave blu")
+    _check(mondo.inventario == {"mela", "chiave blu"}, "'prendi la mela e la chiave blu'")
+    esegui(mondo, "apri la scatola")
+    out = esegui(mondo, "metti tutto nella scatola")
+    _check({"mela", "chiave blu"} <= mondo.oggetti["scatola"].contenuto,
+           "'metti tutto nella scatola'")
+    out = esegui(mondo, "prendi tutto dalla scatola")
+    _check(mondo.inventario == {"mela", "chiave blu", "moneta"}, "'prendi tutto dalla scatola'")
+    esegui(mondo, "lascia tutto")
+    esegui(mondo, "prendi tutto")
+    mondo2 = runtime("La stanza vuota è una stanza.\nIl giocatore comincia in stanza vuota.\n")
+    t = mondo2.turno_corrente
+    out = esegui(mondo2, "prendi tutto")
+    _check("Non c'è niente da prendere." in out and mondo2.turno_corrente == t,
+           "niente da prendere: messaggio e nessun turno")
+
+
+def test_italiano_dei_messaggi():
+    print("[1.3.0 M-4: articoli, preposizioni articolate e accordi nei messaggi]")
+    src = _SRC_D + ("Lo zaino è una cosa.\nLo zaino è in cucina.\nLo zaino è un contenitore.\n"
+                    "Lo zaino è prendibile.\nLa statua è una cosa.\nLa statua è in cucina.\n"
+                    'Invece di esamina la statua: dire "Accanto a te c\'è [mela]. [Mela] è rossa.".\n')
+    mondo = runtime(src)
+    _check("Preso: la chiave rossa." in esegui(mondo, "prendi la chiave rossa"), "«Preso: la …»")
+    _check("Hai messo la chiave rossa nello zaino." in esegui(mondo, "metti la chiave rossa nello zaino"),
+           "«nello zaino», non «in Lo zaino»")
+    _check("Non puoi prenderla." in esegui(mondo, "prendi la statua"), "pronome al femminile")
+    _check("Cosa vuoi prendere?" in esegui(mondo, "prendi"), "«Cosa vuoi prendere?»")
+    _check("Dove vuoi andare?" in esegui(mondo, "vai"), "«Dove vuoi andare?»")
+    out = esegui(mondo, "esamina la statua")
+    _check("Accanto a te c'è la mela. La mela è rossa." in out,
+           "segnaposto a metà frase in minuscolo, a inizio frase o '[Mela]' in maiuscolo")
+
+
+def test_la_stanza_mostra_cio_che_sta_sui_supporti():
+    print("[1.3.0 M-5: la stanza elenca il contenuto di supporti e contenitori aperti]")
+    mondo = runtime(_SRC_D)
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo: una mela." in out, "«Sul tavolo: una mela.»")
+    _check("Nella scatola" not in out, "il contenuto di un contenitore chiuso non si vede")
+    esegui(mondo, "apri la scatola")
+    _check("Nella scatola: una moneta." in esegui(mondo, "guarda"), "aperta, si vede")
+    esegui(mondo, "prendi la moneta")
+    esegui(mondo, "prendi la mela")
+    out = esegui(mondo, "guarda")
+    _check("Sul tavolo" not in out and "Nella scatola" not in out,
+           "un supporto vuoto non ha la sua riga")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6336,6 +6566,16 @@ def main():
         test_stanza_nata_da_un_refuso_in_collega,
         test_includi_la_libreria,
         test_partenza_implicita_con_piu_file,
+        # [1.3.0] Blocco D: verbi, preposizioni, parser, italiano
+        test_direzioni_su_giu_e_intermedie,
+        test_verbi_nuovi_della_libreria,
+        test_verbi_nuovi_cedono_ai_verbi_d_autore,
+        test_preposizioni_di_termine_e_provenienza,
+        test_nomi_con_preposizioni_e_ricerca_per_parole,
+        test_disambiguazione_con_seguito,
+        test_tutto_ed_elenchi,
+        test_italiano_dei_messaggi,
+        test_la_stanza_mostra_cio_che_sta_sui_supporti,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
