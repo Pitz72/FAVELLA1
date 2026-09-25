@@ -14,6 +14,7 @@ from strutture import (
     CondizioneContatore, CondizionePosizioneGiocatore, CondizioneProbabilita,
     CondizionePosizioneOggetto, CondizionePngHa, QUI, Argomento,
     ConseguenzaTogliProprieta, ConseguenzaCollegamento, ConseguenzaPngRiceve,
+    ConseguenzaLimita, TURNO,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaVariabileCopia,
@@ -26,7 +27,8 @@ from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
     DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo, radice_proprieta,
-    prima_maiuscola,
+    prima_maiuscola, condizioni_nel_testo, SEGNAPOSTO_DEL_MOTORE, MESSAGGI_MOTORE,
+    QUADRA_APERTA, QUADRA_CHIUSA,
 )
 import os
 import sys
@@ -280,6 +282,8 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
             tab.stanze.add(normalizza_nome(m.group("y")))
             continue
 
+    # [1.3.0 / M-7] 'il turno' si legge come un contatore in ogni storia.
+    tab.variabili.add("turno")
     return tab
 
 
@@ -346,6 +350,10 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_uscite_anonime
                   | def_png_ha
                   | def_argomento
+                  | def_titolo
+                  | def_autore
+                  | def_prologo
+                  | def_messaggio
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -468,6 +476,17 @@ _GRAMMAR_TEMPLATE = r"""
     a_chi: PREP_AZIONE | "ad"
     argomento_chiavi: TESTO_QUOTATO ( "oppure" TESTO_QUOTATO )*
 
+    // --- [1.3.0 / M-6] PRESENTAZIONE DELLA STORIA ---
+    // Iniziano con "Il" (come def_giocatore/def_posto/def_dialogo_inizio): il
+    // lookahead titolo/prologo/messaggio decide. 'L'autore' inizia con
+    // _L_APOSTROFO: un'ENTITA che comincia con L' vince per lunghezza.
+    def_titolo: "Il" "titolo" "è" TESTO_QUOTATO "."
+    def_autore: _L_APOSTROFO "autore" "è" TESTO_QUOTATO "."
+    def_prologo: "Il" "prologo" "è" TESTO_QUOTATO "."
+    // 'Il messaggio "non capisco" è "Come, prego?".': i messaggi del motore.
+    def_messaggio: "Il" "messaggio" TESTO_QUOTATO "è" TESTO_QUOTATO "."
+    _L_APOSTROFO: /[Ll]'/
+
     // --- STATO ASTRATTO (Livello 3 / G3) ---
     // 'X è uno stato.' dichiara una variabile globale (uno 'stato'); 'X è valore.'
     // ne imposta il valore iniziale. VARIABILE è un terminale CHIUSO disgiunto da
@@ -506,8 +525,11 @@ _GRAMMAR_TEMPLATE = r"""
     // evento_*/demone_* ricevono gli stessi tipi (testo str opzionale + conseguenze).
     // Dopo ':' il lookahead distingue "dire" dal primo token di una conseguenza
     // (ENTITA/VARIABILE/"il"/"aumenta"/"diminuisci"/"vinci"/"perdi"/"termina") → 0-ambiguo.
+    // [1.3.0 / M-1] Anche la PRIMA conseguenza può avere 'e adesso' / 'adesso'
+    // ('…: e adesso la mela è rossa.'): dopo ':' i lookahead "e" e "adesso" sono
+    // disgiunti da "dire" e dal primo token di una conseguenza → 0-ambiguo.
     _esito_temporale: "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )?
-                    | conseguenza ( "e" "adesso"? conseguenza )*
+                    | ( "e"? "adesso" )? conseguenza ( "e" "adesso"? conseguenza )*
     def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
               | "Ogni" NUMERO ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
 
@@ -529,6 +551,10 @@ _GRAMMAR_TEMPLATE = r"""
     // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
     def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
               | "Quando" condizione ( "diventa" "vera" )? ":" _esito_temporale "." -> demone_quando
+              // [1.3.0 / M-7] Timer che parte da un fatto: 'Tre turni dopo che la
+              // miccia è accesa: …' (scatta N turni dopo il fronte di salita).
+              // Inizia con NUMERO: nessun'altra dichiarazione comincia così.
+              | NUMERO ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -581,8 +607,21 @@ _GRAMMAR_TEMPLATE = r"""
     // primo token di una conseguenza (ENTITA/VARIABILE/"il"/"aumenta"/…) → LALR(1)
     // 0-ambiguo, identico a eventi/demoni. Il transformer estrae già la risposta
     // per tipo (str opzionale, default ""): nessuna modifica ai metodi.
-    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale "."
-    regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
+    // [1.3.0 / M-9] Tre fasi: 'Invece di' (sostituisce l'azione), 'Prima di'
+    // (scatta e poi l'azione prosegue), 'Dopo di' (scatta dopo che l'azione di
+    // default è riuscita). Il nodo resta def_regola: la fase è il primo figlio.
+    // Un ramo 'altrimenti' vale quando la condizione è falsa. Dopo l'esito il
+    // lookahead ";"/"altrimenti" è disgiunto da "." e dal seguito della coda.
+    def_regola: fase_regola "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale ramo_altrimenti? "."
+    fase_regola: "Invece" -> fase_invece
+               | "Prima"  -> fase_prima
+               | "Dopo"   -> fase_dopo
+    ramo_altrimenti: ";"? "altrimenti" ":"? _esito_temporale
+    // [1.3.0 / M-9] Regole per CATEGORIA: 'qualcosa' (ogni oggetto) o
+    // 'qualcosa di pesante' (ogni oggetto con quella proprietà). Dopo il verbo
+    // il lookahead "qualcosa" è disgiunto da ENTITA/DIREZIONE/"se"/":".
+    regola_target: ( ENTITA | DIREZIONE | categoria ) ( PREP_AZIONE ( ENTITA | categoria ) )?
+    categoria: "qualcosa" ( "di" PROPRIETA )?
 
     // --- CONDIZIONI (logica booleana) ---
     // Precedenza: OR (più bassa) < AND < atomo. Parentesi per raggruppare.
@@ -755,6 +794,13 @@ _GRAMMAR_TEMPLATE = r"""
                 | "aumenta" VARIABILE ( "di" operando )?    -> cons_aumenta
                 | "diminuisci" VARIABILE ( "di" operando )? -> cons_diminuisci
                 | VARIABILE "diventa" operando   -> cons_contatore_set
+                // [1.3.0 / M-7] Moltiplicazione, divisione intera, resto e
+                // limiti. Ogni forma parte da una keyword nuova o da
+                // 'VARIABILE "resta"' → disgiunta dalle altre.
+                | "moltiplica" VARIABILE "per" operando -> cons_moltiplica
+                | "dividi" VARIABILE "per" operando     -> cons_dividi
+                | "riduci" VARIABILE "modulo" operando  -> cons_modulo
+                | VARIABILE "resta" "fra" operando "e" operando -> cons_limita
                 // [0.18.0 / B3] Testo d'esito opzionale: 'vinci "Sei libero!"'.
                 // Nessun'altra conseguenza inizia con TESTO_QUOTATO → 0-ambiguo.
                 | "vinci" TESTO_QUOTATO?         -> cons_vinci
@@ -832,7 +878,7 @@ _GRAMMAR_TEMPLATE = r"""
 
     // NUMERO: intero non negativo. Priorità ALTA: PROPRIETA include le cifre, ma
     // un token tutto-cifre deve risolversi a NUMERO (per i contatori).
-    NUMERO.2: /[0-9]+/
+    NUMERO.2: /-?[0-9]+/
 
     // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
     // costruisci_grammatica(). Il flag /i la rende case-insensitive.
@@ -1020,6 +1066,18 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     return parser
 
 
+def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=()) -> Lark:
+    """[1.3.0 / M-6] Un parser che legge una sola condizione ('la porta è
+    aperta'), per i testi condizionali. Cachato come quello principale."""
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    chiave = (grammatica, "condizione")
+    parser = _CACHE_PARSER.get(chiave)
+    if parser is None:
+        parser = Lark(grammatica, start="condizione", parser="lalr")
+        _CACHE_PARSER[chiave] = parser
+    return parser
+
+
 def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
     """
     [Livello 2.5] Beneficio collaterale dei nomi come token chiusi: quando il
@@ -1084,6 +1142,7 @@ _DESCRIZIONI_ATTESI = {
     "VARIABILE": "il nome di uno stato o di un contatore",
     "PROPRIETA": "una proprietà (una sola parola)",
     "NUMERO": "un numero",
+    "_L_APOSTROFO": "«L'autore»",
     "NUMERO_PAROLA": "un numero",
     "TESTO_QUOTATO": "un testo fra virgolette",
     "VERBO": "un verbo",
@@ -1235,6 +1294,38 @@ def _consigli(testo, pos, attesi, errore):
 # 2. IL TRANSFORMER DELL'AST
 # ==============================================================================
 
+def _unescape(m):
+    c = m.group(1)
+    return {"n": "\n", "[": QUADRA_APERTA, "]": QUADRA_CHIUSA}.get(c, c)
+
+
+class FaseRegola:
+    """[1.3.0 / M-9] La fase di una regola: 'invece', 'prima' o 'dopo'."""
+    __slots__ = ("nome",)
+
+    def __init__(self, nome):
+        self.nome = nome
+
+
+class Categoria:
+    """[1.3.0 / M-9] Bersaglio per categoria: 'qualcosa' (radice "") o
+    'qualcosa di pesante' (la radice della proprietà)."""
+    __slots__ = ("radice", "grezzo")
+
+    def __init__(self, radice, grezzo):
+        self.radice = radice
+        self.grezzo = grezzo
+
+
+class RamoAltrimenti:
+    """[1.3.0 / M-9] Il ramo 'altrimenti' di una regola."""
+    __slots__ = ("risposta", "conseguenze")
+
+    def __init__(self, risposta, conseguenze):
+        self.risposta = risposta
+        self.conseguenze = conseguenze
+
+
 class RegolaTarget:
     """[Livello 5] Bersaglio di una regola 'Invece di', prodotto dalla sottoregola
     'regola_target'. Incapsula l'oggetto bersaglio (grezzo) e l'eventuale secondo
@@ -1332,8 +1423,10 @@ class FavellaTransformer(Transformer):
 
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
+        # [1.3.0 / M-6] \n va a capo; \[ e \] sono parentesi quadre letterali
+        # (non segnaposto): arrivano al motore come caratteri riservati.
         contenuto = token.value[1:-1]
-        return re.sub(r'\\(.)', r'\1', contenuto)
+        return re.sub(r'\\(.)', _unescape, contenuto)
         
     def VERBO(self, token):
         return token.value.lower()
@@ -1849,6 +1942,53 @@ class FavellaTransformer(Transformer):
         return None
 
 
+    # --- [1.3.0 / M-6] Presentazione ---
+
+    def def_titolo(self, testo):
+        self.mondo.titolo = testo
+        return None
+
+    def def_autore(self, testo):
+        self.mondo.autore = testo
+        return None
+
+    def def_prologo(self, testo):
+        self.mondo.prologo = testo
+        return None
+
+    def def_messaggio(self, chiave, testo):
+        chiave_n = " ".join(chiave.lower().split())
+        if chiave_n not in MESSAGGI_MOTORE:
+            self.errori.append(
+                f"Messaggio sconosciuto: \"{chiave}\". Si possono ridefinire: "
+                + ", ".join(f'"{k}"' for k in MESSAGGI_MOTORE) + ".")
+        else:
+            self.mondo.messaggi[chiave_n] = testo
+        return None
+
+    # --- [1.3.0 / M-9] Fasi, categorie, altrimenti ---
+
+    def fase_invece(self, *_):
+        return FaseRegola("invece")
+
+    def fase_prima(self, *_):
+        return FaseRegola("prima")
+
+    def fase_dopo(self, *_):
+        return FaseRegola("dopo")
+
+    def categoria(self, *args):
+        # La categoria conserva la PAROLA ('pesante'): il confronto per radice
+        # si fa in partita (gioco._nella_categoria), l'IDE la riscrive com'era.
+        grezzo = args[0] if args else ""
+        return Categoria(normalizza_nome(grezzo) if grezzo else "", grezzo)
+
+    def ramo_altrimenti(self, *args):
+        risposta = next((a for a in args if isinstance(a, str)), "")
+        conseguenze = [a for a in args if isinstance(a, Conseguenza)]
+        self._pending_conseguenze.append(conseguenze)
+        return RamoAltrimenti(risposta, conseguenze)
+
     # --- [1.3.0 / M-8, M-10] Scena, topologia, personaggi ---
 
     def def_di_scena(self, ogg_grezzo):
@@ -1940,6 +2080,51 @@ class FavellaTransformer(Transformer):
                     f"«Se chiedi a …» vale per un personaggio: '{png_grezzo}' non lo è.")
             if not argomento.chiavi:
                 self.errori.append(f"Un argomento di '{png_grezzo}' non ha parole: \"\" è vuoto.")
+
+    def _valida_turno_e_testi(self):
+        """[1.3.0 / M-6, M-7] 'il turno' si legge soltanto; le condizioni dei
+        testi condizionali si compilano qui; lo stato che la storia può
+        cambiare (uscite, 'prendibile') entra nell'impronta dei salvataggi."""
+        m = self.mondo
+        if TURNO in m.variabili:
+            self.errori.append(
+                "«Il turno» è il numero del turno in corso: si legge nelle condizioni "
+                "e nei testi ([turno]), non si dichiara. Scegli un altro nome.")
+        conseguenze = self._tutte_le_conseguenze()
+        for cons in conseguenze:
+            if getattr(cons, "nome", None) == TURNO:
+                self.errori.append("«Il turno» si legge soltanto: nessuna conseguenza "
+                                   "può cambiarlo.")
+                break
+        if any(isinstance(c, ConseguenzaCollegamento) for c in conseguenze):
+            m._stato_esteso.add("uscite")
+        if any(isinstance(c, (ConseguenzaProprieta, ConseguenzaTogliProprieta))
+               and c.proprieta == "prendibile" for c in conseguenze):
+            m._stato_esteso.add("prendibile")
+        fonti = set()
+        for testo in self._tutti_i_testi():
+            fonti.update(" ".join(c.split()) for c in condizioni_nel_testo(testo))
+        if not fonti:
+            return
+        parser = self._parser_condizioni()
+        for fonte in sorted(fonti):
+            try:
+                condizione = self.transform(parser.parse(fonte))
+            except Exception:
+                condizione = None
+            if isinstance(condizione, Condizione):
+                m.condizioni_testo[fonte] = condizione
+            else:
+                self.errori.append(
+                    f"La condizione del testo «[se {fonte}]» non si capisce: scrivila come "
+                    f"dopo un «se» (per esempio «[se la porta è aperta]»).")
+
+    def _parser_condizioni(self):
+        """Il parser della sola regola 'condizione', con gli stessi nomi."""
+        args = getattr(self, "argomenti_parser", None)
+        if args is None:
+            raise RuntimeError("parser delle condizioni non disponibile")
+        return costruisci_parser_condizioni(*args)
 
     # --- Condizioni e Conseguenze (Sub-Alberi) ---
 
@@ -2071,6 +2256,18 @@ class FavellaTransformer(Transformer):
     def cons_png_riceve(self, png_grezzo, ogg_grezzo):
         # [1.3.0 / M-10] 'e adesso la guardia ha la chiave'.
         return ConseguenzaPngRiceve(normalizza_nome(png_grezzo), normalizza_nome(ogg_grezzo))
+
+    def cons_moltiplica(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "moltiplica", operando)
+
+    def cons_dividi(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "dividi", operando)
+
+    def cons_modulo(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "modulo", operando)
+
+    def cons_limita(self, var_grezzo, minimo, massimo):
+        return ConseguenzaLimita(normalizza_nome(var_grezzo), minimo, massimo)
 
     def cons_giocatore_sposta(self, prep, stanza_grezzo):
         # [0.18.0 / B2] 'e adesso il giocatore è in [stanza]': teletrasporto.
@@ -2258,10 +2455,21 @@ class FavellaTransformer(Transformer):
     def demone_quando(self, *args):
         return self._crea_demone("quando", args)
 
+    def demone_dopo(self, ritardo, *args):
+        # [1.3.0 / M-7] 'N turni dopo che …': il primo argomento è N.
+        self._crea_demone("dopo", args)
+        demone = self.mondo.demoni[-1]
+        if ritardo < 0:
+            self.warnings.append(f"«{ritardo} turni dopo che …»: il ritardo non può essere "
+                                 f"negativo; vale 0.")
+            ritardo = 0
+        demone.ritardo = ritardo
+        return None
+
     # --- La Regola Complessa ---
 
     def regola_target(self, bersaglio, *resto):
-        # [Livello 5] Bersaglio della regola: (ENTITA|DIREZIONE) [PREP_AZIONE ENTITA].
+        # [Livello 5] Bersaglio della regola: (ENTITA|DIREZIONE|categoria) [PREP_AZIONE (ENTITA|categoria)].
         # 'resto' contiene 0 o 2 elementi (preposizione + secondo oggetto).
         prep = resto[0] if len(resto) >= 2 else None
         secondario = resto[1] if len(resto) >= 2 else None
@@ -2274,6 +2482,10 @@ class FavellaTransformer(Transformer):
         # condizione può essere composita e le conseguenze possono essere più di una.
         args_puliti = [a for a in args if a is not None]
 
+        # [1.3.0 / M-9] Il primo figlio è la fase (Invece/Prima/Dopo).
+        fase = "invece"
+        if args_puliti and isinstance(args_puliti[0], FaseRegola):
+            fase = args_puliti.pop(0).nome
         verbo = args_puliti[0]
 
         # Estrai i componenti per tipo (l'ordine grammaticale è garantito).
@@ -2281,6 +2493,7 @@ class FavellaTransformer(Transformer):
         condizione = None
         risposta = ""
         conseguenze = []
+        altrimenti = None
         for a in args_puliti[1:]:
             if isinstance(a, RegolaTarget):
                 target = a
@@ -2288,8 +2501,15 @@ class FavellaTransformer(Transformer):
                 condizione = a
             elif isinstance(a, Conseguenza):
                 conseguenze.append(a)
+            elif isinstance(a, RamoAltrimenti):
+                altrimenti = (a.risposta, a.conseguenze)
             elif isinstance(a, str):
                 risposta = a   # unica stringa nuda residua: la risposta
+        if altrimenti is not None and condizione is None:
+            self.warnings.append(
+                f"Regola «{fase} di {verbo}» con «altrimenti» ma senza «se»: il ramo "
+                f"«altrimenti» non scatterà mai.")
+        extra = {"fase": fase, "altrimenti": altrimenti}
 
         # --- Regola GLOBALE (senza bersaglio) ---
         if target is None:
@@ -2300,6 +2520,31 @@ class FavellaTransformer(Transformer):
                 risposta=risposta,
                 condizione=condizione,
                 conseguenze=conseguenze,
+                **extra,
+            ))
+            return None
+
+        # --- [1.3.0 / M-9] Regola per CATEGORIA ---
+        if isinstance(target.bersaglio, Categoria) or isinstance(target.secondario, Categoria):
+            primo, secondo = target.bersaglio, target.secondario
+            id_ogg1 = None if isinstance(primo, Categoria) else normalizza_nome(primo)
+            id_ogg2 = (None if secondo is None or isinstance(secondo, Categoria)
+                       else normalizza_nome(secondo))
+            self._pending_conseguenze.append(conseguenze)
+            self._pending_regole_target.append(
+                (id_ogg1, primo, id_ogg2, secondo) if id_ogg1 else
+                ("<categoria>", "qualcosa", id_ogg2, secondo))
+            self.mondo.aggiungi_regola(Regola(
+                verbo=verbo,
+                id_oggetto_bersaglio=id_ogg1,
+                risposta=risposta,
+                condizione=condizione,
+                preposizione=target.preposizione,
+                id_oggetto_secondario=id_ogg2,
+                conseguenze=conseguenze,
+                categoria=primo.radice if isinstance(primo, Categoria) else None,
+                categoria_secondaria=secondo.radice if isinstance(secondo, Categoria) else None,
+                **extra,
             ))
             return None
 
@@ -2333,6 +2578,7 @@ class FavellaTransformer(Transformer):
             preposizione=prep_azione,
             id_oggetto_secondario=id_ogg2,
             conseguenze=conseguenze,
+            **extra,
         ))
         return None
 
@@ -2361,6 +2607,7 @@ class FavellaTransformer(Transformer):
         for nome, testo in self._pending_posti:
             self._applica_posto(nome, testo)
         self._applica_scena_e_personaggi()
+        self._valida_turno_e_testi()
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
         for sinonimo, canonico in self._pending_sinonimi:   # [1.2.0]
@@ -2417,6 +2664,10 @@ class FavellaTransformer(Transformer):
                     f"La forma '{raw_lhs} {scritto} {raw_rhs}' vale solo fra due "
                     f"stati; per i contatori usa il valore fra parentesi '[{altro}]'.")
         for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
+            if id_ogg1 == "<categoria>":   # [1.3.0 / M-9] 'qualcosa (di …)'
+                if id_ogg2 and not m.trova_oggetto(id_ogg2):
+                    self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
+                continue
             if not (m.trova_oggetto(id_ogg1) or id_ogg1 in m.opposte_direzioni):
                 self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
             elif id_ogg2 and not m.trova_oggetto(id_ogg2):
@@ -2553,7 +2804,8 @@ class FavellaTransformer(Transformer):
         #    sempre un refuso. Lo segnaliamo qui, non bloccante. I nomi noti sono
         #    gli 'stati'/contatori (m.variabili) e gli oggetti (m.oggetti); le
         #    stanze NON sono interpolabili (non hanno un valore testuale da rendere).
-        nomi_interpolabili = set(m.variabili.keys()) | set(m.oggetti.keys())
+        nomi_interpolabili = (set(m.variabili.keys()) | set(m.oggetti.keys())
+                              | set(SEGNAPOSTO_DEL_MOTORE) | {"oggetto", "cosa"})
         # [0.22.0/A2] Una descrizione può avere più varianti: si ispeziona OGNI
         # variante (testi_di_descrizione appiattisce stringa e VariantiDescrizione).
         # [1.3.0 / M-3] TUTTI i testi: anche demoni, battute e opzioni di
@@ -2758,8 +3010,10 @@ class FavellaTransformer(Transformer):
         viste = []  # (firma, incondizionata?) delle regole già scorse, in ordine
         for regola in m.regole:
             firma = (regola.verbo, regola.id_oggetto_bersaglio,
-                     regola.id_oggetto_secondario, regola.preposizione)
-            globale = regola.id_oggetto_bersaglio is None
+                     regola.id_oggetto_secondario, regola.preposizione,
+                     getattr(regola, "fase", "invece"), getattr(regola, "categoria", None),
+                     getattr(regola, "categoria_secondaria", None))
+            globale = regola.globale
             oscurata = any(
                 f_prec == firma and incond_prec and (globale or regola.condizione is None)
                 for f_prec, incond_prec in viste
@@ -2830,6 +3084,8 @@ class FavellaTransformer(Transformer):
         conseguenze = []
         for r in m.regole:
             conseguenze.extend(r.conseguenze)
+            if getattr(r, "altrimenti", None):   # [1.3.0 / M-9]
+                conseguenze.extend(r.altrimenti[1])
         for e in m.eventi:
             conseguenze.extend(e.conseguenze)
         for d in m.demoni:                 # [Livello 8]
@@ -2855,8 +3111,10 @@ class FavellaTransformer(Transformer):
             if getattr(ent, "posto", None):   # [1.1.0]
                 testi.append(ent.posto)
         testi += [r.risposta for r in m.regole]
+        testi += [r.altrimenti[0] for r in m.regole if getattr(r, "altrimenti", None)]
         testi += [e.risposta for e in m.eventi]
         testi += [d.risposta for d in m.demoni]   # [Livello 8]
+        testi += [m.prologo] + list(m.messaggi.values())   # [1.3.0 / M-6]
         for nodo in m.dialogo_nodi.values():
             testi.append(nodo.battuta)
             # [0.33.0 / Tema 4b] Anche le battute condizionali ('… dice "…" se …')
@@ -3265,6 +3523,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
+                                        simboli.verbi_multi)
         transformer.transform(tree)
 
         # 4. VALIDAZIONE SEMANTICA GLOBALE
@@ -3475,6 +3735,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
             return {"ok": False, "errors": errors, "warnings": warnings,
                     "worldSummary": None}
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
+                                        simboli.verbi_multi)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
         _avvisa_partenza_implicita(transformer, mappa_righe)
@@ -3569,6 +3831,8 @@ def compila_mondo(percorso_file, sorgente=None):
                                    verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
+                                        simboli.verbi_multi)
         transformer.transform(tree)
         transformer.valida_post()
         if transformer.errori:
@@ -4191,11 +4455,11 @@ def analizza_regole(percorso_file, sorgente=None):
                     "n": int(str(numeri[0])) if numeri else None,
                     "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
                 })
-            elif nodo.data in ("demone_ogni", "demone_quando"):
+            elif nodo.data in ("demone_ogni", "demone_quando", "demone_dopo"):
                 quotati = tok.get("TESTO_QUOTATO", [])
                 frasi_demone.append({
                     "span": span,
-                    "mode": "ogni" if nodo.data == "demone_ogni" else "quando",
+                    "mode": {"demone_ogni": "ogni", "demone_quando": "quando"}.get(nodo.data, "dopo"),
                     "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
                 })
 
@@ -4242,13 +4506,31 @@ def analizza_regole(percorso_file, sorgente=None):
                           "prep": getattr(r, "preposizione", None),
                           "secondaryId": sec,
                           "secondaryName": _nome_entita(mondo, sec) if sec else None}
+        # [1.3.0 / M-9] Regola per categoria: 'qualcosa (di …)'.
+        if getattr(r, "categoria", None) is not None or getattr(r, "categoria_secondaria", None) is not None:
+            def _cat(radice, oid):
+                if radice is None:
+                    return _nome_entita(mondo, oid) if oid else None
+                return "qualcosa" + (f" di {radice}" if radice else "")
+            target = {"kind": "category", "id": r.id_oggetto_bersaglio,
+                      "name": _cat(r.categoria, r.id_oggetto_bersaglio),
+                      "category": r.categoria,
+                      "prep": getattr(r, "preposizione", None),
+                      "secondaryId": r.id_oggetto_secondario,
+                      "secondaryName": _cat(r.categoria_secondaria, r.id_oggetto_secondario),
+                      "secondaryCategory": r.categoria_secondaria}
+        altrimenti = getattr(r, "altrimenti", None)
         rules.append({
             "span": _span_regola(r.verbo, r.risposta, usate_r),
+            "phase": getattr(r, "fase", "invece"),
             "verb": r.verbo,
             "target": target,
             "condition": _cond_to_json(getattr(r, "condizione", None), mondo),
             "response": r.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(r, "conseguenze", [])],
+            "otherwise": ({"response": altrimenti[0],
+                           "consequences": [_conseq_to_json(c, mondo) for c in altrimenti[1]]}
+                          if altrimenti else None),
         })
 
     # EVENTI compilati → JSON.
@@ -4267,10 +4549,11 @@ def analizza_regole(percorso_file, sorgente=None):
     demons = []
     usate_d = set()
     for d in getattr(mondo, "demoni", []):
-        mode = "ogni" if d.tipo == "ogni_turno" else "quando"
+        mode = {"ogni_turno": "ogni", "quando": "quando"}.get(d.tipo, d.tipo)
         demons.append({
             "span": _span_demone(mode, d.risposta, usate_d),
             "mode": mode,
+            "n": getattr(d, "ritardo", 0),   # [1.3.0 / M-7] solo per 'dopo' 
             "condition": _cond_to_json(getattr(d, "condizione", None), mondo),
             "response": d.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(d, "conseguenze", [])],
@@ -4635,7 +4918,11 @@ def _autoformat_classifica(data, tok, mondo):
     eid = normalizza_nome(str(ents[0])) if ents else None
     vs = tok.get("VARIABILE", [])
     vid = normalizza_nome(str(vs[0])) if vs else None
-    # 0 — impostazioni globali
+    # 0 — impostazioni globali ([1.3.0] prima di tutto la presentazione)
+    if data in ("def_titolo", "def_autore", "def_prologo"):
+        return (0, "", -2)
+    if data in ("def_messaggio", "def_uscite_anonime"):
+        return (0, "", -1)
     if data == "def_direzioni":
         return (0, "", 0)
     if data == "def_opposti":
@@ -4677,8 +4964,12 @@ def _autoformat_classifica(data, tok, mondo):
         return (4, "", 0)
     if data in ("evento_al", "evento_ogni"):
         return (4, "", 1)
-    if data in ("demone_ogni", "demone_quando"):
+    if data in ("demone_ogni", "demone_quando", "demone_dopo"):
         return (4, "", 2)
+    if data == "def_argomento":
+        return (5, "", 1)
+    if data in ("def_png_ha", "def_di_scena", "def_anche_in"):
+        return (2, "o:" + (eid or ""), 6)
     # 5 — dialoghi
     if data in ("def_dialogo_inizio", "def_battuta", "def_opzione"):
         return (5, "", 0)
@@ -4804,7 +5095,7 @@ import io, contextlib, json, sys
 if '/engine' not in sys.path:
     sys.path.insert(0, '/engine')
 from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza
+from gioco import elabora_comando, mostra_stanza, intestazione
 from libreria_azioni import LIBRERIA_AZIONI
 _mondo = None
 def fav_boot(entry):
@@ -4815,6 +5106,8 @@ def fav_boot(entry):
             _mondo = compila_mondo(entry)
             _mondo.carica_azioni(LIBRERIA_AZIONI)
             _mondo.imposta_posizione_iniziale()
+            if getattr(_mondo, "titolo", None) or getattr(_mondo, "prologo", None):
+                intestazione(_mondo)
             mostra_stanza(_mondo)
     except Exception as e:
         return json.dumps({"text": buf.getvalue() + "\n[ERRORE DI COMPILAZIONE] " + str(e),
@@ -4999,6 +5292,9 @@ boot();
 def _quota(testo: str) -> str:
     """Avvolge il testo tra virgolette doppie con escape canonico (\\\" e \\\\)."""
     interno = (testo or "").replace("\\", "\\\\").replace('"', '\\"')
+    # [1.3.0 / M-6] A capo e parentesi quadre letterali tornano escape.
+    interno = (interno.replace("\n", "\\n").replace(QUADRA_APERTA, "\\[")
+               .replace(QUADRA_CHIUSA, "\\]"))
     return f'"{interno}"'
 
 
@@ -5282,7 +5578,8 @@ def _serializza_regola(spec):
     """[Fase 6c] Regola JSON → «Invece di VERBO [bersaglio] [se COND]: dire "…"
     [e adesso …].»."""
     verbo = str(spec["verb"]).strip()
-    parti = [f"Invece di {verbo}"]
+    fase = {"prima": "Prima", "dopo": "Dopo"}.get(spec.get("phase"), "Invece")   # [1.3.0 / M-9]
+    parti = [f"{fase} di {verbo}"]
     target = spec.get("target")
     if target:
         parti.append(" " + str(target["name"]))
@@ -5294,6 +5591,11 @@ def _serializza_regola(spec):
     parti.append(f": dire {_quota(spec.get('response', ''))}")
     for c in spec.get("consequences", []):
         parti.append(" e adesso " + _serializza_conseguenza(c))
+    altrimenti = spec.get("otherwise")   # [1.3.0 / M-9]
+    if altrimenti:
+        parti.append(f" altrimenti dire {_quota(altrimenti.get('response', ''))}")
+        for c in altrimenti.get("consequences", []):
+            parti.append(" e adesso " + _serializza_conseguenza(c))
     parti.append(".")
     return "".join(parti)
 
@@ -5319,6 +5621,9 @@ def _serializza_demone(spec):
         raise ValueError("Un demone richiede una condizione.")
     if spec["mode"] == "ogni":
         testa = "Ogni turno se " + _serializza_condizione(cond)
+    elif spec["mode"] == "dopo":   # [1.3.0 / M-7]
+        n = int(spec.get("n", 0))
+        testa = f"{n} {'turno' if n == 1 else 'turni'} dopo che " + _serializza_condizione(cond)
     else:
         testa = "Quando " + _serializza_condizione(cond) + " diventa vera"
     parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]

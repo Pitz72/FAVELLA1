@@ -169,12 +169,20 @@ def _produttori(mondo):
     dialogo (le stesse di FavellaTransformer._tutte_le_conseguenze)."""
     voci = []
     for r in mondo.regole:
-        comando = _descrivi_comando(r.verbo, r.id_oggetto_bersaglio,
-                                    r.preposizione, r.id_oggetto_secondario)
-        ctx = f"regola «Invece di {comando}»"
+        bersaglio = r.id_oggetto_bersaglio
+        if bersaglio is None and getattr(r, "categoria", None) is not None:
+            bersaglio = "qualcosa" + (f" di {r.categoria}" if r.categoria else "")
+        comando = _descrivi_comando(r.verbo, bersaglio, r.preposizione, r.id_oggetto_secondario)
+        fase = {"prima": "Prima", "dopo": "Dopo"}.get(getattr(r, "fase", "invece"), "Invece")
+        ctx = f"regola «{fase} di {comando}»"
         for cons in r.conseguenze:
             voci.append({"conseguenza": cons, "contesto": ctx,
                          "condizione_sblocco": r.condizione, "comando": comando})
+        # [1.3.0 / M-9] Il ramo 'altrimenti' scatta quando la condizione è falsa.
+        if getattr(r, "altrimenti", None):
+            for cons in r.altrimenti[1]:
+                voci.append({"conseguenza": cons, "contesto": ctx + " (altrimenti)",
+                             "condizione_sblocco": None, "comando": comando})
     for e in mondo.eventi:
         ctx = f"evento «{e.tipo} {e.n} turni»"
         for cons in e.conseguenze:

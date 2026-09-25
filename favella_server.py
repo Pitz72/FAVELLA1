@@ -43,7 +43,7 @@ try:
                              PAROLE_RISERVATE)
     from favella_utils import DIREZIONI_BASE, rendi_testo
     from libreria_azioni import LIBRERIA_AZIONI
-    from gioco import elabora_comando, mostra_stanza
+    from gioco import elabora_comando, mostra_stanza, intestazione
     from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
@@ -174,8 +174,7 @@ def _intro(mondo):
     (cattura le print di mostra_stanza in un buffer locale)."""
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        print("--- BENVENUTO IN FAVELLA 1 ---")
-        print("Scrivi un comando, oppure 'esci' per terminare.")
+        intestazione(mondo, "Scrivi un comando, oppure 'esci' per terminare.")
         mostra_stanza(mondo)
     return buf.getvalue()
 

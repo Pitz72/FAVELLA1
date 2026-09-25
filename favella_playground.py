@@ -23,7 +23,7 @@ import contextlib
 import io
 
 from compilatore import analizza_file_strutturato, compila_mondo
-from gioco import elabora_comando, mostra_stanza
+from gioco import elabora_comando, mostra_stanza, intestazione
 from libreria_azioni import LIBRERIA_AZIONI
 from strutture import VERSIONE_MOTORE
 from favella_utils import rendi_testo
@@ -83,8 +83,7 @@ def _avvia_partita(sorgente):
                                        "avviare il gioco.", "severity": "error"}]}
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        print("--- BENVENUTO IN FAVELLA 1 ---")
-        print("Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
+        intestazione(mondo, "Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
         mostra_stanza(mondo)
     _SESSIONE.mondo = mondo
     return {"ok": True, "output": buf.getvalue(), "running": True,

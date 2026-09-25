@@ -6345,6 +6345,188 @@ def test_forme_nuove_nell_ide():
     _check(compila(src2)[0] is not None, "il testo riscritto compila di nuovo")
 
 
+# --- [1.3.0] Blocco F: espressività ----------------------------------------
+
+_SRC_F = (
+    "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+    "La porta è una cosa.\nLa porta è in cucina.\nLa porta è apribile.\nLa porta è chiusa.\n"
+    "Il sasso è una cosa.\nIl sasso è in cucina.\nIl sasso è pesante.\nIl sasso è prendibile.\n"
+    "La piuma è una cosa.\nLa piuma è in cucina.\nLa piuma è prendibile.\n"
+    "La forza è un contatore.\n"
+)
+
+
+def test_e_adesso_anche_sulla_prima_conseguenza():
+    print("[1.3.0 M-1: '…: e adesso X' e '…: adesso X' sulla prima conseguenza]")
+    src = _SRC_F + ('Invece di tocca la porta: e adesso la porta è rossa.\n'
+                    'Invece di tocca il sasso: adesso aumenta la forza e adesso la piuma è blu.\n'
+                    'Ogni 2 turni: e adesso aumenta la forza.\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    esegui(mondo, "tocca la porta")
+    esegui(mondo, "tocca il sasso")
+    _check("rossa" in mondo.oggetti["porta"].proprieta and "blu" in mondo.oggetti["piuma"].proprieta,
+           "le conseguenze valgono")
+    _check(mondo.variabili["forza"] == 2, "anche negli eventi (turno 2)")
+
+
+def test_testi_a_capo_parentesi_e_segnaposto_del_motore():
+    print("[1.3.0 M-6: \\n, \\[ \\], [turno], [luogo], maiuscola dei valori]")
+    src = _SRC_F + (
+        "Il meteo è uno stato.\nIl meteo è sereno.\n"
+        'Invece di esamina la porta: dire "Riga uno.\\nRiga due. Turno [turno]. \\[nota\\] Luogo: [luogo]. [Meteo]!".\n')
+    mondo, log = compila(src)
+    _check(mondo is not None and "nota" not in log, "\\[…\\] non è un segnaposto")
+    mondo = runtime(src)
+    esegui(mondo, "z")
+    out = esegui(mondo, "esamina la porta")
+    _check("Riga uno.\nRiga due." in out, "\\n va a capo")
+    _check("Turno 1." in out and "[nota]" in out and "Luogo: la cucina." in out,
+           "[turno], parentesi letterali, [luogo] (minuscolo dopo i due punti)")
+    _check("Sereno!" in out, "[Meteo] con la maiuscola dà il valore con la maiuscola")
+
+
+def test_testo_condizionale():
+    print("[1.3.0 M-6: '[se la porta è aperta]…[altrimenti]…[fine]']")
+    src = _SRC_F + ('La descrizione della cucina è "Una cucina[se la porta è aperta] ventilata'
+                    '[altrimenti] chiusa[fine].[se la forza è almeno 1] Sei forte.[fine]".\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    out = esegui(mondo, "guarda")
+    _check("Una cucina chiusa." in out and "forte" not in out, "rami 'altrimenti' e vuoto")
+    esegui(mondo, "apri la porta")
+    mondo.variabili["forza"] = 2
+    out = esegui(mondo, "guarda")
+    _check("Una cucina ventilata. Sei forte." in out, "rami veri")
+    _, log = compila(_SRC_F + 'La descrizione della cucina è "[se la porta è sbagliata e] x[fine]".\n')
+    _check("non si capisce" in log, "una condizione sbagliata nel testo è un errore chiaro")
+
+
+def test_titolo_autore_prologo_e_messaggi():
+    print("[1.3.0 M-6: titolo, autore, prologo e messaggi del motore]")
+    from gioco import intestazione
+    src = _SRC_F + ('Il titolo è "La prova".\nL\'autore è "Anna Rossi".\n'
+                    'Il prologo è "Era una notte buia.".\n'
+                    'Il messaggio "non capisco" è "Come, prego?".\n'
+                    'Il messaggio "preso" è "Ora hai [oggetto].".\n')
+    mondo = runtime(src)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        intestazione(mondo, "invito")
+    out = buf.getvalue()
+    _check("--- LA PROVA ---" in out and "di Anna Rossi" in out and "Era una notte buia." in out,
+           "intestazione con titolo, autore e prologo")
+    _check("Come, prego?" in esegui(mondo, "xyzzy"), "messaggio 'non capisco' ridefinito")
+    _check("Ora hai la piuma." in esegui(mondo, "prendi la piuma"), "messaggio 'preso' con [oggetto]")
+    _, log = compila(_SRC_F + 'Il messaggio "inesistente" è "x".\n')
+    _check("Messaggio sconosciuto" in log and '"non capisco"' in log, "chiave sconosciuta: elenco delle valide")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        intestazione(runtime(_SRC_F), "")
+    _check("BENVENUTO IN FAVELLA 1" in buf.getvalue(), "senza titolo, come prima")
+
+
+def test_numeri_negativi_e_aritmetica():
+    print("[1.3.0 M-7: negativi, moltiplica, dividi, riduci modulo, resta fra]")
+    src = _SRC_F.replace("La forza è un contatore.\n", "La forza è un contatore.\nLa forza parte da -3.\n") + (
+        '"a" è un comando senza oggetto.\n"b" è un comando senza oggetto.\n"c" è un comando senza oggetto.\n'
+        '"d" è un comando senza oggetto.\n'
+        'Invece di a: moltiplica la forza per -4.\n'
+        'Invece di b: dividi la forza per 5.\n'
+        'Invece di c: riduci la forza modulo 3.\n'
+        'Invece di d: aumenta la forza di 100 e adesso la forza resta fra 0 e 10.\n'
+        'Invece di esamina la porta se la forza è -3: dire "Meno tre.".\n')
+    mondo = runtime(src)
+    _check(mondo is not None and mondo.variabili["forza"] == -3, "'parte da -3'")
+    _check("Meno tre." in esegui(mondo, "esamina la porta"), "confronto con un negativo")
+    esegui(mondo, "a")
+    _check(mondo.variabili["forza"] == 12, "moltiplica")
+    esegui(mondo, "b")
+    _check(mondo.variabili["forza"] == 2, "dividi (intera)")
+    mondo.variabili["forza"] = -7
+    esegui(mondo, "c")
+    _check(mondo.variabili["forza"] == 2, "riduci modulo: resto fra 0 e N-1")
+    esegui(mondo, "d")
+    _check(mondo.variabili["forza"] == 10, "resta fra 0 e 10")
+
+
+def test_il_turno_si_legge():
+    print("[1.3.0 M-7: 'il turno' nelle condizioni; non si dichiara né si assegna]")
+    src = _SRC_F + 'Invece di esamina la porta se il turno è almeno 2: dire "Tardi.".\n'
+    mondo = runtime(src)
+    _check("Tardi." not in esegui(mondo, "esamina la porta"), "turno 0")
+    esegui(mondo, "z")
+    _check("Tardi." in esegui(mondo, "esamina la porta"), "turno 2")
+    _, log = compila(_SRC_F + "Il turno è un contatore.\n")
+    _check("non si dichiara" in log, "dichiararlo è un errore")
+    _, log = compila(_SRC_F + '"a" è un comando senza oggetto.\nInvece di a: aumenta il turno.\n')
+    _check("si legge soltanto" in log, "cambiarlo è un errore")
+
+
+def test_timer_che_parte_da_un_fatto():
+    print("[1.3.0 M-7: 'N turni dopo che …']")
+    src = _SRC_F + ("La miccia è una cosa.\nLa miccia è in cucina.\n"
+                    'Invece di tocca la miccia: e adesso la miccia è accesa.\n'
+                    '2 turni dopo che la miccia è accesa: dire "BUM!".\n')
+    mondo = runtime(src)
+    esegui(mondo, "z")
+    esegui(mondo, "tocca la miccia")          # turno 2: il conto parte
+    _check("BUM!" not in esegui(mondo, "z"), "un turno dopo, niente")
+    _check("BUM!" in esegui(mondo, "z"), "due turni dopo, scatta")
+    _check("BUM!" not in esegui(mondo, "z"), "una volta sola")
+    esegui(mondo, "annulla")
+    _check("BUM!" not in esegui(mondo, "z"), "ANNULLA riporta anche il conto")
+
+
+def test_regole_prima_dopo_altrimenti_e_categorie():
+    print("[1.3.0 M-9: 'Prima di', 'Dopo di', 'altrimenti', 'qualcosa di …']")
+    src = _SRC_F + (
+        'Invece di esamina la porta se la porta è aperta: dire "Aperta."; altrimenti dire "Chiusa.".\n'
+        'Invece di prendi qualcosa di pesante: dire "Troppo pesante.".\n'
+        'Invece di annusa qualcosa: dire "Odore di polvere.".\n'
+        'Invece di annusa la piuma: dire "Odore di gallina.".\n'
+        'Prima di prendi la piuma: dire "Ti chini.".\n'
+        'Dopo di prendi la piuma: dire "Leggerissima!" e adesso aumenta la forza.\n'
+        'Dopo di apri la porta: dire "Entra aria fresca.".\n')
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check("Chiusa." in esegui(mondo, "esamina la porta"), "ramo 'altrimenti'")
+    out = esegui(mondo, "prendi il sasso")
+    _check("Troppo pesante." in out and "sasso" not in mondo.inventario, "regola per categoria")
+    _check("Odore di gallina." in esegui(mondo, "annusa la piuma"), "l'oggetto preciso vince sulla categoria")
+    _check("Odore di polvere." in esegui(mondo, "annusa la porta"), "'qualcosa' vale per ogni oggetto")
+    out = esegui(mondo, "prendi la piuma")
+    _check(out.index("Ti chini.") < out.index("Preso: la piuma.") < out.index("Leggerissima!"),
+           "Prima → azione → Dopo")
+    _check(mondo.variabili["forza"] == 1, "le conseguenze di 'Dopo di'")
+    out = esegui(mondo, "prendi la piuma")
+    _check("Ce l'hai già." in out and "Leggerissima!" not in out, "'Dopo di' solo se l'azione riesce")
+    out = esegui(mondo, "apri la porta")
+    _check("Apri la porta." in out and "Entra aria fresca." in out, "'Dopo di' coi verbi nuovi")
+    _check("Aperta." in esegui(mondo, "esamina la porta"), "ramo 'se'")
+
+
+def test_forme_del_blocco_f_nell_ide():
+    print("[1.3.0: l'IDE rilegge e riscrive fasi, 'altrimenti', categorie e timer]")
+    from compilatore import analizza_regole, _serializza_regola, _serializza_demone
+    src = _SRC_F + (
+        'Prima di prendi qualcosa di pesante se la porta è aperta: dire "Uff."; altrimenti dire "No.".\n'
+        "La miccia è una cosa.\nLa miccia è in cucina.\n"
+        '3 turni dopo che la miccia è accesa: dire "BUM!".\n')
+    cartella = tempfile.mkdtemp()
+    percorso = os.path.join(cartella, "f.fav")
+    with open(percorso, "w", encoding="utf-8") as f:
+        f.write(src)
+    modello = analizza_regole(percorso)
+    regola = modello["rules"][0]
+    testo = _serializza_regola(regola)
+    _check(testo == 'Prima di prendi qualcosa di pesante se La porta è aperta: dire "Uff." '
+                    'altrimenti dire "No.".', f"regola riscritta: {testo}")
+    demone = _serializza_demone(modello["demons"][0])
+    _check(demone.startswith("3 turni dopo che La miccia è accesa: dire"), f"timer riscritto: {demone}")
+    _check(compila(src + testo + "\n" + demone + "\n")[0] is not None, "il testo riscritto compila")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6789,6 +6971,16 @@ def main():
         test_argomenti_di_conversazione,
         test_il_linter_vede_tutto_il_mondo,
         test_forme_nuove_nell_ide,
+        # [1.3.0] Blocco F: espressività
+        test_e_adesso_anche_sulla_prima_conseguenza,
+        test_testi_a_capo_parentesi_e_segnaposto_del_motore,
+        test_testo_condizionale,
+        test_titolo_autore_prologo_e_messaggi,
+        test_numeri_negativi_e_aritmetica,
+        test_il_turno_si_legge,
+        test_timer_che_parte_da_un_fatto,
+        test_regole_prima_dopo_altrimenti_e_categorie,
+        test_forme_del_blocco_f_nell_ide,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

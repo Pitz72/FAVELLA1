@@ -46,6 +46,20 @@ class OperandoNumero(Operando):
     def __str__(self):
         return str(self.n)
 
+# [1.3.0 / M-7] 'il turno' si legge come un contatore (condizioni, operandi,
+# testi) ma non si dichiara e non si assegna: è il numero del turno corrente.
+TURNO = "turno"
+
+
+def valore_numerico(mondo: 'Mondo', nome: str) -> int:
+    """Il valore di un contatore; 'turno' è il turno corrente. Un contatore mai
+    impostato, o uno stato non numerico, vale 0."""
+    if nome == TURNO and nome not in mondo.variabili:
+        return int(getattr(mondo, "turno_corrente", 0))
+    v = mondo.variabili.get(nome)
+    return v if isinstance(v, int) else 0
+
+
 class OperandoVariabile(Operando):
     """Il valore corrente di un contatore ('di [forza]'). Un contatore mai
     impostato, o uno 'stato' non numerico, vale 0 (stessa tolleranza di
@@ -54,8 +68,7 @@ class OperandoVariabile(Operando):
         self.nome = nome
 
     def valore(self, mondo: 'Mondo') -> int:
-        v = mondo.variabili.get(self.nome)
-        return v if isinstance(v, int) else 0
+        return valore_numerico(mondo, self.nome)
 
     def __str__(self):
         return f"[{self.nome}]"
@@ -161,9 +174,7 @@ class CondizioneContatore(Condizione):
         self.valore = _come_operando(valore)
 
     def valuta(self, mondo: 'Mondo') -> bool:
-        v = mondo.variabili.get(self.nome)
-        if not isinstance(v, int):
-            v = 0
+        v = valore_numerico(mondo, self.nome)
         soglia = self.valore.valore(mondo)
         if self.operatore == "==":
             return v == soglia
@@ -439,8 +450,35 @@ class ConseguenzaContatore(Conseguenza):
             mondo.variabili[self.nome] = attuale + quantita
         elif self.modo == "diminuisci":
             mondo.variabili[self.nome] = attuale - quantita
+        elif self.modo == "moltiplica":      # [1.3.0 / M-7]
+            mondo.variabili[self.nome] = attuale * quantita
+        elif self.modo == "dividi":
+            # Divisione intera verso lo zero (7/2 = 3, -7/2 = -3); per zero il
+            # contatore non cambia (non c'è un risultato sensato).
+            if quantita != 0:
+                mondo.variabili[self.nome] = int(attuale / quantita)
+        elif self.modo == "modulo":
+            # Il resto sempre fra 0 e N-1: 'riduci l'ora modulo 24'.
+            if quantita != 0:
+                mondo.variabili[self.nome] = attuale % abs(quantita)
         else:  # diventa
             mondo.variabili[self.nome] = quantita
+
+
+class ConseguenzaLimita(Conseguenza):
+    """[1.3.0 / M-7] 'la forza resta fra 0 e 10': riporta il contatore
+    nell'intervallo (è il minimo e il massimo insieme)."""
+    def __init__(self, nome: str, minimo, massimo):
+        self.nome = nome
+        self.minimo = _come_operando(minimo)
+        self.massimo = _come_operando(massimo)
+
+    def esegui(self, mondo: 'Mondo'):
+        attuale = valore_numerico(mondo, self.nome)
+        basso, alto = self.minimo.valore(mondo), self.massimo.valore(mondo)
+        if basso > alto:
+            basso, alto = alto, basso
+        mondo.variabili[self.nome] = max(basso, min(alto, attuale))
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -600,7 +638,11 @@ class Regola:
                  condizione: Optional[Condizione] = None,
                  preposizione: Optional[str] = None,
                  id_oggetto_secondario: Optional[str] = None,
-                 conseguenze: Optional[List[Conseguenza]] = None):
+                 conseguenze: Optional[List[Conseguenza]] = None,
+                 fase: str = "invece",
+                 categoria: Optional[str] = None,
+                 categoria_secondaria: Optional[str] = None,
+                 altrimenti: Optional[tuple] = None):
         self.verbo = verbo
         self.id_oggetto_bersaglio = id_oggetto_bersaglio
         self.risposta = risposta
@@ -609,11 +651,31 @@ class Regola:
         self.id_oggetto_secondario = id_oggetto_secondario
         # Lista (eventualmente vuota) di conseguenze da eseguire in ordine.
         self.conseguenze: List[Conseguenza] = conseguenze or []
+        # [1.3.0 / M-9] 'invece' (sostituisce l'azione), 'prima' (poi l'azione
+        # prosegue), 'dopo' (dopo che l'azione di default è riuscita).
+        self.fase = fase
+        # [1.3.0 / M-9] Regola per categoria: 'qualcosa' ("" = ogni oggetto) o
+        # 'qualcosa di pesante' (la radice della proprietà). None = un oggetto preciso.
+        self.categoria = categoria
+        self.categoria_secondaria = categoria_secondaria
+        # [1.3.0 / M-9] Ramo 'altrimenti': (risposta, conseguenze) quando la
+        # condizione è falsa. None = nessun ramo.
+        self.altrimenti = altrimenti
 
-    def esegui_conseguenze(self, mondo: 'Mondo'):
-        """Esegue in ordine tutte le conseguenze associate alla regola."""
-        for conseguenza in self.conseguenze:
+    @property
+    def globale(self) -> bool:
+        """Senza bersaglio: né un oggetto, né una direzione, né una categoria."""
+        return self.id_oggetto_bersaglio is None and self.categoria is None
+
+    def esegui_conseguenze(self, mondo: 'Mondo', altrimenti: bool = False):
+        """Esegue in ordine tutte le conseguenze associate alla regola (o al
+        suo ramo 'altrimenti')."""
+        conseguenze = self.altrimenti[1] if altrimenti and self.altrimenti else self.conseguenze
+        for conseguenza in conseguenze:
             conseguenza.esegui(mondo)
+
+    def risposta_di(self, altrimenti: bool = False) -> str:
+        return self.altrimenti[0] if altrimenti and self.altrimenti else self.risposta
 
 class Evento:
     """[Livello 3] Evento temporale: scatta in base al contatore dei turni.
@@ -651,10 +713,14 @@ class Demone:
     regole e degli eventi a tempo."""
     def __init__(self, tipo: str, condizione: 'Condizione', risposta: str,
                  conseguenze: Optional[List[Conseguenza]] = None):
-        self.tipo = tipo            # 'ogni_turno' oppure 'quando'
+        self.tipo = tipo            # 'ogni_turno', 'quando' o [1.3.0] 'dopo'
         self.condizione = condizione
         self.risposta = risposta
         self.conseguenze: List[Conseguenza] = conseguenze or []
+        # [1.3.0 / M-7] 'N turni dopo che …': il ritardo e il conto alla
+        # rovescia in corso (None = nessun conto aperto).
+        self.ritardo: int = 0
+        self.conto: Optional[int] = None
         # [Fronte di salita] Valore della condizione all'ultima valutazione. Per i
         # demoni 'quando' è inizializzato a fine compilazione sul mondo iniziale
         # (vedi compilatore.inizializza_demoni): così una condizione già vera alla
@@ -978,6 +1044,18 @@ class Mondo:
         # [1.3.0 / M-10] Argomenti di conversazione ('Se chiedi alla guardia di
         # "chiave": …'), in ordine di dichiarazione.
         self.argomenti: List['Argomento'] = []
+        # [1.3.0 / M-6] Presentazione: titolo, autore, prologo; messaggi del
+        # motore ridefiniti dall'autore; condizioni compilate dei testi
+        # condizionali '[se …]…[altrimenti]…[fine]' (sorgente -> Condizione).
+        self.titolo: Optional[str] = None
+        self.autore: Optional[str] = None
+        self.prologo: Optional[str] = None
+        self.messaggi: Dict[str, str] = {}
+        self.condizioni_testo: Dict[str, 'Condizione'] = {}
+        # [1.3.0] Parti di stato che la storia può cambiare e che le versioni
+        # precedenti non conoscevano: entrano nell'impronta solo se servono,
+        # così i salvataggi delle storie che non le usano restano validi.
+        self._stato_esteso: Set[str] = set()
         # [1.3.0 / M-8] 'Le uscite nominano solo le stanze visitate.': la riga
         # «Uscite:» tace il nome delle stanze non ancora viste.
         self.uscite_solo_visitate: bool = False
@@ -1233,7 +1311,7 @@ class Mondo:
                             sorted(getattr(o, "contenuto", None) or [])])
         stanze_buie = sorted(s.nome for s in self.stanze.values()
                              if getattr(s, "buia", False))
-        return {
+        dati = {
             "luogo": self.posizione_giocatore,
             "turno": self.turno_corrente,
             "esito": self.stato_partita,
@@ -1245,6 +1323,17 @@ class Mondo:
             "demoni": [bool(getattr(d, "era_vera", False)) for d in self.demoni],
             "caso": repr(self.rng.getstate()),
         }
+        # [1.3.0] Solo ciò che la storia usa (vedi _stato_esteso).
+        estesi = getattr(self, "_stato_esteso", ())
+        if "uscite" in estesi:
+            dati["uscite"] = sorted([s.nome, sorted(s.uscite.items())] for s in self.stanze.values())
+        if "prendibile" in estesi:
+            dati["prendibili"] = sorted(o.nome for o in self.oggetti.values() if o.prendibile)
+        if getattr(self, "uscite_solo_visitate", False):
+            dati["visitate"] = sorted(self.stanze_visitate)
+        if any(getattr(d, "tipo", "") == "dopo" for d in self.demoni):
+            dati["conti"] = [getattr(d, "conto", None) for d in self.demoni]
+        return dati
 
     def impronta_stato(self) -> str:
         """[1.2.0] Impronta SHA-256 dello stato essenziale: due partite con la

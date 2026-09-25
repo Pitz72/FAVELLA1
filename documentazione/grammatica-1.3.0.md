@@ -339,6 +339,10 @@ di Lark (EBNF con azioni `-> nome`).
                   | def_uscite_anonime    // [1.3.0 / M-8]
                   | def_png_ha            // [1.3.0 / M-10]
                   | def_argomento         // [1.3.0 / M-10]
+                  | def_titolo            // [1.3.0 / M-6]
+                  | def_autore
+                  | def_prologo
+                  | def_messaggio
 
     // --- COPULA FLESSIBILE NEL NUMERO (A5) ---
     _copula: "è" | "sono"
@@ -403,6 +407,13 @@ di Lark (EBNF con azioni `-> nome`).
     a_chi: PREP_AZIONE | "ad"
     argomento_chiavi: TESTO_QUOTATO ( "oppure" TESTO_QUOTATO )*
 
+    // --- [1.3.0 / M-6] PRESENTAZIONE DELLA STORIA ---
+    def_titolo: "Il" "titolo" "è" TESTO_QUOTATO "."
+    def_autore: _L_APOSTROFO "autore" "è" TESTO_QUOTATO "."
+    def_prologo: "Il" "prologo" "è" TESTO_QUOTATO "."
+    def_messaggio: "Il" "messaggio" TESTO_QUOTATO "è" TESTO_QUOTATO "."
+    _L_APOSTROFO: /[Ll]'/
+
     // --- STATO ASTRATTO (stati e contatori) ---
     // [0.27.0/A] _copula (è|sono) e "parte"|"partono": i nomi di stato/contatore
     // sono spesso plurali ('le vite', 'i punti', 'le munizioni').
@@ -418,8 +429,9 @@ di Lark (EBNF con azioni `-> nome`).
     // Regola INLINE condivisa da eventi e demoni: o 'dire "…"' con conseguenze in
     // coda, OPPURE una o più conseguenze SENZA testo (tick silenzioso). Dopo ':'
     // il lookahead "dire" vs primo-token-di-conseguenza distingue → 0-ambiguo.
+    // [1.3.0 / M-1] 'e adesso' (o 'adesso') anche davanti alla prima conseguenza.
     _esito_temporale: "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )?
-                    | conseguenza ( "e" "adesso"? conseguenza )*
+                    | ( "e"? "adesso" )? conseguenza ( "e" "adesso"? conseguenza )*
 
     // --- EVENTI A TURNI ---
     def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
@@ -428,6 +440,8 @@ di Lark (EBNF con azioni `-> nome`).
     // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
     def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
               | "Quando" condizione ( "diventa" "vera" )? ":" _esito_temporale "." -> demone_quando
+              // [1.3.0 / M-7] Timer che parte da un fatto (N turni dopo il fronte di salita).
+              | NUMERO ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI ---
     def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
@@ -442,8 +456,14 @@ di Lark (EBNF con azioni `-> nome`).
                  | "chiude" "il" "dialogo"             -> esito_chiude
 
     // --- REGOLE (INVECE DI) ---
-    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale "."   // [0.30.0/A3] dire opzionale: riusa _esito_temporale (come evento/demone)
-    regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
+    // [1.3.0 / M-9] Tre fasi (Invece/Prima/Dopo), ramo 'altrimenti', categorie.
+    def_regola: fase_regola "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale ramo_altrimenti? "."
+    fase_regola: "Invece" -> fase_invece
+               | "Prima"  -> fase_prima
+               | "Dopo"   -> fase_dopo
+    ramo_altrimenti: ";"? "altrimenti" ":"? _esito_temporale
+    regola_target: ( ENTITA | DIREZIONE | categoria ) ( PREP_AZIONE ( ENTITA | categoria ) )?
+    categoria: "qualcosa" ( "di" PROPRIETA )?
 
     // --- CONDIZIONI (logica booleana: OR < AND < atomo) ---
     ?condizione: cond_or
@@ -555,6 +575,11 @@ di Lark (EBNF con azioni `-> nome`).
                 | "aumenta" VARIABILE ( "di" operando )?    -> cons_aumenta
                 | "diminuisci" VARIABILE ( "di" operando )? -> cons_diminuisci
                 | VARIABILE "diventa" operando   -> cons_contatore_set
+                // [1.3.0 / M-7] Moltiplicazione, divisione intera, resto, limiti.
+                | "moltiplica" VARIABILE "per" operando -> cons_moltiplica
+                | "dividi" VARIABILE "per" operando     -> cons_dividi
+                | "riduci" VARIABILE "modulo" operando  -> cons_modulo
+                | VARIABILE "resta" "fra" operando "e" operando -> cons_limita
                 | "vinci" TESTO_QUOTATO?         -> cons_vinci
                 | "perdi" TESTO_QUOTATO?         -> cons_perdi
                 | "termina" TESTO_QUOTATO?       -> cons_termina

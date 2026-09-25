@@ -12,7 +12,8 @@ import traceback
 from compilatore import analizza_file
 from strutture import Mondo
 from favella_utils import (normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola,
-                           assicura_console_utf8, nome_in_frase, con_preposizione)
+                           assicura_console_utf8, nome_in_frase, con_preposizione,
+                           radice_proprieta, messaggio)
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -28,7 +29,7 @@ def mostra_stanza(mondo: Mondo):
     # vede nulla (né descrizione, né oggetti, né uscite). Le uscite restano
     # comunque percorribili: il giocatore può muoversi alla cieca.
     if not mondo.c_e_luce():
-        print("È buio pesto.")
+        print(messaggio(mondo, "buio pesto", "È buio pesto."))
         return
 
     print(rendi_testo(mondo, stanza_corrente.descrizione_attuale(mondo)))
@@ -486,6 +487,18 @@ def _processa_demoni(mondo: Mondo) -> bool:
         if demone.tipo == "ogni_turno":
             # A LIVELLO: scatta a OGNI turno in cui la condizione è vera.
             scatta = ora_vera
+        elif demone.tipo == "dopo":
+            # [1.3.0 / M-7] 'N turni dopo che …': il fronte di salita apre un
+            # conto alla rovescia; scatta quando arriva a zero (una volta per
+            # fronte; un nuovo fronte durante il conto non lo riapre).
+            scatta = False
+            if ora_vera and not demone.era_vera and demone.conto is None:
+                demone.conto = demone.ritardo
+            elif demone.conto is not None:
+                demone.conto -= 1
+            if demone.conto is not None and demone.conto <= 0:
+                demone.conto = None
+                scatta = True
         else:
             # 'quando': sul FRONTE di salita (falso -> vero), una sola volta.
             scatta = ora_vera and not demone.era_vera
@@ -1081,54 +1094,131 @@ def _gestisci_scelta_dialogo(mondo: Mondo, comando: str) -> bool:
 
 
 def _cerca_regola(mondo: Mondo, verbi, con_oggetto: bool, id_oggetto1=None,
-                  id_oggetto2=None, preposizione=None):
-    """La regola 'Invece di' da applicare fra quelle scritte con uno dei `verbi`,
-    oppure None. Precedenza (invariata dalla 0.18.0):
+                  id_oggetto2=None, preposizione=None, fase: str = "invece"):
+    """La regola della `fase` ('invece', 'prima', 'dopo') da applicare fra
+    quelle scritte con uno dei `verbi`: (regola, altrimenti) oppure (None, False).
+    `altrimenti` è vero quando vale il ramo 'altrimenti' della regola (la sua
+    condizione è falsa). Precedenza (invariata dalla 0.18.0):
       FASE 0  regole a DUE oggetti (preposizione esatta, poi qualunque; in
               ciascun gruppo le condizionali soddisfatte prima delle semplici);
       FASE 1  regole a un oggetto con condizione soddisfatta;
-      FASE 2  regole a un oggetto senza condizione;
+      FASE 2  regole a un oggetto senza condizione (o col ramo 'altrimenti');
+      [1.3.0] poi le stesse fasi per le regole per CATEGORIA ('qualcosa di
+              pesante'): un oggetto preciso vince sempre su una categoria;
       GLOBALE regole senza bersaglio (anche per le azioni senza oggetto, es.
               'Invece di guarda se …'), nell'ordine in cui sono scritte.
-    Le fasi 0–2 valgono solo se l'azione richiede un oggetto. Una regola
-    specifica ha sempre la precedenza su una globale."""
+    Le fasi 0–2 valgono solo se l'azione richiede un oggetto. Ogni condizione è
+    valutata al più una volta per ricerca ('càpita' non pesca due volte)."""
+    valutate = {}
+
+    def vera(regola):
+        chiave = id(regola)
+        if chiave not in valutate:
+            valutate[chiave] = regola.condizione.valuta(mondo)
+        return valutate[chiave]
+
+    def scegli(gruppo):
+        for regola in gruppo:            # condizionali soddisfatte
+            if regola.condizione and vera(regola):
+                return regola, False
+        for regola in gruppo:            # poi semplici e rami 'altrimenti'
+            if not regola.condizione:
+                return regola, False
+            if regola.altrimenti and not vera(regola):
+                return regola, True
+        return None
+
+    candidate = [r for r in mondo.regole
+                 if getattr(r, "fase", "invece") == fase and r.verbo in verbi]
     if con_oggetto:
-        if id_oggetto2:
-            def _combacia_due_oggetti(regola, prep_esatta):
-                if not (regola.verbo in verbi and
-                        regola.id_oggetto_bersaglio == id_oggetto1 and
-                        regola.id_oggetto_secondario == id_oggetto2):
-                    return False
-                return regola.preposizione == preposizione if prep_esatta else True
+        for per_categoria in (False, True):
+            def combacia(regola, id_ogg, slot_id, slot_cat):
+                if per_categoria:
+                    if slot_cat is not None:
+                        return _nella_categoria(mondo, id_ogg, slot_cat)
+                    return slot_id == id_ogg
+                return slot_cat is None and slot_id == id_ogg
 
-            for prep_esatta in (True, False):
-                for regola in mondo.regole:  # condizionali soddisfatte
-                    if (_combacia_due_oggetti(regola, prep_esatta)
-                            and regola.condizione
-                            and regola.condizione.valuta(mondo)):
-                        return regola
-                for regola in mondo.regole:  # poi le semplici
-                    if _combacia_due_oggetti(regola, prep_esatta) and not regola.condizione:
-                        return regola
+            def categorica(regola):
+                return (getattr(regola, "categoria", None) is not None
+                        or getattr(regola, "categoria_secondaria", None) is not None)
 
-        def _combacia_un_oggetto(regola):
-            return (regola.verbo in verbi
-                    and regola.id_oggetto_bersaglio == id_oggetto1
-                    and regola.id_oggetto_secondario is None)
+            gruppo_base = [r for r in candidate if categorica(r) == per_categoria]
+            if id_oggetto2:
+                for prep_esatta in (True, False):
+                    gruppo = [r for r in gruppo_base
+                              if combacia(r, id_oggetto1, r.id_oggetto_bersaglio, r.categoria)
+                              and (r.id_oggetto_secondario is not None or r.categoria_secondaria is not None)
+                              and combacia(r, id_oggetto2, r.id_oggetto_secondario, r.categoria_secondaria)
+                              and (not prep_esatta or r.preposizione == preposizione)]
+                    trovata = scegli(gruppo)
+                    if trovata:
+                        return trovata
+            gruppo = [r for r in gruppo_base
+                      if combacia(r, id_oggetto1, r.id_oggetto_bersaglio, r.categoria)
+                      and r.id_oggetto_secondario is None and r.categoria_secondaria is None]
+            trovata = scegli(gruppo)
+            if trovata:
+                return trovata
 
-        for regola in mondo.regole:
-            if (_combacia_un_oggetto(regola) and regola.condizione
-                    and regola.condizione.valuta(mondo)):
-                return regola
-        for regola in mondo.regole:
-            if _combacia_un_oggetto(regola) and not regola.condizione:
-                return regola
+    for regola in candidate:
+        if regola.globale:
+            if regola.condizione is None or vera(regola):
+                return regola, False
+            if regola.altrimenti:
+                return regola, True
+    return None, False
 
-    for regola in mondo.regole:
-        if regola.id_oggetto_bersaglio is None and regola.verbo in verbi:
-            if regola.condizione is None or regola.condizione.valuta(mondo):
-                return regola
-    return None
+
+def _nella_categoria(mondo: Mondo, id_oggetto, proprieta: str) -> bool:
+    """[1.3.0 / M-9] L'oggetto appartiene alla categoria: 'qualcosa' ("") è
+    ogni oggetto; 'qualcosa di pesante' ogni oggetto con quella proprietà (per
+    radice: 'pesanti' vale 'pesante')."""
+    oggetto = mondo.trova_oggetto(id_oggetto) if id_oggetto else None
+    if oggetto is None:
+        return False
+    if proprieta == "":
+        return True
+    if proprieta == "prendibile":
+        return bool(oggetto.prendibile)
+    radice = radice_proprieta(proprieta)
+    return any(radice_proprieta(p) == radice for p in oggetto.proprieta)
+
+
+def _applica_regola(mondo: Mondo, regola, altrimenti: bool, mostra: bool = True) -> bool:
+    """Stampa la risposta della regola (o del suo ramo 'altrimenti'), ne esegue
+    le conseguenze, annuncia i movimenti; se il giocatore si è spostato mostra
+    la nuova stanza. Restituisce False se la partita è finita."""
+    risposta = regola.risposta_di(altrimenti)
+    if risposta:   # [0.30.0/A3] regola muta: niente riga vuota
+        print(rendi_testo(mondo, risposta))
+    pos_prima = mondo.posizione_giocatore
+    regola.esegui_conseguenze(mondo, altrimenti)
+    _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
+    if partita_finita(mondo):
+        return False
+    if mostra and mondo.posizione_giocatore != pos_prima:
+        mostra_stanza(mondo)
+    return True
+
+
+def _cerca_regola_movimento(mondo: Mondo, direzione: str, fase: str):
+    """Le regole 'vai <direzione>' della fase: prima quelle con condizione
+    vera, poi le semplici e i rami 'altrimenti' (come per un oggetto)."""
+    valutate = {}
+    gruppo = [r for r in mondo.regole if r.verbo == "vai"
+              and r.id_oggetto_bersaglio == direzione and getattr(r, "fase", "invece") == fase]
+    for regola in gruppo:
+        if regola.condizione:
+            valutate[id(regola)] = regola.condizione.valuta(mondo)
+            if valutate[id(regola)]:
+                return regola, False
+    for regola in gruppo:
+        if not regola.condizione:
+            return regola, False
+        if regola.altrimenti and not valutate.get(id(regola), True):
+            return regola, True
+    return None, False
 
 
 # [1.2.2] Argomenti che, dopo 'guarda'/'osserva', non nominano un oggetto: il
@@ -1243,46 +1333,32 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
             verso = _MOVIMENTI_IMPLICITI[verbo_giocatore]
             verbo_giocatore = verso if verso in mondo.direzioni else verbo_giocatore
             if verbo_giocatore not in mondo.direzioni:
-                print("Non puoi andare in quella direzione.")
+                print(messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
                 return True
 
         # --- Gestione Movimento ---
         # [Livello 4 / L1] La mappa forma->canonica vive sul mondo (base + custom).
         direzione_normalizzata = mondo.direzioni.get(verbo_giocatore)
         if direzione_normalizzata:
-            # Check per regole "Invece di vai a [direzione]"
-            # Simuliamo un'azione "vai" con oggetto "direzione"
-            regola_movimento_applicata = False
-            
-            # FASE 1: Regole Condizionali
-            for regola in mondo.regole:
-                if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
-                    if regola.condizione and regola.condizione.valuta(mondo):
-                        if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                        regola.esegui_conseguenze(mondo)
-                        regola_movimento_applicata = True
-                        break
-            
-            # FASE 2: Regole Semplici
-            if not regola_movimento_applicata:
-                for regola in mondo.regole:
-                    if (regola.verbo == "vai" and regola.id_oggetto_bersaglio == direzione_normalizzata):
-                        if not regola.condizione:
-                            if regola.risposta: print(rendi_testo(mondo, regola.risposta))  # [0.30.0/A3] regola muta: niente riga vuota
-                            regola.esegui_conseguenze(mondo)
-                            regola_movimento_applicata = True
-                            break
-
-            if regola_movimento_applicata:
-                _stampa_annunci(mondo)   # [A5] movimenti NPC dalle regole 'vai'
-                if partita_finita(mondo):
-                    return False
-                return True
+            # [1.3.0 / M-9] 'Prima di vai nord': scatta, poi il movimento prosegue.
+            regola, altrimenti = _cerca_regola_movimento(mondo, direzione_normalizzata, "prima")
+            if regola is not None and not _applica_regola(mondo, regola, altrimenti, mostra=False):
+                return False
+            # Regole 'Invece di vai <direzione>': prima le condizionali vere,
+            # poi le semplici (e i rami 'altrimenti'). Come sempre, una regola
+            # 'vai' che sposta il giocatore non ristampa la stanza.
+            regola, altrimenti = _cerca_regola_movimento(mondo, direzione_normalizzata, "invece")
+            if regola is not None:
+                return _applica_regola(mondo, regola, altrimenti, mostra=False)
 
             vecchia_posizione = mondo.posizione_giocatore
             muovi_logica_default(mondo, direzione_normalizzata)
             if mondo.posizione_giocatore != vecchia_posizione: # Se il movimento è avvenuto
                 mostra_stanza(mondo)
+                # [1.3.0 / M-9] 'Dopo di vai nord': dopo che ci si è mossi.
+                regola, altrimenti = _cerca_regola_movimento(mondo, direzione_normalizzata, "dopo")
+                if regola is not None:
+                    return _applica_regola(mondo, regola, altrimenti)
             return True
 
         # --- Gestione Azioni Standard ---
@@ -1295,7 +1371,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
             argomento_sx = ""
         nome_azione = mondo.azione_del_verbo(verbo_giocatore, con_oggetto=bool(argomento_sx))
         if not nome_azione:
-            print("Non capisco questo verbo.")
+            print(messaggio(mondo, "non capisco", "Non capisco questo verbo."))
             _senza_turno(mondo)
             return True
         azione = mondo.azioni[nome_azione]
@@ -1327,7 +1403,8 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         if azione.richiede_oggetto:
             if not id_oggetto1 or id_oggetto1 == "<ambiguo>":
                 if id_oggetto1 is None:
-                    print(f"Non vedo '{argomento_sx}' qui.")
+                    print(messaggio(mondo, "non vedo", f"Non vedo '{argomento_sx}' qui.",
+                                    cosa=argomento_sx))
                 _senza_turno(mondo)
                 return True
 
@@ -1336,7 +1413,8 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
                 _ricorda_comando_ambiguo(mondo, parole, "dx")
                 if not id_oggetto2 or id_oggetto2 == "<ambiguo>":
                     if id_oggetto2 is None:
-                        print(f"Non vedo '{argomento_dx}' qui.")
+                        print(messaggio(mondo, "non vedo", f"Non vedo '{argomento_dx}' qui.",
+                                        cosa=argomento_dx))
                     _senza_turno(mondo)
                     return True
 
@@ -1357,34 +1435,39 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         # facevano partire l'azione di default. I verbi d'autore non hanno
         # sinonimi impliciti (verbo_principale → None).
         verbi_scritti = {verbo_giocatore, nome_azione}
-        regola_da_eseguire = _cerca_regola(mondo, verbi_scritti, azione.richiede_oggetto,
-                                           id_oggetto1, id_oggetto2, preposizione_trovata)
-        if regola_da_eseguire is None:
-            principale = mondo.verbo_principale(nome_azione)
-            if principale and principale not in verbi_scritti:
-                regola_da_eseguire = _cerca_regola(mondo, {principale}, azione.richiede_oggetto,
-                                                   id_oggetto1, id_oggetto2, preposizione_trovata)
 
-        if regola_da_eseguire is not None:
-            if regola_da_eseguire.risposta:   # [0.30.0/A3] regola muta: niente riga vuota
-                print(rendi_testo(mondo, regola_da_eseguire.risposta))
-            # [0.18.0 / B2] Se una conseguenza teletrasporta il giocatore, dopo
-            # l'esecuzione mostriamo la nuova stanza (come per il movimento via
-            # direzioni), così l'effetto è visibile e non muto.
+        def regola_della_fase(fase):
+            trovata = _cerca_regola(mondo, verbi_scritti, azione.richiede_oggetto,
+                                    id_oggetto1, id_oggetto2, preposizione_trovata, fase)
+            if trovata[0] is None:
+                principale = mondo.verbo_principale(nome_azione)
+                if principale and principale not in verbi_scritti:
+                    trovata = _cerca_regola(mondo, {principale}, azione.richiede_oggetto,
+                                            id_oggetto1, id_oggetto2, preposizione_trovata, fase)
+            return trovata
+
+        # [1.3.0 / M-9] 'Prima di': scatta, poi l'azione prosegue (a meno che la
+        # regola non abbia chiuso la partita o spostato il giocatore).
+        regola, altrimenti = regola_della_fase("prima")
+        if regola is not None:
             pos_prima = mondo.posizione_giocatore
-            regola_da_eseguire.esegui_conseguenze(mondo)
-            _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
-            if partita_finita(mondo):
+            if not _applica_regola(mondo, regola, altrimenti):
                 return False
             if mondo.posizione_giocatore != pos_prima:
-                mostra_stanza(mondo)
-            return True
+                return True
+
+        # [0.18.0 / B2] Se una conseguenza teletrasporta il giocatore, dopo
+        # l'esecuzione mostriamo la nuova stanza (vedi _applica_regola).
+        regola, altrimenti = regola_della_fase("invece")
+        if regola is not None:
+            return _applica_regola(mondo, regola, altrimenti)
 
         # 2. Esecuzione Logica di Default
+        mondo._azione_riuscita = False
         if azione.logica_di_default is None:
             # [Livello 4] Verbo personalizzato senza alcuna regola applicabile:
             # non esiste una logica di default, quindi un messaggio neutro.
-            print("Non succede nulla di particolare.")
+            print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
         elif azione.richiede_oggetto:
             # [1.3.0 / G-7] 'lascia la mela sul tavolo' è 'metti la mela sul
             # tavolo'; 'prendi la mela dal tavolo' controlla da dove la si prende
@@ -1408,7 +1491,14 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
         if ristampa and _ristampa_dopo(nome_azione):
             mostra_stanza(mondo)
-        
+
+        # [1.3.0 / M-9] 'Dopo di': l'azione di default è riuscita (ha preso,
+        # aperto, mangiato…): la regola aggiunge il suo seguito.
+        if getattr(mondo, "_azione_riuscita", False):
+            mondo._azione_riuscita = False
+            regola, altrimenti = regola_della_fase("dopo")
+            if regola is not None:
+                return _applica_regola(mondo, regola, altrimenti)
         return True
     except Exception as e:
         # [0.27.0 / E] Diagnostica qui, ma l'eccezione RISALE a elabora_comando:
@@ -1582,6 +1672,22 @@ def _esegui_elenco(mondo: Mondo, comandi, nome_azione: str, ristampa: bool) -> b
     return True
 
 
+def intestazione(mondo: Mondo, invito: str = ""):
+    """[1.3.0 / M-6] L'apertura della partita: il titolo della storia (o quello
+    del motore), l'autore, l'invito sui comandi e il prologo. Condivisa da
+    terminale, IDE, playground e pagina esportata."""
+    titolo = getattr(mondo, "titolo", None)
+    print(f"--- {titolo.upper()} ---" if titolo else "--- BENVENUTO IN FAVELLA 1 ---")
+    autore = getattr(mondo, "autore", None)
+    if autore:
+        print(f"di {autore}")
+    if invito:
+        print(invito)
+    prologo = getattr(mondo, "prologo", None)
+    if prologo:
+        print("\n" + rendi_testo(mondo, prologo))
+
+
 # [0.21.0 / A3] TRASCRIZIONE: duplica l'output del gioco su un file di testo,
 # così il giocatore può conservare il resoconto della partita. È una funzione
 # della SESSIONE da riga di comando (vive nel loop, non nel mondo): scrive sia
@@ -1615,8 +1721,9 @@ def gioca(mondo: Mondo):
         print("[ERRORE FATALE] Nessuna stanza definita. Impossibile avviare il gioco.")
         return
 
-    print("\n--- BENVENUTO IN FAVELLA 1 ---")
-    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA, RICOMINCIA, TRASCRIZIONE.")
+    print("")
+    intestazione(mondo, "Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, "
+                        "SALVA, CARICA, RICOMINCIA, TRASCRIZIONE.")
     mostra_stanza(mondo)
 
     trascrizione = None   # file aperto della trascrizione, o None

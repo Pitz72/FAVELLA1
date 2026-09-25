@@ -3,7 +3,8 @@
 
 from strutture import Mondo, Azione, ConseguenzaProprieta
 from favella_utils import (rendi_testo, frase_indeterminativa, prima_maiuscola, nome_in_frase,
-                           con_preposizione, accorda, pronome_oggetto, radice_proprieta)
+                           con_preposizione, accorda, pronome_oggetto, radice_proprieta,
+                           messaggio)
 
 def _riuscita(mondo: Mondo):
     """[1.3.0] L'azione di default ha fatto ciò che doveva (preso, aperto,
@@ -57,7 +58,7 @@ def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     # [0.24.0 / A4] Al buio non si esamina nulla (una regola d'autore 'Invece di
     # esamina X' ha comunque la precedenza: è valutata prima della logica di default).
     if not mondo.c_e_luce():
-        print("È troppo buio per vederci.")
+        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
@@ -74,7 +75,7 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     # restano prioritarie). Un oggetto luminoso a terra rischiara la stanza, quindi
     # 'c_e_luce' è già vero in quel caso: lo si può prendere senza problemi.
     if not mondo.c_e_luce():
-        print("È troppo buio per vederci.")
+        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto):
@@ -90,7 +91,8 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
         return
     if not oggetto.prendibile:
         # [1.3.0 / M-4] Il pronome si accorda: 'Non puoi prenderla.'
-        print(f"Non puoi prender{pronome_oggetto(oggetto.nome_visualizzato)}.")
+        print(messaggio(mondo, "non si prende", f"Non puoi prender{pronome_oggetto(oggetto.nome_visualizzato)}.",
+                        oggetto=_nome(oggetto)))
         return
     # [Livello 7] Capacità di trasporto opzionale: se l'autore l'ha dichiarata,
     # l'inventario non può superarla (la base più i bonus degli oggetti già
@@ -98,7 +100,8 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     # [1.2.2] Conta tutto ciò che il giocatore ha addosso, anche dentro zaini e
     # borse, e il contenuto dell'oggetto preso (Mondo.puo_prendere).
     if not mondo.puo_prendere(oggetto):
-        print(f"Hai le mani troppo piene: lascia qualcosa prima di prender{pronome_oggetto(oggetto.nome_visualizzato)}.")
+        print(messaggio(mondo, "mani piene", "Hai le mani troppo piene: lascia qualcosa prima di "
+                        f"prender{pronome_oggetto(oggetto.nome_visualizzato)}.", oggetto=_nome(oggetto)))
         return
 
     # [Livello 4 / M1] Rimuove l'oggetto da dove si trova (stanza, contenitore o
@@ -106,14 +109,14 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     mondo.rimuovi_da_posizione(oggetto)
     mondo.inventario.add(id_oggetto)
     oggetto.posizione = "inventario"
-    print(f"Preso: {_nome(oggetto)}.")
+    print(messaggio(mondo, "preso", f"Preso: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
     _riuscita(mondo)
 
 def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """[Livello 4 / M1] Logica di default per METTERE [ogg1] in/su [ogg2]."""
     # [0.24.0 / A4] Al buio non si manipola nulla.
     if not mondo.c_e_luce():
-        print("È troppo buio per vederci.")
+        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     if not id_oggetto2:
         print("Dove vuoi metterlo?")
@@ -159,7 +162,7 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     # (prima 'lascia' sfuggiva al blocco). Una fonte di luce accesa in mano rende
     # comunque 'c_e_luce' vero, quindi posarla per illuminare resta possibile.
     if not mondo.c_e_luce():
-        print("È troppo buio per vederci.")
+        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     if not mondo.giocatore_possiede(id_oggetto):
         print("Non ce l'hai.")
@@ -176,7 +179,7 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
         mondo.rimuovi_da_posizione(oggetto)
     oggetto.posizione = stanza_corrente.nome
     stanza_corrente.oggetti[id_oggetto] = oggetto
-    print(f"Lasciato: {_nome(oggetto)}.")
+    print(messaggio(mondo, "lasciato", f"Lasciato: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
     _riuscita(mondo)
 
 def inventario_logica_default(mondo: Mondo):
@@ -188,7 +191,7 @@ def inventario_logica_default(mondo: Mondo):
     cap = mondo.capacita_attuale()
     suffisso = f" ({mondo.numero_oggetti_portati()}/{cap})" if cap is not None else ""
     if not mondo.inventario:
-        print(f"Non stai portando nulla.{suffisso}")
+        print(messaggio(mondo, "inventario vuoto", "Non stai portando nulla.") + suffisso)
     else:
         print(f"Stai portando:{suffisso}")
         for id_ogg in sorted(list(mondo.inventario)):
@@ -217,7 +220,7 @@ def muovi_logica_default(mondo: Mondo, direzione: str):
         _riuscita(mondo)
         # La descrizione della nuova stanza verrà mostrata da gioco.py
     else:
-        print("Non puoi andare in quella direzione.")
+        print(messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
 
 def guarda_logica_default(mondo: Mondo):
     """Logica di default per l'azione GUARDA: ristampa la stanza corrente.
@@ -292,7 +295,7 @@ def chiudere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = No
 def accendere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "accendibile"):
-        print("Non succede nulla di particolare.")
+        print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
     if _ha(oggetto, "accesa"):
         print(f"È già {accorda(oggetto.nome_visualizzato, 'acceso')}.")
@@ -305,7 +308,7 @@ def accendere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = N
 def spegnere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "accendibile"):
-        print("Non succede nulla di particolare.")
+        print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
     if not _ha(oggetto, "accesa"):
         print(f"È già {accorda(oggetto.nome_visualizzato, 'spento')}.")
@@ -335,14 +338,15 @@ def bere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
 
 
 def aspettare_logica_default(mondo: Mondo):
-    print("Il tempo passa.")
+    print(messaggio(mondo, "tempo", "Il tempo passa."))
+    _riuscita(mondo)
     _riuscita(mondo)
 
 
 def niente_logica_default(mondo: Mondo, id_oggetto: str = None, id_oggetto2: str = None):
     """Verbi che il motore riconosce ma a cui non dà un effetto proprio: ci
     pensano le regole d'autore."""
-    print("Non succede nulla di particolare.")
+    print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
 
 
 def annusare_intorno_logica_default(mondo: Mondo):
@@ -354,7 +358,7 @@ def ascoltare_intorno_logica_default(mondo: Mondo):
 
 
 def spostare_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
-    print("Non succede nulla di particolare.")
+    print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
 
 
 # --- DEFINIZIONE DELLA LIBRERIA ---

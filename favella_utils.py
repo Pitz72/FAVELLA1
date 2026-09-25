@@ -76,13 +76,67 @@ DIREZIONI_OPPOSTE_BASE = {
 _RE_PLACEHOLDER = re.compile(r"\[([^\[\]]+)\]")
 
 
+# [1.3.0 / M-6] Parentesi quadre LETTERALI: nel sorgente si scrivono \[ e \]
+# (vedi compilatore.TESTO_QUOTATO), arrivano qui come due caratteri riservati e
+# tornano parentesi solo alla fine di rendi_testo.
+QUADRA_APERTA = "\ue000"
+QUADRA_CHIUSA = "\ue001"
+# [1.3.0 / M-6] Testo CONDIZIONALE: '[se la porta è aperta]…[altrimenti]…[fine]'.
+# Non si annida. La condizione è compilata dal compilatore (mondo.condizioni_testo).
+RE_TESTO_CONDIZIONALE = re.compile(
+    r"\[se\s+([^\[\]]+?)\s*\](.*?)(?:\[altrimenti\](.*?))?\[fine\]", re.DOTALL | re.IGNORECASE)
+_MARCATORI_CONDIZIONALI = re.compile(r"^(?:se\s.+|altrimenti|fine)$", re.IGNORECASE | re.DOTALL)
+# [1.3.0 / M-6] I MESSAGGI DEL MOTORE che l'autore può ridefinire con
+# 'Il messaggio "chiave" è "…".'. Nel testo, [oggetto] è l'oggetto del comando
+# e [cosa] la parola che il giocatore ha scritto; valgono gli altri segnaposto.
+MESSAGGI_MOTORE = {
+    "non capisco": "Non capisco questo verbo.",
+    "non vedo": "Non vedo '[cosa]' qui.",
+    "buio": "È troppo buio per vederci.",
+    "buio pesto": "È buio pesto.",
+    "direzione": "Non puoi andare in quella direzione.",
+    "niente": "Non succede nulla di particolare.",
+    "tempo": "Il tempo passa.",
+    "preso": "Preso: [oggetto].",
+    "lasciato": "Lasciato: [oggetto].",
+    "non si prende": "Non puoi prenderlo.",
+    "mani piene": "Hai le mani troppo piene: lascia qualcosa prima di prenderlo.",
+    "inventario vuoto": "Non stai portando nulla.",
+}
+
+
+def messaggio(mondo, chiave: str, predefinito: str, **valori) -> str:
+    """[1.3.0 / M-6] Il messaggio `chiave` come l'ha ridefinito l'autore (con
+    [oggetto] e [cosa] sostituiti), altrimenti `predefinito` (già composto)."""
+    testo = (getattr(mondo, "messaggi", None) or {}).get(chiave)
+    if testo is None:
+        return predefinito
+    for nome, valore in valori.items():
+        testo = testo.replace(f"[{nome}]", str(valore))
+    return rendi_testo(mondo, testo)
+
+
+# [1.3.0 / M-6, M-7] Segnaposto sempre disponibili: il turno e il luogo.
+SEGNAPOSTO_DEL_MOTORE = ("turno", "luogo")
+
+
 def estrai_placeholder(testo: str) -> list:
     """Restituisce i nomi-segnaposto grezzi presenti in una stringa (il contenuto
     tra parentesi quadre, ripulito dagli spazi ai lati). Usata dal compilatore
-    per segnalare a compile-time i segnaposto che non risolveranno nulla."""
+    per segnalare a compile-time i segnaposto che non risolveranno nulla.
+    [1.3.0] I marcatori del testo condizionale ([se …], [altrimenti], [fine])
+    non sono segnaposto."""
     if not testo:
         return []
-    return [m.group(1).strip() for m in _RE_PLACEHOLDER.finditer(testo)]
+    return [m.group(1).strip() for m in _RE_PLACEHOLDER.finditer(testo)
+            if not _MARCATORI_CONDIZIONALI.match(m.group(1).strip())]
+
+
+def condizioni_nel_testo(testo: str) -> list:
+    """[1.3.0 / M-6] Le condizioni scritte nei testi condizionali ('[se …]')."""
+    if not testo or "[" not in testo:
+        return []
+    return [m.group(1).strip() for m in RE_TESTO_CONDIZIONALE.finditer(testo)]
 
 
 def rendi_testo(mondo, testo: str) -> str:
@@ -97,8 +151,24 @@ def rendi_testo(mondo, testo: str) -> str:
     il testo resta leggibile e il refuso è visibile (oltre al warning a
     compile-time). Duck-typed sul mondo: non importa strutture (evita cicli).
     """
-    if not testo or "[" not in testo:
+    if not testo:
         return testo
+    if "[" not in testo:
+        return testo.replace(QUADRA_APERTA, "[").replace(QUADRA_CHIUSA, "]")
+
+    # [1.3.0 / M-6] Prima i testi condizionali: resta il ramo della condizione
+    # vera (o quello 'altrimenti', o niente). Una condizione che il compilatore
+    # non conosce lascia il testo com'è (e il linter l'ha già segnalata).
+    compilate = getattr(mondo, "condizioni_testo", None) or {}
+
+    def _ramo(match):
+        condizione = compilate.get(" ".join(match.group(1).split()))
+        if condizione is None:
+            return match.group(0)
+        return match.group(2) if condizione.valuta(mondo) else (match.group(3) or "")
+
+    if compilate:
+        testo = RE_TESTO_CONDIZIONALE.sub(_ramo, testo)
 
     def _sostituisci(match):
         grezzo = match.group(1).strip()
@@ -118,9 +188,17 @@ def rendi_testo(mondo, testo: str) -> str:
         if ogg is not None:
             nome = nome_in_frase(ogg.nome_visualizzato)
             return prima_maiuscola(nome) if a_inizio else nome
+        if norm == "turno":   # [1.3.0 / M-7]
+            return str(getattr(mondo, "turno_corrente", 0))
+        if norm == "luogo":   # [1.3.0 / M-6] il nome della stanza del giocatore
+            stanza = getattr(mondo, "stanze", {}).get(getattr(mondo, "posizione_giocatore", None))
+            if stanza is not None:
+                nome = nome_in_frase(stanza.nome_visualizzato)
+                return prima_maiuscola(nome) if a_inizio else nome
         return match.group(0)  # sconosciuto: resta il letterale [nome]
 
-    return _RE_PLACEHOLDER.sub(_sostituisci, testo)
+    testo = _RE_PLACEHOLDER.sub(_sostituisci, testo)
+    return testo.replace(QUADRA_APERTA, "[").replace(QUADRA_CHIUSA, "]")
 
 
 def _apre_la_frase(testo: str, posizione: int) -> bool:
