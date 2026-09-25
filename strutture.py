@@ -743,6 +743,12 @@ class Mondo:
         # Serve ai verbi presenti in due azioni ('guarda': esamina X / guarda la
         # stanza), risolti dall'argomento del comando: vedi azione_del_verbo().
         self.azioni_del_verbo: Dict[str, List[str]] = {}
+        # [1.3.0] Stato di SESSIONE del comando in corso (fuori dalle istantanee):
+        # il comando non fa passare il tempo; una domanda di conferma in sospeso
+        # ('esci', 'ricomincia'); il giocatore ha chiesto di chiudere la partita.
+        self._turno_libero: bool = False
+        self._in_conferma: Optional[str] = None
+        self._uscita_richiesta: bool = False
         self.posizione_giocatore: str | None = None
         # ID della stanza di partenza dichiarata esplicitamente dall'autore
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
@@ -938,6 +944,8 @@ class Mondo:
     _CAMPI_VOLATILI = ("_storia_stati", "azioni",
                        "mappa_verbi_giocatore", "azioni_del_verbo",
                        "annunci", "_snap_dialogo",
+                       # [1.3.0] sessione del comando in corso
+                       "_turno_libero", "_in_conferma", "_uscita_richiesta",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
@@ -1029,6 +1037,12 @@ class Mondo:
             self.posizione_giocatore = self.posizione_iniziale
         elif self.stanze:
             self.posizione_giocatore = list(self.stanze.keys())[0]
+        # [1.3.0] Ora che il giocatore ha un posto, i demoni 'Quando' registrano il
+        # valore di partenza delle loro condizioni: una condizione già vera
+        # all'avvio non è un fronte. Prima lo si faceva a fine compilazione, con
+        # la posizione ancora vuota, e 'Quando il giocatore è in <partenza>'
+        # scattava al primo turno.
+        self.azzera_memoria_demoni()
         # [1.2.0] Il mondo a partita non ancora cominciata: CARICA riparte da qui
         # e rigioca la sequenza salvata. L'impronta dice se un salvataggio è stato
         # fatto su questa stessa storia.
@@ -1037,6 +1051,20 @@ class Mondo:
         self._registro_comandi = []
         self._pos_registro = []
         self._reg_ingresso_dialogo = None
+
+    def azzera_memoria_demoni(self):
+        """[1.3.0] Registra, per ogni demone 'Quando', il valore attuale della
+        sua condizione (il punto di partenza per riconoscere un fronte di
+        salita). Valutare una condizione con 'càpita' pesca dal generatore: qui
+        lo stato del generatore viene rimesso com'era, così la preparazione della
+        partita non consuma il caso."""
+        stato_caso = self.rng.getstate()
+        try:
+            for demone in self.demoni:
+                if demone.tipo == "quando":
+                    demone.era_vera = demone.condizione.valuta(self)
+        finally:
+            self.rng.setstate(stato_caso)
 
     def stato_essenziale(self) -> dict:
         """[1.2.0] Tutto ciò che distingue una partita dall'altra, in forma

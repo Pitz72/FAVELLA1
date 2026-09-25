@@ -188,7 +188,7 @@ def aiuto_logica_default(mondo: Mondo):
     print("  - Informazioni: inventario (o i, zaino), guarda, aiuto")
     print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'...")
     print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), salva e carica (anche con un nome: salva mattina), trascrizione")
-    print("  - Sistema: esci")
+    print("  - Sistema: ricomincia, esci (chiedono conferma)")
     print("\nCerca di usare verbi semplici e nomi di oggetti.")
 
 def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):

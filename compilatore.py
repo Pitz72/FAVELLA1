@@ -2139,9 +2139,10 @@ class FavellaTransformer(Transformer):
         # stato vergine) così una condizione GIÀ vera alla partenza non genera un
         # falso fronte al primo turno. Per i demoni 'ogni_turno' (a livello) il
         # campo è irrilevante. Il deepcopy dell'IDE preserva questo baseline.
-        for demone in m.demoni:
-            if demone.tipo == "quando":
-                demone.era_vera = demone.condizione.valuta(m)
+        # [1.3.0] Senza consumare il caso (vedi Mondo.azzera_memoria_demoni); il
+        # valore definitivo lo fissa imposta_posizione_iniziale, quando il
+        # giocatore ha già il suo posto.
+        m.azzera_memoria_demoni()
 
     # ==========================================================================
     # LINTER SEMANTICO (Livello 6 / patch 0.11.1)
@@ -4150,7 +4151,8 @@ def fav_step(cmd):
         return json.dumps({"text": buf.getvalue() + "\n[ERRORE] " + str(e),
                            "continua": True, "stato": getattr(_mondo, "stato_partita", "in_corso")})
     return json.dumps({"text": buf.getvalue(), "continua": bool(continua),
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+                       "stato": getattr(_mondo, "stato_partita", "in_corso"),
+                       "uscita": bool(getattr(_mondo, "_uscita_richiesta", False))})
 '''
 
 
@@ -4286,7 +4288,9 @@ function step() {
     py.globals.set("_cmd", cmd);
     const r = JSON.parse(py.runPython("fav_step(_cmd)"));
     append(r.text);
-    running = r.continua;
+    // [1.3.0] A partita finita si può ancora ANNULLARE, RICOMINCIARE o CARICARE:
+    // l'ingresso resta aperto finché il giocatore non chiede di uscire.
+    running = r.continua || (r.stato !== "in_corso" && !r.uscita);
     if (!running) { inp.disabled = true; send.disabled = true; append("\n— Fine —", "sys"); }
   } catch (e) { append("[errore] " + e.message, "sys"); }
 }

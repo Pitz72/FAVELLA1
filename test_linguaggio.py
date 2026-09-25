@@ -915,7 +915,10 @@ def test_comando_dopo_fine_partita_e_noop():
     _check(mondo.stato_partita == "persa", "la partita resta persa")
     _check(mondo.turno_corrente == turno_dopo_fine,
            "il contatore dei turni non avanza dopo la fine")
-    _check(out2.strip() == "", "nessun output: l'evento 'Ogni turno' non riscatta")
+    # [1.3.0] Dopo la fine il motore ricorda cosa si può fare (ANNULLA,
+    # RICOMINCIA, CARICA, FINE), ma nessun evento riscatta.
+    _check("TICK" not in out2 and "ANNULLA" in out2,
+           "nessun evento: solo il promemoria di cosa si può fare")
 
 
 def test_ordine_regola_bersaglio_non_oggetto_resta_errore():
@@ -1306,7 +1309,8 @@ def test_runtime_eventi_a_turni():
         c1 = elabora_comando(mondo, "esamina candela")  # turno 1
         c2 = elabora_comando(mondo, "esamina candela")  # turno 2 -> evento candela
         candela_dopo_t2 = mondo.trova_oggetto("candela").posizione
-        c3 = elabora_comando(mondo, "esamina candela")  # turno 3 -> perdi
+        # [1.3.0] la candela non c'è più: «Non vedo» non consumerebbe il turno
+        c3 = elabora_comando(mondo, "guarda")  # turno 3 -> perdi
     out = buf.getvalue()
     _check(mondo.turno_corrente == 3, "il contatore dei turni è avanzato a 3")
     _check(candela_dopo_t2 is None, "al turno 2 l'evento ha rimosso la candela")
@@ -3672,7 +3676,7 @@ def test_prima_maiuscola_preserva_nomi_propri():
         "Ogni 1 turno: la Guardia Reale va nel corridoio.\n"
     )
     mondo = runtime(src)
-    out = esegui(mondo, "esamina atrio")
+    out = esegui(mondo, "guarda")   # [1.3.0] un turno vero: un «Non vedo» non fa passare il tempo
     _check("Guardia Reale" in out,
            "l'annuncio mantiene 'Guardia Reale' (non 'guardia reale')")
 
@@ -5629,6 +5633,140 @@ def test_capienza_inventario_piatto_invariato():
     _check("Stai portando: (1/1)" in esegui(mondo, "inventario"), "l'inventario dice 1/1")
 
 
+# --- [1.3.0] Blocco A: sessione e turni (G-5, G-8, G-9, L-3, L-4) ------------
+
+_SRC_SESSIONE = (
+    "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+    "L'orto è una stanza.\nLa cucina collega nord a l'orto.\n"
+    "La mela è una cosa.\nLa mela è prendibile.\nLa mela è in cucina.\n"
+    "Il carro è una cosa.\nIl carro è in cucina.\n"
+    "I passi è un contatore.\n"
+    "Ogni 1 turno: aumenta i passi.\n"
+    '"mastica" è un comando.\n'
+    'Invece di mastica la mela: dire "Avvelenata!" e adesso perdi.\n')
+
+
+def test_errori_del_parser_non_consumano_turni():
+    print("[1.3.0 G-5: i comandi non capiti non fanno passare il tempo]")
+    from gioco import elabora_comando
+    mondo = runtime(_SRC_SESSIONE)
+    for c in ("xyzzy", "prendi il fantasma", "prendi", "aiuto", "parla con nessuno", "prendila"):
+        esegui(mondo, c)
+    _check(mondo.turno_corrente == 0 and mondo.variabili["passi"] == 0,
+           "verbo ignoto, oggetto assente, argomento mancante, aiuto: nessun turno, nessun evento")
+    _check(mondo._registro_comandi == [] and mondo._storia_stati == [],
+           "e nessuna traccia nella sequenza salvabile né nella pila di ANNULLA")
+    esegui(mondo, "guarda")
+    _check(mondo.turno_corrente == 1 and mondo.variabili["passi"] == 1,
+           "un'azione vera fa passare il turno")
+    esegui(mondo, "salta sul posto")
+    esegui(mondo, "annulla")
+    _check(mondo.turno_corrente == 0, "ANNULLA disfa l'ultima azione vera, non il refuso")
+
+
+def test_esci_chiede_conferma():
+    print("[1.3.0 G-8: 'esci' chiede conferma prima di chiudere la partita]")
+    from gioco import elabora_comando
+    mondo = runtime(_SRC_SESSIONE)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        c1 = elabora_comando(mondo, "esci")
+        c2 = elabora_comando(mondo, "no")
+    _check(c1 is True and c2 is True and "davvero" in buf.getvalue(),
+           "la prima volta chiede; 'no' fa continuare")
+    esegui(mondo, "esci")
+    out = esegui(mondo, "prendi la mela")
+    _check("Preso" in out and not mondo._uscita_richiesta,
+           "un altro comando fa cadere la domanda e vale da sé")
+    with contextlib.redirect_stdout(io.StringIO()):
+        elabora_comando(mondo, "esci")
+        c3 = elabora_comando(mondo, "sì")
+    _check(c3 is False and mondo._uscita_richiesta, "'sì' chiude la partita")
+    _check(mondo.turno_corrente == 1, "la domanda e la risposta non consumano turni")
+
+
+def test_esci_come_movimento():
+    print("[1.3.0 G-8: 'esci' è un movimento dove c'è un'uscita «fuori»]")
+    mondo = runtime(
+        "La casa è una stanza.\nIl cortile è una stanza.\n"
+        "Fuori e dentro sono direzioni opposte.\nLa casa collega fuori a il cortile.\n")
+    esegui(mondo, "esci")
+    _check(mondo.posizione_giocatore == "cortile", "dalla casa si esce nel cortile")
+    out = esegui(mondo, "esci")
+    _check("davvero" in out and mondo.posizione_giocatore == "cortile",
+           "dal cortile, senza uscita «fuori», chiede di chiudere la partita")
+
+
+def test_dopo_la_fine_si_puo_annullare_e_ricominciare():
+    print("[1.3.0 G-8: a partita finita ANNULLA, RICOMINCIA e FINE]")
+    from gioco import elabora_comando
+    mondo = runtime(_SRC_SESSIONE)
+    esegui(mondo, "prendi la mela")
+    out = esegui(mondo, "mastica la mela")
+    _check(mondo.stato_partita == "persa" and "ANNULLA" in out,
+           "alla fine il motore dice cosa si può fare")
+    turno = mondo.turno_corrente
+    out = esegui(mondo, "guarda")
+    _check(mondo.turno_corrente == turno and "RICOMINCIA" in out,
+           "un altro comando non fa passare turni e ripete le possibilità")
+    esegui(mondo, "annulla")
+    _check(mondo.stato_partita == "in_corso" and "mela" in mondo.inventario,
+           "ANNULLA riporta a prima del turno fatale")
+    esegui(mondo, "mastica la mela")
+    esegui(mondo, "ricomincia")
+    _check(mondo.stato_partita == "in_corso" and mondo.turno_corrente == 0
+           and "mela" not in mondo.inventario and mondo.variabili["passi"] == 0,
+           "RICOMINCIA riporta al mondo iniziale")
+    esegui(mondo, "mastica la mela")
+    with contextlib.redirect_stdout(io.StringIO()):
+        continua = elabora_comando(mondo, "fine")
+    _check(continua is False and mondo._uscita_richiesta, "FINE chiude")
+
+
+def test_ricomincia_durante_la_partita():
+    print("[1.3.0 G-8: RICOMINCIA durante la partita chiede conferma]")
+    mondo = runtime(_SRC_SESSIONE)
+    esegui(mondo, "prendi la mela")
+    out = esegui(mondo, "ricomincia")
+    _check("davvero" in out and "mela" in mondo.inventario, "prima chiede")
+    esegui(mondo, "sì")
+    _check(mondo.turno_corrente == 0 and "mela" not in mondo.inventario, "poi ricomincia")
+
+
+def test_quando_non_scatta_se_vero_in_partenza():
+    print("[1.3.0 G-9: 'Quando' non scatta al primo turno se era già vero]")
+    mondo = runtime(
+        "La cucina è una stanza.\nIl giocatore comincia in cucina.\n"
+        "L'orto è una stanza.\nLa cucina collega nord a l'orto.\n"
+        'Quando il giocatore è in cucina: dire "DEMONE".\n')
+    out = esegui(mondo, "guarda")
+    _check("DEMONE" not in out, "partire in cucina non è un fronte")
+    esegui(mondo, "nord")
+    _check("DEMONE" in esegui(mondo, "sud"), "rientrare in cucina lo è")
+
+
+def test_preparare_i_demoni_non_consuma_il_caso():
+    print("[1.3.0 L-4: la memoria dei demoni si prepara senza pescare dal caso]")
+    import random
+    from strutture import SEME_CASUALE_DEFAULT
+    mondo = runtime(
+        "La cucina è una stanza.\n"
+        'Quando càpita (1 su 2): dire "caso".\n')
+    _check(mondo.rng.getstate() == random.Random(SEME_CASUALE_DEFAULT).getstate(),
+           "il generatore del mondo è intatto all'inizio della partita")
+
+
+def test_salva_e_carica_non_intercettano_azioni_sugli_oggetti():
+    print("[1.3.0 L-3: 'carica il carro' non è un caricamento]")
+    mondo = runtime(_SRC_SESSIONE)
+    archivio = _ArchivioMemoria()
+    mondo.archivio_salvataggi = archivio
+    out = esegui(mondo, "carica il carro")
+    _check("salvataggio" not in out.lower(), "il carro presente: non si cerca un salvataggio")
+    esegui(mondo, "salva mattina")
+    _check("mattina" in archivio.d, "'salva mattina' salva come sempre")
+
+
 def main():
     tests = [
         test_disambiguazione_definizioni,
@@ -6031,6 +6169,15 @@ def main():
         test_capienza_contenitore_gia_pieno,
         test_lascia_un_oggetto_dallo_zaino,
         test_capienza_inventario_piatto_invariato,
+        # [1.3.0] Blocco A: sessione e turni
+        test_errori_del_parser_non_consumano_turni,
+        test_esci_chiede_conferma,
+        test_esci_come_movimento,
+        test_dopo_la_fine_si_puo_annullare_e_ricominciare,
+        test_ricomincia_durante_la_partita,
+        test_quando_non_scatta_se_vero_in_partenza,
+        test_preparare_i_demoni_non_consuma_il_caso,
+        test_salva_e_carica_non_intercettano_azioni_sugli_oggetti,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

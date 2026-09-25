@@ -57,14 +57,21 @@ def mostra_stanza(mondo: Mondo):
         uscite_str = ", ".join([f"{prima_maiuscola(d)} ({prima_maiuscola(mondo.trova_stanza(id_s).nome_visualizzato)})" for d, id_s in stanza_corrente.uscite.items()])
         print(f"Uscite: {uscite_str}.")
 
-def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
-    """Cerca di risolvere un nome parziale in un ID oggetto univoco nello scope attuale."""
+AMBIGUO = "<ambiguo>"
+
+
+def risolvi_in_silenzio(mondo: Mondo, nome_parziale: str):
+    """[1.3.0] Il nucleo della ricerca di un oggetto, SENZA stampare nulla.
+    Restituisce (id, candidati): id è l'oggetto (o la direzione canonica)
+    trovato, AMBIGUO se più oggetti combaciano (allora `candidati` li elenca),
+    None se nulla combacia. Usato dal parser per provare più letture dello
+    stesso comando prima di rispondere."""
     if not nome_parziale:
-        return None
+        return None, []
 
     stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
     if not stanza_corrente:
-        return None
+        return None, []
 
     # [Livello 4 / M1] Lo scope include il contenuto dei contenitori aperti e dei
     # supporti raggiungibili, non solo gli oggetti direttamente nella stanza.
@@ -77,7 +84,7 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
         nome_pulito = nome_pulito[2:].strip()
 
     if nome_pulito in mondo.direzioni:
-        return mondo.direzioni[nome_pulito]
+        return mondo.direzioni[nome_pulito], []
 
     # Normalizza l'input per trovare gli oggetti del gioco
     nome_normalizzato = normalizza_nome(nome_parziale)
@@ -90,24 +97,37 @@ def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
 
     # Priorità 1: Corrispondenza esatta (sul nome, poi sull'alias risolto)
     if nome_normalizzato in oggetti_in_scope:
-        return nome_normalizzato
+        return nome_normalizzato, []
     if nome_risolto in oggetti_in_scope:
-        return nome_risolto
+        return nome_risolto, []
 
     # Priorità 2: Corrispondenza parziale univoca. Il pool di candidati include
     # gli id in scope e gli alias (parziali) che rimandano a oggetti in scope.
-    candidati = [id_ogg for id_ogg in oggetti_in_scope if nome_normalizzato in id_ogg]
+    candidati = [id_ogg for id_ogg in oggetti_in_scope if _combacia_parziale(nome_normalizzato, id_ogg)]
     for ali, canonico in alias.items():
-        if canonico in oggetti_in_scope and nome_normalizzato in ali and canonico not in candidati:
+        if (canonico in oggetti_in_scope and _combacia_parziale(nome_normalizzato, ali)
+                and canonico not in candidati):
             candidati.append(canonico)
 
     if len(candidati) == 1:
-        return candidati[0]
-    elif len(candidati) > 1:
+        return candidati[0], candidati
+    if len(candidati) > 1:
+        return AMBIGUO, sorted(candidati)
+    return None, []
+
+
+def _combacia_parziale(cercato: str, nome: str) -> bool:
+    """Corrispondenza parziale fra quanto scritto dal giocatore e un nome."""
+    return cercato in nome
+
+
+def risolvi_nome_oggetto(mondo: Mondo, nome_parziale: str) -> str | None:
+    """Cerca di risolvere un nome parziale in un ID oggetto univoco nello scope
+    attuale. Se il nome è ambiguo pone la domanda e restituisce AMBIGUO."""
+    id_trovato, candidati = risolvi_in_silenzio(mondo, nome_parziale)
+    if id_trovato == AMBIGUO:
         print(f"Quale intendi di preciso? ({', '.join(candidati)})")
-        return "<ambiguo>"
-    else:
-        return None
+    return id_trovato
 
 
 # [0.18.0 / A4] Le preposizioni d'azione del parser runtime includono ora le
@@ -181,6 +201,12 @@ def _risolvi_anafora(mondo: Mondo, verbo: str, argomento: str):
         print(f"Non {_PRON_DISPLAY[gn]} vedi più.")
         return ("vuoto", nuovo_verbo, None)
     return ("ok", nuovo_verbo, rif)
+
+
+def _senza_turno(mondo: Mondo):
+    """[1.3.0] Il comando in corso non fa passare il tempo (errore del parser o
+    comando fuori dal mondo, come AIUTO): vedi elabora_comando."""
+    mondo._turno_libero = True
 
 
 def _stampa_annunci(mondo: Mondo):
@@ -274,21 +300,49 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     Restituisce True se il gioco deve continuare, False se deve terminare
     (uscita del giocatore, fine partita o evento terminale).
     """
-    # [Audit 0.17.0] A partita conclusa il comando è un no-op: niente turni, niente
-    # eventi/demoni. Difende dai chiamanti che ignorano il False di ritorno (in un
-    # loop corretto non si arriva mai qui dopo la fine). Si controlla lo stato
-    # SENZA passare da partita_finita(), che ristamperebbe l'esito.
-    if getattr(mondo, "stato_partita", "in_corso") != "in_corso":
-        return False
     comando_pulito = comando_grezzo.strip().lower()
+    # [Audit 0.17.0] A partita conclusa non passano turni né scattano eventi o
+    # demoni. [1.3.0] Ma si può ancora tornare indietro: ANNULLA, RICOMINCIA,
+    # CARICA; FINE chiude. Qualunque altro comando ricorda queste possibilità.
+    if getattr(mondo, "stato_partita", "in_corso") != "in_corso":
+        return _dopo_la_fine(mondo, comando_pulito)
     if not comando_pulito:
         return True
+    era_in_dialogo = mondo.in_dialogo()
+
+    # [1.3.0] Una domanda di conferma in sospeso (uscire, ricominciare): «sì» la
+    # esegue, «no» la annulla, ogni altro comando la lascia cadere e vale da sé.
+    in_sospeso = getattr(mondo, "_in_conferma", None)
+    if in_sospeso:
+        mondo._in_conferma = None
+        if comando_pulito in _RISPOSTE_SI:
+            if in_sospeso == "esci":
+                print("A presto!")
+                mondo._uscita_richiesta = True
+                return False
+            return _ricomincia(mondo)
+        if comando_pulito in _RISPOSTE_NO:
+            print("(Si continua.)")
+            return True
+
     # [Livello 5b] Durante una conversazione 'esci' chiude il dialogo (gestito in
     # _esegui_comando), NON il gioco: l'uscita dal gioco vale solo fuori dialogo.
-    era_in_dialogo = mondo.in_dialogo()
-    if not era_in_dialogo and comando_pulito in ["esci", "quit"]:
-        print("A presto!")
-        return False
+    # [1.3.0] Fuori dialogo 'esci' è un movimento se qui c'è un'uscita «fuori»;
+    # altrimenti chiede conferma prima di chiudere la partita (prima la chiudeva
+    # subito, e chi scriveva 'esci' per lasciare una stanza perdeva la partita).
+    if not era_in_dialogo and comando_pulito in ("esci", "quit"):
+        stanza = mondo.trova_stanza(mondo.posizione_giocatore)
+        if comando_pulito == "esci" and stanza and "fuori" in stanza.uscite:
+            comando_grezzo = comando_pulito = "fuori"
+        else:
+            mondo._in_conferma = "esci"
+            print("Vuoi davvero chiudere la partita? (sì/no) "
+                  "Se vuoi riprenderla più tardi, prima scrivi SALVA.")
+            return True
+    if not era_in_dialogo and comando_pulito in _VERBI_RICOMINCIA:
+        mondo._in_conferma = "ricomincia"
+        print("Vuoi davvero ricominciare da capo? (sì/no)")
+        return True
 
     # [1.2.0] SALVA / CARICA: comandi di servizio, validi anche durante una
     # conversazione; non consumano un turno e non entrano nella sequenza salvata.
@@ -323,6 +377,7 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             if not era_in_dialogo and not mondo._senza_istantanee else None)
     lunghezza_registro = len(mondo._registro_comandi)
 
+    mondo._turno_libero = False
     try:
         continua = _esegui_comando(mondo, comando_grezzo)
     except Exception:
@@ -334,10 +389,29 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if snap is not None:
             mondo.ripristina_stato(snap)
         return True
+    # [1.3.0] Un comando che il parser non ha capito (verbo ignoto, oggetto che
+    # non c'è, nome ambiguo) o che non riguarda il mondo (AIUTO) non fa passare
+    # il tempo: niente turno, niente eventi né demoni, niente istantanea. Fino
+    # alla 1.2.2 un refuso costava un turno, e nelle storie a tempo un sorso d'acqua.
+    if getattr(mondo, "_turno_libero", False):
+        mondo._turno_libero = False
+        return continua
     # [1.2.0] Il comando è andato a buon fine: entra nella sequenza salvabile
     # (ANCORA vi entra già risolto nel comando che ripete).
     mondo._registro_comandi.append(comando_grezzo)
     if not continua:
+        if getattr(mondo, "stato_partita", "in_corso") != "in_corso":
+            # [1.3.0] La partita è finita con questo comando: il turno entra
+            # comunque nella pila di ANNULLA, così lo si può disfare.
+            if snap is not None:
+                _registra_istantanea(mondo, snap, lunghezza_registro)
+            elif mondo._snap_dialogo is not None:
+                ingresso = mondo._reg_ingresso_dialogo
+                _registra_istantanea(mondo, mondo._snap_dialogo,
+                                     lunghezza_registro if ingresso is None else ingresso)
+                mondo._snap_dialogo = None
+                mondo._reg_ingresso_dialogo = None
+            print(_INVITO_DOPO_LA_FINE)
         return False
     # [Livello 5b] Le interazioni di dialogo non consumano un turno: il tempo del
     # mondo non avanza mentre si conversa.
@@ -368,7 +442,57 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     if not era_in_dialogo:
         mondo.ultimo_comando = comando_grezzo
     if avanza_turno_e_processa(mondo):
+        print(_INVITO_DOPO_LA_FINE)
         return False
+    return True
+
+
+# [1.3.0] Conferme, fine partita e RICOMINCIA.
+_RISPOSTE_SI = ("sì", "si", "s", "y", "yes")
+_RISPOSTE_NO = ("no", "n")
+_VERBI_RICOMINCIA = ("ricomincia", "ricominciare", "riavvia")
+_COMANDI_FINE = ("fine", "esci", "quit", "basta")
+_INVITO_DOPO_LA_FINE = ("\n(La partita è finita. Scrivi ANNULLA per tornare indietro di un "
+                        "turno, RICOMINCIA per ripartire da capo, CARICA per riprendere "
+                        "un salvataggio o FINE per uscire.)")
+
+
+def _dopo_la_fine(mondo: Mondo, comando: str) -> bool:
+    """[1.3.0] A partita finita: ANNULLA, RICOMINCIA e CARICA la riaprono (True);
+    FINE chiude; qualunque altro comando ricorda le possibilità (False, senza
+    turni né eventi). Prima ogni comando era un no-op muto."""
+    if comando in ("annulla", "disfa"):
+        if not mondo._storia_stati:
+            print("Non c'è niente da annullare.")
+            return False
+        _gestisci_annulla(mondo)
+        return mondo.stato_partita == "in_corso"
+    if comando in _VERBI_RICOMINCIA:
+        return _ricomincia(mondo)
+    parole = comando.split()
+    if _comando_di_archivio(mondo, parole) == "carica":
+        _gestisci_carica(mondo, _nome_salvataggio(parole))
+        return mondo.stato_partita == "in_corso"
+    if comando in _COMANDI_FINE:
+        print("A presto!")
+        mondo._uscita_richiesta = True
+        return False
+    if comando:
+        print(_INVITO_DOPO_LA_FINE.strip())
+    return False
+
+
+def _ricomincia(mondo: Mondo) -> bool:
+    """[1.3.0] Riporta la partita al mondo iniziale (come un CARICA di una
+    sequenza vuota): pila di ANNULLA e sequenza salvabile ripartono da zero."""
+    dati = {"formato": FORMATO_SALVATAGGIO, "versione": VERSIONE_FORMATO_SALVATAGGIO,
+            "storia": mondo._impronta_iniziale, "comandi": [], "ultimo": None}
+    ok, messaggio = carica_da_dati(mondo, dati)
+    if not ok:
+        print(f"({messaggio})")
+        return mondo.stato_partita == "in_corso"
+    print("(Si ricomincia da capo.)")
+    mostra_stanza(mondo)
     return True
 
 
@@ -609,6 +733,12 @@ def _comando_di_archivio(mondo: Mondo, parole):
         return None
     if verbo in getattr(mondo, "verbi_personalizzati", ()) or verbo in getattr(mondo, "sinonimi_verbo", {}):
         return None
+    # [1.3.0] 'ripristina il generatore', 'carica il carro': se il resto nomina un
+    # oggetto presente non è un salvataggio, ma un'azione sul mondo.
+    if len(parole) > 1 and mondo.posizione_giocatore:
+        trovato, _ = risolvi_in_silenzio(mondo, " ".join(parole[1:]))
+        if trovato is not None and (trovato == AMBIGUO or trovato in mondo.oggetti):
+            return None
     return "salva" if verbo in _VERBI_SALVA else "carica"
 
 
@@ -649,11 +779,13 @@ def _avvia_dialogo(mondo: Mondo, bersaglio_grezzo: str) -> bool:
     nodo d'ingresso. Restituisce sempre True (il gioco continua)."""
     if not bersaglio_grezzo:
         print("Con chi vuoi parlare?")
+        _senza_turno(mondo)
         return True
     id_npc = risolvi_nome_oggetto(mondo, bersaglio_grezzo)
     if not id_npc or id_npc == "<ambiguo>":
         if id_npc is None:
             print(f"Non vedo '{bersaglio_grezzo}' qui.")
+        _senza_turno(mondo)
         return True
     npc = mondo.trova_oggetto(id_npc)
     if not npc or not npc.is_personaggio:
@@ -880,6 +1012,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             if anafora is not None:
                 esito, verbo_giocatore, rif = anafora
                 if esito == "vuoto":
+                    _senza_turno(mondo)
                     return True
                 argomento_sx = rif
 
@@ -933,6 +1066,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         nome_azione = mondo.azione_del_verbo(verbo_giocatore, con_oggetto=bool(argomento_sx))
         if not nome_azione:
             print("Non capisco questo verbo.")
+            _senza_turno(mondo)
             return True
         azione = mondo.azioni[nome_azione]
 
@@ -942,6 +1076,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
         if azione.richiede_oggetto:
             if not argomento_sx:
                 print(f"Cosa vorresti {verbo_giocatore}?")
+                _senza_turno(mondo)
                 return True
             
             id_oggetto1 = risolvi_nome_oggetto(mondo, argomento_sx)
@@ -954,6 +1089,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             if not id_oggetto1 or id_oggetto1 == "<ambiguo>":
                 if id_oggetto1 is None:
                     print(f"Non vedo '{argomento_sx}' qui.")
+                _senza_turno(mondo)
                 return True
 
             if preposizione_trovata and argomento_dx:
@@ -961,6 +1097,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 if not id_oggetto2 or id_oggetto2 == "<ambiguo>":
                     if id_oggetto2 is None:
                         print(f"Non vedo '{argomento_dx}' qui.")
+                    _senza_turno(mondo)
                     return True
 
             # [0.20.0 / A1] Gli oggetti effettivamente nominati diventano i riferiti
@@ -1017,6 +1154,8 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                 azione.logica_di_default(mondo, id_oggetto1)
         else:
             azione.logica_di_default(mondo)
+            if nome_azione == "aiuto":
+                _senza_turno(mondo)   # [1.3.0] AIUTO non è un'azione nel mondo
         
         # Se l'azione era "guarda" o "aiuto", la descrizione è già stata stampata dalla logica di default
         # Altrimenti, se l'azione ha modificato lo stato del mondo (es. prendi/lascia), ristampa la stanza
@@ -1070,7 +1209,7 @@ def gioca(mondo: Mondo):
         return
 
     print("\n--- BENVENUTO IN FAVELLA 1 ---")
-    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA, TRASCRIZIONE.")
+    print("Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA, RICOMINCIA, TRASCRIZIONE.")
     mostra_stanza(mondo)
 
     trascrizione = None   # file aperto della trascrizione, o None
@@ -1107,7 +1246,12 @@ def gioca(mondo: Mondo):
                 trascrizione.write(f"{comando_grezzo}\n")
 
             if not elabora_comando(mondo, comando_grezzo):
-                break
+                # [1.3.0] A partita finita si resta nel ciclo: il motore ha già
+                # detto che si può ANNULLARE, RICOMINCIARE o CARICARE. Si esce
+                # quando il giocatore lo chiede (FINE, o SÌ dopo 'esci').
+                if (getattr(mondo, "_uscita_richiesta", False)
+                        or getattr(mondo, "stato_partita", "in_corso") == "in_corso"):
+                    break
     finally:
         if trascrizione is not None:
             sys.stdout = stdout_console
