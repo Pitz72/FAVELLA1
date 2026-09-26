@@ -60,11 +60,9 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 
 ## 📘 Il manuale
 
-C'è un **manuale d'autore completo**: 21 capitoli, 86 pagine, dall'installazione fino
-a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.2; le
-novità della 1.3 sono già nei sorgenti del manuale e nella
-[spec](documentazione/grammatica-1.3.0.md) (§22), e arriveranno nel PDF alla
-prossima impaginazione.
+C'è un **manuale d'autore completo**: 21 capitoli, 95 pagine, dall'installazione fino
+a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.3.0
+(novità della 1.3 anche nella [spec](documentazione/grammatica-1.3.0.md), §22).
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
 - **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026)
@@ -154,7 +152,7 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Suite di test | **1.3.0** | 1026 asserzioni linguaggio + 50 collaudo (pytest 404) |
 | Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.3.0 | — |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 86 pagine, allineato al linguaggio 1.2.0** (le novità della 1.3 sono nei sorgenti e nella spec, §22). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.3.0** (novità della 1.3 anche nella spec, §22). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
 ---
 
@@ -281,8 +279,8 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     `Includi`-bili (`favella1/libreria/`) e la **galleria di storie**
     (`favella1/galleria/`), giocabili da CLI. Dettagli di confezionamento e
     procedura di rilascio in [PACKAGING.md](PACKAGING.md).
--   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 86 pagine (PDF allineato al
-    linguaggio 1.2), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
+-   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 95 pagine (PDF allineato al
+    linguaggio 1.3.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
     esempi guida. Disponibile come **ebook PDF scaricabile** in
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
     su Amazon**.
