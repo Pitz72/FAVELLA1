@@ -34,7 +34,7 @@ porta a est` è un nome valido, anche se `est` è riservata).
   [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · anche · come]],
   [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera · dopo · che]],
   [Personaggi e dialoghi], [#kw[dialogo · nodo · dice · opzione · conduce · chiude · va · cambia · Se · chiedi]],
-  [Presentazione], [#kw[titolo · autore · prologo · messaggio]],
+  [Presentazione], [#kw[titolo · autore · prologo · messaggio · comandi · scrivono · scelgono · pulsanti]],
   [Moduli], [#kw[Includi]],
   [Nomi speciali], [#kw[nulla · inventario]],
   [Direzioni di base], [#kw[nord · sud · est · ovest · n · s · e · o · su · giù · nordest · nordovest · sudest · sudovest]],
@@ -64,6 +64,8 @@ Il titolo è "...".
 L'autore è "...".
 Il prologo è "...".
 Il messaggio "non capisco" è "...".
+I comandi si scrivono.
+I comandi si scelgono con i pulsanti.
 ```)
 
 *Oggetti, proprietà, contenitori*

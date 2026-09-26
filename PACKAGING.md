@@ -39,8 +39,14 @@ richiede la rete al primo avvio.)
 ## Architettura del pacchetto
 
 - **Entry-point**: `favella.py` — strato sottile (argparse) sopra `gioco.py`,
-  `compilatore.py`, `collaudo.py`. Non contiene logica di linguaggio: il motore
-  resta congelato.
+  `compilatore.py`, `collaudo.py`, `esportazione.py`. Non contiene logica di
+  linguaggio: il motore resta congelato.
+- **Nucleo e strumenti** (dalla 1.4.0): `compilatore.py` è il nucleo (grammatica,
+  transformer, validazione, compilazione); `strumenti_ide.py` porta l'analisi per
+  gli editor visuali, il riordino e il serializzatore; `esportazione.py` la pagina
+  HTML giocabile. Il motore nel browser (sito, pagine esportate) carica solo i 5
+  moduli del nucleo: `favella_utils`, `strutture`, `libreria_azioni`,
+  `compilatore`, `gioco`.
 - **Playground**: `favella_playground.py` — server `http.server` + frontend
   vanilla incorporato.
 - **Freeze**: `favella1.spec` (PyInstaller, build *one-dir*). Include `lark`
@@ -106,7 +112,8 @@ Oltre all'eseguibile, FAVELLA è pubblicabile come **pacchetto Python**. La
 ricetta è in `pyproject.toml`.
 
 - **Layout piatto.** I moduli del motore (`favella_utils`, `strutture`, `libreria_azioni`,
-  `compilatore`, `gioco`, `collaudo`, `favella.py`, `favella_playground`) restano
+  `compilatore`, `strumenti_ide`, `esportazione`, `gioco`, `collaudo`, `favella.py`,
+  `favella_playground`) restano
   alla radice e si installano insieme come moduli top-level: `esporta` li rilegge
   da disco dalla **loro stessa cartella** (`__file__`), quindi devono stare
   affiancati anche in `site-packages`. Il package `favella1/` porta solo i **dati**

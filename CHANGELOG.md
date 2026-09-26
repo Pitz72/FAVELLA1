@@ -4,6 +4,87 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.4.0] - 2026-09-26
+### 🔘 I pulsanti-verbo e l'architettura del motore (L-7)
+Chiude l'ultima parte di L-7 dell'[analisi critica](documentazione/analisi-critica-1.2.1.md)
+e realizza l'idea dei pulsanti-verbo (§8.4). Una sola frase nuova, additiva; le
+frasi valide in 1.3 significano la stessa cosa e il motore scrive lo stesso
+testo, byte per byte. Spec: `documentazione/grammatica-1.4.0.md` (§23).
+
+**Il giocatore: i pulsanti-verbo**
+- Nella pagina esportata (`favella1 esporta`) e nelle cassette-gioco del sito il
+  giocatore può comporre la frase toccando un verbo, un oggetto e, se serve, un
+  secondo oggetto: «Dai» → «Mela» → «alla guardia» manda `dai la mela alla
+  guardia`, che il motore esegue come se fosse stata scritta. Accanto: le
+  uscite, i comandi di servizio (guarda, inventario, aspetta, annulla, salva,
+  carica) e, al momento giusto, le opzioni del dialogo, «Sì»/«No», i candidati
+  di un nome ambiguo, «Ricomincia» a partita finita. Toccare un oggetto senza
+  verbo lo esamina. Il comando composto resta nella trascrizione, così chi
+  gioca impara come si scrive.
+- **I criteri.** I pulsanti filtrano solo con ciò che il giocatore sa già (che
+  cosa porta, che cosa vede, chi è un personaggio), mai con ciò che scoprirebbe
+  provando: «Prendi» propone anche ciò che non si lascia prendere. I verbi
+  d'autore di parole inventate e gli argomenti di conversazione, con il campo di
+  testo accanto, compaiono solo dopo che il giocatore li ha trovati scrivendo:
+  gli enigmi di parola restano enigmi. Dei verbi della libreria compaiono quelli
+  di base e quelli per cui la storia ha un motivo (oggetti apribili,
+  accendibili, commestibili, contenitori, dialoghi) o una regola.
+- Il giocatore può nascondere i pulsanti (la scelta resta nel browser).
+
+**L'autore**
+- **`I comandi si scrivono.`** (niente pulsanti: per le storie che vogliono solo
+  la tastiera), **`I comandi si scelgono con i pulsanti.`** (niente campo di
+  testo: i verbi e gli argomenti d'autore sono lì da subito), **`I comandi si
+  scrivono oppure si scelgono con i pulsanti.`** (il predefinito, anche senza
+  frase).
+- La pagina esportata prende il titolo da `Il titolo è "…".` e mostra ciò che il
+  motore dice con uno stile per tipo: titoli di stanza, domande, battute,
+  messaggi di servizio, esito della partita.
+
+**Motore e strumenti (L-7)**
+- **L'uscita è un flusso di eventi.** Il motore non scrive più con `print()`:
+  ogni cosa che dice è un evento con un tipo (`stanza`, `testo`, `elenco`,
+  `domanda`, `dialogo`, `opzione`, `sistema`, `fine`, `errore`,
+  `intestazione`) consegnato a `mondo.uscita`. Senza un'uscita dell'host va sul
+  terminale come prima (CLI, TRASCRIZIONE, test invariati); IDE, playground,
+  esploratore, pagina esportata e sito raccolgono gli eventi
+  (`favella_utils.raccogli_uscita`) invece di dirottare stdout. Il sidecar
+  dell'IDE restituisce anche `events`; CARICA rigioca in silenzio con
+  un'uscita muta; il playground, che è un server a thread, non tocca più lo
+  stdout del processo.
+- **`compilatore.py` diviso.** Il nucleo (grammatica, transformer, validazione,
+  `Includi`, compilazione: circa 3.900 righe invece di 5.800) resta in
+  `compilatore.py`; l'analisi per gli editor visuali, il riordino e il
+  serializzatore vanno in `strumenti_ide.py`, l'esportazione HTML in
+  `esportazione.py`. I vecchi import (`from compilatore import esporta_html`)
+  funzionano ancora. Il motore nel browser carica gli stessi cinque moduli di
+  prima, più leggeri; la pagina esportata non si porta più dietro la propria
+  pagina HTML e l'IDE.
+- **`gioco.pulsanti(mondo)`**: ciò che un'interfaccia a pulsanti può proporre
+  adesso, in JSON, con le frasi già in italiano (`alla guardia`, `nella cassa`,
+  `sul tavolo`).
+- Un test verifica che gli elenchi dei moduli del motore coincidano ovunque
+  (PyInstaller, sito, esperimento, validatore delle lezioni), un altro che i
+  cinque moduli del browser giochino da soli.
+
+**Compatibilità.** Nessuna frase cambia significato; `I comandi …` è una frase
+nuova, e un oggetto che si chiama «I comandi …» resta un oggetto. Il testo del
+motore è identico: le trascrizioni di 160 partite casuali sulle dieci storie
+ufficiali (con salvataggi, caricamenti, annulla e ricomincia), i rapporti
+dell'esploratore e due sessioni della riga di comando sono uguali byte per byte
+a quelle della 1.3.0. Chi usava le funzioni dell'IDE da `compilatore` può continuare a farlo.
+
+**Verifica.** Con i soli pulsanti, sulle dieci storie ufficiali, ogni comando
+scritto che cambia il mondo nelle partite dell'esploratore ha fra i pulsanti un
+equivalente che porta allo stesso identico stato (restano fuori solo i comandi
+a più oggetti, come `prendi tutto`, che con i pulsanti si fanno uno alla
+volta). Pagina esportata e sito provati in Chromium con il motore vero, anche a
+misura di telefono. I 90 file `.fav` del repository compilano con la stessa
+diagnostica; le lezioni del sito (`valida_checkpoint.py`) 53/53.
+
+Suite: **1097 asserzioni del linguaggio + 50 di collaudo**, tutte verdi
+(`pytest`: 413).
+
 ## [1.3.0] - 2026-09-26
 ### 🧭 Tutte le criticità dell'analisi
 Risolve le criticità gravi (G-1…G-9), medie (M-1…M-11) e lievi (L-1…L-9) di

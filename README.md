@@ -61,15 +61,30 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 ## 📘 Il manuale
 
 C'è un **manuale d'autore completo**: 21 capitoli, 95 pagine, dall'installazione fino
-a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.3.0
-(novità della 1.3 anche nella [spec](documentazione/grammatica-1.3.0.md), §22).
+a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.3.0; i
+sorgenti del manuale sono già alla 1.4.0 (i pulsanti-verbo nel capitolo «I comandi
+del giocatore»; novità anche nella [spec](documentazione/grammatica-1.4.0.md), §23).
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
 - **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026)
 
 ---
 
-## 🏁 Stato Attuale: v1.3.0 — tutte le criticità dell'analisi
+## 🏁 Stato Attuale: v1.4.0 — i pulsanti-verbo
+
+La **1.4.0** porta i **pulsanti-verbo**: nella pagina esportata con `favella1
+esporta` e nelle cassette-gioco del sito chi gioca può comporre la frase
+toccando un verbo, un oggetto e, se serve, un secondo oggetto («Dai» → «Mela» →
+«alla guardia»), oltre che scriverla. I pulsanti propongono solo ciò che il
+giocatore sa già, e i verbi e gli argomenti inventati dall'autore compaiono
+solo dopo che il giocatore li ha trovati scrivendo. L'autore sceglie con una
+frase: `I comandi si scrivono.` (solo testo), `I comandi si scelgono con i
+pulsanti.` (solo pulsanti); il predefinito è entrambi. La 1.4.0 chiude anche
+l'ultima criticità dell'[analisi](documentazione/analisi-critica-1.2.1.md)
+(L-7): il motore non scrive più con `print()` ma emette un flusso di eventi
+tipizzati, e `compilatore.py` è diviso in nucleo, strumenti per l'IDE
+(`strumenti_ide.py`) ed esportazione (`esportazione.py`). Le storie della 1.3
+girano identiche. Dettagli nel [CHANGELOG](CHANGELOG.md).
 
 La **1.3.0** risolve tutte le criticità gravi, medie e lievi dell'[analisi
 critica](documentazione/analisi-critica-1.2.1.md). Per chi gioca: i refusi non
@@ -111,9 +126,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1026
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1097
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-404 passati). Spec tecnica: [`documentazione/grammatica-1.3.0.md`](documentazione/grammatica-1.3.0.md).
+413 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -131,6 +146,7 @@ asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pyt
 - **Posto iniziale (1.1):** `Il posto della mappa è "Su un mobile, una MAPPA piegata…".` — una frase d'ambiente che presenta l'oggetto finché nessuno l'ha spostato, poi sparisce.
 - **Salvataggi (1.2):** `salva mattina` / `carica mattina`, ovunque giri il motore; la partita si ricostruisce rigiocando i comandi e un'impronta dello stato lo verifica.
 - **Collaudo giocando (1.2):** `favella1 esplora` e `favella1 collaudo --finali` giocano partite vere e dicono dove la storia si rompe e quali finali si raggiungono.
+- **Pulsanti-verbo (1.4):** nella pagina esportata e nel sito si gioca anche toccando verbo, oggetto e secondo oggetto; `I comandi si scrivono.` / `I comandi si scelgono con i pulsanti.` per scegliere.
 - **Sinonimi per ogni verbo (1.2):** `"lancia" è come getta.` anche per i comandi d'autore, e `"butta via il cibo" è come "getta il cibo".`
 - **Mondo vivo:** stati e contatori, eventi a tempo, **demoni** (if-then autonomi), buio/luce, NPC che si muovono, dialoghi ramificati, pronomi/anafora, ANNULLA/ANCORA.
 
@@ -142,17 +158,19 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.3.0** | header di modulo |
-| Compilatore (`compilatore.py`) | **1.3.0** | header di modulo |
-| Strutture dati (`strutture.py`) | **1.3.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.3.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.3.0** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.3.0** | nuovo nella 1.2.0 |
-| Specifica formale della grammatica | **1.3.0** | [`documentazione/grammatica-1.3.0.md`](documentazione/grammatica-1.3.0.md) — *1.2.0 + le forme della 1.3 (§22)* |
-| Suite di test | **1.3.0** | 1026 asserzioni linguaggio + 50 collaudo (pytest 404) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.3.0 | — |
+| Motore / interprete (`gioco.py`) | **1.4.0** | header di modulo |
+| Compilatore, nucleo (`compilatore.py`) | **1.4.0** | header di modulo |
+| Strumenti per l'IDE (`strumenti_ide.py`) | **1.4.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Esportazione HTML (`esportazione.py`) | **1.4.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Strutture dati (`strutture.py`) | **1.4.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.4.0** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.4.0** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.4.0** | nuovo nella 1.2.0 |
+| Specifica formale della grammatica | **1.4.0** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23)* |
+| Suite di test | **1.4.0** | 1097 asserzioni linguaggio + 50 collaudo (pytest 413) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.0 | protocollo 0.9.12 (+ eventi) |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.3.0** (novità della 1.3 anche nella spec, §22). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine; il PDF è allineato al linguaggio 1.3.0, i sorgenti alla 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
 ---
 
@@ -280,15 +298,16 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     (`favella1/galleria/`), giocabili da CLI. Dettagli di confezionamento e
     procedura di rilascio in [PACKAGING.md](PACKAGING.md).
 -   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 95 pagine (PDF allineato al
-    linguaggio 1.3.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
+    linguaggio 1.3.0, sorgenti alla 1.4.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
     esempi guida. Disponibile come **ebook PDF scaricabile** in
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
     su Amazon**.
 -   **Eventuale internazionalizzazione** e strumenti d'autore (vedi «Favella Studio» qui sotto).
--   **Idea da valutare: pulsanti-verbo nei giochi esportati.** Il giocatore compone
-    la frase toccando verbo, oggetto e secondo oggetto invece di scriverla; il
-    linguaggio d'autore e il motore restano gli stessi. Dettagli in
-    [`analisi-critica-1.2.1.md`](documentazione/analisi-critica-1.2.1.md) §8.4.
+-   ✅ **Pulsanti-verbo nei giochi esportati e nel sito** — *fatto nella 1.4.0*: il
+    giocatore compone la frase toccando verbo, oggetto e secondo oggetto invece di
+    scriverla (o accanto allo scriverla); l'autore sceglie con `I comandi si
+    scrivono.` / `I comandi si scelgono con i pulsanti.`. Criteri in
+    [`grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) §23.2.
 
 ---
 
@@ -307,7 +326,7 @@ esportazione del gioco in HTML autoportante.
 > riprenderlo in mano — è a disposizione.** Aspettatevi spigoli.
 
 Questo **non** riguarda il linguaggio: FAVELLA 1 è completo, stabile e coperto da
-1026 asserzioni. L'IDE è un accessorio sperimentale che gli sta accanto.
+1097 asserzioni. L'IDE è un accessorio sperimentale che gli sta accanto.
 
 Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).
 

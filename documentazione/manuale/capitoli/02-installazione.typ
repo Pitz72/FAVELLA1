@@ -55,7 +55,7 @@ nella cartella dove tieni le tue storie.
   [#cmd[favella1 collaudo storia.fav --finali]], [Gioca partite vere e dice quali finali si raggiungono.],
   [#cmd[favella1 esplora storia.fav]], [Gioca molte partite a caso e segnala dove la storia si rompe.],
   [#cmd[favella1 playground]], [Apre il laboratorio nel browser: scrivi e provi sul posto.],
-  [#cmd[favella1 esporta storia.fav]], [Crea un singolo file `.html` giocabile, da regalare a chi vuoi.],
+  [#cmd[favella1 esporta storia.fav]], [Crea un singolo file `.html` giocabile, da regalare a chi vuoi (si gioca scrivendo o toccando i pulsanti-verbo).],
 )
 
 `esplora` e `collaudo --finali` sono arrivati con la versione 1.2. Giocano come

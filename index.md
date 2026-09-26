@@ -1,6 +1,6 @@
 # Indice del repository — FAVELLA 1
 
-Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-26 (motore 1.3.0).
+Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-26 (motore 1.4.0).
 
 ---
 
@@ -13,11 +13,13 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-26 (motore 1.3.0).
 | File | Ruolo |
 |---|---|
 | `favella.py` | Entry-point / CLI `favella1` (gioca, compila, collaudo, esplora, playground, esporta) |
-| `compilatore.py` | Compilatore Lark/EBNF: `.fav` → object model |
+| `compilatore.py` | Nucleo del compilatore Lark/EBNF: `.fav` → object model (grammatica, transformer, validazione, `Includi`) |
+| `strumenti_ide.py` | Strumenti per gli editor visuali: outline, regole, variabili, dialoghi, riordino, serializzatore (1.4.0) |
+| `esportazione.py` | `favella1 esporta`: la pagina HTML giocabile, con i pulsanti-verbo (1.4.0) |
 | `strutture.py` | Object model del Mondo + `VERSIONE_MOTORE` |
-| `gioco.py` | Interprete / loop di gioco |
+| `gioco.py` | Interprete / loop di gioco; `pulsanti()` per le interfacce a pulsanti (1.4.0) |
 | `libreria_azioni.py` | Verbi e azioni di base |
-| `favella_utils.py` | Utilità condivise |
+| `favella_utils.py` | Utilità condivise; l'uscita del motore come flusso di eventi (1.4.0) |
 | `esploratore.py` | Collaudo dinamico: `favella1 esplora`, `favella1 collaudo --finali` (1.2.0) |
 | `collaudo.py` | Collaudatore statico di storie (catena della vittoria) |
 | `favella_playground.py` | Playground locale offline |
@@ -37,10 +39,10 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-09-26 (motore 1.3.0).
 
 | Percorso | Contenuto |
 |---|---|
-| `documentazione/grammatica-*.md` | Specifiche EBNF per versione (la `1.3.0` è quella viva) |
+| `documentazione/grammatica-*.md` | Specifiche EBNF per versione (la `1.4.0` è quella viva) |
 | `documentazione/0.*.md` | Note di rilascio storiche per versione |
 | `documentazione/progettazione-*.md`, `espansione-oltre-0.29.md` | Documenti di progettazione |
-| `documentazione/analisi-critica-1.2.1.md` | Analisi critica del linguaggio: criticità per gravità, limiti, evoluzioni (le gravissime corrette nella 1.2.2, tutte le altre nella 1.3.0) |
+| `documentazione/analisi-critica-1.2.1.md` | Analisi critica del linguaggio: criticità per gravità, limiti, evoluzioni (le gravissime corrette nella 1.2.2, le altre nella 1.3.0, l'ultima parte di L-7 nella 1.4.0) |
 | `documentazione/manuale/` | Manuale (Typst → PDF) + `manuale.pdf` pubblico |
 
 > Resta piatta di proposito: un test-guardia in `test_linguaggio.py` e ~40 link

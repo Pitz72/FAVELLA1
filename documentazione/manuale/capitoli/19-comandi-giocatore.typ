@@ -154,6 +154,43 @@ memoria del browser, legata a quella storia.
   `trascrizione` chiude il file.
 ]
 
+== Toccare invece di scrivere: i pulsanti-verbo
+
+Dalla versione 1.4, nella pagina che crei con `favella1 esporta` e nelle
+cassette-gioco del sito, chi gioca può anche *comporre* la frase invece di
+scriverla: tocca un verbo, poi un oggetto, e se serve un secondo oggetto.
+`Dai` → `Mela` → `alla guardia` manda al motore `dai la mela alla guardia`, come se
+fosse stata scritta, e la frase compare nella trascrizione: chi gioca impara
+così anche come si scrive. Accanto ai verbi ci sono le uscite della stanza e i
+comandi di servizio; durante un dialogo i pulsanti diventano le opzioni, davanti
+a una domanda diventano «Sì» e «No», a partita finita «Annulla» e «Ricomincia».
+Toccare un oggetto senza aver scelto un verbo lo esamina.
+
+Sei tu a decidere come si danno i comandi nella tua storia, con una frase:
+
+#fav(```
+I comandi si scrivono.
+I comandi si scelgono con i pulsanti.
+I comandi si scrivono oppure si scelgono con i pulsanti.
+```)
+
+La prima lascia solo il campo di testo; la seconda solo i pulsanti; la terza, che
+vale anche se non scrivi niente, tutti e due (e chi gioca può nascondere i
+pulsanti, se non li vuole). Nel terminale si scrive e basta.
+
+I pulsanti non tolgono niente al piacere di scoprire. Propongono ciò che il
+giocatore sa già: le cose che vede e quelle che porta, i personaggi presenti. Non
+ciò che scoprirebbe provando: `Prendi` offre anche la statua che non si lascia
+sollevare. E ciò che hai inventato tu resta tuo: un verbo d'autore di una parola
+nuova (`"traduci" è un comando.`) o un argomento di conversazione compaiono fra i
+pulsanti solo dopo che il giocatore li ha trovati scrivendo.
+
+#tranello[
+  Con `I comandi si scelgono con i pulsanti.` non c'è un campo di testo, quindi
+  verbi e argomenti d'autore sono fra i pulsanti da subito: se la tua storia vive
+  di parole da indovinare, lascia il campo di testo al giocatore.
+]
+
 == Aiuto e uscita
 
 `aiuto` elenca i comandi disponibili. `esci` chiude il dialogo in corso se ce n'è

@@ -4,15 +4,15 @@
 >
 > **Stato (26 settembre 2026).** Tutte le criticità sono corrette. Le quattro
 > gravissime (GS-1…GS-4) nel motore **1.2.2**; le gravi (G-1…G-9), le medie
-> (M-1…M-11) e le lievi (L-1…L-9) nel motore **1.3.0**. Il lavoro ha portato alla
-> luce anche un difetto non elencato qui (i verbi d'autore di una storia passavano
-> alle storie caricate dopo nello stesso processo), corretto nella 1.2.2. Resta
-> aperta una sola parte di L-7, per scelta: dividere `compilatore.py` e sostituire
-> `print()` con un flusso di eventi sono lavori di architettura che toccano ogni
-> modulo e l'IDE senza cambiare il linguaggio (vedi §8.4). Per ogni criticità
-> l'appendice dice dove è stata corretta; dettagli e verifica nel `CHANGELOG.md`
-> (voci 1.2.2 e 1.3.0) e nella spec `grammatica-1.3.0.md` (§21 e §22). Il resto
-> del documento descrive il motore 1.2.1, così com'era al momento dell'analisi.
+> (M-1…M-11) e le lievi (L-1…L-9) nel motore **1.3.0**, tranne l'ultima parte di
+> L-7 (dividere `compilatore.py`, sostituire `print()` con un flusso di eventi),
+> chiusa nel motore **1.4.0** insieme ai pulsanti-verbo (§8.4). Il lavoro ha
+> portato alla luce anche un difetto non elencato qui (i verbi d'autore di una
+> storia passavano alle storie caricate dopo nello stesso processo), corretto
+> nella 1.2.2. Per ogni criticità l'appendice dice dove è stata corretta;
+> dettagli e verifica nel `CHANGELOG.md` (voci 1.2.2, 1.3.0 e 1.4.0) e nella spec
+> `grammatica-1.4.0.md` (§21, §22 e §23). Il resto del documento descrive il
+> motore 1.2.1, così com'era al momento dell'analisi.
 >
 > Documento di lavoro: elenca criticità, limiti, implementazioni mancanti e
 > possibili evoluzioni del **linguaggio** (grammatica d'autore, semantica,
@@ -784,20 +784,29 @@ Ogni punto richiede nuova grammatica, da confermare con la guardia LALR/Earley.
 - **Diagnostica** (G-2): nomi dei terminali in italiano, recupero dagli errori
   (tutti gli errori in una compilazione), parole chiave insensibili al maiuscolo,
   e «forse intendevi» anche per le parole chiave (`invece` → `Invece`).
-- **Uscita del motore come flusso di eventi** (titolo di stanza, testo, messaggio
+- ✅ **Uscita del motore come flusso di eventi** (titolo di stanza, testo, messaggio
   di sistema, fine partita) invece di `print()`. Ne guadagnerebbero IDE e sito
-  (niente più dirottamento di `stdout`), la traduzione e lo stile.
-- **Dividere `compilatore.py`** in nucleo (grammatica, transformer, validazione)
-  e strumenti (IDE, formattatore, esportazione).
+  (niente più dirottamento di `stdout`), la traduzione e lo stile. **Fatto nella
+  1.4.0** (`favella_utils.Evento`, `raccogli_uscita`; spec §23.3).
+- ✅ **Dividere `compilatore.py`** in nucleo (grammatica, transformer, validazione)
+  e strumenti (IDE, formattatore, esportazione). **Fatto nella 1.4.0**:
+  `compilatore.py`, `strumenti_ide.py`, `esportazione.py` (spec §23.4).
 - **`Includi` con un percorso di ricerca per la libreria standard**
   (`Includi la libreria "verbi".`) e un resoconto delle ridefinizioni fra moduli.
-- **Un controllo in CI** che confronti le copie del motore in `landingpage/` con
-  la radice.
+- ✅ **Un controllo in CI** che confronti le copie del motore in `landingpage/` con
+  la radice. **Fatto** come test della suite (1.3.0), che la CI esegue prima di ogni
+  build; dalla 1.4.0 un altro test verifica che gli elenchi dei moduli del motore
+  coincidano ovunque.
 - **Collaudo dinamico più avversario**: dare all'esploratore i sinonimi di
   libreria e `guarda X`, e confrontare l'esito di verbi equivalenti sullo stesso
   oggetto. Avrebbe trovato GS-1 e GS-2 da solo.
-- **Interfaccia a pulsanti-verbo nei giochi esportati** (idea del 26 settembre
-  2026, da valutare). Il linguaggio d'autore non cambia: nella pagina esportata (e
+- ✅ **Interfaccia a pulsanti-verbo nei giochi esportati** (idea del 26 settembre
+  2026). **Fatta nella 1.4.0**, nella pagina esportata e nel sito: i pulsanti
+  accanto al campo di testo per impostazione predefinita, `I comandi si
+  scrivono.` / `I comandi si scelgono con i pulsanti.` per scegliere; i verbi e
+  gli argomenti inventati dall'autore compaiono dopo che il giocatore li ha
+  scoperti scrivendo (subito, con i soli pulsanti); i criteri sono in spec §23.2.
+  Il testo originale dell'idea: «Il linguaggio d'autore non cambia: nella pagina esportata (e
   magari nel sito) il giocatore può comporre la frase toccando un verbo, un oggetto
   e, se serve, una preposizione e un secondo oggetto («dai» + «la mela» + «alla
   guardia»), alla maniera delle avventure SCUMM. La frase composta passa allo
@@ -807,7 +816,7 @@ Ogni punto richiede nuova grammatica, da confermare con la guardia LALR/Earley.
   Da decidere: pulsanti *accanto* al campo di testo o al suo posto (una scelta
   dell'autore, per storie che non vogliono svelare verbi da scoprire); quali verbi
   mostrare (tutti o solo quelli con una regola); come proporre secondo oggetto e
-  preposizione. Viene meglio dopo l'uscita del motore a eventi qui sopra.
+  preposizione. Viene meglio dopo l'uscita del motore a eventi qui sopra.»
 - **Un server LSP**: completamento dei nomi dichiarati e diagnostica in tempo
   reale in qualunque editor, riusando `analizza_file_strutturato`.
 
@@ -862,6 +871,6 @@ Uno per criticità, ricavati dalle sonde di questa analisi:
 | L-4 | Lieve | Il valore di partenza dei demoni consuma il caso | 📖 | corretta nella 1.3.0 (§22.1) |
 | L-5 | Lieve | Istantanee pesanti | 📖✅ | corretta nella 1.3.0 (§22.8): 98 → 47 KiB sul Viaggiatore |
 | L-6 | Lieve | Salvataggi legati alla forma del mondo | 📖 | corretta nella 1.3.0 (§22.8) |
-| L-7 | Lieve | Architettura | 📖 | in parte: il test sulle copie del motore c'è (1.3.0); divisione di `compilatore.py` e uscita a eventi restano in §8.4 |
+| L-7 | Lieve | Architettura | 📖 | corretta: test sulle copie del motore (1.3.0); uscita a eventi e `compilatore.py` diviso (1.4.0, §23) |
 | L-8 | Lieve | Documentazione non allineata | ✅ | corretta nella 1.3.0 (README, spec §6, §10, §18, manuale) |
 | L-9 | Lieve | `o` non vale come «oppure»: errore criptico | ✅ | corretta nella 1.3.0 (§22.2): consiglio mirato; `o` resta «ovest» |
