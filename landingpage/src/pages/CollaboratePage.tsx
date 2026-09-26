@@ -18,7 +18,7 @@ const CARTELLE = [
   {
     path: "/",
     title: "Il motore",
-    body: "Compilatore, interprete, libreria delle azioni e i 1026 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
+    body: "Compilatore, interprete, libreria delle azioni e i 1097 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
     href: GITHUB_URL,
   },
   {
