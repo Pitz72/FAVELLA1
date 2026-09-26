@@ -91,7 +91,7 @@ virtualenv, build e cache. Per rimetterlo in moto:
 ```bash
 # motore: serve solo Lark
 pip install lark
-python test_linguaggio.py     # 1026 asserzioni
+python test_linguaggio.py     # 1097 asserzioni
 python test_collaudo.py       # 50 asserzioni
 python favella.py gioca favella1/galleria/il-faro/il-faro.fav
 
