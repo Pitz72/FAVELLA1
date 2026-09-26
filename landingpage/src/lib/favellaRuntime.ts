@@ -2,8 +2,11 @@
 //  Runtime FAVELLA nel browser, via Pyodide.
 //  Carica il motore Python VERO (compilatore + gioco, puro Python +
 //  Lark) e lo pilota con lo stesso contratto headless del sidecar IDE:
-//  compila_mondo(entry) → mostra_stanza → elabora_comando(cmd), con
-//  l'output catturato da redirect_stdout. Vedi favella_server.py.
+//  compila_mondo(entry) → mostra_stanza → elabora_comando(cmd). Dal motore
+//  1.4.0 ciò che il motore dice arriva come EVENTI tipizzati (titolo di
+//  stanza, testo, domanda, battuta…) raccolti con raccogli_uscita, non più
+//  dirottando stdout; ogni turno porta anche i PULSANTI-VERBO proponibili
+//  (gioco.pulsanti). Vedi favella_server.py.
 //
 //  Pyodide è pesante (qualche MB): si carica UNA volta, PIGRO, solo
 //  quando si apre una cassetta-gioco. Il browser lo mette in cache.
@@ -45,54 +48,105 @@ async function fetchTesto(url: string): Promise<string> {
 }
 
 export type StatoPartita = "in_corso" | "vinta" | "persa" | "terminata" | string;
+
+// [motore 1.4.0] Un evento dell'uscita del motore (favella_utils.Evento).
+export type TipoEvento =
+  | "intestazione" | "stanza" | "testo" | "elenco" | "domanda"
+  | "dialogo" | "opzione" | "sistema" | "fine" | "errore";
+export interface EventoMotore {
+  tipo: TipoEvento;
+  testo: string;
+  stacco?: boolean;
+  dati?: Record<string, unknown>;
+}
+
+// [motore 1.4.0] I pulsanti-verbo proponibili adesso (gioco.pulsanti). Il
+// comando si compone come verbo + " " + primo.testo [+ " " + secondo.testo].
+export interface VoceComando { etichetta: string; comando: string }
+export interface Primo { id: string; testo: string }
+export interface Secondo { id?: string; etichetta: string; testo: string }
+export interface VerboPulsante {
+  verbo: string;
+  etichetta: string;
+  oggetto: boolean;
+  da_solo: boolean;
+  primi: Primo[];
+  secondo: "no" | "facoltativo" | "obbligatorio";
+  secondi?: Secondo[];
+  secondi_per?: Record<string, Secondo[]>;
+}
+export interface Pulsantiera {
+  modo: "entrambi" | "pulsanti" | "testo";
+  fase: "gioco" | "dialogo" | "conferma" | "scelta" | "fine";
+  scelte: VoceComando[];
+  oggetti: { id: string; etichetta: string; con_te: boolean }[];
+  verbi: VerboPulsante[];
+  uscite: { comando: string; etichetta: string; stanza: string | null }[];
+  servizio: VoceComando[];
+}
+
 export interface TurnoEsito {
   text: string;
   continua: boolean;
   stato: StatoPartita;
+  eventi?: EventoMotore[];
+  pulsanti?: Pulsantiera;
 }
 
 // Il driver Python: definisce fav_boot / fav_step, che restituiscono JSON.
 const DRIVER_PY = `
-import io, contextlib, json, sys
+import json, sys
 if '/engine' not in sys.path:
     sys.path.insert(0, '/engine')
 from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza
+from gioco import elabora_comando, mostra_stanza, pulsanti
 from libreria_azioni import LIBRERIA_AZIONI
+from favella_utils import raccogli_uscita, UscitaRaccolta
 
 _mondo = None
 
+def _esito(uscita, continua, errore=None):
+    # Testo (come lo scriveva il terminale) + eventi tipizzati + pulsanti-verbo.
+    eventi = uscita.come_dizionari()
+    testo = uscita.testo()
+    if errore:
+        eventi.append({"tipo": "errore", "testo": errore, "stacco": True})
+        testo += "\\n" + errore
+    d = {"text": testo, "eventi": eventi, "continua": bool(continua),
+         "stato": getattr(_mondo, "stato_partita", "in_corso") if _mondo is not None else "errore"}
+    if _mondo is not None and errore is None:
+        d["pulsanti"] = pulsanti(_mondo)
+    return json.dumps(d, ensure_ascii=False)
+
 def fav_boot(entry):
     global _mondo
-    buf = io.StringIO()
+    uscita = UscitaRaccolta()
     try:
-        with contextlib.redirect_stdout(buf):
-            _mondo = compila_mondo(entry)
-            # Inizializzazioni che fa il main del gioco (gioco.py), NON
-            # compila_mondo: registrare i verbi/azioni e piazzare il giocatore
-            # nella stanza di partenza. Senza la prima, ogni verbo dà «Non
-            # capisco»; senza la seconda, mostra_stanza dà errore interno.
-            _mondo.carica_azioni(LIBRERIA_AZIONI)
-            _mondo.imposta_posizione_iniziale()
+        _mondo = compila_mondo(entry)
+        if _mondo is None:
+            return _esito(uscita, False, "[ERRORE DI COMPILAZIONE] La storia non compila.")
+        # Inizializzazioni che fa il main del gioco (gioco.py), NON
+        # compila_mondo: registrare i verbi/azioni e piazzare il giocatore
+        # nella stanza di partenza. Senza la prima, ogni verbo dà «Non
+        # capisco»; senza la seconda, mostra_stanza dà errore interno.
+        _mondo.carica_azioni(LIBRERIA_AZIONI)
+        _mondo.imposta_posizione_iniziale()
+        with raccogli_uscita(_mondo, uscita):
             mostra_stanza(_mondo)
     except Exception as e:
-        return json.dumps({"text": buf.getvalue() + "\\n[ERRORE DI COMPILAZIONE] " + str(e),
-                           "continua": False, "stato": "errore"})
-    return json.dumps({"text": buf.getvalue(), "continua": True,
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+        return _esito(uscita, False, "[ERRORE DI COMPILAZIONE] " + str(e))
+    return _esito(uscita, True)
 
 def fav_step(cmd):
+    uscita = UscitaRaccolta()
     if _mondo is None:
         return json.dumps({"text": "", "continua": False, "stato": "errore"})
-    buf = io.StringIO()
     try:
-        with contextlib.redirect_stdout(buf):
+        with raccogli_uscita(_mondo, uscita):
             continua = elabora_comando(_mondo, cmd)
     except Exception as e:
-        return json.dumps({"text": buf.getvalue() + "\\n[ERRORE] " + str(e),
-                           "continua": True, "stato": getattr(_mondo, "stato_partita", "in_corso")})
-    return json.dumps({"text": buf.getvalue(), "continua": bool(continua),
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+        return _esito(uscita, True, "[ERRORE] " + str(e))
+    return _esito(uscita, continua)
 
 def fav_stato():
     # Istantanea del mondo per le schede laterali della UI: inventario (nomi
@@ -206,6 +260,18 @@ export interface SessioneGioco {
   stato: () => StatoMondo;
 }
 
+// Esito di un turno dal JSON del driver (eventi e pulsanti arrivano dal motore 1.4.0).
+const parse = (jsonStr: string): TurnoEsito => {
+  const d = JSON.parse(jsonStr);
+  return {
+    text: d.text ?? "",
+    continua: !!d.continua,
+    stato: d.stato ?? "in_corso",
+    eventi: Array.isArray(d.eventi) ? d.eventi : undefined,
+    pulsanti: d.pulsanti ?? undefined,
+  };
+};
+
 // Prepara una sessione di gioco: scrive i .fav nel FS e ritorna boot/step.
 export async function avviaGioco(spec: GiocoSpec, onStatus: OnStatus): Promise<SessioneGioco> {
   const pyodide = await caricaRuntime(onStatus);
@@ -219,11 +285,6 @@ export async function avviaGioco(spec: GiocoSpec, onStatus: OnStatus): Promise<S
   }
 
   const entryPath = `${dir}/${spec.entry}`;
-  const parse = (jsonStr: string): TurnoEsito => {
-    const d = JSON.parse(jsonStr);
-    return { text: d.text ?? "", continua: !!d.continua, stato: d.stato ?? "in_corso" };
-  };
-
   return {
     boot: () => {
       pyodide.globals.set("_entry", entryPath);
@@ -249,11 +310,6 @@ export async function avviaGiocoDaSorgente(
   pyodide.FS.mkdirTree("/playground");
   const entryPath = "/playground/storia.fav";
   pyodide.FS.writeFile(entryPath, sorgente);
-
-  const parse = (jsonStr: string): TurnoEsito => {
-    const d = JSON.parse(jsonStr);
-    return { text: d.text ?? "", continua: !!d.continua, stato: d.stato ?? "in_corso" };
-  };
 
   return {
     boot: () => {

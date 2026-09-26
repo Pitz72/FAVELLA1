@@ -1,9 +1,48 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameCassette } from "../data/course";
 import { avviaGioco } from "../lib/favellaRuntime";
-import type { SessioneGioco, TurnoEsito } from "../lib/favellaRuntime";
+import type { EventoMotore, Pulsantiera, SessioneGioco, TurnoEsito } from "../lib/favellaRuntime";
+import PulsantiVerbo from "./PulsantiVerbo";
 
-type Riga = { kind: "out" | "cmd" | "sys"; text: string };
+type Riga = { kind: "out" | "cmd" | "sys"; text: string; eventi?: EventoMotore[] };
+
+// [motore 1.4.0] Ogni tipo di evento del motore ha il suo stile sullo schermo.
+const STILE_EVENTO: Record<string, string> = {
+  intestazione: "text-favella-amber",
+  stanza: "font-semibold text-favella-cyan",
+  testo: "text-favella-text-primary/90",
+  elenco: "text-favella-text-secondary",
+  domanda: "text-favella-amber/90",
+  dialogo: "text-violet-200",
+  opzione: "text-violet-200/90",
+  sistema: "text-favella-text-muted",
+  fine: "font-semibold text-favella-emerald screen-glow",
+  errore: "text-favella-flame",
+};
+
+const Uscita = ({ riga }: { riga: Riga }) =>
+  riga.eventi ? (
+    <div>
+      {riga.eventi.map((e, i) => (
+        <pre key={i} className={`whitespace-pre-wrap break-words ${e.stacco ? "mt-3" : ""} ${STILE_EVENTO[e.tipo] ?? ""}`}>
+          {e.testo}
+        </pre>
+      ))}
+    </div>
+  ) : (
+    <pre className="whitespace-pre-wrap break-words text-favella-text-primary/90">{riga.text}</pre>
+  );
+
+// Il giocatore può nascondere i pulsanti accanto al campo di testo: la scelta
+// resta nel browser (una preferenza, niente di più).
+const CHIAVE_PULSANTI = "favella-pulsanti";
+const leggiPreferenza = () => {
+  try {
+    return localStorage.getItem(CHIAVE_PULSANTI) !== "no";
+  } catch {
+    return true;
+  }
+};
 
 const Reel = ({ spinning }: { spinning: boolean }) => (
   <span
@@ -23,6 +62,8 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
   const [righe, setRighe] = useState<Riga[]>([]);
   const [bozza, setBozza] = useState("");
   const [finita, setFinita] = useState(false);
+  const [pulsanti, setPulsanti] = useState<Pulsantiera | null>(null);
+  const [mostraPulsanti, setMostraPulsanti] = useState(leggiPreferenza);
 
   const sessioneRef = useRef<SessioneGioco | null>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -41,7 +82,8 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
         sessioneRef.current = sess;
         const esito = sess.boot();
         if (!vivo) return;
-        setRighe([{ kind: "out", text: esito.text.trim() }]);
+        setRighe([{ kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
+        setPulsanti(esito.pulsanti ?? null);
         setPhase("playing");
       } catch (e) {
         if (vivo) {
@@ -65,29 +107,61 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
   }, [righe, phase]);
 
   const applica = (cmd: string, esito: TurnoEsito) => {
-    setRighe((r) => [...r, { kind: "cmd", text: cmd }, { kind: "out", text: esito.text.trim() }]);
+    setRighe((r) => [...r, { kind: "cmd", text: cmd }, { kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
+    if (esito.pulsanti) setPulsanti(esito.pulsanti);
     if (!esito.continua || esito.stato !== "in_corso") setFinita(true);
   };
 
-  const invia = () => {
-    const cmd = bozza.trim();
+  const esegui = (cmd: string) => {
     if (!cmd || finita || !sessioneRef.current) return;
-    setBozza("");
     // Dalla 1.3.0 'esci' lo gestisce il motore (conferma, uscita «fuori», fine
     // dialogo); per espellere la cassetta c'è il pulsante ⏏.
     applica(cmd, sessioneRef.current.step(cmd));
   };
 
+  const invia = () => {
+    const cmd = bozza.trim();
+    if (!cmd) return;
+    setBozza("");
+    esegui(cmd);
+  };
+
+  const cambiaPulsanti = () => {
+    const nuovo = !mostraPulsanti;
+    setMostraPulsanti(nuovo);
+    try {
+      localStorage.setItem(CHIAVE_PULSANTI, nuovo ? "si" : "no");
+    } catch {
+      /* niente memoria: pazienza */
+    }
+  };
+
+  // [motore 1.4.0] Come si danno i comandi lo decide l'autore ('I comandi si
+  // scrivono.' / 'I comandi si scelgono con i pulsanti.'); di norma entrambi.
+  const modo = pulsanti?.modo ?? "testo";
+  const conTesto = modo !== "pulsanti";
+  const conPulsanti = pulsanti !== null && modo !== "testo" && (modo === "pulsanti" || mostraPulsanti);
+
   const ricomincia = () => {
     if (!sessioneRef.current) return;
     const esito = sessioneRef.current.boot();
-    setRighe([{ kind: "out", text: esito.text.trim() }]);
+    setRighe([{ kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
+    setPulsanti(esito.pulsanti ?? null);
     setFinita(false);
   };
 
+  // Con i pulsanti la cassetta ha un'altezza sua e la pagina scorre: diviso
+  // con il pannello, lo schermo su un telefono resterebbe di poche righe.
+  const conPannello = phase === "playing" && !finita && conPulsanti;
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col" style={{ height: "min(82vh, 760px)" }}>
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[1.4rem] border-[3px] border-favella-brace/80 bg-favella-panel/80 p-2 shadow-glow-card md:p-3">
+    <div
+      className="mx-auto flex w-full max-w-5xl flex-col"
+      style={conPannello ? undefined : { height: "min(82vh, 760px)" }}
+    >
+      <div
+        className="flex flex-1 flex-col overflow-hidden rounded-[1.4rem] border-[3px] border-favella-brace/80 bg-favella-panel/80 p-2 shadow-glow-card md:p-3"
+        style={conPannello ? { height: "max(320px, min(60vh, 600px))", flex: "none" } : undefined}
+      >
         {/* Mangianastri */}
         <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-favella-cyan/15 bg-favella-panel/80 px-4 py-2.5">
           <div className="flex items-center gap-3">
@@ -149,9 +223,7 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
                     » {r.text}
                   </p>
                 ) : (
-                  <pre key={i} className="whitespace-pre-wrap break-words text-favella-text-primary/90">
-                    {r.text}
-                  </pre>
+                  <Uscita key={i} riga={r} />
                 )
               )}
 
@@ -176,8 +248,15 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
         </div>
       </div>
 
+      {/* Pulsanti-verbo (motore 1.4.0) */}
+      {phase === "playing" && !finita && conPulsanti && pulsanti && (
+        <div className="mt-3 max-h-[42vh] overflow-y-auto rounded-xl border border-favella-cyan/15 bg-favella-panel/60 px-4 py-3">
+          <PulsantiVerbo p={pulsanti} onComando={esegui} />
+        </div>
+      )}
+
       {/* Riga di comando */}
-      {phase === "playing" && !finita && (
+      {phase === "playing" && !finita && conTesto && (
         <div className="mt-3">
           <div className="flex items-center gap-2 rounded-xl border border-favella-cyan/15 bg-favella-panel/60 px-4 py-2.5 font-mono">
             <span className="text-favella-emerald">.fav&gt;</span>
@@ -190,8 +269,18 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
               autoCapitalize="off"
               autoCorrect="off"
               placeholder="scrivi un comando (guarda, nord, esamina il tavolino…) e premi Invio"
-              className="flex-1 bg-transparent text-favella-text-primary caret-favella-cyan outline-none placeholder:text-favella-text-muted/60"
+              className="min-w-0 flex-1 bg-transparent text-favella-text-primary caret-favella-cyan outline-none placeholder:text-favella-text-muted/60"
             />
+            {modo === "entrambi" && (
+              <button
+                onClick={cambiaPulsanti}
+                aria-pressed={mostraPulsanti}
+                title={mostraPulsanti ? "Nascondi i pulsanti" : "Mostra i pulsanti"}
+                className="rounded-md border border-favella-cyan/20 px-2 py-0.5 text-[11px] text-favella-text-secondary transition-colors hover:border-favella-cyan/50 hover:text-favella-cyan"
+              >
+                pulsanti: {mostraPulsanti ? "sì" : "no"}
+              </button>
+            )}
           </div>
           {game.comandiEsempio.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
