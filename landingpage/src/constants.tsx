@@ -30,7 +30,7 @@ export const SITE_URL = "https://favella.eu";
 // · 2.3.0 = motore 1.2.1, banner di Il Viaggiatore ridisegnato sulla sua
 //   identità visiva, /esperimento risincronizzato col gioco (taccuino, loghi).
 // · 2.4.0 = motore 1.3.0: tutte le criticità dell'analisi corrette.
-// · 2.5.0 = motore 1.4.0: pulsanti-verbo nelle cassette-gioco, manuale a 96 pp.
+// · 2.5.0 = motore 1.4.0: pulsanti-verbo nelle cassette-gioco, manuale a 95 pp.
 export const SITE_VERSION = "2.5.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
@@ -347,7 +347,7 @@ Con l'avvento dei Large Language Models quel sogno è diventato un progetto conc
 
 Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1097 test, più 50 di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 96 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -481,7 +481,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.4.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 96 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.4.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -748,4 +748,4 @@ Nei **nomi** (di stanze, oggetti, stati, contatori) puoi usare solo lettere — 
 
 ---
 
-> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (96 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
+> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (95 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;

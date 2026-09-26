@@ -109,7 +109,7 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
   const applica = (cmd: string, esito: TurnoEsito) => {
     setRighe((r) => [...r, { kind: "cmd", text: cmd }, { kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
     if (esito.pulsanti) setPulsanti(esito.pulsanti);
-    if (!esito.continua || esito.stato !== "in_corso") setFinita(true);
+    if (esito.chiusa) setFinita(true);
   };
 
   const esegui = (cmd: string) => {

@@ -201,6 +201,9 @@
   radius: (top-right: 4pt, bottom-right: 4pt),
   inset: (left: 12pt, rest: 10pt),
   above: 1.1em, below: 1.1em,
+  // I riquadri sono brevi: meglio intero sulla pagina dopo che spezzato, col
+  // solo titolo in fondo a quella prima.
+  breakable: false,
 )[
   #text(font: font-display, size: 8pt, weight: 700, fill: accent, tracking: 1pt)[#upper(titolo)]
   #v(-0.3em)
@@ -290,12 +293,14 @@
     #text(font: font-display, size: 11.5pt, weight: 600, fill: c.cyan-dark)[#it.body]
   ]
 
-  // Codice inline
-  show raw.where(block: false): it => box(
+  // Codice inline. Evidenziato e non incorniciato: a fine riga va a capo come
+  // il testo, invece di diventare un riquadro alto due righe.
+  show raw.where(block: false): it => highlight(
     fill: rgb("#eef3f7"),
     radius: 2.5pt,
-    inset: (x: 3.5pt, y: 0pt),
-    outset: (y: 2.5pt),
+    extent: 2pt,
+    top-edge: "ascender",
+    bottom-edge: "descender",
   )[#text(font: font-mono, size: 0.86em, fill: c.cyan-dark)[#it]]
 
   // Enfasi

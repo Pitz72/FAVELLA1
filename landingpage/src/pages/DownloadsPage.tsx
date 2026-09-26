@@ -130,7 +130,7 @@ const DownloadsPage = () => (
           Manuale (PDF)
         </h2>
         <p className="mb-4 flex-1 text-[14.5px] leading-[1.65] text-favella-text-secondary">
-          Il Manuale di Programmazione completo: 96 pagine, 21 capitoli, dalla prima frase
+          Il Manuale di Programmazione completo: 95 pagine, 21 capitoli, dalla prima frase
           al mondo che cambia.
         </p>
         <div className="mb-5">

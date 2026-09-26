@@ -89,6 +89,9 @@ export interface TurnoEsito {
   text: string;
   continua: boolean;
   stato: StatoPartita;
+  // La sessione è finita davvero (FINE, SÌ dopo 'esci'): a partita vinta o
+  // persa invece il motore aspetta ancora ANNULLA / RICOMINCIA / CARICA.
+  chiusa: boolean;
   eventi?: EventoMotore[];
   pulsanti?: Pulsantiera;
 }
@@ -112,8 +115,14 @@ def _esito(uscita, continua, errore=None):
     if errore:
         eventi.append({"tipo": "errore", "testo": errore, "stacco": True})
         testo += "\\n" + errore
+    stato = getattr(_mondo, "stato_partita", "in_corso") if _mondo is not None else "errore"
+    # Come il ciclo del terminale (gioco.py): a partita vinta/persa si resta al
+    # tavolo (ANNULLA, RICOMINCIA, CARICA); si chiude solo su richiesta (FINE,
+    # SÌ dopo 'esci') o se il motore si ferma a partita ancora in corso.
+    chiusa = not continua and (_mondo is None or stato == "in_corso"
+                               or getattr(_mondo, "_uscita_richiesta", False))
     d = {"text": testo, "eventi": eventi, "continua": bool(continua),
-         "stato": getattr(_mondo, "stato_partita", "in_corso") if _mondo is not None else "errore"}
+         "stato": stato, "chiusa": bool(chiusa)}
     if _mondo is not None and errore is None:
         d["pulsanti"] = pulsanti(_mondo)
     return json.dumps(d, ensure_ascii=False)
@@ -140,7 +149,7 @@ def fav_boot(entry):
 def fav_step(cmd):
     uscita = UscitaRaccolta()
     if _mondo is None:
-        return json.dumps({"text": "", "continua": False, "stato": "errore"})
+        return json.dumps({"text": "", "continua": False, "stato": "errore", "chiusa": True})
     try:
         with raccogli_uscita(_mondo, uscita):
             continua = elabora_comando(_mondo, cmd)
@@ -267,6 +276,7 @@ const parse = (jsonStr: string): TurnoEsito => {
     text: d.text ?? "",
     continua: !!d.continua,
     stato: d.stato ?? "in_corso",
+    chiusa: d.chiusa ?? !d.continua,
     eventi: Array.isArray(d.eventi) ? d.eventi : undefined,
     pulsanti: d.pulsanti ?? undefined,
   };

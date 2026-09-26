@@ -6738,8 +6738,14 @@ def test_compilatore_diviso():
             shutil.copy(os.path.join(radice, nome), cartella)
         with open(os.path.join(cartella, "s.fav"), "w", encoding="utf-8") as f:
             f.write(_SRC_PULSANTI)
+        # -E -s tengono fuori il pacchetto installato e i .pth, ma anche lark se
+        # sta fra i pacchetti dell'utente (Python dello Store di Windows):
+        # la sua cartella si aggiunge in coda, dopo quella di prova.
+        import lark
+        dir_lark = os.path.dirname(os.path.dirname(os.path.abspath(lark.__file__)))
         prova = (
             "import sys, json\n"
+            f"sys.path.append({dir_lark!r})\n"
             "from compilatore import compila_mondo\n"
             "from gioco import elabora_comando, pulsanti\n"
             "from libreria_azioni import LIBRERIA_AZIONI\n"

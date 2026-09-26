@@ -60,7 +60,7 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 
 ## 📘 Il manuale
 
-C'è un **manuale d'autore completo**: 21 capitoli, 96 pagine, dall'installazione fino
+C'è un **manuale d'autore completo**: 21 capitoli, 95 pagine, dall'installazione fino
 a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.4.0
 (i pulsanti-verbo nel capitolo «I comandi del giocatore»; novità anche nella
 [spec](documentazione/grammatica-1.4.0.md), §23).
@@ -170,7 +170,7 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Suite di test | **1.4.0** | 1097 asserzioni linguaggio + 50 collaudo (pytest 413) |
 | Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.0 | protocollo 0.9.12 (+ eventi) |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 96 pagine, allineato al linguaggio 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
 ---
 
@@ -297,7 +297,7 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     `Includi`-bili (`favella1/libreria/`) e la **galleria di storie**
     (`favella1/galleria/`), giocabili da CLI. Dettagli di confezionamento e
     procedura di rilascio in [PACKAGING.md](PACKAGING.md).
--   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 96 pagine (PDF allineato al
+-   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 95 pagine (PDF allineato al
     linguaggio 1.4.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
     esempi guida. Disponibile come **ebook PDF scaricabile** in
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea

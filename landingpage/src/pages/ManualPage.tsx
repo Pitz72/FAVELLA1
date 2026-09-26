@@ -177,7 +177,7 @@ const ManualPage = () => {
           iniziano con <code className="rounded-[5px] bg-favella-cyan/10 px-1.5 py-px font-mono text-favella-cyan-bright">#</code>.
         </p>
         <p className="m-0 text-[14.5px] leading-[1.6] text-favella-text-muted">
-          Per la trattazione organica di tutti i costrutti c'è il Manuale di Programmazione completo — 96 pagine, 21
+          Per la trattazione organica di tutti i costrutti c'è il Manuale di Programmazione completo — 95 pagine, 21
           capitoli, in PDF su GitHub.
         </p>
 
@@ -204,7 +204,7 @@ const ManualPage = () => {
         <div className="mt-14 rounded-[20px] border border-favella-cyan/14 bg-gradient-to-b from-favella-surface/50 to-favella-panel/35 px-8 py-11 text-center">
           <h2 className="mb-3.5 font-serif text-[clamp(22px,3vw,30px)] font-medium text-favella-text-primary">Vai più a fondo.</h2>
           <p className="mx-auto mb-7 max-w-[520px] text-[15px] leading-[1.6] text-favella-text-secondary">
-            Il Manuale di Programmazione completo — 96 pagine, 21 capitoli — tratta ogni costrutto nel dettaglio, con la
+            Il Manuale di Programmazione completo — 95 pagine, 21 capitoli — tratta ogni costrutto nel dettaglio, con la
             Casa di Via Stradivari come esempio dall'inizio alla fine.
           </p>
           <div className="flex flex-wrap justify-center gap-3.5">
