@@ -63,7 +63,7 @@ const HomePage = () => (
         <div className="mb-8 flex items-center justify-center gap-4">
           <span className="h-px w-[54px] bg-gradient-to-r from-transparent to-favella-cyan/60" />
           <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-favella-cyan">
-            FAVELLA 1 · v{ENGINE_VERSION} — il linguaggio è completo
+            FAVELLA 1 · v{ENGINE_VERSION} — il parser che capisce
           </span>
           <span className="hidden h-px w-[54px] bg-gradient-to-l from-transparent to-favella-cyan/60 sm:block" />
         </div>
@@ -135,7 +135,7 @@ La spada antica <span className="text-favella-cyan">è prendibile</span>.{"\n"}
               <div className="text-favella-text-secondary">Puoi vedere qui: una spada antica.</div>
               <div className="mt-3.5 font-mono text-favella-text-muted">&gt; prendi spada antica</div>
               <div className="mt-1 font-serif italic text-favella-text-primary">La lama emette un debole ronzio.</div>
-              <div className="text-favella-emerald">Preso: spada antica.</div>
+              <div className="text-favella-emerald">Preso: la spada antica.</div>
             </div>
           </div>
         </div>

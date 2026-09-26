@@ -2194,7 +2194,7 @@ export const LESSONS: Record<string, Lesson> = {
       {
         tipo: "narr",
         testo:
-          "I comandi di base li hai incontrati giocando: «guarda» per rivedere la stanza, «esamina [cosa]» per i dettagli, «prendi» e «lascia», «inventario» (o «zaino») per quello che porti, le direzioni per muoverti («nord», «n», «vai nord»), «parla con [chi]» per i dialoghi, «esci» per chiudere. Sono il vocabolario minimo che ogni avventura testuale dà per scontato.",
+          "I comandi di base li hai incontrati giocando: «guarda» per rivedere la stanza, «esamina [cosa]» per i dettagli, «prendi» e «lascia», «inventario» (o «zaino») per quello che porti, le direzioni per muoverti («nord», «n», «vai nord»), «parla con [chi]» per i dialoghi, «esci» per chiudere (fuori da un dialogo chiede conferma). Sono il vocabolario minimo che ogni avventura testuale dà per scontato.",
       },
       { tipo: "sistema", testo: "— Pronomi: la casa che ti capisce —" },
       {

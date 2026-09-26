@@ -73,11 +73,8 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
     const cmd = bozza.trim();
     if (!cmd || finita || !sessioneRef.current) return;
     setBozza("");
-    if (cmd.toLowerCase() === "esci" || cmd.toLowerCase() === "quit") {
-      setRighe((r) => [...r, { kind: "cmd", text: cmd }, { kind: "sys", text: "Hai espulso la cassetta." }]);
-      setFinita(true);
-      return;
-    }
+    // Dalla 1.3.0 'esci' lo gestisce il motore (conferma, uscita «fuori», fine
+    // dialogo); per espellere la cassetta c'è il pulsante ⏏.
     applica(cmd, sessioneRef.current.step(cmd));
   };
 

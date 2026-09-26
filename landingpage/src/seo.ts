@@ -49,14 +49,14 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/": {
     title: "FAVELLA 1 — Scrivi storie, non codice",
     description:
-      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.0.0, il linguaggio è completo. Parser LALR(1), 681 test.",
+      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.3.0, il linguaggio è completo. Parser LALR(1), 1026 test.",
     og: "/og/home.png",
     type: "website",
   },
   "/progetto": {
     title: "Il progetto — FAVELLA 1",
     description:
-      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 681 test — al servizio della narrativa interattiva.",
+      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 1026 test — al servizio della narrativa interattiva.",
     og: "/og/progetto.png",
     type: "article",
   },
