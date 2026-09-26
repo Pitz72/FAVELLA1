@@ -287,6 +287,10 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
     su Amazon**.
 -   **Eventuale internazionalizzazione** e strumenti d'autore (vedi «Favella Studio» qui sotto).
+-   **Idea da valutare: pulsanti-verbo nei giochi esportati.** Il giocatore compone
+    la frase toccando verbo, oggetto e secondo oggetto invece di scriverla; il
+    linguaggio d'autore e il motore restano gli stessi. Dettagli in
+    [`analisi-critica-1.2.1.md`](documentazione/analisi-critica-1.2.1.md) §8.4.
 
 ---
 

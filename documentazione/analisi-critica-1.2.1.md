@@ -796,6 +796,18 @@ Ogni punto richiede nuova grammatica, da confermare con la guardia LALR/Earley.
 - **Collaudo dinamico più avversario**: dare all'esploratore i sinonimi di
   libreria e `guarda X`, e confrontare l'esito di verbi equivalenti sullo stesso
   oggetto. Avrebbe trovato GS-1 e GS-2 da solo.
+- **Interfaccia a pulsanti-verbo nei giochi esportati** (idea del 26 settembre
+  2026, da valutare). Il linguaggio d'autore non cambia: nella pagina esportata (e
+  magari nel sito) il giocatore può comporre la frase toccando un verbo, un oggetto
+  e, se serve, una preposizione e un secondo oggetto («dai» + «la mela» + «alla
+  guardia»), alla maniera delle avventure SCUMM. La frase composta passa allo
+  stesso `elabora_comando`, quindi regole, turni e salvataggi restano identici. Il
+  motore ha già tutto: i verbi (libreria + `verbi_personalizzati`), gli oggetti a
+  portata (`oggetti_raggiungibili`), le uscite della stanza, i dialoghi a menù.
+  Da decidere: pulsanti *accanto* al campo di testo o al suo posto (una scelta
+  dell'autore, per storie che non vogliono svelare verbi da scoprire); quali verbi
+  mostrare (tutti o solo quelli con una regola); come proporre secondo oggetto e
+  preposizione. Viene meglio dopo l'uscita del motore a eventi qui sopra.
 - **Un server LSP**: completamento dei nomi dichiarati e diagnostica in tempo
   reale in qualunque editor, riusando `analizza_file_strutturato`.
 
