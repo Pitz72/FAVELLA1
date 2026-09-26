@@ -10,8 +10,25 @@
 >
 > **Versione.** Dalla v0.18.0 grammatica, compilatore e motore condividono **una
 > sola linea di versione**: questa specifica avanza in lockstep col motore.
-> Versione corrente: **1.2.0** (motore 1.2.2: patch di runtime e di validazione,
-> grammatica identica).
+> Versione corrente: **1.3.0** (grammatica e motore).
+>
+> **Novità v1.3.0 — tutte le criticità dell'analisi.** Estensioni additive: le
+> frasi valide in 1.2 restano valide. Regole nuove: condizioni sulla posizione di
+> oggetti e personaggi (`cond_posizione_oggetto`, `cond_png_ha`); conseguenze
+> `cons_proprieta_via` (`non è più`), `cons_collega`/`cons_scollega`,
+> `cons_png_riceve`, `cons_moltiplica`/`cons_dividi`/`cons_modulo`/`cons_limita`;
+> dichiarazioni `def_di_scena`, `def_anche_in`, `def_uscite_anonime`, `def_png_ha`,
+> `def_argomento`, `def_titolo`, `def_autore`, `def_prologo`, `def_messaggio`;
+> `demone_dopo` (`N turni dopo che …`); `def_regola` con fase (`Invece`/`Prima`/
+> `Dopo`), ramo `altrimenti` e bersagli per `categoria`; `e adesso` sulla prima
+> conseguenza; numeri negativi e in lettere; `PREP_AZIONE` con `a`/`da`/`sopra`…;
+> parole chiave con confine e senza maiuscole. Il resto è runtime: turni che non
+> passano sui comandi non capiti, verbi e direzioni nuovi, parser del giocatore,
+> italiano dei messaggi, testi condizionali. Keyword aggiunte: `scena`, `anche`,
+> `uscite`, `nominano`, `solo`, `stanze`, `visitate`, `ha` (dopo un nome), `Se`,
+> `chiedi`, `ad`, `titolo`, `autore`, `prologo`, `messaggio`, `dopo`, `che`,
+> `Prima`, `Dopo`, `altrimenti`, `qualcosa`, `moltiplica`, `dividi`, `riduci`,
+> `modulo`, `per`, `resta`, `oggetto`, `spazio`. Vedi §22.
 >
 > **Motore 1.2.2 — le quattro criticità gravissime.** Nessuna modifica di
 > grammatica. Le regole `Invece di` scritte col verbo principale di un'azione
@@ -385,11 +402,13 @@ di Lark (EBNF con azioni `-> nome`).
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
 
     // --- CAPACITÀ DI TRASPORTO (Livello 7) E INVENTARIO INIZIALE (A8) ---
-    def_giocatore_capacita: "Il" "giocatore" "può" "portare" NUMERO "oggetti" "."
+    // [1.3.0 / L-1] Singolare e numeri in lettere (senza un/uno/una).
+    def_giocatore_capacita: "Il" "giocatore" "può" "portare" _numero ( "oggetti" | "oggetto" ) "."
     // [A8] Inventario iniziale: dopo 'Il giocatore' il lookahead "ha" distingue da
     // "comincia/inizia/parte" (posizione) e "può" (capacità) → 0-ambiguo.
     def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
-    def_capacita_oggetto: ENTITA "dà" NUMERO "spazi" "."
+    def_capacita_oggetto: ENTITA "dà" _numero ( "spazi" | "spazio" ) "."
+    _numero: NUMERO | NUMERO_PAROLA
 
     // --- [1.3.0 / M-8] SCENA E TOPOLOGIA ---
     // Dopo 'ENTITA è' il lookahead "di"/"anche" è disgiunto da PROPRIETA (keyword
@@ -420,7 +439,7 @@ di Lark (EBNF con azioni `-> nome`).
     def_stato: VARIABILE _copula "uno" "stato" "."
     def_stato_valore: VARIABILE _copula PROPRIETA "."
     def_contatore: VARIABILE _copula "un" "contatore" "."
-    def_contatore_iniziale: VARIABILE ( "parte" | "partono" ) "da" NUMERO "."
+    def_contatore_iniziale: VARIABILE ( "parte" | "partono" ) "da" _numero "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE ---
     def_direzioni: DIREZIONE "e" DIREZIONE "sono" "direzioni" "opposte" "."
@@ -434,14 +453,14 @@ di Lark (EBNF con azioni `-> nome`).
                     | ( "e"? "adesso" )? conseguenza ( "e" "adesso"? conseguenza )*
 
     // --- EVENTI A TURNI ---
-    def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
-              | "Ogni" NUMERO ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
+    def_evento: "Al" "turno" _numero ":" _esito_temporale "." -> evento_al
+              | "Ogni" _numero ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
 
     // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
     def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
               | "Quando" condizione ( "diventa" "vera" )? ":" _esito_temporale "." -> demone_quando
               // [1.3.0 / M-7] Timer che parte da un fatto (N turni dopo il fronte di salita).
-              | NUMERO ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
+              | _numero ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI ---
     def_dialogo_inizio: "Il" "dialogo" _PREP_DESCR ENTITA "comincia" "con" TESTO_QUOTATO "."
@@ -606,12 +625,17 @@ di Lark (EBNF con azioni `-> nome`).
     // completo): 'in'/'nel'/'sul'… non si staccano più dall'inizio di un aggettivo
     // monoparola ('è incisa' ≠ 'in'+'cisa'). Apostrofo (nell'/sull') senza confine.
     PREP_LUOGO: /nell'|sull'|(?:in|nel|nello|nella|nei|negli|nelle|sul|sullo|sulla|sui|sugli|sulle)(?![a-zA-ZÀ-ÿ0-9'])/i
-    PREP_AZIONE: "sull'" | "sul" | "sullo" | "sulla" | "sui" | "sugli" | "sulle" | "su" | "con" | "contro" | "nell'" | "nel" | "nello" | "nella" | "nei" | "negli" | "nelle" | "in"
+    // [1.3.0 / G-7] Con confine destro e con termine, provenienza e luoghi impropri.
+    PREP_AZIONE: /(?:sull'|nell'|all'|dall')|(?:sullo|sulla|sugli|sulle|sul|sui|su|contro|con|nello|nella|negli|nelle|nel|nei|in|allo|alla|agli|alle|al|ai|a|dallo|dalla|dagli|dalle|dal|dai|da|sopra|sotto|dentro|dietro|verso)(?![a-zA-ZÀ-ÿ0-9'])/i
     _PREP_DESCR: "di" | "del" | "dei" | "della" | "dell'" | "degli" | "delle"
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
-    NUMERO.2: /[0-9]+/
+    NUMERO.2: /-?[0-9]+/                         // [1.3.0 / M-7] anche negativi
+    // [1.3.0 / L-1] Numeri in lettere (senza un/uno/una), solo in _numero.
+    NUMERO_PAROLA.1: /(?:zero|due|tre|…|venti|trenta|…|cento)(?![a-zA-ZÀ-ÿ0-9'])/i
     PROPRIETA.-1: /[a-zA-ZÀ-ÿ0-9']+/
+    // [1.3.0 / G-1] Ogni parola chiave X delle regole diventa un terminale filtrato
+    // con confine destro e senza maiuscole: _KW_X: /(?:x)(?![a-zA-ZÀ-ÿ0-9'])/i
     TESTO_QUOTATO: /"(\\.|[^"\\])*"/
 ```
 
@@ -644,7 +668,7 @@ Sostituiti in Passata 2 dai simboli raccolti in Passata 1
   confine di parola finale `\b`, ordinamento per lunghezza decrescente
   (longest-match). Supporta nomi **multiparola**.
 - **`VARIABILE`** — alternanza chiusa degli «stati»/contatori dichiarati,
-  **disgiunta** da `ENTITA`.
+  **disgiunta** da `ENTITA`. [1.3.0] Contiene sempre `turno` (§22.6).
 - **`DIREZIONE`** — forme di base più le direzioni personalizzate dichiarate.
 - **`VERBO_MULTI`** (0.18.0 / B6) — alternanza chiusa dei verbi personalizzati
   **multi-parola** dichiarati, con spazi flessibili (`\s+`) e priorità **alta**
@@ -685,8 +709,13 @@ valutati a **fine turno** dopo gli eventi a tempo.
   (il giocatore esce da una stanza e ci rientra), il demone riscatta. Per un
   evento una tantum va guardato con uno stato:
   `Quando il giocatore è nell'orto e la visita è nuova: … e adesso la visita è fatta.`
-  `Demone.era_vera` è inizializzato a fine compilazione, quindi una condizione
-  già vera alla partenza non produce un fronte. *(Fino alla 1.0.0 questa spec
+  `Demone.era_vera` è inizializzato quando la partita comincia (dalla 1.3.0 in
+  `imposta_posizione_iniziale`, col giocatore già al suo posto; prima a fine
+  compilazione, quando `se il giocatore è in <partenza>` risultava falsa e il
+  demone scattava al primo turno), quindi una condizione già vera alla partenza
+  non produce un fronte.
+- **`demone_dopo` — `N turni dopo che [cond]: …`** (1.3.0): il fronte di salita
+  apre un conto alla rovescia; scatta N turni dopo, una volta. Vedi §22.6. *(Fino alla 1.0.0 questa spec
   diceva «una sola volta»: era sbagliata, il codice ha sempre fatto così. Test:
   `test_quando_riscatta_a_ogni_fronte`.)*
 
@@ -742,7 +771,9 @@ primitiva del motore.
   (`_applica_proprieta`) per **radice** (`bui-` → buia/buio/buie), che imposta
   `Stanza.buia = True`. È l'unica proprietà ammessa su una stanza (ogni altra
   resta un errore). Il buio è **statico** (la stanza non si «illumina» da sé): la
-  luce nel mondo cambia accendendo/spegnendo le fonti, non la stanza.
+  luce nel mondo cambia accendendo/spegnendo le fonti, non la stanza. *(Così fino
+  alla 0.32.0: dalla 0.33.0 una conseguenza lo commuta, `la radura diventa buia`,
+  §16.)*
 - **Fonte di luce.** `La torcia illumina.` è la regola di capacità **`def_illumina`**
   (`ENTITA "illumina" "."`), additiva e order-independent (crea-su-riferimento),
   che imposta `Oggetto.illumina = True`. Riservate aggiunte: `buia`, `buio`,
@@ -1085,6 +1116,7 @@ verso le variabili dei linguaggi veri — e tenuto **minimo e marcato**.
 
 - **Riservata.** `posto` entra fra le parole riservate: un'entità non può
   chiamarsi solo «posto» (nomi composti come «posto di blocco» restano leciti).
+  *(Dichiarata dalla 1.1.0, applicata davvero dalla 1.3.0: `NOMI_VIETATI`, §22.3.)*
 
 ## 19. Consolidamento v1.1.0 — semantica verificata con Il Viaggiatore
 
@@ -1272,3 +1304,185 @@ di `analisi-critica-1.2.1.md`). Dove una regola scattava già, scatta identica.
 - **Libreria per mondo.** `Mondo.carica_azioni` lavora su una **copia** della
   libreria: fino alla 1.2.1 le azioni dei verbi d'autore finivano nel dizionario
   globale e passavano alle storie caricate dopo nello stesso processo.
+
+## 22. Tutte le criticità dell'analisi (1.3.0)
+
+La 1.3.0 risolve le criticità gravi, medie e lievi di `analisi-critica-1.2.1.md`
+(le gravissime erano già corrette nella 1.2.2, §21). Le frasi valide in 1.2
+restano valide e, salvo i punti segnati **cambia**, significano la stessa cosa.
+
+### 22.1 Sessione, turni e demoni (G-5, G-8, G-9, L-3, L-4)
+
+- **Turni.** Un comando che il parser non capisce (verbo ignoto, oggetto che non
+  c'è, nome ambiguo, domanda «Cosa vuoi prendere?») o che non riguarda il mondo
+  (AIUTO) **non fa passare il tempo**: niente turno, eventi, demoni né istantanea
+  di ANNULLA (`Mondo._turno_libero`). **Cambia**: fino alla 1.2.2 ogni refuso
+  costava un turno.
+- **Uscire.** `esci` è un movimento se nella stanza c'è un'uscita `fuori`;
+  altrimenti chiede conferma («Vuoi davvero chiudere la partita? (sì/no)»).
+  `ricomincia` chiede conferma. A partita finita ANNULLA, RICOMINCIA e CARICA la
+  riaprono; FINE chiude; ogni altro comando ricorda queste possibilità.
+- **Demoni `Quando` (G-9).** Il valore di partenza della condizione si registra in
+  `imposta_posizione_iniziale`, con il giocatore già al suo posto: `Quando il
+  giocatore è in <partenza>` non scatta più al primo turno. La preparazione non
+  consuma il generatore casuale (L-4).
+- **SALVA/CARICA (L-3)** non intercettano più `carica il carro` o `ripristina il
+  generatore` quando il resto del comando nomina un oggetto.
+
+### 22.2 Lessico e diagnostica (G-1, G-2, L-9)
+
+- Ogni parola chiave delle regole è un terminale regex con **confine destro** e
+  **senza distinzione di maiuscole** (`_KW_<PAROLA>`): `unta` non si spezza in
+  `un`+`ta`, `alto` in `al`+`to`; `invece di` e `Invece di` valgono uguale.
+- Gli errori di sintassi sono **tutti** riportati in una compilazione (recupero:
+  la frase sbagliata si svuota e si riparte, al massimo 20 volte), in italiano,
+  con i terminali descritti a parole e consigli mirati (`o` al posto di `oppure`,
+  il punto dentro le virgolette, una proprietà di due parole…).
+
+### 22.3 Invarianti e moduli (G-3, M-11)
+
+- Sono **errori**: un nome vietato (`giocatore`, `posto`, `inventario`, `turno`…,
+  `NOMI_VIETATI`), un nome usato per due cose di tipo diverso, un oggetto
+  collocato in due posti (anche un personaggio che «ha» un oggetto già collocato).
+  Sono **avvisi**: due descrizioni o due valori iniziali diversi, una stanza nata
+  solo da `collega` e vuota (con il nome giusto suggerito).
+- `Includi la libreria "verbi".` include un modulo della libreria standard senza
+  copiarlo; senza `Il giocatore comincia` e con più file, un avviso dice da dove
+  partirà la partita.
+
+### 22.4 Verbi e parser del giocatore (G-4, G-7, M-4, M-5)
+
+- **Verbi nuovi della libreria.** `apri`/`chiudi` (oggetti `apribile`),
+  `accendi`/`spegni` (`accendibile`), `mangia` (`commestibile`), `bevi`
+  (`bevibile`), `aspetta`/`attendi`/`z`, `x` (esamina), `l` (guarda); con risposta
+  neutra `tocca`, `spingi`, `tira`, `premi`, `gira`, `rompi`, `colpisci`,
+  `indossa`, `togli`, `dai`/`offri`, `mostra`, `annusa`, `ascolta`. I verbi nuovi
+  **cedono** (`Azione.cede`): un verbo omonimo dichiarato dall'autore vince. Le
+  proprietà `apribile`, `accendibile`, `commestibile`, `bevibile` sono opt-in come
+  `prendibile`. L'azione di default che riesce chiama `_riuscita` (vedi 22.7).
+- **Direzioni.** `su`, `giù`/`giu`, `nordest`, `nordovest`, `sudest`, `sudovest`
+  (anche col trattino), con le opposte; `Su e giù sono direzioni opposte.` è
+  lecita. `entra`, `sali`, `scendi`, `esci X` muovono verso `dentro`, `su`, `giù`,
+  `fuori` se l'autore non li ha dichiarati come verbi.
+- **Preposizioni (G-7).** `PREP_AZIONE` e il parser del giocatore accettano anche
+  `a`, `al`…, `da`, `dal`…, `sopra`, `sotto`, `dentro`, `dietro`, `verso`:
+  `Invece di dai la mela alla guardia`, `prendi la mela dal tavolo` (controlla da
+  dove), `lascia X su Y` (vale `metti`). Le apostrofate (`sull'altare`) si
+  staccano dal nome.
+- **Divisione degli argomenti** (`gioco._dividi_argomenti`): se tutto il testo
+  nomina qualcosa non si divide (`la tazza con il manico`); altrimenti la prima
+  preposizione per cui le due metà nominano qualcosa; poi la prima per cui la
+  sinistra nomina qualcosa; infine la prima delle preposizioni storiche. Un
+  oggetto introdotto da preposizione vale come oggetto (`guarda nel cassetto`).
+- **Ricerca per parole.** Ogni parola scritta (articoli e «di» esclusi) deve
+  essere una parola del nome o l'inizio di una parola di almeno tre lettere.
+  **Cambia**: `ave` non trova più «chiave».
+- **Disambiguazione.** «Quale intendi: la chiave rossa o la chiave blu?» (nomi
+  della storia, ordine della storia); la risposta (parole o numero d'ordine)
+  completa il comando in sospeso; una risposta che non nomina un candidato è un
+  comando nuovo. `prendi` preferisce ciò che non si ha già, `lascia`/`metti` ciò
+  che si ha.
+- **Tutto ed elenchi.** `prendi tutto`, `lascia tutto`, `metti tutto nella cassa`,
+  `prendi tutto dal tavolo`, `prendi la chiave e la torcia`: un comando per
+  oggetto, **un solo turno**.
+- **La stanza** elenca il contenuto dei supporti e dei contenitori aperti
+  («Sul tavolo: una mela.»). La frase di posto (§18) resta per i soli oggetti che
+  cominciano direttamente in una stanza.
+- **Italiano (M-4).** A metà frase il nome ha l'articolo minuscolo e le
+  preposizioni si contraggono («Hai messo la chiave nello zaino.»); pronomi e
+  aggettivi si accordano («Non puoi prenderla.», «È chiusa.»); le domande usano
+  l'infinito («Cosa vuoi prendere?», «Dove vuoi andare?», «Spingi che cosa?» per
+  un verbo d'autore). Un segnaposto d'oggetto è minuscolo a metà frase e maiuscolo
+  a inizio frase o se scritto con la maiuscola (`[Mela]`), così come il valore di
+  uno stato (`[Meteo]` → «Sereno»).
+
+### 22.5 Il modello del mondo (G-6, M-2, M-8, M-10)
+
+- **`cond_posizione_oggetto`**: `se la guardia è in cucina` (la stanza in cui si
+  trova, attraverso contenitori, supporti e personaggi), `se la chiave è nella
+  scatola` (a qualunque livello), `se la mela è in inventario` (il giocatore la
+  possiede), `se X è nel nulla`; con la negazione. `se il gatto è qui` è
+  `cond_proprieta` con la proprietà speciale `qui`: come parola chiave, `qui`
+  vincerebbe su ogni proprietà nello stato LALR condiviso dopo la copula (`Lo
+  stato di Peppe è qui.`).
+- **`cons_proprieta_via`** (`X non è più P`) toglie la proprietà per radice.
+  `prendibile` si legge e si assegna come una proprietà (è il campo
+  `Oggetto.prendibile`).
+- **`cons_collega` / `cons_scollega`**: le uscite cambiano in partita, con il
+  ritorno (e la sua chiusura, se riportava qui). Le stanze devono essere
+  dichiarate; lo scanner di Passata 1 ignora un `collega` in una frase con i due
+  punti. Il linter e il collaudo contano le uscite aperte dalle conseguenze.
+- **`def_di_scena`**: l'oggetto si esamina ma non compare in «Puoi vedere qui» né
+  in `prendi tutto`. **`def_anche_in`**: presente anche in altre stanze (solo
+  stanze; avviso se è prendibile). **`def_uscite_anonime`**: la riga «Uscite:»
+  tace il nome delle stanze non ancora visitate (`Mondo.stanze_visitate`).
+- **`def_png_ha` / `cond_png_ha` / `cons_png_riceve`**: un personaggio tiene
+  oggetti (`posizione` = il personaggio); non sono alla portata del giocatore;
+  esaminare il personaggio dice «Ha con sé: …»; il personaggio li porta con sé.
+- **`def_argomento`**: `Se chiedi alla guardia di "chiave" oppure "custode" [se
+  …]: dire "…" [e adesso …].`; il giocatore scrive `chiedi alla guardia della
+  chiave`, `domanda ad Anna di Bea`, `chiedi della chiave` (se c'è un solo
+  personaggio). Vince il primo argomento, nell'ordine della storia, la cui
+  condizione è vera e le cui parole combaciano.
+
+### 22.6 Testi, numeri e tempo (M-1, M-6, M-7)
+
+- `_esito_temporale` accetta `e adesso` o `adesso` anche davanti alla prima
+  conseguenza (`…: e adesso la mela è rossa.`).
+- In `TESTO_QUOTATO`: `\n` va a capo; `\[` e `\]` sono parentesi quadre letterali
+  (arrivano al motore come `U+E000`/`U+E001`). Segnaposto sempre disponibili:
+  `[turno]`, `[luogo]`. Testo condizionale `[se COND]…[altrimenti]…[fine]` (non
+  annidato; COND si scrive come dopo un `se`, senza `[contatore]`): le condizioni
+  sono compilate in `valida_post` con un parser della sola regola `condizione`
+  (`costruisci_parser_condizioni`) e conservate in `Mondo.condizioni_testo`.
+- `def_titolo`, `def_autore`, `def_prologo`: `gioco.intestazione` apre la partita
+  (terminale, IDE, playground, pagina esportata). `def_messaggio` ridefinisce i
+  messaggi del motore elencati in `favella_utils.MESSAGGI_MOTORE` (chiave
+  sconosciuta = errore con l'elenco delle valide); `[oggetto]` e `[cosa]`.
+- `NUMERO` accetta i negativi; `NUMERO_PAROLA` (zero, due…venti, trenta…cento;
+  non un/uno/una) vale dove si scrive un numero di turni, spazi, oggetti o il
+  valore iniziale (`_numero`); `oggetto`/`spazio` al singolare (L-1).
+- `cons_moltiplica`, `cons_dividi` (intera, verso lo zero; per zero non cambia),
+  `cons_modulo` (resto fra 0 e N-1), `cons_limita` (`X resta fra A e B`).
+- **Il turno.** `turno` è sempre nel terminale `VARIABILE` e si legge come un
+  contatore (`se il turno è almeno 10`, `[turno]`); dichiararlo o assegnarlo è un
+  errore.
+- **`demone_dopo`**: `N turni dopo che COND: …`. Il fronte di salita apre un conto
+  alla rovescia di N turni (`Demone.conto`); scatta una volta quando arriva a
+  zero; un nuovo fronte durante il conto non lo riapre.
+
+### 22.7 Regole (M-9)
+
+- `def_regola` ha una **fase** (`fase_regola`): `Invece di` (sostituisce
+  l'azione), `Prima di` (scatta, poi l'azione prosegue, a meno che la regola non
+  chiuda la partita o sposti il giocatore), `Dopo di` (scatta dopo che la logica di
+  default è riuscita: `Mondo._azione_riuscita`, impostata da `_riuscita`). Il nodo
+  dell'albero resta `def_regola`.
+- **`ramo_altrimenti`** (`[;] altrimenti [:] esito`): vale quando la condizione è
+  falsa, con la precedenza delle regole semplici. Ogni condizione è valutata al più
+  una volta per ricerca (`càpita` non pesca due volte).
+- **`categoria`**: `qualcosa` (ogni oggetto) o `qualcosa di P` (ogni oggetto con
+  la proprietà P, per radice), anche come secondo oggetto. Precedenza: oggetti
+  precisi (due oggetti, poi uno), poi categorie, poi regole globali.
+- Le regole `vai <direzione>` seguono le stesse fasi; una regola `Invece di vai`
+  che sposta il giocatore, come sempre, non ristampa la stanza.
+
+### 22.8 Linter, istantanee, salvataggi (M-3, L-2, L-5, L-6, L-7)
+
+- Il linter conta le proprietà assegnate da **tutte** le conseguenze (eventi,
+  demoni, opzioni, argomenti, rami `altrimenti`) e dai verbi della libreria
+  (apribile → aperta/chiusa, accendibile → accesa/spenta); controlla i segnaposto
+  in **tutti** i testi (anche demoni, dialoghi, argomenti, `vinci "…"`); un testo
+  fra parentesi con punteggiatura (`[Apri gli occhi.]`) non è un segnaposto.
+- **Concordanza (L-2).** `radice_proprieta` toglie `-io/-ia/-ie` (se restano
+  almeno tre lettere) e l'`h` di `-ch`/`-gh`: bianco/bianchi, vecchio/vecchie,
+  lungo/lunghe concordano.
+- **Istantanee (L-5).** `Mondo._CAMPI_STATICI` (regole, eventi, dialoghi,
+  argomenti, vocabolario, messaggi…) restano fuori da `cattura_stato`.
+- **Salvataggi (L-6).** Il salvataggio registra il nome della storia (titolo o
+  file). Se l'impronta iniziale è cambiata ma il nome è lo stesso, la partita si
+  rigioca sulla nuova versione con un avviso. L'impronta dello stato cresce solo
+  per le storie che usano uscite dinamiche, `prendibile` dinamico, stanze
+  visitate o timer (`Mondo._stato_esteso`).
+- **Copie del motore (L-7).** Un test verifica che i moduli copiati in
+  `landingpage/public/favella-engine/engine/` siano identici ai sorgenti.

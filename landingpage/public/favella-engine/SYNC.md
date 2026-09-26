@@ -6,14 +6,14 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ⏳ **STATO AL 2026-09-25: motore 1.2.2 copiato qui, sito NON ancora
-> ridistribuito.** I cinque moduli in `engine/` sono il motore **1.2.2** (le
-> quattro criticità gravissime corrette: regole e sinonimi di libreria, `guarda X`,
-> nodi di dialogo, possesso e capienza con gli zaini; vedi il CHANGELOG).
-> `scripts/valida_checkpoint.py`: 53/53. Prima del deploy restano da allineare
-> `src/constants.tsx` (versione del motore e link di download, che puntano alla
-> release v1.2.1 finché non esiste una release v1.2.2). `galleria/il-viaggiatore/`
-> richiede almeno la 1.1.0.
+> ⏳ **STATO AL 2026-09-26: motore 1.3.0 copiato qui, sito NON ancora
+> ridistribuito.** I cinque moduli in `engine/` sono il motore **1.3.0** (tutte le
+> criticità dell'analisi corrette; vedi il CHANGELOG). Un test della suite
+> (`test_copie_del_motore_nel_sito_allineate`) fallisce se queste copie non sono
+> identiche ai sorgenti. `scripts/valida_checkpoint.py`: 53/53. Prima del deploy
+> restano da allineare `src/constants.tsx` (versione del motore e link di
+> download, che puntano alla release v1.2.1 finché non esiste una release v1.3.0).
+> `galleria/il-viaggiatore/` richiede almeno la 1.1.0.
 
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
 > `utils`): rinominato per igiene del namespace nel pacchetto pip. Se risincronizzi

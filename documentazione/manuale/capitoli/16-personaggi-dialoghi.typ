@@ -198,6 +198,45 @@ sente senza che tu debba descriverlo a mano.
   rimandi esista davvero.
 ]
 
+== Personaggi che hanno oggetti
+
+Un personaggio può tenere degli oggetti. Il giocatore non li può prendere, ma li
+vede esaminando il personaggio («Ha con sé: una chiave.»), e il personaggio se li
+porta dietro quando si muove.
+
+#sintassi[
+  `[Personaggio] ha [oggetto].` \
+  `se [personaggio] ha [oggetto]` \
+  `e adesso [personaggio] ha [oggetto]`
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+La guardia ha la chiave.
+Invece di dai la mela alla guardia: dire "La guardia sorride e ti lancia la chiave." e adesso la guardia ha la mela e adesso la chiave è in inventario.
+```)
+]
+
+== Chiedere di qualcosa
+
+Accanto ai dialoghi a menù, un personaggio può rispondere su un *argomento*:
+
+#sintassi[
+  `Se chiedi a [personaggio] di "[argomento]" (oppure "[altro]")* (se [condizione])?: dire "[testo]" (e adesso …)*.`
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+Se chiedi alla guardia di "chiave" oppure "custode": dire "La chiave? Ce l'ha il custode, giù al porto.".
+Se chiedi alla guardia di "tesoro" se la guardia ha la mela: dire "Sotto il pino grande. Ma non l'hai sentito da me.".
+```)
+]
+
+Il giocatore scrive `chiedi alla guardia della chiave` (o `domanda`, o solo
+`chiedi della chiave` se c'è un personaggio solo). Vale il primo argomento, nell'ordine
+in cui l'hai scritto, la cui condizione è vera; a un argomento sconosciuto il
+personaggio «non sa niente di questo».
+
 #prova[
   Dài al notaio un nuovo nodo `"certificato"`, raggiungibile dal nodo `"salute"`
   solo `se gli indizi è almeno 2`. Scrivi la sua battuta e un'opzione che riporti

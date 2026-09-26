@@ -271,6 +271,43 @@ intatta, scavi davvero; se ti manca lo strumento, ti dice cosa ti serve; una
 volta scavata, la terza riga chiude la questione. Tre esiti per lo stesso verbo,
 nessuna ambiguità.
 
+== Prima, dopo, altrimenti
+
+`Invece di` sostituisce l'azione. Dalla versione 1.3 ci sono altre due fasi:
+
+- `Prima di prendi la piuma: dire "Ti chini.".` scatta e poi l'azione prosegue
+  come sempre;
+- `Dopo di prendi la piuma: dire "È leggerissima.".` scatta dopo che l'azione del
+  motore è riuscita (la piuma è stata presa davvero); se non riesce, tace.
+
+Così non serve riscrivere una presa solo per aggiungerle una frase: la capienza, il
+buio e il messaggio «Preso» restano quelli del motore.
+
+Una regola con `se` può avere un ramo per quando la condizione è falsa:
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di esamina la porta se la porta è aperta: dire "Dà sul giardino."; altrimenti dire "È chiusa, e la vernice si scrosta.".
+```)
+]
+
+E al posto di un oggetto preciso puoi scrivere una *categoria*: `qualcosa` vale per
+ogni oggetto, `qualcosa di [proprietà]` per ogni oggetto che ha quella proprietà.
+Una regola su un oggetto preciso vince sempre su quella per categoria.
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di prendi qualcosa di pesante: dire "Non ce la fai a sollevarlo.".
+Invece di annusa qualcosa: dire "Sa di polvere.".
+```)
+]
+
+== A chi, da dove
+
+Nelle regole a due oggetti valgono anche le preposizioni `a`, `da` (con tutte le
+loro forme: `alla`, `dal`, `dall'`…) e `sopra`, `sotto`, `dentro`, `dietro`, `verso`:
+`Invece di dai la mela alla guardia`, `Invece di prendi il libro dallo scaffale`.
+
 #prova[
   Aggiungi alla Casa una reazione per il verbo `bussa` sulla porta della cantina:
   un messaggio diverso a seconda che la porta sia `chiusa` o `aperta`. Ti bastano

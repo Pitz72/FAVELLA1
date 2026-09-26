@@ -374,9 +374,21 @@ def radice_proprieta(prop: str) -> str:
     p = (prop or "").strip().lower()
     if p in _PROPRIETA_INVARIANTI:
         return p
-    if len(p) >= 4 and p[-1] in "oaie":
-        return p[:-1]
-    return p
+    # [1.3.0 / L-2] Le parole in -io/-ia/-ie ('vecchio', 'grigia', 'vecchie')
+    # perdono le due vocali, così combaciano col plurale in -i ('vecchi',
+    # 'grigi'); una radice più corta di tre lettere resta alla regola base
+    # ('buia' → 'bui', come 'buio').
+    if len(p) >= 5 and p[-2:] in ("io", "ia", "ie"):
+        radice = p[:-2]
+    elif len(p) >= 4 and p[-1] in "oaie":
+        radice = p[:-1]
+    else:
+        return p
+    # [1.3.0 / L-2] Plurali in -chi/-ghi/-che/-ghe: 'bianchi' → 'bianc', come
+    # 'bianco'; 'lunghe' → 'lung', come 'lungo'; 'vecchi' e 'vecchio' → 'vecc'.
+    if len(radice) >= 4 and radice[-1] == "h" and radice[-2] in "cg":
+        radice = radice[:-1]
+    return radice
 
 
 def normalizza_tipografia(testo: str) -> str:

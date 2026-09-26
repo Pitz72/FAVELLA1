@@ -109,6 +109,28 @@ si eseguono nell'ordine in cui le scrivi.
   giocatore la nuova stanza, come se ci fosse entrato.
 ]
 
+== Dove stanno le cose
+
+Dalla versione 1.3 una condizione può chiedere dove sta un oggetto o un
+personaggio, non solo il giocatore:
+
+#table(
+  columns: (auto, 1fr),
+  stroke: 0.4pt + c.rule,
+  inset: 6pt,
+  align: (left + top, left + top),
+  table.header([*Condizione*], [*È vera se…*]),
+  [`se la guardia è in cucina`], [la guardia è nella cucina (anche la chiave nella scatola sul tavolo della cucina «è in cucina»)],
+  [`se la chiave è nella scatola`], [la chiave è nella scatola, o in qualcosa che sta nella scatola],
+  [`se la mela è in inventario`], [il giocatore ha la mela],
+  [`se il gatto è qui`], [il gatto è nella stanza del giocatore],
+  [`se la guardia ha la chiave`], [la chiave è della guardia (vedi «Personaggi»)],
+)
+
+Ognuna ha la sua negazione (`se la guardia non è in cucina`). E `e adesso` si può
+scrivere anche davanti alla prima conseguenza, quando manca il `dire`:
+`Invece di tocca la miccia: e adesso la miccia è accesa.`
+
 #prova[
   Scrivi una regola sul `flacone di medicine`: esaminandolo, fai aumentare gli
   indizi *e* diminuire la calma, con due `e adesso` in coda. Poi controlla che la

@@ -173,6 +173,30 @@ Per confrontare due stati, invece, c'è `è come`:
   te lo dice indicando la forma giusta.
 ]
 
+== Numeri negativi, in lettere, e un po' di aritmetica
+
+Dalla versione 1.3 un contatore può partire sotto zero (`La temperatura parte da
+-5.`), e dove si scrive un numero di turni, di spazi o di oggetti vanno bene anche i
+numeri in lettere, da `zero` a `venti` e le decine fino a `cento` (`Ogni tre turni`,
+`Il giocatore può portare cinque oggetti.`; ma non `un`, `uno`, `una`, che sono già
+parole del linguaggio: scrivi `1 oggetto`). Oltre ad `aumenta` e `diminuisci`, le
+conseguenze sanno:
+
+#table(
+  columns: (auto, 1fr),
+  stroke: 0.4pt + c.rule,
+  inset: 6pt,
+  align: (left + top, left + top),
+  table.header([*Conseguenza*], [*Effetto*]),
+  [`moltiplica la forza per 2`], [raddoppia],
+  [`dividi la forza per 3`], [divisione intera (7 diviso 3 fa 2)],
+  [`riduci l'ora modulo 24`], [il resto della divisione: un orologio che ricomincia],
+  [`la forza resta fra 0 e 10`], [riporta il valore nell'intervallo],
+)
+
+*Il turno* si legge come un contatore, senza dichiararlo: `se il turno è almeno 20`
+nelle condizioni, `[turno]` nei testi. Non si può cambiare.
+
 #prova[
   Dichiara un contatore `passi` che parte da 0 e uno stato `meteo` che parte da
   `sereno`. Non farli ancora cambiare: prima impareremo a muovere i numeri e gli

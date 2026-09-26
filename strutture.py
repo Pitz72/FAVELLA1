@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.2.2"
+VERSIONE_MOTORE = "1.3.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -1056,6 +1056,9 @@ class Mondo:
         # precedenti non conoscevano: entrano nell'impronta solo se servono,
         # così i salvataggi delle storie che non le usano restano validi.
         self._stato_esteso: Set[str] = set()
+        # [1.3.0 / L-6] Il file della storia (per riconoscerla nei salvataggi
+        # anche quando è stata corretta dopo il salvataggio).
+        self.file_storia: Optional[str] = None
         # [1.3.0 / M-8] 'Le uscite nominano solo le stanze visitate.': la riga
         # «Uscite:» tace il nome delle stanze non ancora viste.
         self.uscite_solo_visitate: bool = False
@@ -1184,12 +1187,21 @@ class Mondo:
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
                        "archivio_salvataggi")
 
+    # [1.3.0 / L-5] Campi STATICI: scritti dal compilatore e mai cambiati in
+    # partita (regole, eventi, dialoghi, argomenti, vocabolario, messaggi).
+    # Restano fuori dalle istantanee: ripristina_stato non li tocca. Sul
+    # Viaggiatore un'istantanea pesava circa 96 KiB, quasi tutti di regole.
+    _CAMPI_STATICI = ("regole", "eventi", "dialogo_nodi", "argomenti", "condizioni_testo",
+                      "messaggi", "titolo", "autore", "prologo", "_stato_esteso",
+                      "verbi_personalizzati", "verbi_intransitivi", "sinonimi_verbo",
+                      "alias", "opposti", "direzioni", "opposte_direzioni", "file_storia")
+
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
         l'ANNULLA. Un'unica deepcopy preserva l'identità condivisa fra gli oggetti
         (es. lo stesso Oggetto in mondo.oggetti e in stanza.oggetti)."""
         salvati = {k: self.__dict__.pop(k)
-                   for k in self._CAMPI_VOLATILI if k in self.__dict__}
+                   for k in self._CAMPI_VOLATILI + self._CAMPI_STATICI if k in self.__dict__}
         try:
             return copy.deepcopy(self.__dict__)
         finally:

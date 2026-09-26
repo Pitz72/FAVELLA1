@@ -2,12 +2,17 @@
 
 > Motore **1.2.1**, grammatica **1.2.0**. Analisi del 25 settembre 2026.
 >
-> **Stato.** Le quattro criticità gravissime (GS-1…GS-4) sono **corrette nel
-> motore 1.2.2**. Il lavoro ha portato alla luce anche un difetto non elencato
-> qui: i verbi d'autore di una storia passavano alle storie caricate dopo nello
-> stesso processo; è corretto anche quello. Dettagli e verifica nel `CHANGELOG.md`
-> (voce 1.2.2) e nella spec `grammatica-1.2.0.md` §21. Il resto del documento
-> descrive il motore 1.2.1, così com'era al momento dell'analisi.
+> **Stato (26 settembre 2026).** Tutte le criticità sono corrette. Le quattro
+> gravissime (GS-1…GS-4) nel motore **1.2.2**; le gravi (G-1…G-9), le medie
+> (M-1…M-11) e le lievi (L-1…L-9) nel motore **1.3.0**. Il lavoro ha portato alla
+> luce anche un difetto non elencato qui (i verbi d'autore di una storia passavano
+> alle storie caricate dopo nello stesso processo), corretto nella 1.2.2. Resta
+> aperta una sola parte di L-7, per scelta: dividere `compilatore.py` e sostituire
+> `print()` con un flusso di eventi sono lavori di architettura che toccano ogni
+> modulo e l'IDE senza cambiare il linguaggio (vedi §8.4). Per ogni criticità
+> l'appendice dice dove è stata corretta; dettagli e verifica nel `CHANGELOG.md`
+> (voci 1.2.2 e 1.3.0) e nella spec `grammatica-1.3.0.md` (§21 e §22). Il resto
+> del documento descrive il motore 1.2.1, così com'era al momento dell'analisi.
 >
 > Documento di lavoro: elenca criticità, limiti, implementazioni mancanti e
 > possibili evoluzioni del **linguaggio** (grammatica d'autore, semantica,
@@ -693,17 +698,17 @@ fin dove può arrivare il linguaggio.
 | 5a — quantità e plurali | NO-GO | spec §17, `espansione-oltre-0.29.md` |
 | 5b — modelli e tipi di entità | sconsigliato | idem |
 | 1c — scala ordinata di stati («sali di una marcia») | scartato | spec §14 |
-| A2 — diagnosi del punto dentro le virgolette | rimandato | spec §13 |
+| A2 — diagnosi del punto dentro le virgolette | **fatto nella 1.3.0** (consiglio mirato) | spec §13, §22.2 |
 | Internazionalizzazione | in roadmap, non progettata | README |
 | Favella Studio | esperimento fermo alla 0.9.x; il ritorno dall'IDE al sorgente perde battute condizionali e opzioni avanzate | README, spec §16 |
-| RICOMINCIA, ANNULLA dopo la fine | assenti | G-8 |
-| Aprire, chiudere, accendere, spegnere, aspettare con logica propria | assenti | G-4 |
-| `tutto`, più oggetti, domanda di disambiguazione | assenti | M-5 |
-| Porte, oggetti di scena, oggetti in più luoghi, uscite dinamiche o nascoste | assenti | M-8 |
-| Titolo, autore, prologo, IFID, riga di stato | assenti | M-6 |
-| Messaggi della libreria personalizzabili | assenti | M-6 |
-| Regole «prima» e «dopo», prosecuzione dell'azione | assenti | M-9 |
-| Inventario dei personaggi, dialogo a tema | assenti | M-10 |
+| RICOMINCIA, ANNULLA dopo la fine | **fatti nella 1.3.0** | G-8 |
+| Aprire, chiudere, accendere, spegnere, aspettare con logica propria | **fatti nella 1.3.0** | G-4 |
+| `tutto`, più oggetti, domanda di disambiguazione | **fatti nella 1.3.0** | M-5 |
+| Porte, oggetti di scena, oggetti in più luoghi, uscite dinamiche o nascoste | **fatti nella 1.3.0** (la porta è un oggetto «anche in» due stanze) | M-8 |
+| Titolo, autore, prologo, IFID, riga di stato | titolo, autore e prologo **fatti nella 1.3.0**; IFID e riga di stato no | M-6 |
+| Messaggi della libreria personalizzabili | **fatti nella 1.3.0** (`Il messaggio "…" è "…".`) | M-6 |
+| Regole «prima» e «dopo», prosecuzione dell'azione | **fatte nella 1.3.0** | M-9 |
+| Inventario dei personaggi, dialogo a tema | **fatti nella 1.3.0** (`La guardia ha …`, `Se chiedi a … di …`) | M-10 |
 
 ---
 
@@ -715,7 +720,8 @@ della casa («dopo la 1.0 si cresce solo aggiungendo»); dove una correzione
 
 ### 8.1 Patch di correttezza (1.2.2): difetti, nessuna frase nuova
 
-Le righe segnate ✅ sono state realizzate nel motore 1.2.2.
+Le righe segnate ✅ sono state realizzate nel motore 1.2.2 (1–4) e nel motore
+1.3.0 (5–11).
 
 | # | Intervento | Dove | Compatibilità | Sforzo |
 |---|---|---|---|---|
@@ -723,13 +729,13 @@ Le righe segnate ✅ sono state realizzate nel motore 1.2.2.
 | 2 ✅ | `guarda X`/`osserva X` = esamina; test «nessun verbo in due azioni» (GS-2) | `libreria_azioni`, `carica_azioni` | Rende vive regole finora morte | S |
 | 3 ✅ | Errore su un nodo di dialogo con due personaggi (GS-3) | `valida_post` | Solo le storie già corrotte smettono di compilare | S |
 | 4 ✅ | Possesso transitivo e capienza con gli oggetti annidati (GS-4) | `CondizionePossesso`, `capacita_attuale` | Cambia l'esito solo con contenitori portati | S |
-| 5 | Confine di parola sulle parole chiave (G-1) + test su una lista di aggettivi | `_GRAMMAR_TEMPLATE` | Solo aggiunte: compilano frasi prima rifiutate | S–M |
-| 6 | Valore di partenza dei demoni `Quando` dopo aver collocato il giocatore (G-9) | `imposta_posizione_iniziale` | Allinea il codice alla spec §6 | S |
-| 7 | I fallimenti del parser non consumano turni (G-5) | `elabora_comando` | Cambia il ritmo delle storie a tempo, **a favore** del giocatore | S |
-| 8 | `esci` con conferma o come movimento; RICOMINCIA; ANNULLA e CARICA dopo la fine (G-8) | `gioco.py` | Solo aggiunte | S |
-| 9 | Invarianti del mondo: posizione unica, nomi riservati, collisioni fra entità, stati e stanze, avviso sulle stanze nate da `collega` (G-3) | `valida_post`, `valida_nomi_dichiarati` | Nuovi errori solo su storie già incoerenti | M |
-| 10 | Linter: proprietà assegnate da eventi, demoni e opzioni; segnaposto in tutti i testi (M-3) | `valida_post` | Meno falsi avvisi | S |
-| 11 | `\n` e `\[` come escape veri nei testi (M-6) | `TESTO_QUOTATO`, `rendi_testo` | `\n` oggi produce una «n»: difficile che qualcuno ci conti | S |
+| 5 ✅ | Confine di parola sulle parole chiave (G-1) + test su una lista di aggettivi | `_GRAMMAR_TEMPLATE` | Solo aggiunte: compilano frasi prima rifiutate | S–M |
+| 6 ✅ | Valore di partenza dei demoni `Quando` dopo aver collocato il giocatore (G-9) | `imposta_posizione_iniziale` | Allinea il codice alla spec §6 | S |
+| 7 ✅ | I fallimenti del parser non consumano turni (G-5) | `elabora_comando` | Cambia il ritmo delle storie a tempo, **a favore** del giocatore | S |
+| 8 ✅ | `esci` con conferma o come movimento; RICOMINCIA; ANNULLA e CARICA dopo la fine (G-8) | `gioco.py` | Solo aggiunte | S |
+| 9 ✅ | Invarianti del mondo: posizione unica, nomi riservati, collisioni fra entità, stati e stanze, avviso sulle stanze nate da `collega` (G-3) | `valida_post`, `valida_nomi_dichiarati` | Nuovi errori solo su storie già incoerenti | M |
+| 10 ✅ | Linter: proprietà assegnate da eventi, demoni e opzioni; segnaposto in tutti i testi (M-3) | `valida_post` | Meno falsi avvisi | S |
+| 11 ✅ | `\n` e `\[` come escape veri nei testi (M-6) | `TESTO_QUOTATO`, `rendi_testo` | `\n` oggi produce una «n»: difficile che qualcuno ci conti | S |
 
 ### 8.2 1.3 — «Il parser che capisce» (lato giocatore)
 
@@ -812,20 +818,38 @@ Uno per criticità, ricavati dalle sonde di questa analisi:
 
 ## Appendice — Riepilogo
 
-| ID | Gravità | Titolo | Verifica |
-|---|---|---|---|
-| GS-1 | Gravissima | Regole agganciate alla parola, non all'azione | ✅ (anche sulla demo *Relitto*) — **corretta nella 1.2.2** |
-| GS-2 | Gravissima | `guarda X` / `osserva X` ignorano l'oggetto; regole morte | ✅ — **corretta nella 1.2.2** |
-| GS-3 | Gravissima | Nodi di dialogo globali: personaggi fusi | ✅ — **corretta nella 1.2.2** |
-| GS-4 | Gravissima | Possesso non transitivo; capienza aggirabile | ✅ — **corretta nella 1.2.2** |
-| G-1 | Grave | Parole chiave che spezzano gli aggettivi (`un-`, `al-`) | ✅ |
-| G-2 | Grave | Diagnostica per addetti ai lavori; un errore alla volta; maiuscole | ✅ |
-| G-3 | Grave | Spazio di nomi unico, fusioni e incoerenze silenziose | ✅ |
-| G-4 | Grave | Libreria di verbi senza aprire, chiudere, accendere, aspettare; niente su/giù | ✅ |
-| G-5 | Grave | Gli errori del parser consumano turni | ✅ |
-| G-6 | Grave | Nessuna condizione sulla posizione di oggetti e personaggi | ✅ |
-| G-7 | Grave | Niente «a/da» nei comandi a due oggetti | ✅ |
-| G-8 | Grave | `esci` senza conferma; niente annulla o ricomincia dopo la fine | ✅ |
-| G-9 | Grave | `Quando` scatta al turno 1 se la condizione è vera all'avvio | ✅ |
-| M-1…M-11 | Media | Asimmetrie, limiti espressivi, output, parser, moduli | ✅/📖 |
-| L-1…L-9 | Lieve | Concordanze, prestazioni, architettura, documentazione | ✅/📖 |
+| ID | Gravità | Titolo | Verifica | Stato |
+|---|---|---|---|---|
+| GS-1 | Gravissima | Regole agganciate alla parola, non all'azione | ✅ (anche sulla demo *Relitto*) | corretta nella 1.2.2 |
+| GS-2 | Gravissima | `guarda X` / `osserva X` ignorano l'oggetto; regole morte | ✅ | corretta nella 1.2.2 |
+| GS-3 | Gravissima | Nodi di dialogo globali: personaggi fusi | ✅ | corretta nella 1.2.2 |
+| GS-4 | Gravissima | Possesso non transitivo; capienza aggirabile | ✅ | corretta nella 1.2.2 |
+| G-1 | Grave | Parole chiave che spezzano gli aggettivi (`un-`, `al-`) | ✅ | corretta nella 1.3.0 (§22.2) |
+| G-2 | Grave | Diagnostica per addetti ai lavori; un errore alla volta; maiuscole | ✅ | corretta nella 1.3.0 (§22.2) |
+| G-3 | Grave | Spazio di nomi unico, fusioni e incoerenze silenziose | ✅ | corretta nella 1.3.0 (§22.3) |
+| G-4 | Grave | Libreria di verbi senza aprire, chiudere, accendere, aspettare; niente su/giù | ✅ | corretta nella 1.3.0 (§22.4) |
+| G-5 | Grave | Gli errori del parser consumano turni | ✅ | corretta nella 1.3.0 (§22.1) |
+| G-6 | Grave | Nessuna condizione sulla posizione di oggetti e personaggi | ✅ | corretta nella 1.3.0 (§22.5) |
+| G-7 | Grave | Niente «a/da» nei comandi a due oggetti | ✅ | corretta nella 1.3.0 (§22.4) |
+| G-8 | Grave | `esci` senza conferma; niente annulla o ricomincia dopo la fine | ✅ | corretta nella 1.3.0 (§22.1) |
+| G-9 | Grave | `Quando` scatta al turno 1 se la condizione è vera all'avvio | ✅ | corretta nella 1.3.0 (§22.1) |
+| M-1 | Media | `e adesso` vietato sulla prima conseguenza | ✅ | corretta nella 1.3.0 (§22.6) |
+| M-2 | Media | Proprietà che non si tolgono; `prendibile` non interrogabile | ✅ | corretta nella 1.3.0 (§22.5) |
+| M-3 | Media | Il linter segnala il falso e tace il vero | ✅ | corretta nella 1.3.0 (§22.8) |
+| M-4 | Media | L'italiano che scrive il motore | ✅ | corretta nella 1.3.0 (§22.4) |
+| M-5 | Media | Il parser del giocatore | ✅ | corretta nella 1.3.0 (§22.4) |
+| M-6 | Media | Testo e presentazione | ✅ | corretta nella 1.3.0 (§22.6) |
+| M-7 | Media | Numeri e tempo | ✅ | corretta nella 1.3.0 (§22.6) |
+| M-8 | Media | Topologia statica e oggetti di scena | 📖✅ | corretta nella 1.3.0 (§22.5) |
+| M-9 | Media | Un solo tipo di regola | 📖 | corretta nella 1.3.0 (§22.7) |
+| M-10 | Media | Personaggi | 📖 | corretta nella 1.3.0 (§22.5): oggetti dei personaggi e argomenti; i personaggi non agiscono da soli sugli oggetti se non con le conseguenze dell'autore |
+| M-11 | Media | Moduli (`Includi`) | 📖 | corretta nella 1.3.0 (§22.3) |
+| L-1 | Lieve | Numero grammaticale nelle frasi fisse | ✅ | corretta nella 1.3.0 (§22.6) |
+| L-2 | Lieve | Concordanza per radice imperfetta | 📖 | corretta nella 1.3.0 (§22.8) |
+| L-3 | Lieve | Comandi di servizio invadenti | 📖 | corretta nella 1.3.0 (§22.1) |
+| L-4 | Lieve | Il valore di partenza dei demoni consuma il caso | 📖 | corretta nella 1.3.0 (§22.1) |
+| L-5 | Lieve | Istantanee pesanti | 📖✅ | corretta nella 1.3.0 (§22.8): 98 → 47 KiB sul Viaggiatore |
+| L-6 | Lieve | Salvataggi legati alla forma del mondo | 📖 | corretta nella 1.3.0 (§22.8) |
+| L-7 | Lieve | Architettura | 📖 | in parte: il test sulle copie del motore c'è (1.3.0); divisione di `compilatore.py` e uscita a eventi restano in §8.4 |
+| L-8 | Lieve | Documentazione non allineata | ✅ | corretta nella 1.3.0 (README, spec §6, §10, §18, manuale) |
+| L-9 | Lieve | `o` non vale come «oppure»: errore criptico | ✅ | corretta nella 1.3.0 (§22.2): consiglio mirato; `o` resta «ovest» |

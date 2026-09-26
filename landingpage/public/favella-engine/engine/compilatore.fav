@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.2.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.3.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -12,6 +12,9 @@ from strutture import (
     CondizioneAnd, CondizioneOr, CondizioneNot, CondizioneVariabile,
     CondizioneVariabileUguali,
     CondizioneContatore, CondizionePosizioneGiocatore, CondizioneProbabilita,
+    CondizionePosizioneOggetto, CondizionePngHa, QUI, Argomento,
+    ConseguenzaTogliProprieta, ConseguenzaCollegamento, ConseguenzaPngRiceve,
+    ConseguenzaLimita, TURNO,
     Conseguenza, ConseguenzaProprieta, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaVariabile, ConseguenzaVariabileCopia,
@@ -24,7 +27,8 @@ from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
     normalizza_nome, normalizza_tipografia, ARTICOLI,
     DIREZIONI_BASE, estrai_placeholder, _scomponi_articolo, radice_proprieta,
-    prima_maiuscola,
+    prima_maiuscola, condizioni_nel_testo, SEGNAPOSTO_DEL_MOTORE, MESSAGGI_MOTORE,
+    QUADRA_APERTA, QUADRA_CHIUSA,
 )
 import os
 import sys
@@ -270,12 +274,16 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
                 tab.coppie_direzioni.append((a, b))
             continue
 
-        m = _RE_DEF_CONNESSIONE.match(frase)
+        # [1.3.0 / M-8] Un «collega» dentro una regola ('…: e adesso la cucina
+        # collega nord a la dispensa') è una conseguenza, non una dichiarazione.
+        m = _RE_DEF_CONNESSIONE.match(frase) if ":" not in frase else None
         if m:
             tab.stanze.add(normalizza_nome(m.group("x")))
             tab.stanze.add(normalizza_nome(m.group("y")))
             continue
 
+    # [1.3.0 / M-7] 'il turno' si legge come un contatore in ogni storia.
+    tab.variabili.add("turno")
     return tab
 
 
@@ -337,6 +345,15 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_illumina
                   | def_sinonimo
                   | def_posto
+                  | def_di_scena
+                  | def_anche_in
+                  | def_uscite_anonime
+                  | def_png_ha
+                  | def_argomento
+                  | def_titolo
+                  | def_autore
+                  | def_prologo
+                  | def_messaggio
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -428,14 +445,51 @@ _GRAMMAR_TEMPLATE = r"""
     // "può" vs "comincia/inizia/parte" la distingue (LALR(1) 0-ambiguo). Il BONUS
     // di un oggetto: 'Lo zaino dà N spazi.' — inizia con ENTITA; dopo l'entità il
     // lookahead "dà" la distingue da è/si/collega/al (unico costrutto ENTITA "dà").
-    def_giocatore_capacita: "Il" "giocatore" "può" "portare" NUMERO "oggetti" "."
+    // [1.3.0 / L-1] Singolare e numeri in lettere: 'può portare un oggetto'
+    // non c'è (un/uno/una sono parole del linguaggio), ma '1 oggetto', 'tre
+    // oggetti', 'dà 1 spazio', 'Al turno dieci', 'Ogni due turni' sì.
+    def_giocatore_capacita: "Il" "giocatore" "può" "portare" _numero ( "oggetti" | "oggetto" ) "."
     // [0.19.0 / A8] Inventario iniziale del giocatore: 'Il giocatore ha la
     // torcia.'. Inizia come def_giocatore con "Il giocatore"; dopo, il lookahead
     // distingue "ha" da "comincia/inizia/parte" (posizione) e "può" (capacità) →
     // LALR(1) 0-ambiguo. Un oggetto per frase (più oggetti = più frasi), come da
     // stile «un fatto, una frase» del linguaggio. ('ha' è già riservata: cond_possesso.)
     def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
-    def_capacita_oggetto: ENTITA "dà" NUMERO "spazi" "."
+    def_capacita_oggetto: ENTITA "dà" _numero ( "spazi" | "spazio" ) "."
+    _numero: NUMERO | NUMERO_PAROLA
+
+    // --- [1.3.0 / M-8] SCENA E TOPOLOGIA ---
+    // 'Il cielo è di scena.': si esamina ma non si elenca («Puoi vedere qui»).
+    // Dopo 'ENTITA è' il lookahead "di" è disgiunto da PROPRIETA (keyword a
+    // priorità più alta), PREP_LUOGO, "una"/"un"/"uno" → LALR(1) 0-ambiguo.
+    def_di_scena: ENTITA _copula "di" "scena" "."
+    // 'Il cielo è anche nel cortile.': presente in più stanze.
+    def_anche_in: ENTITA _copula "anche" PREP_LUOGO ENTITA "."
+    // Opzione globale: la riga «Uscite:» non rivela le stanze mai visitate.
+    // Inizia con "Le": un'ENTITA che comincia con 'Le' vince per lunghezza.
+    def_uscite_anonime: "Le" "uscite" "nominano" "solo" "le" "stanze" "visitate" "."
+
+    // --- [1.3.0 / M-10] PERSONAGGI CHE TENGONO OGGETTI E ARGOMENTI ---
+    // 'La guardia ha la chiave.': dopo ENTITA il lookahead "ha" è nuovo (le
+    // altre dichiarazioni proseguono con è/sono/si/collega/dà/illumina/al).
+    def_png_ha: ENTITA "ha" ENTITA "."
+    // 'Se chiedi alla guardia di "chiave" oppure "custode": dire "…".' La
+    // preposizione davanti al personaggio è facoltativa ('a Anna', 'ad Anna').
+    // Inizia con "Se" maiuscolo: nessun'altra frase comincia così.
+    def_argomento: "Se" "chiedi" a_chi? ENTITA "di" argomento_chiavi ( "se" condizione )? ":" _esito_temporale "."
+    a_chi: PREP_AZIONE | "ad"
+    argomento_chiavi: TESTO_QUOTATO ( "oppure" TESTO_QUOTATO )*
+
+    // --- [1.3.0 / M-6] PRESENTAZIONE DELLA STORIA ---
+    // Iniziano con "Il" (come def_giocatore/def_posto/def_dialogo_inizio): il
+    // lookahead titolo/prologo/messaggio decide. 'L'autore' inizia con
+    // _L_APOSTROFO: un'ENTITA che comincia con L' vince per lunghezza.
+    def_titolo: "Il" "titolo" "è" TESTO_QUOTATO "."
+    def_autore: _L_APOSTROFO "autore" "è" TESTO_QUOTATO "."
+    def_prologo: "Il" "prologo" "è" TESTO_QUOTATO "."
+    // 'Il messaggio "non capisco" è "Come, prego?".': i messaggi del motore.
+    def_messaggio: "Il" "messaggio" TESTO_QUOTATO "è" TESTO_QUOTATO "."
+    _L_APOSTROFO: /[Ll]'/
 
     // --- STATO ASTRATTO (Livello 3 / G3) ---
     // 'X è uno stato.' dichiara una variabile globale (uno 'stato'); 'X è valore.'
@@ -456,7 +510,7 @@ _GRAMMAR_TEMPLATE = r"""
     // 0-ambiguo (def_giocatore usa "parte" ma parte da "Il giocatore", non VARIABILE).
     // [0.27.0 / A] "partono" plurale per i nomi-contatore plurali ('Le vite
     // partono da 3.'), coerente con la copula plurale di def_contatore.
-    def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" NUMERO "."
+    def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" _numero "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -475,10 +529,13 @@ _GRAMMAR_TEMPLATE = r"""
     // evento_*/demone_* ricevono gli stessi tipi (testo str opzionale + conseguenze).
     // Dopo ':' il lookahead distingue "dire" dal primo token di una conseguenza
     // (ENTITA/VARIABILE/"il"/"aumenta"/"diminuisci"/"vinci"/"perdi"/"termina") → 0-ambiguo.
+    // [1.3.0 / M-1] Anche la PRIMA conseguenza può avere 'e adesso' / 'adesso'
+    // ('…: e adesso la mela è rossa.'): dopo ':' i lookahead "e" e "adesso" sono
+    // disgiunti da "dire" e dal primo token di una conseguenza → 0-ambiguo.
     _esito_temporale: "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )?
-                    | conseguenza ( "e" "adesso"? conseguenza )*
-    def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
-              | "Ogni" NUMERO ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
+                    | ( "e"? "adesso" )? conseguenza ( "e" "adesso"? conseguenza )*
+    def_evento: "Al" "turno" _numero ":" _esito_temporale "." -> evento_al
+              | "Ogni" _numero ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
 
     // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
     // Un 'demone' sorveglia una CONDIZIONE a ogni turno e scatta da solo, senza
@@ -498,6 +555,10 @@ _GRAMMAR_TEMPLATE = r"""
     // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
     def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
               | "Quando" condizione ( "diventa" "vera" )? ":" _esito_temporale "." -> demone_quando
+              // [1.3.0 / M-7] Timer che parte da un fatto: 'Tre turni dopo che la
+              // miccia è accesa: …' (scatta N turni dopo il fronte di salita).
+              // Inizia con NUMERO: nessun'altra dichiarazione comincia così.
+              | _numero ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -550,8 +611,21 @@ _GRAMMAR_TEMPLATE = r"""
     // primo token di una conseguenza (ENTITA/VARIABILE/"il"/"aumenta"/…) → LALR(1)
     // 0-ambiguo, identico a eventi/demoni. Il transformer estrae già la risposta
     // per tipo (str opzionale, default ""): nessuna modifica ai metodi.
-    def_regola: "Invece" "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale "."
-    regola_target: ( ENTITA | DIREZIONE ) ( PREP_AZIONE ENTITA )?
+    // [1.3.0 / M-9] Tre fasi: 'Invece di' (sostituisce l'azione), 'Prima di'
+    // (scatta e poi l'azione prosegue), 'Dopo di' (scatta dopo che l'azione di
+    // default è riuscita). Il nodo resta def_regola: la fase è il primo figlio.
+    // Un ramo 'altrimenti' vale quando la condizione è falsa. Dopo l'esito il
+    // lookahead ";"/"altrimenti" è disgiunto da "." e dal seguito della coda.
+    def_regola: fase_regola "di" ( VERBO_MULTI | VERBO ) regola_target? ( "se" condizione )? ":" _esito_temporale ramo_altrimenti? "."
+    fase_regola: "Invece" -> fase_invece
+               | "Prima"  -> fase_prima
+               | "Dopo"   -> fase_dopo
+    ramo_altrimenti: ";"? "altrimenti" ":"? _esito_temporale
+    // [1.3.0 / M-9] Regole per CATEGORIA: 'qualcosa' (ogni oggetto) o
+    // 'qualcosa di pesante' (ogni oggetto con quella proprietà). Dopo il verbo
+    // il lookahead "qualcosa" è disgiunto da ENTITA/DIREZIONE/"se"/":".
+    regola_target: ( ENTITA | DIREZIONE | categoria ) ( PREP_AZIONE ( ENTITA | categoria ) )?
+    categoria: "qualcosa" ( "di" PROPRIETA )?
 
     // --- CONDIZIONI (logica booleana) ---
     // Precedenza: OR (più bassa) < AND < atomo. Parentesi per raggruppare.
@@ -580,6 +654,10 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_contatore_lt
               | cond_contatore_lte
               | cond_probabilita
+              | cond_posizione_oggetto
+              | cond_posizione_oggetto_neg
+              | cond_png_ha
+              | cond_png_ha_neg
               | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
@@ -638,12 +716,35 @@ _GRAMMAR_TEMPLATE = r"""
     // cond_base (a parte 'càpita') con un primo token dedicato ("non") →
     // distinto al primo token, 0-ambiguo.
     cond_non_gruppo: "non" "(" cond_or ")"
+    // [1.3.0 / G-6] Dove stanno oggetti e personaggi. Dopo 'ENTITA è' il
+    // lookahead PREP_LUOGO è disgiunto da PROPRIETA (come già fra def_posizione
+    // e def_proprieta) → LALR(1) 0-ambiguo. 'se il gatto è qui' NON è una
+    // regola: 'qui' come parola chiave vincerebbe su ogni proprietà nello stato
+    // condiviso dopo la copula ('Lo stato è qui.'); è cond_proprieta con la
+    // proprietà speciale 'qui', riconosciuta nel transformer.
+    cond_posizione_oggetto: ENTITA _copula PREP_LUOGO ENTITA
+    cond_posizione_oggetto_neg: ENTITA "non" _copula PREP_LUOGO ENTITA
+    // [1.3.0 / M-10] 'se la guardia ha la chiave'. Dopo ENTITA il lookahead
+    // "ha" (o "non" "ha") è disgiunto da _copula.
+    cond_png_ha: ENTITA "ha" ENTITA
+    cond_png_ha_neg: ENTITA "non" "ha" ENTITA
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
     // gli pseudo-simboli "inventario"/"nulla" iniettati nella regex.
     ?conseguenza: ENTITA _copula PREP_LUOGO ENTITA -> cons_spostamento
                 | ENTITA _copula PROPRIETA          -> cons_proprieta
+                // [1.3.0 / M-2] Togliere una proprietà: 'il panno non è più
+                // bagnato'. Dopo ENTITA il lookahead "non" è nuovo fra le
+                // conseguenze; dopo 'non' la copula vs "collega" decide.
+                | ENTITA "non" _copula "più" PROPRIETA -> cons_proprieta_via
+                // [1.3.0 / M-8] Uscite che cambiano: 'la cucina collega nord a
+                // la dispensa' / 'la cucina non collega più nord'.
+                | ENTITA "collega" DIREZIONE "a" ENTITA -> cons_collega
+                | ENTITA "non" "collega" "più" DIREZIONE -> cons_scollega
+                // [1.3.0 / M-10] 'la guardia ha la chiave': l'oggetto passa al
+                // personaggio. Dopo ENTITA il lookahead "ha" è nuovo.
+                | ENTITA "ha" ENTITA               -> cons_png_riceve
                 // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
                 // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
                 // (mai un'ENTITA: 'giocatore' è riservata), distinta da
@@ -697,6 +798,13 @@ _GRAMMAR_TEMPLATE = r"""
                 | "aumenta" VARIABILE ( "di" operando )?    -> cons_aumenta
                 | "diminuisci" VARIABILE ( "di" operando )? -> cons_diminuisci
                 | VARIABILE "diventa" operando   -> cons_contatore_set
+                // [1.3.0 / M-7] Moltiplicazione, divisione intera, resto e
+                // limiti. Ogni forma parte da una keyword nuova o da
+                // 'VARIABILE "resta"' → disgiunta dalle altre.
+                | "moltiplica" VARIABILE "per" operando -> cons_moltiplica
+                | "dividi" VARIABILE "per" operando     -> cons_dividi
+                | "riduci" VARIABILE "modulo" operando  -> cons_modulo
+                | VARIABILE "resta" "fra" operando "e" operando -> cons_limita
                 // [0.18.0 / B3] Testo d'esito opzionale: 'vinci "Sei libero!"'.
                 // Nessun'altra conseguenza inizia con TESTO_QUOTATO → 0-ambiguo.
                 | "vinci" TESTO_QUOTATO?         -> cons_vinci
@@ -739,7 +847,11 @@ _GRAMMAR_TEMPLATE = r"""
     // solo in regola_target; PREP_LUOGO solo in posizione/spostamento), come già
     // accade per 'in'. La preposizione esatta conta solo per la priorità di
     // match: il fallback prep-tollerante (stessi due oggetti) fa comunque da rete.
-    PREP_AZIONE: "sull'" | "sul" | "sullo" | "sulla" | "sui" | "sugli" | "sulle" | "su" | "con" | "contro" | "nell'" | "nel" | "nello" | "nella" | "nei" | "negli" | "nelle" | "in"
+    // [1.3.0 / G-7] Regex con CONFINE DESTRO (come PREP_LUOGO) e con le
+    // preposizioni di TERMINE e di PROVENIENZA e quelle di luogo improprie: 'dai la
+    // mela ALLA guardia', 'prendi la mela DAL tavolo', 'metti la tazza SOPRA il
+    // mobile'. Le forme più lunghe vengono prima (nello prima di nel prima di ne…).
+    PREP_AZIONE: /(?:sull'|nell'|all'|dall')|(?:sullo|sulla|sugli|sulle|sul|sui|su|contro|con|nello|nella|negli|nelle|nel|nei|in|allo|alla|agli|alle|al|ai|a|dallo|dalla|dagli|dalle|dal|dai|da|sopra|sotto|dentro|dietro|verso)(?![a-zA-ZÀ-ÿ0-9'])/i
     // [Livello 5] Preposizioni articolate della descrizione come TERMINALE UNICO
     // (maximal-munch: 'della' non si spezza più in 'del'+'la') e FILTRATO dal
     // tree (prefisso '_'): elimina alla radice un'ambiguità preesistente di
@@ -770,7 +882,10 @@ _GRAMMAR_TEMPLATE = r"""
 
     // NUMERO: intero non negativo. Priorità ALTA: PROPRIETA include le cifre, ma
     // un token tutto-cifre deve risolversi a NUMERO (per i contatori).
-    NUMERO.2: /[0-9]+/
+    NUMERO.2: /-?[0-9]+/
+    // [1.3.0 / L-1] Numeri in lettere (senza un/uno/una, che sono parole del
+    // linguaggio), solo dove si scrive un numero di turni, spazi, oggetti.
+    NUMERO_PAROLA.1: /(?:zero|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta|cento)(?![a-zA-ZÀ-ÿ0-9'])/i
 
     // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
     // costruisci_grammatica(). Il flag /i la rende case-insensitive.
@@ -851,6 +966,71 @@ def _costruisci_alt_verbi_multi(verbi_multi=()) -> str:
     return "|".join(_pattern_nome(v) for v in verbi)
 
 
+# ------------------------------------------------------------------------------
+# [1.3.0] PAROLE CHIAVE CON CONFINE DI PAROLA, SENZA DISTINZIONE DI MAIUSCOLE
+# ------------------------------------------------------------------------------
+# Nel template le parole chiave sono letterali ("un", "al", "Invece"…). Il lexer
+# di Lark prova i terminali per priorità, non per lunghezza: una parola chiave
+# (priorità 0) batteva la proprietà coniata (PROPRIETA, priorità -1) anche quando
+# era solo l'INIZIO di una parola più lunga. 'La padella è unta.' diventava
+# 'un' + 'ta'; '… se il livello è alto' diventava 'al' + 'to' (criticità G-1).
+# La 0.28.0 aveva già risolto lo stesso difetto per PREP_LUOGO ('incisa').
+# Qui ogni parola chiave diventa un terminale filtrato (nome con '_') con un
+# confine destro, e insensibile alle maiuscole: 'invece di', 'la descrizione',
+# 'Il giocatore' e 'il giocatore' valgono uguale (G-2). La grammatica, le sue
+# regole e l'albero prodotto non cambiano: i letterali erano già filtrati.
+_CONFINE = "(?![a-zA-ZÀ-ÿ0-9'])"
+_RE_DEFINIZIONE_GRAMMATICA = re.compile(r"^\s*(?P<nome>[?!]?[A-Za-z_][A-Za-z0-9_]*)(?:\.-?\d+)?\s*:")
+_RE_LETTERALE_GRAMMATICA = re.compile(r'"((?:[^"\\]|\\.)*)"')
+_RE_PAROLA_CHIAVE = re.compile(r"[a-zà-ÿ]+", re.IGNORECASE)
+# Nome del terminale -> parola chiave (per i messaggi d'errore in italiano).
+PAROLE_CHIAVE_TERMINALI: dict = {}
+
+
+def _nome_terminale_parola(parola: str) -> str:
+    import unicodedata
+    senza_accenti = "".join(c for c in unicodedata.normalize("NFD", parola)
+                            if unicodedata.category(c) != "Mn")
+    nome = "_KW_" + senza_accenti.upper()
+    if senza_accenti != parola:
+        nome += "_ACC"          # 'è' e 'e', 'dà' e 'da' restano distinte
+    return nome
+
+
+def _parole_chiave_con_confine(grammatica: str) -> str:
+    """[1.3.0] Riscrive i letterali-parola delle REGOLE come terminali con
+    confine destro e flag /i (vedi sopra). Le definizioni di terminali
+    (PREP_LUOGO, _PREP_DESCR…) e i letterali di punteggiatura restano intatti."""
+    righe_out = []
+    usate = {}
+    in_regola = False
+
+    def _sostituisci(m):
+        parola = m.group(1)
+        if not _RE_PAROLA_CHIAVE.fullmatch(parola):
+            return m.group(0)                    # '.', ':', "l'", '(' …
+        chiave = parola.lower()
+        nome = _nome_terminale_parola(chiave)
+        usate[nome] = chiave
+        return nome
+
+    for riga in grammatica.split("\n"):
+        m = _RE_DEFINIZIONE_GRAMMATICA.match(riga)
+        if m:
+            nome = m.group("nome").lstrip("?!").lstrip("_")
+            in_regola = nome[:1].islower()
+        elif riga.strip().startswith("%"):
+            in_regola = False
+        if in_regola:
+            codice, sep, commento = riga.partition("//")
+            riga = _RE_LETTERALE_GRAMMATICA.sub(_sostituisci, codice) + sep + commento
+        righe_out.append(riga)
+    definizioni = [f"    {nome}: /(?:{re.escape(parola)}){_CONFINE}/i"
+                   for nome, parola in sorted(usate.items())]
+    PAROLE_CHIAVE_TERMINALI.update(usate)
+    return "\n".join(righe_out) + "\n" + "\n".join(definizioni) + "\n"
+
+
 def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
     ENTITA, VARIABILE, DIREZIONE e VERBO_MULTI risolti dai simboli noti (Passata 2).
@@ -860,7 +1040,7 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
-    return grammatica
+    return _parole_chiave_con_confine(grammatica)
 
 
 # [0.29.0 / perf] Cache dei parser LALR già costruiti, indicizzati per (grammatica,
@@ -889,6 +1069,18 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     if parser is None:
         parser = Lark(grammatica, start="start", parser="lalr",
                       propagate_positions=propagate_positions)
+        _CACHE_PARSER[chiave] = parser
+    return parser
+
+
+def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=()) -> Lark:
+    """[1.3.0 / M-6] Un parser che legge una sola condizione ('la porta è
+    aperta'), per i testi condizionali. Cachato come quello principale."""
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    chiave = (grammatica, "condizione")
+    parser = _CACHE_PARSER.get(chiave)
+    if parser is None:
+        parser = Lark(grammatica, start="condizione", parser="lalr")
         _CACHE_PARSER[chiave] = parser
     return parser
 
@@ -940,9 +1132,216 @@ def diagnostica_entita_sconosciuta(testo, errore, simboli) -> str | None:
                 f"oppure «{parola} è una stanza.».")
     return msg
 
+# ------------------------------------------------------------------------------
+# [1.3.0] DIAGNOSTICA PER CHI SCRIVE (G-2, L-9)
+# ------------------------------------------------------------------------------
+# Fino alla 1.2.2 un errore di sintassi elencava i nomi interni di Lark
+# ('Mi aspettavo: E', 'LPAR, VARIABILE, __ANON_2, CÀPITA'), la diagnosi
+# «entità sconosciuta» scattava su qualunque parola imprevista ('«rossa» non è
+# mai stata dichiarata' per 'La mela è molto rossa.') e la compilazione si
+# fermava al primo errore. Qui: nomi dei simboli attesi in italiano, diagnosi
+# dell'entità solo dove la grammatica si aspetta davvero un nome, suggerimenti
+# per gli sbagli più comuni, e recupero: si salta la frase sbagliata e si
+# continua, così un file mostra tutti i suoi errori in una volta.
+
+_DESCRIZIONI_ATTESI = {
+    "ENTITA": "il nome di una stanza o di un oggetto dichiarati",
+    "VARIABILE": "il nome di uno stato o di un contatore",
+    "PROPRIETA": "una proprietà (una sola parola)",
+    "NUMERO": "un numero",
+    "NUMERO_PAROLA": "un numero in lettere",
+    "_L_APOSTROFO": "«L'autore»",
+    "NUMERO_PAROLA": "un numero",
+    "TESTO_QUOTATO": "un testo fra virgolette",
+    "VERBO": "un verbo",
+    "VERBO_MULTI": "un comando di più parole",
+    "DIREZIONE": "una direzione",
+    "PREP_LUOGO": "una preposizione di luogo (in, nel, sul…)",
+    "PREP_AZIONE": "una preposizione (su, con, in, a, da…)",
+    "_PREP_DESCR": "«di», «del», «della»…",
+    "WORD": "una parola",
+}
+_DESCRIZIONI_PUNTEGGIATURA = {".": "il punto finale «.»", ":": "i due punti «:»",
+                              ",": "una virgola «,»"}
+
+
+def descrivi_attesi(attesi, parser=None) -> str:
+    """[1.3.0] I simboli che il parser si aspettava, in italiano."""
+    terminali = {}
+    if parser is not None:
+        try:
+            terminali = {t.name: t for t in parser.terminals}
+        except Exception:
+            terminali = {}
+    voci = set()
+    for nome in attesi or ():
+        nome = str(nome)
+        if nome in PAROLE_CHIAVE_TERMINALI:
+            voci.add(f"«{PAROLE_CHIAVE_TERMINALI[nome]}»")
+        elif nome in _DESCRIZIONI_ATTESI:
+            voci.add(_DESCRIZIONI_ATTESI[nome])
+        elif nome in terminali and type(terminali[nome].pattern).__name__ == "PatternStr":
+            valore = terminali[nome].pattern.value
+            voci.add(_DESCRIZIONI_PUNTEGGIATURA.get(valore, f"«{valore}»"))
+        else:
+            voci.add(nome)
+    return ", ".join(sorted(voci))
+
+
+def _fine_frasi(testo: str) -> list:
+    """[1.3.0] Le posizioni subito dopo ogni punto che chiude una frase (fuori
+    da virgolette e commenti)."""
+    fini, dentro, commento, i = [], False, False, 0
+    while i < len(testo):
+        c = testo[i]
+        if commento:
+            if c == "\n":
+                commento = False
+        elif dentro:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                dentro = False
+        elif c == '"':
+            dentro = True
+        elif c == "#":
+            commento = True
+        elif c in ".!?;":
+            # '!', '?' e ';' non chiudono una frase FAVELLA, ma fuori dalle
+            # virgolette sono sempre un errore: per il recupero valgono come fine
+            # frase, così l'errore non si trascina dietro la frase successiva.
+            fini.append(i + 1)
+        i += 1
+    return fini
+
+
+def _posizione_errore(errore, testo: str) -> int:
+    pos = getattr(errore, "pos_in_stream", None)
+    if pos is None:
+        token = getattr(errore, "token", None)
+        pos = getattr(token, "start_pos", None)
+    return len(testo) if pos is None else pos
+
+
+def _frase_attorno(testo: str, pos: int):
+    fini = _fine_frasi(testo)
+    inizio = max([f for f in fini if f <= pos], default=0)
+    fine = min([f for f in fini if f > pos], default=len(testo))
+    return inizio, fine
+
+
+def analizza_con_recupero(parser, testo: str, massimo: int = 20):
+    """[1.3.0] Analizza il sorgente; a ogni errore di sintassi lo annota, svuota
+    la frase che lo contiene (spazi al posto dei caratteri, così righe e colonne
+    restano quelle vere) e riprova. Restituisce (albero, errori): l'albero è
+    None se c'è almeno un errore."""
+    errori, lavoro = [], testo
+    while True:
+        try:
+            albero = parser.parse(lavoro)
+            return (albero if not errori else None), errori
+        except UnexpectedInput as e:
+            errori.append(e)
+            if len(errori) >= massimo:
+                return None, errori
+            inizio, fine = _frase_attorno(lavoro, _posizione_errore(e, lavoro))
+            svuotato = re.sub(r"[^\n]", " ", lavoro[inizio:fine])
+            nuovo = lavoro[:inizio] + svuotato + lavoro[fine:]
+            if nuovo == lavoro or not _RE_COMMENTO.sub("", nuovo).strip():
+                return None, errori
+            lavoro = nuovo
+
+
+def _a_inizio_frase(testo: str, pos: int) -> bool:
+    """Vero se la posizione cade nelle prime due parole della sua frase."""
+    inizio, _ = _frase_attorno(testo, pos)
+    return len(testo[inizio:pos].split()) <= 1
+
+
+def diagnosi_errore(testo, errore, simboli, parser=None):
+    """[1.3.0] (titolo, messaggio, codice) per un errore di sintassi."""
+    attesi = set(getattr(errore, "expected", None) or getattr(errore, "allowed", None) or ())
+    pos = _posizione_errore(errore, testo)
+    if simboli is not None and ("ENTITA" in attesi or _a_inizio_frase(testo, pos)):
+        diagnosi = diagnostica_entita_sconosciuta(testo, errore, simboli)
+        if diagnosi:
+            return "Errore: entità non dichiarata", diagnosi, "entita-sconosciuta"
+    messaggio = "Errore di sintassi."
+    if attesi:
+        messaggio += f" Mi aspettavo: {descrivi_attesi(attesi, parser)}."
+    for consiglio in _consigli(testo, pos, attesi, errore):
+        messaggio += f" {consiglio}"
+    return "ERRORE DI SINTASSI FAVELLA", messaggio, "sintassi"
+
+
+def _consigli(testo, pos, attesi, errore):
+    """[1.3.0] Suggerimenti per gli sbagli più comuni."""
+    dopo = testo[pos:pos + 40]
+    prima = testo[:pos].rstrip()[-2:]
+    parola = (re.match(r"[\wÀ-ÿ']+", dopo) or [""])[0].lower() if dopo else ""
+    nomi_attesi = {PAROLE_CHIAVE_TERMINALI.get(str(a), str(a)) for a in attesi}
+    consigli = []
+    if parola == "o" and "oppure" in nomi_attesi:
+        consigli.append("Per dire «oppure» scrivi «oppure»: da sola «o» vuol dire ovest.")
+    if dopo[:1] in ("!", "?", ";"):
+        consigli.append("Ogni frase finisce con il punto «.».")
+    inizio_frase, fine_frase = _frase_attorno(testo, pos)
+    if prima.endswith('."') or testo[inizio_frase:fine_frase].rstrip().endswith('."'):
+        consigli.append('Il punto finale va fuori dalle virgolette: dire "…". e non dire "….".')
+    token = getattr(errore, "token", None)
+    if (any(str(a) == "DOT" for a in attesi) and token is not None
+            and (getattr(token, "type", "") in ("PROPRIETA", "WORD", "VERBO")
+                 or str(getattr(token, "value", "")).lower() == "e")
+            and re.search(r"\b(?:è|sono)\s+[\wÀ-ÿ']+\s*$", testo[max(0, pos - 60):pos])):
+        consigli.append("Una proprietà è una sola parola: per dirne due scrivi due "
+                        "frasi («La mela è rossa. La mela è lucida.»).")
+    return consigli
+
+
 # ==============================================================================
 # 2. IL TRANSFORMER DELL'AST
 # ==============================================================================
+
+_NUMERI_IN_LETTERE = {
+    "zero": 0, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+    "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12, "tredici": 13,
+    "quattordici": 14, "quindici": 15, "sedici": 16, "diciassette": 17, "diciotto": 18,
+    "diciannove": 19, "venti": 20, "trenta": 30, "quaranta": 40, "cinquanta": 50,
+    "sessanta": 60, "settanta": 70, "ottanta": 80, "novanta": 90, "cento": 100,
+}
+
+
+def _unescape(m):
+    c = m.group(1)
+    return {"n": "\n", "[": QUADRA_APERTA, "]": QUADRA_CHIUSA}.get(c, c)
+
+
+class FaseRegola:
+    """[1.3.0 / M-9] La fase di una regola: 'invece', 'prima' o 'dopo'."""
+    __slots__ = ("nome",)
+
+    def __init__(self, nome):
+        self.nome = nome
+
+
+class Categoria:
+    """[1.3.0 / M-9] Bersaglio per categoria: 'qualcosa' (radice "") o
+    'qualcosa di pesante' (la radice della proprietà)."""
+    __slots__ = ("radice", "grezzo")
+
+    def __init__(self, radice, grezzo):
+        self.radice = radice
+        self.grezzo = grezzo
+
+
+class RamoAltrimenti:
+    """[1.3.0 / M-9] Il ramo 'altrimenti' di una regola."""
+    __slots__ = ("risposta", "conseguenze")
+
+    def __init__(self, risposta, conseguenze):
+        self.risposta = risposta
+        self.conseguenze = conseguenze
+
 
 class RegolaTarget:
     """[Livello 5] Bersaglio di una regola 'Invece di', prodotto dalla sottoregola
@@ -985,6 +1384,13 @@ class FavellaTransformer(Transformer):
         # 'La gemma è nella scatola.' funziona anche PRIMA di 'La scatola è un
         # contenitore.'. Ogni voce conserva l'ordine sorgente (contenuto/varianti).
         self._pending_posizioni = []     # (ogg_grezzo, prep, luogo_grezzo)
+        # [1.3.0 / G-3] Per riconoscere dichiarazioni contraddittorie: dove è
+        # stato collocato ogni oggetto, i valori iniziali di stati e contatori,
+        # le stanze dichiarate con 'è una stanza' (le altre nascono da 'collega').
+        self._luogo_iniziale = {}
+        self._descritte = set()
+        self._valori_iniziali = {}
+        self._stanze_dichiarate = set()
         self._pending_proprieta = []     # (ogg_grezzo, proprieta_grezzo)
         self._pending_descrizioni = []   # (nome_grezzo, condizione|None, testo)
         self._pending_posti = []         # [1.1.0] (nome_grezzo, testo)
@@ -998,6 +1404,12 @@ class FavellaTransformer(Transformer):
         self._pending_regole_target = [] # (id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo)
         self._pending_sinonimi = []      # [1.2.0] (sinonimo, bersaglio) verso verbi d'autore
         self._pending_inventario_iniziale = []  # [0.19.0/A8] ogg_grezzo da mettere in inventario all'avvio
+        # [1.3.0 / M-8, M-10] Oggetti di scena, presenze in più stanze, oggetti
+        # tenuti dai personaggi, argomenti di conversazione (tutti differiti).
+        self._pending_di_scena = []      # ogg_grezzo
+        self._pending_anche_in = []      # (ogg_grezzo, luogo_grezzo)
+        self._pending_png_ha = []        # (png_grezzo, ogg_grezzo)
+        self._pending_argomenti = []     # (png_grezzo, Argomento)
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -1026,10 +1438,16 @@ class FavellaTransformer(Transformer):
         # Intero dei contatori (Livello 3).
         return int(token.value)
 
+    def NUMERO_PAROLA(self, token):
+        # [1.3.0 / L-1] 'tre' -> 3.
+        return _NUMERI_IN_LETTERE[token.value.lower()]
+
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
+        # [1.3.0 / M-6] \n va a capo; \[ e \] sono parentesi quadre letterali
+        # (non segnaposto): arrivano al motore come caratteri riservati.
         contenuto = token.value[1:-1]
-        return re.sub(r'\\(.)', r'\1', contenuto)
+        return re.sub(r'\\(.)', _unescape, contenuto)
         
     def VERBO(self, token):
         return token.value.lower()
@@ -1050,6 +1468,7 @@ class FavellaTransformer(Transformer):
 
     def def_stanza(self, nome_grezzo):
         id_stanza = normalizza_nome(nome_grezzo)
+        self._stanze_dichiarate.add(id_stanza)
         stanza = self.mondo.trova_stanza(id_stanza)
         if not stanza:
             stanza = Stanza(id_stanza)
@@ -1318,6 +1737,14 @@ class FavellaTransformer(Transformer):
 
         if condizione is None:
             # Descrizione di base (fallback se nessuna condizionale è vera).
+            # [1.3.0 / G-3] Due descrizioni di base diverse (tipico di due moduli
+            # che definiscono la stessa cosa): vale l'ultima, ma lo si dice.
+            if (id_entita in self._descritte and descrizione_display(bersaglio.descrizione)
+                    != descrizione_display(testo)):
+                self.warnings.append(
+                    f"'{nome_grezzo}' ha due descrizioni di base diverse: vale "
+                    f"l'ultima («{descrizione_display(testo)[:40]}…»).")
+            self._descritte.add(id_entita)
             bersaglio.descrizione = testo
         else:
             # [Livello 5] Variante condizionale, valutata in ordine a runtime.
@@ -1336,6 +1763,17 @@ class FavellaTransformer(Transformer):
         stanza = self.mondo.trova_stanza(id_luogo)
         contenitore = self.mondo.trova_oggetto(id_luogo)
 
+        if oggetto and (stanza or contenitore):
+            # [1.3.0 / G-3] Un oggetto collocato in due posti diversi compariva
+            # in entrambe le stanze ma si poteva prendere solo nell'ultima.
+            precedente = self._luogo_iniziale.get(id_ogg)
+            if precedente is not None and precedente[0] != id_luogo:
+                self.errori.append(
+                    f"'{ogg_grezzo}' è collocato in due posti: '{precedente[1]}' e "
+                    f"'{luogo_grezzo}'. Un oggetto comincia in un posto solo (per "
+                    f"qualcosa che si vede da più stanze scrivi «… è anche in …»).")
+                return
+            self._luogo_iniziale[id_ogg] = (id_luogo, luogo_grezzo)
         if not oggetto:
             self.errori.append(f"Oggetto inesistente '{ogg_grezzo}' da posizionare")
         elif stanza:
@@ -1393,8 +1831,18 @@ class FavellaTransformer(Transformer):
         # [Livello 3] Valore iniziale di uno 'stato' a livello di dichiarazione.
         nome = normalizza_nome(var_grezzo)
         self.mondo.dichiara_variabile(nome)  # idempotente, per sicurezza
+        self._avvisa_valore_doppio(nome, var_grezzo, normalizza_nome(valore_grezzo))
         self.mondo.variabili[nome] = normalizza_nome(valore_grezzo)
         return None
+
+    def _avvisa_valore_doppio(self, nome, grezzo, valore):
+        """[1.3.0 / G-3] Due valori iniziali diversi per lo stesso stato o
+        contatore: vale l'ultimo, ma lo si dice."""
+        if nome in self._valori_iniziali and self._valori_iniziali[nome] != valore:
+            self.warnings.append(
+                f"'{grezzo}' ha due valori iniziali diversi ({self._valori_iniziali[nome]} "
+                f"e {valore}): vale l'ultimo.")
+        self._valori_iniziali[nome] = valore
 
     def def_contatore(self, var_grezzo):
         # [Livello 3] Dichiarazione di un contatore numerico (valore iniziale 0).
@@ -1406,6 +1854,7 @@ class FavellaTransformer(Transformer):
         # 3.'). Order-independent: scriviamo direttamente il valore; una eventuale
         # 'X è un contatore.' successiva usa setdefault e non lo sovrascrive.
         nome = normalizza_nome(var_grezzo)
+        self._avvisa_valore_doppio(nome, var_grezzo, numero)
         self.mondo.variabili[nome] = numero
         return None
 
@@ -1514,6 +1963,190 @@ class FavellaTransformer(Transformer):
         return None
 
 
+    # --- [1.3.0 / M-6] Presentazione ---
+
+    def def_titolo(self, testo):
+        self.mondo.titolo = testo
+        return None
+
+    def def_autore(self, testo):
+        self.mondo.autore = testo
+        return None
+
+    def def_prologo(self, testo):
+        self.mondo.prologo = testo
+        return None
+
+    def def_messaggio(self, chiave, testo):
+        chiave_n = " ".join(chiave.lower().split())
+        if chiave_n not in MESSAGGI_MOTORE:
+            self.errori.append(
+                f"Messaggio sconosciuto: \"{chiave}\". Si possono ridefinire: "
+                + ", ".join(f'"{k}"' for k in MESSAGGI_MOTORE) + ".")
+        else:
+            self.mondo.messaggi[chiave_n] = testo
+        return None
+
+    # --- [1.3.0 / M-9] Fasi, categorie, altrimenti ---
+
+    def fase_invece(self, *_):
+        return FaseRegola("invece")
+
+    def fase_prima(self, *_):
+        return FaseRegola("prima")
+
+    def fase_dopo(self, *_):
+        return FaseRegola("dopo")
+
+    def categoria(self, *args):
+        # La categoria conserva la PAROLA ('pesante'): il confronto per radice
+        # si fa in partita (gioco._nella_categoria), l'IDE la riscrive com'era.
+        grezzo = args[0] if args else ""
+        return Categoria(normalizza_nome(grezzo) if grezzo else "", grezzo)
+
+    def ramo_altrimenti(self, *args):
+        risposta = next((a for a in args if isinstance(a, str)), "")
+        conseguenze = [a for a in args if isinstance(a, Conseguenza)]
+        self._pending_conseguenze.append(conseguenze)
+        return RamoAltrimenti(risposta, conseguenze)
+
+    # --- [1.3.0 / M-8, M-10] Scena, topologia, personaggi ---
+
+    def def_di_scena(self, ogg_grezzo):
+        self._pending_di_scena.append(ogg_grezzo)
+        return None
+
+    def def_anche_in(self, ogg_grezzo, prep, luogo_grezzo):
+        self._pending_anche_in.append((ogg_grezzo, luogo_grezzo))
+        return None
+
+    def def_uscite_anonime(self):
+        self.mondo.uscite_solo_visitate = True
+        return None
+
+    def def_png_ha(self, png_grezzo, ogg_grezzo):
+        self._pending_png_ha.append((png_grezzo, ogg_grezzo))
+        return None
+
+    def a_chi(self, *_):
+        return None   # la preposizione davanti al personaggio non conta
+
+    def argomento_chiavi(self, *chiavi):
+        return [" ".join(normalizza_nome(c).split()) for c in chiavi if c.strip()]
+
+    def def_argomento(self, *args):
+        # args: [None], png, [chiavi], [Condizione], [risposta], conseguenze…
+        args = [a for a in args if a is not None]
+        png_grezzo = args[0]
+        chiavi = next(a for a in args if isinstance(a, list))
+        condizione = next((a for a in args if isinstance(a, Condizione)), None)
+        risposta = next((a for a in args[1:] if isinstance(a, str)), "")
+        conseguenze = [a for a in args if isinstance(a, Conseguenza)]
+        self._pending_conseguenze.append(conseguenze)
+        argomento = Argomento(normalizza_nome(png_grezzo), chiavi, risposta,
+                              condizione, conseguenze)
+        self._pending_argomenti.append((png_grezzo, argomento))
+        self.mondo.argomenti.append(argomento)
+        return None
+
+    def _applica_scena_e_personaggi(self):
+        """[1.3.0 / M-8, M-10] Le dichiarazioni differite di scena, presenze
+        multiple, oggetti dei personaggi e argomenti."""
+        m = self.mondo
+        for ogg_grezzo in self._pending_di_scena:
+            oggetto = m.trova_oggetto(normalizza_nome(ogg_grezzo))
+            if oggetto is None:
+                self.errori.append(f"«è di scena» vale per un oggetto: '{ogg_grezzo}' non lo è.")
+            else:
+                oggetto.di_scena = True
+        for ogg_grezzo, luogo_grezzo in self._pending_anche_in:
+            oggetto = m.trova_oggetto(normalizza_nome(ogg_grezzo))
+            id_luogo = normalizza_nome(luogo_grezzo)
+            if oggetto is None:
+                self.errori.append(f"«è anche in» vale per un oggetto: '{ogg_grezzo}' non lo è.")
+            elif id_luogo not in m.stanze:
+                self.errori.append(
+                    f"'{ogg_grezzo}' può essere «anche in» una stanza, non in '{luogo_grezzo}'.")
+            else:
+                oggetto.anche_in.add(id_luogo)
+                if oggetto.prendibile:
+                    self.warnings.append(
+                        f"'{ogg_grezzo}' è in più stanze ed è prendibile: preso in una, "
+                        f"sparisce da tutte.")
+        for png_grezzo, ogg_grezzo in self._pending_png_ha:
+            png = m.trova_oggetto(normalizza_nome(png_grezzo))
+            oggetto = m.trova_oggetto(normalizza_nome(ogg_grezzo))
+            if png is None or not png.is_personaggio:
+                self.errori.append(
+                    f"Solo il giocatore e i personaggi hanno oggetti: '{png_grezzo}' non è "
+                    f"un personaggio (scrivi «{png_grezzo} è un personaggio.»).")
+                continue
+            if oggetto is None:
+                self.errori.append(f"'{png_grezzo}' ha un oggetto inesistente: '{ogg_grezzo}'.")
+                continue
+            precedente = self._luogo_iniziale.get(oggetto.nome)
+            if precedente is not None and precedente[0] != png.nome:
+                self.errori.append(
+                    f"'{ogg_grezzo}' è collocato in due posti: '{precedente[1]}' e "
+                    f"'{png_grezzo}'. Un oggetto comincia in un posto solo.")
+                continue
+            self._luogo_iniziale[oggetto.nome] = (png.nome, png_grezzo)
+            m.rimuovi_da_posizione(oggetto)
+            png.contenuto.add(oggetto.nome)
+            oggetto.posizione = png.nome
+        for png_grezzo, argomento in self._pending_argomenti:
+            png = m.trova_oggetto(argomento.id_png)
+            if png is None or not png.is_personaggio:
+                self.errori.append(
+                    f"«Se chiedi a …» vale per un personaggio: '{png_grezzo}' non lo è.")
+            if not argomento.chiavi:
+                self.errori.append(f"Un argomento di '{png_grezzo}' non ha parole: \"\" è vuoto.")
+
+    def _valida_turno_e_testi(self):
+        """[1.3.0 / M-6, M-7] 'il turno' si legge soltanto; le condizioni dei
+        testi condizionali si compilano qui; lo stato che la storia può
+        cambiare (uscite, 'prendibile') entra nell'impronta dei salvataggi."""
+        m = self.mondo
+        if TURNO in m.variabili:
+            self.errori.append(
+                "«Il turno» è il numero del turno in corso: si legge nelle condizioni "
+                "e nei testi ([turno]), non si dichiara. Scegli un altro nome.")
+        conseguenze = self._tutte_le_conseguenze()
+        for cons in conseguenze:
+            if getattr(cons, "nome", None) == TURNO:
+                self.errori.append("«Il turno» si legge soltanto: nessuna conseguenza "
+                                   "può cambiarlo.")
+                break
+        if any(isinstance(c, ConseguenzaCollegamento) for c in conseguenze):
+            m._stato_esteso.add("uscite")
+        if any(isinstance(c, (ConseguenzaProprieta, ConseguenzaTogliProprieta))
+               and c.proprieta == "prendibile" for c in conseguenze):
+            m._stato_esteso.add("prendibile")
+        fonti = set()
+        for testo in self._tutti_i_testi():
+            fonti.update(" ".join(c.split()) for c in condizioni_nel_testo(testo))
+        if not fonti:
+            return
+        parser = self._parser_condizioni()
+        for fonte in sorted(fonti):
+            try:
+                condizione = self.transform(parser.parse(fonte))
+            except Exception:
+                condizione = None
+            if isinstance(condizione, Condizione):
+                m.condizioni_testo[fonte] = condizione
+            else:
+                self.errori.append(
+                    f"La condizione del testo «[se {fonte}]» non si capisce: scrivila come "
+                    f"dopo un «se» (per esempio «[se la porta è aperta]»).")
+
+    def _parser_condizioni(self):
+        """Il parser della sola regola 'condizione', con gli stessi nomi."""
+        args = getattr(self, "argomenti_parser", None)
+        if args is None:
+            raise RuntimeError("parser delle condizioni non disponibile")
+        return costruisci_parser_condizioni(*args)
+
     # --- Condizioni e Conseguenze (Sub-Alberi) ---
 
     def cond_possesso(self, ogg_grezzo):
@@ -1530,11 +2163,32 @@ class FavellaTransformer(Transformer):
     def cond_posizione_giocatore_neg(self, prep, stanza_grezzo):
         return CondizioneNot(CondizionePosizioneGiocatore(normalizza_nome(stanza_grezzo)))
 
+    def cond_posizione_oggetto(self, ogg_grezzo, prep, luogo_grezzo):
+        # [1.3.0 / G-6] 'se la guardia è in cucina', 'se la chiave è nella scatola'.
+        luogo = normalizza_nome(luogo_grezzo)
+        if luogo in ("nessun luogo", "nessuno"):
+            luogo = "nulla"
+        return CondizionePosizioneOggetto(normalizza_nome(ogg_grezzo), luogo)
+
+    def cond_posizione_oggetto_neg(self, ogg_grezzo, prep, luogo_grezzo):
+        return CondizioneNot(self.cond_posizione_oggetto(ogg_grezzo, prep, luogo_grezzo))
+
+    def cond_png_ha(self, png_grezzo, ogg_grezzo):
+        # [1.3.0 / M-10] 'se la guardia ha la chiave'.
+        return CondizionePngHa(normalizza_nome(png_grezzo), normalizza_nome(ogg_grezzo))
+
+    def cond_png_ha_neg(self, png_grezzo, ogg_grezzo):
+        return CondizioneNot(CondizionePngHa(normalizza_nome(png_grezzo), normalizza_nome(ogg_grezzo)))
+
     def cond_proprieta(self, ogg_grezzo, proprieta_grezzo):
-        return CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
+        proprieta = normalizza_nome(proprieta_grezzo)
+        if proprieta == "qui":
+            # [1.3.0 / G-6] 'se il gatto è qui': nella stanza del giocatore.
+            return CondizionePosizioneOggetto(normalizza_nome(ogg_grezzo), QUI)
+        return CondizioneProprieta(normalizza_nome(ogg_grezzo), proprieta)
 
     def cond_proprieta_neg(self, ogg_grezzo, proprieta_grezzo):
-        return CondizioneNot(CondizioneProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo)))
+        return CondizioneNot(self.cond_proprieta(ogg_grezzo, proprieta_grezzo))
 
     def cond_variabile(self, var_grezzo, valore_grezzo):
         return CondizioneVariabile(normalizza_nome(var_grezzo), normalizza_nome(valore_grezzo))
@@ -1604,6 +2258,37 @@ class FavellaTransformer(Transformer):
 
     def cons_proprieta(self, ogg_grezzo, proprieta_grezzo):
         return ConseguenzaProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
+
+    def cons_proprieta_via(self, ogg_grezzo, proprieta_grezzo):
+        # [1.3.0 / M-2] 'e adesso il panno non è più bagnato'.
+        return ConseguenzaTogliProprieta(normalizza_nome(ogg_grezzo), normalizza_nome(proprieta_grezzo))
+
+    def cons_collega(self, sta1_grezzo, direzione, sta2_grezzo):
+        # [1.3.0 / M-8] 'e adesso la cucina collega nord a la dispensa'.
+        direzione_norm = self.mondo.direzione_canonica(direzione) or direzione
+        return ConseguenzaCollegamento(normalizza_nome(sta1_grezzo), direzione_norm,
+                                       normalizza_nome(sta2_grezzo))
+
+    def cons_scollega(self, sta_grezzo, direzione):
+        # [1.3.0 / M-8] 'e adesso la cucina non collega più nord'.
+        direzione_norm = self.mondo.direzione_canonica(direzione) or direzione
+        return ConseguenzaCollegamento(normalizza_nome(sta_grezzo), direzione_norm, None)
+
+    def cons_png_riceve(self, png_grezzo, ogg_grezzo):
+        # [1.3.0 / M-10] 'e adesso la guardia ha la chiave'.
+        return ConseguenzaPngRiceve(normalizza_nome(png_grezzo), normalizza_nome(ogg_grezzo))
+
+    def cons_moltiplica(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "moltiplica", operando)
+
+    def cons_dividi(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "dividi", operando)
+
+    def cons_modulo(self, var_grezzo, operando):
+        return ConseguenzaContatore(normalizza_nome(var_grezzo), "modulo", operando)
+
+    def cons_limita(self, var_grezzo, minimo, massimo):
+        return ConseguenzaLimita(normalizza_nome(var_grezzo), minimo, massimo)
 
     def cons_giocatore_sposta(self, prep, stanza_grezzo):
         # [0.18.0 / B2] 'e adesso il giocatore è in [stanza]': teletrasporto.
@@ -1727,6 +2412,21 @@ class FavellaTransformer(Transformer):
                 if c.destinazione is not None and not self.mondo.trova_stanza(c.destinazione):
                     self.errori.append(
                         f"Stanza inesistente nel movimento del personaggio: '{c.destinazione}'")
+            if isinstance(c, ConseguenzaCollegamento):
+                # [1.3.0 / M-8] Le stanze devono esistere già: una conseguenza
+                # non crea stanze (lo fa solo la dichiarazione 'collega').
+                for sid in (c.id_stanza, c.destinazione):
+                    if sid is not None and not self.mondo.trova_stanza(sid):
+                        self.errori.append(
+                            f"«collega» in una conseguenza richiede stanze dichiarate: "
+                            f"'{sid}' non è una stanza.")
+            if isinstance(c, ConseguenzaPngRiceve):
+                png = self.mondo.trova_oggetto(c.id_png)
+                if png is None or not png.is_personaggio:
+                    self.errori.append(
+                        f"Solo i personaggi ricevono oggetti: '{c.id_png}' non è un personaggio.")
+                if not self.mondo.trova_oggetto(c.id_oggetto):
+                    self.errori.append(f"Oggetto inesistente nella conseguenza: '{c.id_oggetto}'")
             if isinstance(c, ConseguenzaBuioStanza) and not self.mondo.trova_stanza(c.id_stanza):
                 # [0.33.0 / Tema 4a] Il buio commutabile agisce solo su una STANZA
                 # (un oggetto/personaggio con lo stesso nome non va bene).
@@ -1776,10 +2476,21 @@ class FavellaTransformer(Transformer):
     def demone_quando(self, *args):
         return self._crea_demone("quando", args)
 
+    def demone_dopo(self, ritardo, *args):
+        # [1.3.0 / M-7] 'N turni dopo che …': il primo argomento è N.
+        self._crea_demone("dopo", args)
+        demone = self.mondo.demoni[-1]
+        if ritardo < 0:
+            self.warnings.append(f"«{ritardo} turni dopo che …»: il ritardo non può essere "
+                                 f"negativo; vale 0.")
+            ritardo = 0
+        demone.ritardo = ritardo
+        return None
+
     # --- La Regola Complessa ---
 
     def regola_target(self, bersaglio, *resto):
-        # [Livello 5] Bersaglio della regola: (ENTITA|DIREZIONE) [PREP_AZIONE ENTITA].
+        # [Livello 5] Bersaglio della regola: (ENTITA|DIREZIONE|categoria) [PREP_AZIONE (ENTITA|categoria)].
         # 'resto' contiene 0 o 2 elementi (preposizione + secondo oggetto).
         prep = resto[0] if len(resto) >= 2 else None
         secondario = resto[1] if len(resto) >= 2 else None
@@ -1792,6 +2503,10 @@ class FavellaTransformer(Transformer):
         # condizione può essere composita e le conseguenze possono essere più di una.
         args_puliti = [a for a in args if a is not None]
 
+        # [1.3.0 / M-9] Il primo figlio è la fase (Invece/Prima/Dopo).
+        fase = "invece"
+        if args_puliti and isinstance(args_puliti[0], FaseRegola):
+            fase = args_puliti.pop(0).nome
         verbo = args_puliti[0]
 
         # Estrai i componenti per tipo (l'ordine grammaticale è garantito).
@@ -1799,6 +2514,7 @@ class FavellaTransformer(Transformer):
         condizione = None
         risposta = ""
         conseguenze = []
+        altrimenti = None
         for a in args_puliti[1:]:
             if isinstance(a, RegolaTarget):
                 target = a
@@ -1806,8 +2522,15 @@ class FavellaTransformer(Transformer):
                 condizione = a
             elif isinstance(a, Conseguenza):
                 conseguenze.append(a)
+            elif isinstance(a, RamoAltrimenti):
+                altrimenti = (a.risposta, a.conseguenze)
             elif isinstance(a, str):
                 risposta = a   # unica stringa nuda residua: la risposta
+        if altrimenti is not None and condizione is None:
+            self.warnings.append(
+                f"Regola «{fase} di {verbo}» con «altrimenti» ma senza «se»: il ramo "
+                f"«altrimenti» non scatterà mai.")
+        extra = {"fase": fase, "altrimenti": altrimenti}
 
         # --- Regola GLOBALE (senza bersaglio) ---
         if target is None:
@@ -1818,6 +2541,31 @@ class FavellaTransformer(Transformer):
                 risposta=risposta,
                 condizione=condizione,
                 conseguenze=conseguenze,
+                **extra,
+            ))
+            return None
+
+        # --- [1.3.0 / M-9] Regola per CATEGORIA ---
+        if isinstance(target.bersaglio, Categoria) or isinstance(target.secondario, Categoria):
+            primo, secondo = target.bersaglio, target.secondario
+            id_ogg1 = None if isinstance(primo, Categoria) else normalizza_nome(primo)
+            id_ogg2 = (None if secondo is None or isinstance(secondo, Categoria)
+                       else normalizza_nome(secondo))
+            self._pending_conseguenze.append(conseguenze)
+            self._pending_regole_target.append(
+                (id_ogg1, primo, id_ogg2, secondo) if id_ogg1 else
+                ("<categoria>", "qualcosa", id_ogg2, secondo))
+            self.mondo.aggiungi_regola(Regola(
+                verbo=verbo,
+                id_oggetto_bersaglio=id_ogg1,
+                risposta=risposta,
+                condizione=condizione,
+                preposizione=target.preposizione,
+                id_oggetto_secondario=id_ogg2,
+                conseguenze=conseguenze,
+                categoria=primo.radice if isinstance(primo, Categoria) else None,
+                categoria_secondaria=secondo.radice if isinstance(secondo, Categoria) else None,
+                **extra,
             ))
             return None
 
@@ -1851,6 +2599,7 @@ class FavellaTransformer(Transformer):
             preposizione=prep_azione,
             id_oggetto_secondario=id_ogg2,
             conseguenze=conseguenze,
+            **extra,
         ))
         return None
 
@@ -1878,6 +2627,8 @@ class FavellaTransformer(Transformer):
             self._applica_descrizione(nome, cond, testo)
         for nome, testo in self._pending_posti:
             self._applica_posto(nome, testo)
+        self._applica_scena_e_personaggi()
+        self._valida_turno_e_testi()
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
         for sinonimo, canonico in self._pending_sinonimi:   # [1.2.0]
@@ -1934,6 +2685,10 @@ class FavellaTransformer(Transformer):
                     f"La forma '{raw_lhs} {scritto} {raw_rhs}' vale solo fra due "
                     f"stati; per i contatori usa il valore fra parentesi '[{altro}]'.")
         for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
+            if id_ogg1 == "<categoria>":   # [1.3.0 / M-9] 'qualcosa (di …)'
+                if id_ogg2 and not m.trova_oggetto(id_ogg2):
+                    self.errori.append(f"Regola per secondo oggetto inesistente: '{ogg2_grezzo}'")
+                continue
             if not (m.trova_oggetto(id_ogg1) or id_ogg1 in m.opposte_direzioni):
                 self.errori.append(f"Regola per oggetto principale inesistente: '{ogg1_grezzo}'")
             elif id_ogg2 and not m.trova_oggetto(id_ogg2):
@@ -1968,6 +2723,18 @@ class FavellaTransformer(Transformer):
                 self.warnings.append(
                     f"Il posto di '{ogg.nome}' non sarà mai mostrato: l'oggetto "
                     f"non comincia direttamente in una stanza.")
+
+        # [1.3.0 / G-3] Una stanza che nasce solo da 'collega', senza descrizione
+        # né oggetti, è quasi sempre un refuso nel nome ('il giardno').
+        for sid, stanza in m.stanze.items():
+            if (sid not in self._stanze_dichiarate
+                    and stanza.descrizione == Stanza(sid).descrizione
+                    and not stanza.descrizioni_condizionali and not stanza.oggetti):
+                simili = difflib.get_close_matches(sid, sorted(self._stanze_dichiarate), n=1, cutoff=0.6)
+                forse = f" Forse intendevi «{simili[0]}»?" if simili else ""
+                self.warnings.append(
+                    f"La stanza «{sid}» esiste solo perché compare in «collega» e non ha "
+                    f"descrizione né oggetti: è un refuso?{forse}")
 
         # 1. [GG1] La stanza di partenza dichiarata deve esistere.
         if self.start_dichiarato_raw is not None:
@@ -2012,17 +2779,34 @@ class FavellaTransformer(Transformer):
         # [Concordanza] Confronto per RADICE (id, radice_proprieta(prop)): così una
         # condizione «è aperto» non è segnalata come refuso se altrove si assegna
         # «aperta» (stessa radice). Un refuso vero cambia la radice → resta segnalato.
+        # [1.3.0 / M-3] Contano le conseguenze di TUTTO il mondo (eventi, demoni,
+        # opzioni di dialogo, argomenti), non solo delle regole: prima una
+        # proprietà assegnata da un demone era segnalata come «mai assegnata». E
+        # contano i verbi della libreria: un oggetto apribile può diventare
+        # aperto o chiuso, uno accendibile acceso o spento; 'prendibile' è un
+        # campo dell'oggetto.
         proprieta_assegnabili = set()  # insieme di tuple (id_oggetto, radice)
         for id_ogg, ogg in m.oggetti.items():
             for prop in ogg.proprieta:
                 proprieta_assegnabili.add((id_ogg, radice_proprieta(prop)))
-        for regola in m.regole:
-            for cons in regola.conseguenze:
-                if isinstance(cons, ConseguenzaProprieta):
-                    proprieta_assegnabili.add((cons.id_oggetto, radice_proprieta(cons.proprieta)))
+            if ogg.prendibile:
+                proprieta_assegnabili.add((id_ogg, radice_proprieta("prendibile")))
+            for abilitante, ottenibili in (("apribile", ("aperta", "chiusa")),
+                                           ("accendibile", ("accesa", "spenta"))):
+                if radice_proprieta(abilitante) in {radice_proprieta(p) for p in ogg.proprieta}:
+                    for q in ottenibili:
+                        proprieta_assegnabili.add((id_ogg, radice_proprieta(q)))
+        for cons in self._tutte_le_conseguenze():
+            if isinstance(cons, (ConseguenzaProprieta, ConseguenzaTogliProprieta)):
+                proprieta_assegnabili.add((cons.id_oggetto, radice_proprieta(cons.proprieta)))
+        condizioni_da_controllare = [r.condizione for r in m.regole] + [
+            d.condizione for d in m.demoni] + [
+            a.condizione for a in m.argomenti if a.condizione is not None]
 
-        for regola in m.regole:
-            for cond in self._atomi_proprieta(regola.condizione):
+        for condizione in condizioni_da_controllare:
+            for cond in self._atomi_proprieta(condizione):
+                if cond.proprieta == "prendibile" and m.trova_oggetto(cond.id_oggetto):
+                    continue   # vera o falsa, ma non un refuso
                 if not m.trova_oggetto(cond.id_oggetto):
                     self.warnings.append(
                         f"Condizione su oggetto inesistente: '{cond.id_oggetto}'."
@@ -2041,21 +2825,21 @@ class FavellaTransformer(Transformer):
         #    sempre un refuso. Lo segnaliamo qui, non bloccante. I nomi noti sono
         #    gli 'stati'/contatori (m.variabili) e gli oggetti (m.oggetti); le
         #    stanze NON sono interpolabili (non hanno un valore testuale da rendere).
-        nomi_interpolabili = set(m.variabili.keys()) | set(m.oggetti.keys())
+        nomi_interpolabili = (set(m.variabili.keys()) | set(m.oggetti.keys())
+                              | set(SEGNAPOSTO_DEL_MOTORE) | {"oggetto", "cosa"})
         # [0.22.0/A2] Una descrizione può avere più varianti: si ispeziona OGNI
         # variante (testi_di_descrizione appiattisce stringa e VariantiDescrizione).
-        testi_autore = []
-        for ent in list(m.stanze.values()) + list(m.oggetti.values()):
-            testi_autore += testi_di_descrizione(ent.descrizione)
-            for _, t in ent.descrizioni_condizionali:
-                testi_autore += testi_di_descrizione(t)
-            if getattr(ent, "posto", None):   # [1.1.0]
-                testi_autore.append(ent.posto)
-        testi_autore += [r.risposta for r in m.regole]
-        testi_autore += [e.risposta for e in m.eventi]
+        # [1.3.0 / M-3] TUTTI i testi: anche demoni, battute e opzioni di
+        # dialogo, argomenti e testi di vinci/perdi/termina (prima un [refuso]
+        # lì compilava senza avvisi e restava letterale in partita).
+        testi_autore = self._tutti_i_testi()
         segnaposto_sconosciuti = set()
         for testo in testi_autore:
             for ph in estrai_placeholder(testo):
+                # [1.3.0] '[Apri gli occhi.]' è testo fra parentesi, non un
+                # segnaposto: un nome non contiene punteggiatura.
+                if _RE_CHAR_NOME_VIETATO.search(ph):
+                    continue
                 if normalizza_nome(ph) not in nomi_interpolabili:
                     segnaposto_sconosciuti.add(ph)
         for ph in sorted(segnaposto_sconosciuti):
@@ -2111,7 +2895,8 @@ class FavellaTransformer(Transformer):
                     f"\"{etichetta} {normalizza_nome(secondo)}\".")
 
         for id_ogg, ogg in m.oggetti.items():
-            if ogg.is_personaggio and not ogg.dialogo_iniziale:
+            if (ogg.is_personaggio and not ogg.dialogo_iniziale
+                    and not any(a.id_png == id_ogg for a in m.argomenti)):
                 self.warnings.append(
                     f"Il personaggio '{id_ogg}' non ha un dialogo: dichiara il nodo "
                     f"d'ingresso con 'Il dialogo di {id_ogg} comincia con \"...\".'."
@@ -2139,9 +2924,10 @@ class FavellaTransformer(Transformer):
         # stato vergine) così una condizione GIÀ vera alla partenza non genera un
         # falso fronte al primo turno. Per i demoni 'ogni_turno' (a livello) il
         # campo è irrilevante. Il deepcopy dell'IDE preserva questo baseline.
-        for demone in m.demoni:
-            if demone.tipo == "quando":
-                demone.era_vera = demone.condizione.valuta(m)
+        # [1.3.0] Senza consumare il caso (vedi Mondo.azzera_memoria_demoni); il
+        # valore definitivo lo fissa imposta_posizione_iniziale, quando il
+        # giocatore ha già il suo posto.
+        m.azzera_memoria_demoni()
 
     # ==========================================================================
     # LINTER SEMANTICO (Livello 6 / patch 0.11.1)
@@ -2175,6 +2961,14 @@ class FavellaTransformer(Transformer):
             return
         partenza = (m.posizione_iniziale if m.posizione_iniziale in m.stanze
                     else next(iter(m.stanze)))
+        aperture = {}
+        for cons in self._tutte_le_conseguenze():
+            if isinstance(cons, ConseguenzaCollegamento) and cons.destinazione:
+                aperture.setdefault(cons.id_stanza, []).append(cons)
+                opposta = m.opposta_di(cons.direzione)
+                if opposta:
+                    aperture.setdefault(cons.destinazione, []).append(
+                        ConseguenzaCollegamento(cons.destinazione, opposta, cons.id_stanza))
         raggiunte = set()
         coda = [partenza]
         while coda:
@@ -2188,6 +2982,11 @@ class FavellaTransformer(Transformer):
             for dest in stanza.uscite.values():
                 if dest not in raggiunte:
                     coda.append(dest)
+            # [1.3.0 / M-8] Un passaggio aperto da una conseguenza ('e adesso
+            # la cucina collega nord a la dispensa') conta come uscita.
+            for cons in aperture.get(corrente, ()):
+                if cons.destinazione not in raggiunte:
+                    coda.append(cons.destinazione)
         for id_stanza in m.stanze:
             if id_stanza not in raggiunte:
                 self.warnings.append(
@@ -2232,8 +3031,10 @@ class FavellaTransformer(Transformer):
         viste = []  # (firma, incondizionata?) delle regole già scorse, in ordine
         for regola in m.regole:
             firma = (regola.verbo, regola.id_oggetto_bersaglio,
-                     regola.id_oggetto_secondario, regola.preposizione)
-            globale = regola.id_oggetto_bersaglio is None
+                     regola.id_oggetto_secondario, regola.preposizione,
+                     getattr(regola, "fase", "invece"), getattr(regola, "categoria", None),
+                     getattr(regola, "categoria_secondaria", None))
+            globale = regola.globale
             oscurata = any(
                 f_prec == firma and incond_prec and (globale or regola.condizione is None)
                 for f_prec, incond_prec in viste
@@ -2292,6 +3093,8 @@ class FavellaTransformer(Transformer):
         condizioni += [d.condizione for d in m.demoni]
         for nodo in m.dialogo_nodi.values():
             condizioni += [o.condizione for o in nodo.opzioni if o.condizione is not None]
+            condizioni += [c for c, _ in nodo.battute_condizionali]   # [1.3.0]
+        condizioni += [a.condizione for a in m.argomenti if a.condizione is not None]
         for ent in list(m.stanze.values()) + list(m.oggetti.values()):
             condizioni += [c for c, _ in ent.descrizioni_condizionali]
         return condizioni
@@ -2302,6 +3105,8 @@ class FavellaTransformer(Transformer):
         conseguenze = []
         for r in m.regole:
             conseguenze.extend(r.conseguenze)
+            if getattr(r, "altrimenti", None):   # [1.3.0 / M-9]
+                conseguenze.extend(r.altrimenti[1])
         for e in m.eventi:
             conseguenze.extend(e.conseguenze)
         for d in m.demoni:                 # [Livello 8]
@@ -2309,6 +3114,8 @@ class FavellaTransformer(Transformer):
         for nodo in m.dialogo_nodi.values():
             for opz in nodo.opzioni:
                 conseguenze.extend(opz.conseguenze)
+        for arg in m.argomenti:            # [1.3.0 / M-10]
+            conseguenze.extend(arg.conseguenze)
         return conseguenze
 
     def _tutti_i_testi(self):
@@ -2325,15 +3132,20 @@ class FavellaTransformer(Transformer):
             if getattr(ent, "posto", None):   # [1.1.0]
                 testi.append(ent.posto)
         testi += [r.risposta for r in m.regole]
+        testi += [r.altrimenti[0] for r in m.regole if getattr(r, "altrimenti", None)]
         testi += [e.risposta for e in m.eventi]
         testi += [d.risposta for d in m.demoni]   # [Livello 8]
+        testi += [m.prologo] + list(m.messaggi.values())   # [1.3.0 / M-6]
         for nodo in m.dialogo_nodi.values():
             testi.append(nodo.battuta)
             # [0.33.0 / Tema 4b] Anche le battute condizionali ('… dice "…" se …')
             # vanno ispezionate per i segnaposto [nome].
             testi += [t for _, t in nodo.battute_condizionali]
             testi += [o.testo for o in nodo.opzioni]
-        return testi
+        testi += [a.risposta for a in m.argomenti]            # [1.3.0 / M-10]
+        testi += [c.messaggio for c in self._tutte_le_conseguenze()   # [1.3.0 / M-3]
+                  if isinstance(c, ConseguenzaFinePartita) and c.messaggio]
+        return [t for t in testi if t]
 
     def _variabili_in_condizione(self, condizione):
         """Estrae ricorsivamente i nomi di stati/contatori referenziati in una
@@ -2465,6 +3277,57 @@ def valida_nomi_dichiarati(simboli, testo):
     return errori
 
 
+# [1.3.0 / G-3] Parole che non possono essere, da sole, il nome di un'entità o
+# di uno stato: stanno dove la grammatica accetta ANCHE un nome (inizio di
+# frase, di condizione o di conseguenza), e il nome le oscurerebbe. 'Il posto è
+# una cosa.' rompeva ogni 'Il posto di …'; un oggetto 'giocatore' rompeva 'Il
+# giocatore comincia…'. Le altre parole riservate ('stanza', 'cosa', 'stato'…)
+# compaiono solo dove un nome non è atteso, e restano nomi leciti.
+NOMI_VIETATI = frozenset({
+    "giocatore", "posto", "dialogo", "descrizione", "quando", "ogni", "invece",
+    "non", "se", "e", "dire", "adesso", "oppure", "càpita",
+    "aumenta", "diminuisci", "vinci", "perdi", "termina",
+    "inventario", "nulla",
+})
+
+
+def valida_collisioni_nomi(simboli, testo):
+    """[1.3.0 / G-3] Nomi che la grammatica non può tenere distinti. Un nome
+    fatto di una sola parola riservata ('Il posto è una cosa.') oscurava le frasi
+    che usano quella parola ('Il posto della mappa…'); una stanza e un oggetto,
+    o un'entità e uno stato, con lo stesso nome producevano errori
+    incomprensibili o un mondo incoerente (una cucina dentro la cucina). Un
+    nome usato in 'collega' diventa una stanza: se è anche un oggetto, di
+    solito è un refuso. Restituisce una lista di (messaggio, riga, colonna)."""
+    errori = []
+    for nome in sorted(simboli.tutti | simboli.variabili):
+        if nome in NOMI_VIETATI:
+            riga, col = _localizza_nome(testo, nome, 0)
+            errori.append((
+                f"«{nome}» è una parola riservata del linguaggio e non può essere, da "
+                f"sola, un nome: usane uno composto (per esempio «{nome} di pietra»).",
+                riga, col))
+    for nome in sorted(simboli.stanze & simboli.oggetti):
+        riga, col = _localizza_nome(testo, nome, 0)
+        errori.append((
+            f"«{nome}» è sia una stanza sia un oggetto (una stanza nasce anche da "
+            f"«collega»): dai loro nomi diversi.", riga, col))
+    for nome in sorted(simboli.tutti & simboli.variabili):
+        riga, col = _localizza_nome(testo, nome, 0)
+        if nome == "turno":
+            # [1.3.0 / M-7] 'il turno' è il numero del turno (scanner: sempre fra
+            # le variabili), non un nome libero.
+            errori.append((
+                "«turno» è il numero del turno in corso («se il turno è almeno 3», "
+                "«[turno]»): non può essere il nome di una stanza o di un oggetto. "
+                "Usane uno composto (per esempio «turno di guardia»).", riga, col))
+            continue
+        errori.append((
+            f"«{nome}» è sia un'entità (stanza, oggetto o personaggio) sia uno stato "
+            f"o un contatore: dai loro nomi diversi.", riga, col))
+    return errori
+
+
 # ==============================================================================
 # 0bis. PREPROCESSORE DEGLI IMPORT MULTI-FILE (Passata 0) — Livello 6 / 0.11.2
 # ==============================================================================
@@ -2478,7 +3341,22 @@ def valida_nomi_dichiarati(simboli, testo):
 
 # Una direttiva occupa un'INTERA riga: 'Includi "percorso".' (spazi ai lati
 # ammessi). Il path è quotato (vocabolario nuovo tra virgolette, come alias/verbi).
-_RE_INCLUDI = re.compile(r'^\s*Includi\s+"((?:\\.|[^"\\])*)"\s*\.\s*$')
+_RE_INCLUDI = re.compile(r'^\s*Includi\s+"((?:\\.|[^"\\])*)"\s*\.\s*$', re.IGNORECASE)
+# [1.3.0 / M-11] 'Includi la libreria "verbi".' prende il modulo dalla libreria
+# standard installata con FAVELLA (favella1/libreria), senza doverlo copiare
+# accanto alla storia.
+_RE_INCLUDI_LIBRERIA = re.compile(
+    r'^\s*Includi\s+la\s+libreria\s+"((?:\\.|[^"\\])*)"\s*\.\s*$', re.IGNORECASE)
+
+
+def cartella_libreria():
+    """[1.3.0] La cartella della libreria standard, o None se non è installata
+    (per esempio nel motore che gira nel browser)."""
+    try:
+        from favella1 import LIBRERIA_DIR
+    except Exception:
+        return None
+    return LIBRERIA_DIR if os.path.isdir(LIBRERIA_DIR) else None
 
 
 def _aggiorna_stato_stringa(linea: str, dentro: bool) -> bool:
@@ -2543,6 +3421,24 @@ def espandi_inclusioni(percorso_radice: str, sorgente_radice: str | None = None)
         dentro_stringa = False
         for n, linea in enumerate(testo.split("\n"), 1):
             if not dentro_stringa:
+                m = _RE_INCLUDI_LIBRERIA.match(linea)
+                if m:
+                    cartella = cartella_libreria()
+                    nome = m.group(1).strip()
+                    if not nome.lower().endswith(".fav"):
+                        nome += ".fav"
+                    if cartella is None:
+                        errori.append(f"La libreria standard non è disponibile qui: "
+                                      f"copia '{nome}' accanto alla storia e usa "
+                                      f"'Includi \"{nome}\".'.")
+                    elif not os.path.isfile(os.path.join(cartella, nome)):
+                        disponibili = ", ".join(sorted(f[:-4] for f in os.listdir(cartella)
+                                                       if f.endswith(".fav")))
+                        errori.append(f"La libreria standard non ha il modulo '{nome[:-4]}' "
+                                      f"(ci sono: {disponibili}).")
+                    else:
+                        _espandi(os.path.join(cartella, nome), catena + [real], False)
+                    continue
                 m = _RE_INCLUDI.match(linea)
                 if m:
                     _espandi(os.path.join(base, m.group(1)), catena + [real], False)
@@ -2563,6 +3459,23 @@ def _posizione_origine(mappa_righe, linea) -> str:
         file_o, riga_o = mappa_righe[linea - 1]
         return f"  [{file_o}, riga {riga_o}]"
     return ""
+
+
+def _avvisa_partenza_implicita(transformer, mappa_righe):
+    """[1.3.0 / M-11] Senza 'Il giocatore comincia in …' la partita parte dalla
+    prima stanza dichiarata; con più file (Includi) quale sia la prima dipende
+    dall'ordine delle inclusioni, e un modulo può spostare l'inizio del gioco
+    senza che l'autore se ne accorga. Lo si dice."""
+    m = transformer.mondo
+    if transformer.start_dichiarato_raw is not None or not m.stanze:
+        return
+    file_sorgente = {f for f, _ in (mappa_righe or [])}
+    if len(file_sorgente) > 1:
+        prima = next(iter(m.stanze.values()))
+        transformer.warnings.append(
+            f"Manca 'Il giocatore comincia in …': la partita comincia in "
+            f"«{prima.nome_visualizzato}», la prima stanza dichiarata, che con più "
+            f"file dipende dall'ordine degli 'Includi'. Dichiara la partenza.")
 
 
 def analizza_file(percorso_file: str) -> Mondo | None:
@@ -2598,7 +3511,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): intercettati QUI,
         # prima di costruire il parser, con un errore d'autore localizzato (il '/'
         # corromperebbe la grammatica generata con un GrammarError incomprensibile).
-        nomi_errori = valida_nomi_dichiarati(simboli, testo)
+        nomi_errori = valida_nomi_dichiarati(simboli, testo) or valida_collisioni_nomi(simboli, testo)
         if nomi_errori:
             print("\n[FAVELLA 1] Errore: nome non valido")
             for msg, riga, _col in nomi_errori:
@@ -2620,14 +3533,33 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    verbi_multi=simboli.verbi_multi)
-        tree = parser.parse(testo)
+        # [1.3.0] Tutti gli errori di sintassi in una volta (analizza_con_recupero).
+        tree, errori_sintassi = analizza_con_recupero(parser, testo)
+        if errori_sintassi:
+            for e in errori_sintassi:
+                titolo, messaggio, codice = diagnosi_errore(testo, e, simboli, parser)
+                print(f"\n[FAVELLA 1] {titolo}" if codice == "entita-sconosciuta"
+                      else f"\n[{titolo}]")
+                print(f"Riga {e.line}, Colonna {e.column}{_posizione_origine(mappa_righe, e.line)}")
+                if codice != "entita-sconosciuta":
+                    print("-" * 40)
+                    print(e.get_context(testo, span=40).strip())
+                    print("-" * 40)
+                print(f" - {messaggio}")
+            if len(errori_sintassi) > 1:
+                print(f"\n[FAVELLA 1] {len(errori_sintassi)} frasi da correggere.")
+            return None
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
+                                        simboli.verbi_multi)
+        transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
         transformer.transform(tree)
 
         # 4. VALIDAZIONE SEMANTICA GLOBALE
         transformer.valida_post()
+        _avvisa_partenza_implicita(transformer, mappa_righe)
 
         # Estrae i log dal transformer
         errori.extend(transformer.errori)
@@ -2796,7 +3728,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
         simboli = costruisci_symbol_table(testo)
         # [0.30.0 / A1] Nomi con caratteri non ammessi (es. '/'): diagnostica
         # localizzata invece del GrammarError grezzo che ne deriverebbe.
-        for msg, riga, col in valida_nomi_dichiarati(simboli, testo):
+        for msg, riga, col in (valida_nomi_dichiarati(simboli, testo)
+                               or valida_collisioni_nomi(simboli, testo)):
             f_o, r_o = _posizione_da_linea_espansa(riga)
             errors.append(_diag(msg, file=f_o, line=r_o, col=col,
                                 code="nome-non-valido"))
@@ -2816,10 +3749,27 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    verbi_multi=simboli.verbi_multi)
-        tree = parser.parse(testo)
+        # [1.3.0] Tutti gli errori di sintassi, ciascuno con la sua posizione.
+        tree, errori_sintassi = analizza_con_recupero(parser, testo)
+        if errori_sintassi:
+            for e in errori_sintassi:
+                _titolo, messaggio, codice = diagnosi_errore(testo, e, simboli, parser)
+                f_o, r_o = _posizione_da_linea_espansa(getattr(e, "line", None))
+                col = getattr(e, "column", 1) or 1
+                if codice == "sintassi":
+                    try:
+                        messaggio += "\n" + e.get_context(testo, span=40).strip()
+                    except Exception:
+                        pass
+                errors.append(_diag(messaggio, file=f_o, line=r_o, col=col, code=codice))
+            return {"ok": False, "errors": errors, "warnings": warnings,
+                    "worldSummary": None}
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
+                                        simboli.verbi_multi)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
+        _avvisa_partenza_implicita(transformer, mappa_righe)
 
         for msg in transformer.errori:
             f_o, r_o, imp = _risolvi_semantica(msg)
@@ -2911,6 +3861,9 @@ def compila_mondo(percorso_file, sorgente=None):
                                    verbi_multi=simboli.verbi_multi)
         tree = parser.parse(testo)
         transformer = FavellaTransformer(coppie_dir)
+        transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
+                                        simboli.verbi_multi)
+        transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]
         transformer.transform(tree)
         transformer.valida_post()
         if transformer.errori:
@@ -3382,6 +4335,15 @@ def _cond_to_json(c, mondo):
     if isinstance(c, CondizioneProbabilita):
         # [0.32.0 / Tema 2c] 'càpita (N su M)'.
         return {"op": "chance", "num": c.numeratore, "den": c.denominatore}
+    if isinstance(c, CondizionePosizioneOggetto):
+        # [1.3.0 / G-6] 'X è in Y' / 'X è qui'.
+        luogo = "qui" if c.luogo == QUI else c.luogo
+        return {"op": "objIn", "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto),
+                "place": luogo, "placeName": _nome_entita(mondo, luogo)}
+    if isinstance(c, CondizionePngHa):
+        # [1.3.0 / M-10] 'il personaggio ha X'.
+        return {"op": "npcHas", "npc": c.id_png, "npcName": _nome_entita(mondo, c.id_png),
+                "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
     return {"op": "unknown"}
 
 
@@ -3422,6 +4384,21 @@ def _conseq_to_json(c, mondo):
     if isinstance(c, ConseguenzaSpostamentoGiocatore):
         # [0.18.0 / B2] Teletrasporto: 'e adesso il giocatore è in [stanza]'.
         return {"op": "teleport", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
+    if isinstance(c, ConseguenzaTogliProprieta):
+        # [1.3.0 / M-2] 'X non è più P'.
+        return {"op": "unprop", "id": c.id_oggetto,
+                "name": _nome_entita(mondo, c.id_oggetto), "prop": c.proprieta}
+    if isinstance(c, ConseguenzaCollegamento):
+        # [1.3.0 / M-8] 'X collega D a Y' / 'X non collega più D'.
+        voce = {"op": "link" if c.destinazione else "unlink", "room": c.id_stanza,
+                "name": _nome_stanza(mondo, c.id_stanza), "direction": c.direzione}
+        if c.destinazione:
+            voce.update(dest=c.destinazione, destName=_nome_stanza(mondo, c.destinazione))
+        return voce
+    if isinstance(c, ConseguenzaPngRiceve):
+        # [1.3.0 / M-10] 'il personaggio ha X'.
+        return {"op": "give", "npc": c.id_png, "npcName": _nome_entita(mondo, c.id_png),
+                "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
     if isinstance(c, ConseguenzaFinePartita):
         _esiti = {"vinta": "vinci", "persa": "perdi", "terminata": "termina"}
         # [0.18.0 / B3] Testo d'esito opzionale (None se non personalizzato).
@@ -3509,11 +4486,11 @@ def analizza_regole(percorso_file, sorgente=None):
                     "n": int(str(numeri[0])) if numeri else None,
                     "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
                 })
-            elif nodo.data in ("demone_ogni", "demone_quando"):
+            elif nodo.data in ("demone_ogni", "demone_quando", "demone_dopo"):
                 quotati = tok.get("TESTO_QUOTATO", [])
                 frasi_demone.append({
                     "span": span,
-                    "mode": "ogni" if nodo.data == "demone_ogni" else "quando",
+                    "mode": {"demone_ogni": "ogni", "demone_quando": "quando"}.get(nodo.data, "dopo"),
                     "risposta": _spoglia_quotato(str(quotati[0])) if quotati else None,
                 })
 
@@ -3560,13 +4537,31 @@ def analizza_regole(percorso_file, sorgente=None):
                           "prep": getattr(r, "preposizione", None),
                           "secondaryId": sec,
                           "secondaryName": _nome_entita(mondo, sec) if sec else None}
+        # [1.3.0 / M-9] Regola per categoria: 'qualcosa (di …)'.
+        if getattr(r, "categoria", None) is not None or getattr(r, "categoria_secondaria", None) is not None:
+            def _cat(radice, oid):
+                if radice is None:
+                    return _nome_entita(mondo, oid) if oid else None
+                return "qualcosa" + (f" di {radice}" if radice else "")
+            target = {"kind": "category", "id": r.id_oggetto_bersaglio,
+                      "name": _cat(r.categoria, r.id_oggetto_bersaglio),
+                      "category": r.categoria,
+                      "prep": getattr(r, "preposizione", None),
+                      "secondaryId": r.id_oggetto_secondario,
+                      "secondaryName": _cat(r.categoria_secondaria, r.id_oggetto_secondario),
+                      "secondaryCategory": r.categoria_secondaria}
+        altrimenti = getattr(r, "altrimenti", None)
         rules.append({
             "span": _span_regola(r.verbo, r.risposta, usate_r),
+            "phase": getattr(r, "fase", "invece"),
             "verb": r.verbo,
             "target": target,
             "condition": _cond_to_json(getattr(r, "condizione", None), mondo),
             "response": r.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(r, "conseguenze", [])],
+            "otherwise": ({"response": altrimenti[0],
+                           "consequences": [_conseq_to_json(c, mondo) for c in altrimenti[1]]}
+                          if altrimenti else None),
         })
 
     # EVENTI compilati → JSON.
@@ -3585,10 +4580,11 @@ def analizza_regole(percorso_file, sorgente=None):
     demons = []
     usate_d = set()
     for d in getattr(mondo, "demoni", []):
-        mode = "ogni" if d.tipo == "ogni_turno" else "quando"
+        mode = {"ogni_turno": "ogni", "quando": "quando"}.get(d.tipo, d.tipo)
         demons.append({
             "span": _span_demone(mode, d.risposta, usate_d),
             "mode": mode,
+            "n": getattr(d, "ritardo", 0),   # [1.3.0 / M-7] solo per 'dopo' 
             "condition": _cond_to_json(getattr(d, "condizione", None), mondo),
             "response": d.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(d, "conseguenze", [])],
@@ -3953,7 +4949,11 @@ def _autoformat_classifica(data, tok, mondo):
     eid = normalizza_nome(str(ents[0])) if ents else None
     vs = tok.get("VARIABILE", [])
     vid = normalizza_nome(str(vs[0])) if vs else None
-    # 0 — impostazioni globali
+    # 0 — impostazioni globali ([1.3.0] prima di tutto la presentazione)
+    if data in ("def_titolo", "def_autore", "def_prologo"):
+        return (0, "", -2)
+    if data in ("def_messaggio", "def_uscite_anonime"):
+        return (0, "", -1)
     if data == "def_direzioni":
         return (0, "", 0)
     if data == "def_opposti":
@@ -3995,8 +4995,12 @@ def _autoformat_classifica(data, tok, mondo):
         return (4, "", 0)
     if data in ("evento_al", "evento_ogni"):
         return (4, "", 1)
-    if data in ("demone_ogni", "demone_quando"):
+    if data in ("demone_ogni", "demone_quando", "demone_dopo"):
         return (4, "", 2)
+    if data == "def_argomento":
+        return (5, "", 1)
+    if data in ("def_png_ha", "def_di_scena", "def_anche_in"):
+        return (2, "o:" + (eid or ""), 6)
     # 5 — dialoghi
     if data in ("def_dialogo_inizio", "def_battuta", "def_opzione"):
         return (5, "", 0)
@@ -4122,7 +5126,7 @@ import io, contextlib, json, sys
 if '/engine' not in sys.path:
     sys.path.insert(0, '/engine')
 from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza
+from gioco import elabora_comando, mostra_stanza, intestazione
 from libreria_azioni import LIBRERIA_AZIONI
 _mondo = None
 def fav_boot(entry):
@@ -4133,6 +5137,8 @@ def fav_boot(entry):
             _mondo = compila_mondo(entry)
             _mondo.carica_azioni(LIBRERIA_AZIONI)
             _mondo.imposta_posizione_iniziale()
+            if getattr(_mondo, "titolo", None) or getattr(_mondo, "prologo", None):
+                intestazione(_mondo)
             mostra_stanza(_mondo)
     except Exception as e:
         return json.dumps({"text": buf.getvalue() + "\n[ERRORE DI COMPILAZIONE] " + str(e),
@@ -4150,7 +5156,8 @@ def fav_step(cmd):
         return json.dumps({"text": buf.getvalue() + "\n[ERRORE] " + str(e),
                            "continua": True, "stato": getattr(_mondo, "stato_partita", "in_corso")})
     return json.dumps({"text": buf.getvalue(), "continua": bool(continua),
-                       "stato": getattr(_mondo, "stato_partita", "in_corso")})
+                       "stato": getattr(_mondo, "stato_partita", "in_corso"),
+                       "uscita": bool(getattr(_mondo, "_uscita_richiesta", False))})
 '''
 
 
@@ -4286,7 +5293,9 @@ function step() {
     py.globals.set("_cmd", cmd);
     const r = JSON.parse(py.runPython("fav_step(_cmd)"));
     append(r.text);
-    running = r.continua;
+    // [1.3.0] A partita finita si può ancora ANNULLARE, RICOMINCIARE o CARICARE:
+    // l'ingresso resta aperto finché il giocatore non chiede di uscire.
+    running = r.continua || (r.stato !== "in_corso" && !r.uscita);
     if (!running) { inp.disabled = true; send.disabled = true; append("\n— Fine —", "sys"); }
   } catch (e) { append("[errore] " + e.message, "sys"); }
 }
@@ -4314,6 +5323,9 @@ boot();
 def _quota(testo: str) -> str:
     """Avvolge il testo tra virgolette doppie con escape canonico (\\\" e \\\\)."""
     interno = (testo or "").replace("\\", "\\\\").replace('"', '\\"')
+    # [1.3.0 / M-6] A capo e parentesi quadre letterali tornano escape.
+    interno = (interno.replace("\n", "\\n").replace(QUADRA_APERTA, "\\[")
+               .replace(QUADRA_CHIUSA, "\\]"))
     return f'"{interno}"'
 
 
@@ -4435,6 +5447,12 @@ def _serializza_condizione(c):
     if op == "chance":
         # [v1.0.0 / Tema 2c] Probabilità: 'càpita (N su M)'.
         return f"càpita ({c['num']} su {c['den']})"
+    if op == "objIn":
+        # [1.3.0 / G-6] 'X è in <luogo>' / 'X è qui'.
+        return f"{c['name']} è {_luogo_di_condizione(c)}"
+    if op == "npcHas":
+        # [1.3.0 / M-10] 'il personaggio ha X'.
+        return f"{c['npcName']} ha {c['name']}"
     if op == "count":
         cmp, v = c["cmp"], _serializza_operando(c["value"])
         if cmp == "==":
@@ -4463,6 +5481,10 @@ def _serializza_condizione(c):
             return f"{t['name']} non è come {t['other']}"
         if t["op"] == "playerIn":
             return f"il giocatore non è in {_nucleo_nome(t['name'])}"
+        if t["op"] == "objIn":
+            return f"{t['name']} non è {_luogo_di_condizione(t)}"
+        if t["op"] == "npcHas":
+            return f"{t['npcName']} non ha {t['name']}"
         raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato o posizione.")
     if op in ("and", "or"):
         sep = " e " if op == "and" else " oppure "
@@ -4471,6 +5493,18 @@ def _serializza_condizione(c):
             return f"({s})" if x["op"] in ("and", "or") else s
         return sep.join(_grp(t) for t in c["terms"])
     raise ValueError(f"Condizione non serializzabile: {op!r}.")
+
+
+def _luogo_di_condizione(c) -> str:
+    """[1.3.0 / G-6] 'qui', 'in inventario', 'nel nulla' o 'in <nucleo>'."""
+    luogo = c.get("place")
+    if luogo == "qui":
+        return "qui"
+    if luogo == "inventario":
+        return "in inventario"
+    if luogo == "nulla":
+        return "nel nulla"
+    return f"in {_nucleo_nome(c.get('placeName') or luogo)}"
 
 
 def _serializza_conseguenza(c):
@@ -4521,6 +5555,17 @@ def _serializza_conseguenza(c):
         base = "aumenta" if mode == "aumenta" else "diminuisci"
         # Ometti 'di 1' (default); ogni operando dinamico è esplicito.
         return f"{base} {c['name']}" + ("" if v == 1 else f" di {_serializza_operando(v)}")
+    if op == "unprop":
+        # [1.3.0 / M-2] 'X non è più P'.
+        return f"{c['name']} non è più {c['prop']}"
+    if op == "link":
+        # [1.3.0 / M-8] 'X collega D a Y'.
+        return f"{c['name']} collega {c['direction']} a {c['destName']}"
+    if op == "unlink":
+        return f"{c['name']} non collega più {c['direction']}"
+    if op == "give":
+        # [1.3.0 / M-10] 'il personaggio ha X'.
+        return f"{c['npcName']} ha {c['name']}"
     if op == "playerIn" or op == "teleport":
         # [0.18.0 / B2] Teletrasporto del giocatore: 'il giocatore è in [stanza]'.
         return f"il giocatore è in {_nucleo_nome(c['name'])}"
@@ -4564,7 +5609,8 @@ def _serializza_regola(spec):
     """[Fase 6c] Regola JSON → «Invece di VERBO [bersaglio] [se COND]: dire "…"
     [e adesso …].»."""
     verbo = str(spec["verb"]).strip()
-    parti = [f"Invece di {verbo}"]
+    fase = {"prima": "Prima", "dopo": "Dopo"}.get(spec.get("phase"), "Invece")   # [1.3.0 / M-9]
+    parti = [f"{fase} di {verbo}"]
     target = spec.get("target")
     if target:
         parti.append(" " + str(target["name"]))
@@ -4576,6 +5622,11 @@ def _serializza_regola(spec):
     parti.append(f": dire {_quota(spec.get('response', ''))}")
     for c in spec.get("consequences", []):
         parti.append(" e adesso " + _serializza_conseguenza(c))
+    altrimenti = spec.get("otherwise")   # [1.3.0 / M-9]
+    if altrimenti:
+        parti.append(f" altrimenti dire {_quota(altrimenti.get('response', ''))}")
+        for c in altrimenti.get("consequences", []):
+            parti.append(" e adesso " + _serializza_conseguenza(c))
     parti.append(".")
     return "".join(parti)
 
@@ -4601,6 +5652,9 @@ def _serializza_demone(spec):
         raise ValueError("Un demone richiede una condizione.")
     if spec["mode"] == "ogni":
         testa = "Ogni turno se " + _serializza_condizione(cond)
+    elif spec["mode"] == "dopo":   # [1.3.0 / M-7]
+        n = int(spec.get("n", 0))
+        testa = f"{n} {'turno' if n == 1 else 'turni'} dopo che " + _serializza_condizione(cond)
     else:
         testa = "Quando " + _serializza_condizione(cond) + " diventa vera"
     parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]

@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.2.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.3.0)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 
 import re
@@ -445,14 +445,18 @@ _GRAMMAR_TEMPLATE = r"""
     // "può" vs "comincia/inizia/parte" la distingue (LALR(1) 0-ambiguo). Il BONUS
     // di un oggetto: 'Lo zaino dà N spazi.' — inizia con ENTITA; dopo l'entità il
     // lookahead "dà" la distingue da è/si/collega/al (unico costrutto ENTITA "dà").
-    def_giocatore_capacita: "Il" "giocatore" "può" "portare" NUMERO "oggetti" "."
+    // [1.3.0 / L-1] Singolare e numeri in lettere: 'può portare un oggetto'
+    // non c'è (un/uno/una sono parole del linguaggio), ma '1 oggetto', 'tre
+    // oggetti', 'dà 1 spazio', 'Al turno dieci', 'Ogni due turni' sì.
+    def_giocatore_capacita: "Il" "giocatore" "può" "portare" _numero ( "oggetti" | "oggetto" ) "."
     // [0.19.0 / A8] Inventario iniziale del giocatore: 'Il giocatore ha la
     // torcia.'. Inizia come def_giocatore con "Il giocatore"; dopo, il lookahead
     // distingue "ha" da "comincia/inizia/parte" (posizione) e "può" (capacità) →
     // LALR(1) 0-ambiguo. Un oggetto per frase (più oggetti = più frasi), come da
     // stile «un fatto, una frase» del linguaggio. ('ha' è già riservata: cond_possesso.)
     def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
-    def_capacita_oggetto: ENTITA "dà" NUMERO "spazi" "."
+    def_capacita_oggetto: ENTITA "dà" _numero ( "spazi" | "spazio" ) "."
+    _numero: NUMERO | NUMERO_PAROLA
 
     // --- [1.3.0 / M-8] SCENA E TOPOLOGIA ---
     // 'Il cielo è di scena.': si esamina ma non si elenca («Puoi vedere qui»).
@@ -506,7 +510,7 @@ _GRAMMAR_TEMPLATE = r"""
     // 0-ambiguo (def_giocatore usa "parte" ma parte da "Il giocatore", non VARIABILE).
     // [0.27.0 / A] "partono" plurale per i nomi-contatore plurali ('Le vite
     // partono da 3.'), coerente con la copula plurale di def_contatore.
-    def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" NUMERO "."
+    def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" _numero "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -530,8 +534,8 @@ _GRAMMAR_TEMPLATE = r"""
     // disgiunti da "dire" e dal primo token di una conseguenza → 0-ambiguo.
     _esito_temporale: "dire" TESTO_QUOTATO ( "e" "adesso" conseguenza ( "e" "adesso"? conseguenza )* )?
                     | ( "e"? "adesso" )? conseguenza ( "e" "adesso"? conseguenza )*
-    def_evento: "Al" "turno" NUMERO ":" _esito_temporale "." -> evento_al
-              | "Ogni" NUMERO ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
+    def_evento: "Al" "turno" _numero ":" _esito_temporale "." -> evento_al
+              | "Ogni" _numero ( "turno" | "turni" ) ":" _esito_temporale "." -> evento_ogni
 
     // --- DEMONI / EVENTI CONDIZIONALI (Livello 8) ---
     // Un 'demone' sorveglia una CONDIZIONE a ogni turno e scatta da solo, senza
@@ -554,7 +558,7 @@ _GRAMMAR_TEMPLATE = r"""
               // [1.3.0 / M-7] Timer che parte da un fatto: 'Tre turni dopo che la
               // miccia è accesa: …' (scatta N turni dopo il fronte di salita).
               // Inizia con NUMERO: nessun'altra dichiarazione comincia così.
-              | NUMERO ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
+              | _numero ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -879,6 +883,9 @@ _GRAMMAR_TEMPLATE = r"""
     // NUMERO: intero non negativo. Priorità ALTA: PROPRIETA include le cifre, ma
     // un token tutto-cifre deve risolversi a NUMERO (per i contatori).
     NUMERO.2: /-?[0-9]+/
+    // [1.3.0 / L-1] Numeri in lettere (senza un/uno/una, che sono parole del
+    // linguaggio), solo dove si scrive un numero di turni, spazi, oggetti.
+    NUMERO_PAROLA.1: /(?:zero|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta|cento)(?![a-zA-ZÀ-ÿ0-9'])/i
 
     // ENTITA: alternanza CHIUSA dei nomi noti (generata per-file). Vedi
     // costruisci_grammatica(). Il flag /i la rende case-insensitive.
@@ -1142,6 +1149,7 @@ _DESCRIZIONI_ATTESI = {
     "VARIABILE": "il nome di uno stato o di un contatore",
     "PROPRIETA": "una proprietà (una sola parola)",
     "NUMERO": "un numero",
+    "NUMERO_PAROLA": "un numero in lettere",
     "_L_APOSTROFO": "«L'autore»",
     "NUMERO_PAROLA": "un numero",
     "TESTO_QUOTATO": "un testo fra virgolette",
@@ -1294,6 +1302,15 @@ def _consigli(testo, pos, attesi, errore):
 # 2. IL TRANSFORMER DELL'AST
 # ==============================================================================
 
+_NUMERI_IN_LETTERE = {
+    "zero": 0, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+    "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12, "tredici": 13,
+    "quattordici": 14, "quindici": 15, "sedici": 16, "diciassette": 17, "diciotto": 18,
+    "diciannove": 19, "venti": 20, "trenta": 30, "quaranta": 40, "cinquanta": 50,
+    "sessanta": 60, "settanta": 70, "ottanta": 80, "novanta": 90, "cento": 100,
+}
+
+
 def _unescape(m):
     c = m.group(1)
     return {"n": "\n", "[": QUADRA_APERTA, "]": QUADRA_CHIUSA}.get(c, c)
@@ -1420,6 +1437,10 @@ class FavellaTransformer(Transformer):
     def NUMERO(self, token):
         # Intero dei contatori (Livello 3).
         return int(token.value)
+
+    def NUMERO_PAROLA(self, token):
+        # [1.3.0 / L-1] 'tre' -> 3.
+        return _NUMERI_IN_LETTERE[token.value.lower()]
 
     def TESTO_QUOTATO(self, token):
         # Rimuove le virgolette iniziali e finali e applica l'unescape (\" -> ", \\ -> \)
@@ -3293,6 +3314,14 @@ def valida_collisioni_nomi(simboli, testo):
             f"«collega»): dai loro nomi diversi.", riga, col))
     for nome in sorted(simboli.tutti & simboli.variabili):
         riga, col = _localizza_nome(testo, nome, 0)
+        if nome == "turno":
+            # [1.3.0 / M-7] 'il turno' è il numero del turno (scanner: sempre fra
+            # le variabili), non un nome libero.
+            errori.append((
+                "«turno» è il numero del turno in corso («se il turno è almeno 3», "
+                "«[turno]»): non può essere il nome di una stanza o di un oggetto. "
+                "Usane uno composto (per esempio «turno di guardia»).", riga, col))
+            continue
         errori.append((
             f"«{nome}» è sia un'entità (stanza, oggetto o personaggio) sia uno stato "
             f"o un contatore: dai loro nomi diversi.", riga, col))
@@ -3525,6 +3554,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         transformer = FavellaTransformer(coppie_dir)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
                                         simboli.verbi_multi)
+        transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
         transformer.transform(tree)
 
         # 4. VALIDAZIONE SEMANTICA GLOBALE
@@ -3833,6 +3863,7 @@ def compila_mondo(percorso_file, sorgente=None):
         transformer = FavellaTransformer(coppie_dir)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
                                         simboli.verbi_multi)
+        transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]
         transformer.transform(tree)
         transformer.valida_post()
         if transformer.errori:

@@ -89,6 +89,45 @@ bloccherà chi scende `basso`, senza toccare chi sale `sopra` verso la soffitta.
 Quel tipo di blocco — una regola che intercetta un movimento — lo costruiremo nel
 capitolo sulle regole.
 
+== Su, giù e le direzioni intermedie
+
+Dalla versione 1.3 FAVELLA conosce da sé anche `su` e `giù` (opposte fra loro) e le
+quattro direzioni intermedie: `nordest`, `nordovest`, `sudest`, `sudovest`, con le
+loro opposte. Si collegano come le altre:
+
+#esempio(da: "un esempio")[
+#fav(```
+La cucina collega giù a la cantina.
+La soglia collega nordest a il frutteto.
+```)
+]
+
+Prima `su` era vietata, perché è anche una preposizione: `Su e giù sono direzioni
+opposte.` non compilava e bisognava ripiegare su `alto`/`basso`. Adesso si può
+scrivere, e le coppie personalizzate restano libere per i casi in cui servono
+percorsi distinti, come nella Casa.
+
+== Passaggi che si aprono e si chiudono
+
+Le uscite possono cambiare durante la partita. Una conseguenza apre un passaggio
+(con il ritorno, come la dichiarazione) o lo chiude:
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di tira la leva: dire "Uno scaffale ruota su se stesso." e adesso la biblioteca collega est a la stanza segreta.
+Invece di spingi la leva: dire "Lo scaffale torna al suo posto." e adesso la biblioteca non collega più est.
+```)
+]
+
+Le stanze nominate in una conseguenza devono essere dichiarate con
+`è una stanza.`. La riga «Uscite:» di solito dice anche il nome della stanza a cui
+porta ogni uscita; per non rivelare i luoghi che il giocatore non ha ancora visto
+basta una frase:
+
+#sintassi[
+  `Le uscite nominano solo le stanze visitate.`
+]
+
 #prova[
   Aggiungi una nuova stanza, il `sottoscala`, e collegala alla cantina con una
   coppia di direzioni tutta tua (per esempio `dentro` e `fuori`). Poi parti

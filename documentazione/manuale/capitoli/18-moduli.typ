@@ -47,6 +47,19 @@ le cose in ordine logico, non per necessità del compilatore.
   sua volta includerne altri — purché non si formino cicli.
 ]
 
+== La libreria standard senza copiarla
+
+Dalla versione 1.3 i moduli della libreria standard si includono per nome, senza
+copiarli accanto alla storia:
+
+#sintassi[
+  `Includi la libreria "verbi".`
+]
+
+E se la storia è divisa in più file e manca `Il giocatore comincia in …`, FAVELLA
+avverte da quale stanza partirà la partita: l'ordine degli `Includi` non sposta più
+l'inizio in silenzio.
+
 #prova[
   Sposta tutti gli eventi a turni e i demoni della Casa in un nuovo file
   `tempo.fav`, e includilo da `storia.fav`. Ricompila: la storia deve comportarsi

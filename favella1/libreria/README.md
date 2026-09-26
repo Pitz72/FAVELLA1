@@ -8,7 +8,7 @@ che ricorrono in quasi ogni avventura, così non li riscrivi ogni volta.
 |--------|---------------|
 | [`sinonimi.fav`](sinonimi.fav) | sinonimi dei verbi di libreria (`scruta`, `arraffa`, `spalanca`, …) |
 | [`proprieta.fav`](proprieta.fav) | coppie di proprietà opposte comuni (`rotta`/`integra`, `bagnata`/`asciutta`, …) |
-| [`verbi.fav`](verbi.fav) | verbi d'azione pronti (`accendi`, `spingi`, `bevi`, `aspetta`, …) |
+| [`verbi.fav`](verbi.fav) | verbi d'azione che il motore non conosce da sé (`brucia`, `scava`, `bussa`, `salta`, …) |
 
 ## Come si usano
 

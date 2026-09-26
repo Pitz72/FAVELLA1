@@ -62,6 +62,21 @@ Ogni 3 turni: diminuisci il carburante.
   intendevi `Al turno 8`, o un evento che doveva essere unico tornerà a ogni giro.
 ]
 
+== Un conto alla rovescia che parte da un fatto
+
+`Al turno N` e `Ogni N turni` contano dall'inizio della partita. Per un tempo che
+parte da un fatto (la miccia accesa, la porta chiusa alle spalle) c'è una terza
+forma:
+
+#esempio(da: "un esempio")[
+#fav(```
+Tre turni dopo che la miccia è accesa: dire "La dinamite esplode." e adesso perdi.
+```)
+]
+
+Quando la condizione diventa vera parte il conto; tre turni dopo, la frase scatta,
+una volta sola. `annulla` riporta indietro anche il conto.
+
 #prova[
   Aggiungi un `Al turno 12` che faccia bussare qualcuno alla porta dell'ingresso, e
   un `Ogni 3 turni` che faccia scricchiolare il parquet. Gioca una dozzina di turni

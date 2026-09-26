@@ -125,6 +125,61 @@ e l'`annulla` riavvolge anche il caso.
   fisse.
 ]
 
+== Testi più ricchi
+
+Dentro un testo fra virgolette, dalla versione 1.3, puoi usare qualche strumento in
+più.
+
+#table(
+  columns: (auto, 1fr),
+  stroke: 0.4pt + c.rule,
+  inset: 6pt,
+  align: (left + top, left + top),
+  table.header([*Scrivi*], [*Ottieni*]),
+  [`\n`], [un a capo],
+  [`\[` e `\]`], [parentesi quadre vere, non un segnaposto],
+  [`[turno]`], [il numero del turno],
+  [`[luogo]`], [il nome della stanza in cui si trova il giocatore (con l'articolo: scrivi «Sei qui: [luogo].», non «in [luogo]»)],
+  [`[mela]`, `[Mela]`], [il nome di un oggetto: con l'articolo minuscolo a metà frase, maiuscolo a inizio frase o se il segnaposto è maiuscolo],
+  [`[se …]…[altrimenti]…[fine]`], [un pezzo di testo che dipende da una condizione],
+)
+
+Il testo condizionale evita di scrivere due descrizioni quasi uguali:
+
+#esempio(da: "un esempio")[
+#fav(```
+La descrizione della cucina è "Una cucina stretta[se la finestra è aperta], piena di aria fresca[altrimenti], che sa di chiuso[fine].".
+```)
+]
+
+La condizione si scrive come dopo un `se`; `[altrimenti]` è facoltativo. Non si
+annida: un `[se …]` dentro un altro non vale.
+
+== Titolo, autore, prologo
+
+Tre frasi presentano la storia al giocatore, prima della prima stanza:
+
+#esempio(da: "un esempio")[
+#fav(```
+Il titolo è "La casa di via Stradivari".
+L'autore è "Simone Pizzi".
+Il prologo è "Sono passati sei mesi dal funerale di Adele.\nLa casa è rimasta com'era.".
+```)
+]
+
+Anche i messaggi del motore si possono riscrivere, con la frase `Il messaggio
+"[chiave]" è "[testo]".`. Le chiavi sono `non capisco`, `non vedo`, `buio`, `buio
+pesto`, `direzione`, `niente`, `tempo`, `preso`, `lasciato`, `non si prende`,
+`mani piene` e `inventario vuoto`; nel testo `[oggetto]` è l'oggetto del comando e
+`[cosa]` la parola scritta dal giocatore:
+
+#esempio(da: "un esempio")[
+#fav(```
+Il messaggio "non capisco" è "La nonna ti guarderebbe storto, se ti sentisse.".
+Il messaggio "preso" è "Ti metti in tasca [oggetto].".
+```)
+]
+
 #prova[
   Dài alla cantina una descrizione al buio (`se la torcia è spenta`) e una normale.
   Poi entra una volta senza torcia e una con la torcia accesa: la stessa stanza ti

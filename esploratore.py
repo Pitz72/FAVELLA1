@@ -1,5 +1,5 @@
 # esploratore.py
-# Collaudo DINAMICO per FAVELLA 1 (v1.2.2): partite vere, giocate dal motore.
+# Collaudo DINAMICO per FAVELLA 1 (v1.3.0): partite vere, giocate dal motore.
 #
 # Il collaudo statico (collaudo.py) ragiona sulle frasi senza giocare; questo
 # modulo gioca. Due usi, dalla CLI:

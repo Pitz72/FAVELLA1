@@ -5897,8 +5897,8 @@ def test_includi_la_libreria():
     print("[1.3.0 M-11: 'Includi la libreria \"verbi\".' senza copiare il modulo]")
     mondo, log = compila("La cella è una stanza.\nIncludi la libreria \"verbi\".\n"
                          'La lampada è una cosa.\nLa lampada è in cella.\n'
-                         'Invece di accendi la lampada: dire "Luce.".\n')
-    _check(mondo is not None and "accendi" in mondo.verbi_personalizzati,
+                         'Invece di brucia la lampada: dire "Fumo.".\n')
+    _check(mondo is not None and "brucia" in mondo.verbi_personalizzati,
            "il modulo della libreria standard è incluso")
     _, log = compila('La cella è una stanza.\nIncludi la libreria "inesistente".\n')
     _check("non ha il modulo" in log and "verbi" in log, "un modulo sconosciuto elenca quelli disponibili")
@@ -6459,6 +6459,8 @@ def test_il_turno_si_legge():
     _check("Tardi." in esegui(mondo, "esamina la porta"), "turno 2")
     _, log = compila(_SRC_F + "Il turno è un contatore.\n")
     _check("non si dichiara" in log, "dichiararlo è un errore")
+    _, log = compila(_SRC_F + "Il turno è una cosa.\n")
+    _check("numero del turno in corso" in log, "chiamare 'turno' un oggetto è un errore chiaro")
     _, log = compila(_SRC_F + '"a" è un comando senza oggetto.\nInvece di a: aumenta il turno.\n')
     _check("si legge soltanto" in log, "cambiarlo è un errore")
 
@@ -6525,6 +6527,91 @@ def test_forme_del_blocco_f_nell_ide():
     demone = _serializza_demone(modello["demons"][0])
     _check(demone.startswith("3 turni dopo che La miccia è accesa: dire"), f"timer riscritto: {demone}")
     _check(compila(src + testo + "\n" + demone + "\n")[0] is not None, "il testo riscritto compila")
+
+
+# --- [1.3.0] Blocco G: le criticità lievi ----------------------------------
+
+def test_numeri_in_lettere_e_singolari():
+    print("[1.3.0 L-1: '1 oggetto', '1 spazio', numeri in lettere]")
+    src = ("La cella è una stanza.\nIl giocatore comincia in cella.\n"
+           "Il giocatore può portare 1 oggetto.\nLo zaino è una cosa.\nLo zaino è in cella.\n"
+           "Lo zaino dà tre spazi.\nIl sacchetto è una cosa.\nIl sacchetto è in cella.\n"
+           "Il sacchetto dà 1 spazio.\nLa forza è un contatore.\nLa forza parte da dieci.\n"
+           'Al turno tre: dire "Tre!".\nOgni due turni: aumenta la forza.\n'
+           "Il tre è una cosa.\nIl tre è in cella.\n")
+    mondo = runtime(src)
+    _check(mondo is not None, "compila (anche con un oggetto chiamato 'il tre')")
+    _check(mondo.capacita_base == 1 and mondo.oggetti["zaino"].bonus_capacita == 3
+           and mondo.oggetti["sacchetto"].bonus_capacita == 1, "singolari e numeri in lettere")
+    _check(mondo.variabili["forza"] == 10 and [e.n for e in mondo.eventi] == [3, 2],
+           "'parte da dieci', 'Al turno tre', 'Ogni due turni'")
+
+
+def test_concordanza_dei_plurali_in_chi_e_io():
+    print("[1.3.0 L-2: bianco/bianchi, vecchio/vecchi, lungo/lunghe concordano]")
+    from favella_utils import radice_proprieta
+    for gruppo in (("bianco", "bianca", "bianchi", "bianche"), ("vecchio", "vecchia", "vecchi", "vecchie"),
+                   ("grigio", "grigia", "grigi", "grigie"), ("lungo", "lunga", "lunghi", "lunghe"),
+                   ("buio", "buia", "buie"), ("aperto", "aperta", "aperti", "aperte")):
+        _check(len({radice_proprieta(p) for p in gruppo}) == 1, f"stessa radice: {'/'.join(gruppo)}")
+    src = ("La cella è una stanza.\nIl giocatore comincia in cella.\n"
+           "I muri sono una cosa.\nI muri sono in cella.\nI muri sono bianchi.\n"
+           'Invece di esamina i muri se i muri sono bianco: dire "Bianchi.".\n')
+    mondo, log = compila(src)
+    _check(mondo is not None and "possibile refuso" not in log, "nessun falso refuso")
+    _check("Bianchi." in esegui(runtime(src), "esamina i muri"), "la condizione combacia")
+
+
+def test_istantanee_senza_dati_statici():
+    print("[1.3.0 L-5: le istantanee di ANNULLA non copiano regole ed eventi]")
+    mondo = runtime(_SRC_SALVA)
+    snap = mondo.cattura_stato()
+    _check(not any(k in snap for k in ("regole", "eventi", "dialogo_nodi")),
+           "regole, eventi e dialoghi fuori dall'istantanea")
+    esegui(mondo, "prendi la mela")
+    esegui(mondo, "annulla")
+    _check("mela" not in mondo.inventario and mondo.regole and mondo.dialogo_nodi,
+           "ANNULLA funziona e il mondo conserva regole e dialoghi")
+
+
+def test_salvataggi_dopo_una_correzione_della_storia():
+    print("[1.3.0 L-6: un salvataggio si carica anche dopo una correzione della storia]")
+    archivio = _ArchivioMemoria()
+    v1 = 'Il titolo è "L\'orto".\n' + _SRC_SALVA
+    a = runtime(v1)
+    a.archivio_salvataggi = archivio
+    esegui(a, "prendi la mela")
+    esegui(a, "nord")
+    esegui(a, "salva")
+    v2 = v1 + "Il rastrello è una cosa.\nIl rastrello è nell'orto.\n"
+    b = runtime(v2)
+    b.archivio_salvataggi = archivio
+    out = esegui(b, "carica")
+    _check("nuova versione della storia" in out and "mela" in b.inventario
+           and b.posizione_giocatore == "orto", "rigiocata sulla nuova versione, con un avviso")
+    c = runtime('Il titolo è "Un\'altra".\n' + _SRC_SALVA
+                + "Il rastrello è una cosa.\nIl rastrello è nell'orto.\n")
+    c.archivio_salvataggi = archivio
+    _check("altra storia" in esegui(c, "carica"), "una storia diversa con un altro titolo resta rifiutata")
+
+
+def test_copie_del_motore_nel_sito_allineate():
+    print("[1.3.0 L-7: le copie del motore nel sito sono identiche ai moduli]")
+    cartella = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "landingpage", "public", "favella-engine", "engine")
+    if not os.path.isdir(cartella):
+        _check(True, "copie del sito assenti in questo checkout: niente da confrontare")
+        return
+    radice = os.path.dirname(os.path.abspath(__file__))
+    diverse = []
+    for modulo in ("compilatore", "gioco", "strutture", "libreria_azioni", "favella_utils"):
+        with open(os.path.join(radice, modulo + ".py"), "rb") as f:
+            originale = f.read()
+        with open(os.path.join(cartella, modulo + ".fav"), "rb") as f:
+            copia = f.read()
+        if originale != copia:
+            diverse.append(modulo)
+    _check(not diverse, f"copie identiche (diverse: {diverse}); risincronizza con SYNC.md")
 
 
 def main():
@@ -6981,11 +7068,17 @@ def main():
         test_timer_che_parte_da_un_fatto,
         test_regole_prima_dopo_altrimenti_e_categorie,
         test_forme_del_blocco_f_nell_ide,
+        # [1.3.0] Blocco G: le lievi
+        test_numeri_in_lettere_e_singolari,
+        test_concordanza_dei_plurali_in_chi_e_io,
+        test_istantanee_senza_dati_statici,
+        test_salvataggi_dopo_una_correzione_della_storia,
+        test_copie_del_motore_nel_sito_allineate,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.2.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.3.0)")
     print("=" * 60)
     for t in tests:
         t()

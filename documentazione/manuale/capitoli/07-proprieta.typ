@@ -81,6 +81,39 @@ regola controllerà quella proprietà per decidere se lasciarti scendere, e
 un'altra la renderà `aperta` quando giri la chiave giusta. Quel meccanismo —
 condizione più conseguenza — è il cuore dei prossimi capitoli.
 
+== Togliere una proprietà
+
+Una conseguenza aggiunge una proprietà; dalla versione 1.3 può anche toglierla:
+
+#sintassi[
+  `e adesso [oggetto] non è più [proprietà]`
+]
+
+Serve quando la proprietà non ha un'opposta dichiarata: `e adesso il panno non è
+più bagnato` e il panno smette di essere bagnato, senza diventare nient'altro.
+
+== Proprietà che il motore sa usare
+
+Alcune proprietà, da dichiarare come le altre, dicono al motore cosa si può fare
+con un oggetto:
+
+#table(
+  columns: (auto, 1fr),
+  stroke: 0.4pt + c.rule,
+  inset: 6pt,
+  align: (left + top, left + top),
+  table.header([*Proprietà*], [*Cosa permette*]),
+  [`prendibile`], [prenderlo (anche in una condizione: `se la mela è prendibile`, e in una conseguenza: `e adesso la mela non è più prendibile`)],
+  [`apribile`], [`apri` e `chiudi` (che rendono l'oggetto `aperto` o `chiuso`)],
+  [`accendibile`], [`accendi` e `spegni` (`acceso`, `spento`)],
+  [`commestibile`], [`mangia` (l'oggetto sparisce)],
+  [`bevibile`], [`bevi` (idem)],
+)
+
+La concordanza per radice, dalla 1.3, tiene conto anche dei plurali difficili:
+`bianco` e `bianchi`, `vecchio` e `vecchie`, `lungo` e `lunghe` sono la stessa
+proprietà.
+
 #prova[
   Aggiungi alla camera un `baule`, dichiaralo `chiuso`, e dichiara una coppia di
   opposti tutta tua per un altro oggetto (per esempio `bagnato` e `asciutto` per

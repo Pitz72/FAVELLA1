@@ -4,6 +4,109 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.3.0] - 2026-09-26
+### 🧭 Tutte le criticità dell'analisi
+Risolve le criticità gravi (G-1…G-9), medie (M-1…M-11) e lievi (L-1…L-9) di
+`documentazione/analisi-critica-1.2.1.md`; le gravissime erano già corrette
+nella 1.2.2. Le estensioni di grammatica sono additive: le frasi valide in 1.2
+restano valide. Spec: `documentazione/grammatica-1.3.0.md` (§22).
+
+**Il giocatore**
+- **Il tempo non passa sui comandi non capiti (G-5).** Verbo sconosciuto,
+  oggetto che non c'è, nome ambiguo, AIUTO: niente turno, eventi, demoni né
+  istantanea. Prima un refuso costava un turno (e un sorso d'acqua nel
+  Viaggiatore).
+- **Uscire e ricominciare (G-8).** `esci` è un movimento se c'è un'uscita
+  «fuori», altrimenti chiede conferma; `ricomincia` chiede conferma. A partita
+  finita si può ANNULLARE, RICOMINCIARE, CARICARE o scrivere FINE.
+- **Verbi (G-4).** Nuovi: `apri`/`chiudi`, `accendi`/`spegni`, `mangia`, `bevi`
+  (con gli oggetti `apribile`, `accendibile`, `commestibile`, `bevibile`),
+  `aspetta`/`z`, `x`, `l`, `tocca`, `spingi`, `tira`, `premi`, `gira`, `rompi`,
+  `colpisci`, `indossa`, `togli`, `dai`, `mostra`, `annusa`, `ascolta`. Un verbo
+  con lo stesso nome dichiarato dall'autore vince. Direzioni `su`, `giù`,
+  `nordest`, `nordovest`, `sudest`, `sudovest` (`Su e giù sono direzioni
+  opposte.` ora compila); `entra`, `sali`, `scendi`, `esci X`.
+- **Due oggetti con «a», «da», «sopra» (G-7).** `dai la mela alla guardia`,
+  `prendi la mela dal tavolo`, `metti il vaso sopra il mobile`, anche nelle
+  regole (`Invece di dai la mela alla guardia`).
+- **Parser (M-5).** Ricerca per parole (non più per lettere: `ave` non trova
+  la chiave), nomi con preposizioni (`la tazza con il manico`), `prendi tutto`,
+  `lascia tutto`, `prendi la chiave e la torcia` in un turno, risposta alla
+  domanda «Quale intendi…?», anafora nei comandi a due oggetti
+  (`mettila nello zaino`), la stanza dice cosa c'è sui supporti.
+- **L'italiano del motore (M-4).** «Preso: la mela.», «Hai messo la chiave
+  nello zaino.», «Non puoi prenderla.», «Cosa vuoi prendere?», «Quale intendi:
+  la chiave rossa o la chiave blu?»; `[mela]` a metà frase è «la mela».
+
+**L'autore**
+- **Parole chiave (G-1, G-2).** Le parole chiave non spezzano più gli
+  aggettivi (`unta`, `alto`) e valgono con o senza maiuscola (`invece di`). Tutti
+  gli errori di sintassi in una compilazione, in italiano, con consigli (`o` al
+  posto di `oppure`, il punto dentro le virgolette…) (L-9).
+- **Nomi e dichiarazioni (G-3).** Errori chiari per i nomi riservati, un nome
+  usato per due cose, un oggetto in due posti; avvisi per le descrizioni
+  doppie e per le stanze nate da un refuso in `collega`.
+- **Dove stanno le cose (G-6).** `se la guardia è in cucina`, `se la chiave è
+  nella scatola`, `se la mela è in inventario`, `se il gatto è qui`.
+- **Proprietà (M-2).** `e adesso il panno non è più bagnato`; `prendibile` si
+  legge e si assegna.
+- **Mondo (M-8).** `e adesso la cucina collega nord a la dispensa` / `… non
+  collega più nord`; `Il cielo è di scena.`; `Il cielo è anche nel cortile.`;
+  `Le uscite nominano solo le stanze visitate.`.
+- **Personaggi (M-10).** `La guardia ha la chiave.` (anche come condizione e
+  conseguenza); argomenti di conversazione: `Se chiedi alla guardia di "chiave":
+  dire "…".` e, per il giocatore, `chiedi alla guardia della chiave`.
+- **Regole (M-9, M-1).** `Prima di` e `Dopo di` accanto a `Invece di`; ramo
+  `altrimenti`; regole per categoria (`Invece di prendi qualcosa di pesante`);
+  `e adesso` anche sulla prima conseguenza.
+- **Testi (M-6).** `\n`, `\[ \]`, `[turno]`, `[luogo]`, `[Meteo]` con la
+  maiuscola, testo condizionale `[se …]…[altrimenti]…[fine]`; `Il titolo è`,
+  `L'autore è`, `Il prologo è`; `Il messaggio "non capisco" è "…".` per i
+  messaggi del motore.
+- **Numeri e tempo (M-7, L-1).** Numeri negativi e in lettere (`tre turni`),
+  `1 oggetto`, `1 spazio`; `moltiplica`, `dividi`, `riduci … modulo`, `resta fra
+  A e B`; `se il turno è almeno 10`; `Tre turni dopo che la miccia è accesa: …`.
+- **Demoni (G-9, L-4).** `Quando il giocatore è in <partenza>` non scatta più
+  al primo turno; preparare i demoni non consuma il caso.
+- **Linter (M-3).** Niente più «mai assegnata» per le proprietà assegnate da
+  eventi, demoni, dialoghi o dai verbi della libreria; segnaposto controllati in
+  tutti i testi.
+- **Moduli (M-11).** `Includi la libreria "verbi".` senza copiare il modulo;
+  avviso quando la stanza di partenza dipende dall'ordine degli `Includi`.
+  `verbi.fav` non dichiara più i verbi che il motore conosce da sé (li avrebbe
+  resi verbi d'autore, senza logica).
+
+**Motore e strumenti**
+- **Concordanza (L-2):** bianco/bianchi, vecchio/vecchie, lungo/lunghe.
+- **Istantanee (L-5):** regole, eventi e dialoghi fuori dalle istantanee di
+  ANNULLA (Viaggiatore: da 98 a 47 KiB, da 7,9 a 3,6 ms).
+- **Salvataggi (L-6):** un salvataggio si carica anche dopo una correzione della
+  storia (stesso titolo o stesso file), rigiocato sulla nuova versione con un
+  avviso; `SALVA`/`CARICA` non intercettano più `carica il carro` (L-3).
+- **Copie del motore (L-7):** un test verifica che il motore copiato nel sito sia
+  identico ai sorgenti. La separazione di `compilatore.py` e un'astrazione
+  dell'uscita al posto di `print()` restano da fare: toccano ogni modulo e
+  l'IDE, e non cambiano il linguaggio.
+- IDE (lettura e riscrittura delle regole), collaudo statico ed esploratore
+  conoscono le forme nuove; l'intestazione della partita (titolo, autore,
+  prologo) è la stessa in terminale, IDE, playground e pagina esportata.
+
+**Compatibilità.** Cambiano, perché prima erano difetti: i comandi non capiti
+non consumano turni (le storie a tempo diventano più generose con i refusi);
+`esci` non chiude più subito; la ricerca degli oggetti è per parole; i messaggi
+del motore sono in italiano corretto; la stanza elenca ciò che sta sui supporti.
+Una storia con un oggetto collocato in due posti o con un nome riservato non
+compila più (il messaggio dice perché). I salvataggi della 1.2 si caricano.
+
+**Verifica.** Ogni blocco ha i suoi test, che falliscono sul motore precedente.
+Le undici storie ufficiali rigiocate con gli stessi comandi: divergono solo
+dove previsto (messaggi, `aspetta`, turni non consumati, contenuto dei
+supporti); i 59 file `.fav` del repository compilano come prima; il sito
+(`valida_checkpoint.py`) 53/53.
+
+Suite: **1026 asserzioni del linguaggio + 50 di collaudo**, tutte verdi
+(`pytest`: 404).
+
 ## [1.2.2] - 2026-09-25
 ### 🛡️ Le quattro criticità gravissime
 Patch di runtime e di validazione, grammatica identica alla 1.2.0. Corregge le

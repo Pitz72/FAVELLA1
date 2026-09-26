@@ -158,6 +158,32 @@ ANNULLA rimette tutto com'era.
   descrizione.
 ]
 
+== Oggetti di scena e oggetti ovunque
+
+Certe cose esistono solo per essere guardate: il cielo, i muri, una finestra
+murata. Dichiarale *di scena*: si esaminano, ma non compaiono in «Puoi vedere qui»
+e `prendi tutto` le lascia stare.
+
+#sintassi[
+  `[Oggetto] è di scena.` \
+  `[Oggetto] è anche in [stanza].`
+]
+
+La seconda frase mette lo stesso oggetto in più stanze: il cielo sopra il cortile
+e sopra l'orto, una porta vista dai due lati. Un oggetto presente in più stanze
+e prendibile sparisce da tutte quando lo si prende: FAVELLA te lo ricorda con un
+avviso.
+
+#esempio(da: "un esempio")[
+#fav(```
+Il cielo è una cosa.
+Il cielo è nel cortile.
+Il cielo è anche nell'orto.
+Il cielo è di scena.
+La descrizione del cielo è "Nuvole basse, color piombo.".
+```)
+]
+
 #prova[
   Crea in cucina un oggetto `straccio`, rendilo prendibile e dàgli una descrizione.
   Poi entra in cucina, esaminalo e prendilo: se compare nell'inventario, l'hai

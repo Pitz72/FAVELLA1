@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.2.2)
+# Interprete Interattivo per FAVELLA 1 (v1.3.0)
 
 import contextlib
 import copy
@@ -848,6 +848,9 @@ def dati_salvataggio(mondo: Mondo) -> dict:
         "versione": VERSIONE_FORMATO_SALVATAGGIO,
         "motore": VERSIONE_MOTORE,
         "storia": mondo._impronta_iniziale,
+        # [1.3.0 / L-6] Come si chiama la storia: se l'impronta cambia (una
+        # correzione dopo il salvataggio) il salvataggio si carica lo stesso.
+        "nome": _nome_della_storia(mondo),
         "turno": mondo.turno_corrente,
         "comandi": list(mondo._registro_comandi),
         # Ciò che ANCORA ripeterebbe: stato di sessione, non ricostruibile dalla
@@ -868,8 +871,16 @@ def carica_da_dati(mondo: Mondo, dati: dict):
         return False, "Il salvataggio viene da una versione più recente di FAVELLA."
     if mondo._stato_iniziale is None:
         return False, "Questa partita non ha un punto di partenza da cui ricaricare."
-    if dati.get("storia") != mondo._impronta_iniziale:
-        return False, "Il salvataggio appartiene a un'altra storia (o a una versione diversa di questa)."
+    stessa_versione = dati.get("storia") == mondo._impronta_iniziale
+    if not stessa_versione:
+        # [1.3.0 / L-6] Fino alla 1.2 un salvataggio valeva solo per la versione
+        # esatta della storia: una correzione che aggiungeva un oggetto rendeva
+        # inutili tutti i salvataggi dei giocatori. Ora, se la storia è la stessa
+        # (stesso titolo o stesso file), si rigioca la partita sulla nuova
+        # versione e lo si dice.
+        nome = _nome_della_storia(mondo)
+        if not nome or dati.get("nome") != nome:
+            return False, "Il salvataggio appartiene a un'altra storia (o a una versione diversa di questa)."
     comandi = dati.get("comandi")
     if not isinstance(comandi, list) or not all(isinstance(c, str) for c in comandi):
         return False, "Il salvataggio è danneggiato: manca la sequenza dei comandi."
@@ -909,10 +920,19 @@ def carica_da_dati(mondo: Mondo, dati: dict):
     finally:
         mondo._senza_istantanee = False
     mondo.ultimo_comando = dati.get("ultimo")
+    if not stessa_versione:
+        return True, (f"Partita caricata sulla nuova versione della storia (turno "
+                      f"{mondo.turno_corrente}): la storia è cambiata dopo il salvataggio, "
+                      f"controlla che tutto sia come lo ricordi.")
     if dati.get("impronta") and mondo.impronta_stato() != dati["impronta"]:
         return True, ("Partita caricata, ma non è identica a quella salvata: "
                       "la storia è cambiata dopo il salvataggio.")
     return True, f"Partita caricata: turno {mondo.turno_corrente}."
+
+
+def _nome_della_storia(mondo: Mondo) -> str | None:
+    """[1.3.0 / L-6] Il titolo dichiarato o, in mancanza, il nome del file."""
+    return getattr(mondo, "titolo", None) or getattr(mondo, "file_storia", None) or None
 
 
 def _nome_salvataggio(parole) -> str:

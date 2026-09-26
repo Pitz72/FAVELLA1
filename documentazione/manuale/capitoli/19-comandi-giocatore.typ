@@ -13,11 +13,18 @@ modo in cui la storia si lascia esplorare.
 == Muoversi e guardare
 
 Ci si sposta nominando la direzione: `nord`, `sud`, `est`, `ovest`, e le loro
-iniziali `n`, `s`, `e`, `o`; valgono anche le direzioni personalizzate che hai
-dichiarato (`alto`, `dentro`...). In alternativa, `vai nord`. Per rivedere dove ci
-si trova c'è `guarda`; per osservare un oggetto da vicino, `esamina [oggetto]`,
-oppure `guarda [oggetto]` e `osserva [oggetto]`, che dalla versione 1.2.2 guardano
-davvero l'oggetto (e fanno scattare le tue regole su `esamina`).
+iniziali `n`, `s`, `e`, `o`; dalla versione 1.3 anche `su`, `giù`, `nordest`,
+`nordovest`, `sudest`, `sudovest` (pure col trattino, `nord-est`). Valgono le
+direzioni personalizzate che hai dichiarato (`alto`, `dentro`...). In alternativa,
+`vai nord`. `sali` e `scendi` vanno su e giù, `entra` va `dentro`, `esci dalla
+stanza` va `fuori`, se la stanza ha quell'uscita e tu non hai dichiarato quei verbi
+per conto tuo.
+
+Per rivedere dove ci si trova c'è `guarda` (o `l`); per osservare un oggetto da
+vicino, `esamina [oggetto]` (o `x`), oppure `guarda [oggetto]` e `osserva
+[oggetto]`, che dalla versione 1.2.2 guardano davvero l'oggetto (e fanno scattare le
+tue regole su `esamina`). La stanza dice anche cosa sta sopra i tavoli e dentro i
+contenitori aperti: «Sul tavolo: una mela.».
 
 == Maneggiare gli oggetti
 
@@ -27,12 +34,41 @@ davvero l'oggetto (e fanno scattare le tue regole su `esamina`).
   inset: 6pt,
   align: (left + top, left + top),
   table.header([*Comando*], [*Effetto*]),
-  [#gc[prendi / lascia]], [Raccogliere o posare un oggetto prendibile.],
+  [#gc[prendi / lascia]], [Raccogliere o posare un oggetto prendibile (`prendi la mela dal tavolo`, `lascia la mela sul tavolo`).],
   [#gc[inventario]], [Vedere cosa si porta con sé (anche `i`), compreso quel che sta negli zaini.],
   [#gc[usa X con Y]], [Far interagire due oggetti.],
-  [#gc[metti X in/su Y]], [Posare un oggetto in un contenitore o su un supporto.],
+  [#gc[metti X in/su Y]], [Posare un oggetto in un contenitore o su un supporto (anche `sopra`).],
+  [#gc[apri / chiudi]], [Aprire e chiudere ciò che è `apribile` (dalla 1.3).],
+  [#gc[accendi / spegni]], [Accendere e spegnere ciò che è `accendibile` (dalla 1.3).],
+  [#gc[mangia / bevi]], [Consumare ciò che è `commestibile` o `bevibile` (dalla 1.3).],
+  [#gc[aspetta]], [Lasciar passare un turno (anche `z`, `attendi`).],
+  [#gc[dai / mostra X a Y]], [Dare o mostrare un oggetto a un personaggio.],
+  [#gc[tocca, spingi, tira…]], [`tocca`, `spingi`, `tira`, `premi`, `gira`, `rompi`, `colpisci`, `indossa`, `togli`, `annusa`, `ascolta`: il motore li capisce e, senza una tua regola, risponde che non succede nulla di particolare.],
   [#gc[parla con X]], [Avviare il dialogo con un personaggio.],
+  [#gc[chiedi a X di Y]], [Chiedere a un personaggio di un argomento (anche `domanda`).],
 )
+
+I verbi nuovi della 1.3 cedono il passo ai tuoi: se dichiari `"tocca" è un
+comando.`, `tocca` diventa tuo, come prima.
+
+== Più oggetti insieme, e le domande
+
+`prendi tutto` raccoglie ciò che si può prendere; `lascia tutto` posa ciò che si
+porta; `metti tutto nella cassa` e `prendi tutto dal tavolo` fanno quel che dicono.
+Si possono anche elencare le cose: `prendi la chiave e la torcia`. Tutto vale un
+solo turno.
+
+Se un nome è ambiguo, FAVELLA chiede, con i nomi della tua storia: «Quale intendi:
+la chiave rossa o la chiave blu?». Basta rispondere `rossa` (o il numero, `1`):
+il comando riparte da solo. Una risposta che non c'entra vale come un comando
+nuovo. Il giocatore può scrivere anche solo una parte del nome (`chiave`, `chiav`),
+ma parole intere o loro inizi: `ave` non trova più la chiave.
+
+#nota[
+  Un comando che il motore non capisce (un verbo che non conosce, un oggetto che
+  non c'è, una domanda come «Cosa vuoi prendere?») non fa passare il tempo: né
+  turni, né eventi, né demoni. Fino alla 1.2 un refuso costava un turno.
+]
 
 == Riferirsi all'ultima cosa: i pronomi
 
@@ -106,7 +142,9 @@ memoria del browser, legata a quella storia.
   caricamento FAVELLA li rigioca da capo, in un attimo. Funziona perché il motore è
   prevedibile: stessi comandi, stessa partita. Alla fine confronta un'impronta dello
   stato con quella salvata, e se la storia nel frattempo è cambiata te lo dice.
-  Per questo un salvataggio vale solo per la storia su cui è nato.
+  Dalla 1.3 un salvataggio sopravvive alle correzioni della storia: se il titolo
+  (o il nome del file) è lo stesso, la partita si rigioca sulla nuova versione e
+  il motore avverte di controllare che tutto sia come prima.
 ]
 
 #nota[
@@ -119,7 +157,10 @@ memoria del browser, legata a quella storia.
 == Aiuto e uscita
 
 `aiuto` elenca i comandi disponibili. `esci` chiude il dialogo in corso se ce n'è
-uno, altrimenti termina la partita.
+uno; altrimenti è un movimento, se la stanza ha un'uscita `fuori`, o chiede
+conferma prima di chiudere la partita. `ricomincia` riparte da capo, anche lui con
+una conferma. Quando la partita finisce, `annulla`, `ricomincia` e `carica` la
+riaprono; `fine` chiude.
 
 #tranello[
   Quasi ogni comando può essere riscritto con una regola `Invece di`: è così che
