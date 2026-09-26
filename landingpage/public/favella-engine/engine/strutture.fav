@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.3.0"
+VERSIONE_MOTORE = "1.4.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -1120,6 +1120,22 @@ class Mondo:
         # coda dopo aver eseguito le conseguenze. È stato di sessione, sempre vuoto
         # fra un turno e l'altro → escluso dalle istantanee di ANNULLA.
         self.annunci: List[str] = []
+        # [1.4.0 / L-7] Dove va ciò che il motore dice al giocatore: un'Uscita di
+        # favella_utils (terminale, raccolta, muta…). None = il terminale. La
+        # sceglie l'host (IDE, sito, pagina esportata); fuori dalle istantanee.
+        self.uscita = None
+        # [1.4.0] PULSANTI-VERBO. Come il giocatore dà i comandi nelle pagine che
+        # li mostrano: 'entrambi' (campo di testo e pulsanti, il predefinito),
+        # 'pulsanti' (solo pulsanti), 'testo' (solo campo di testo). Vedi
+        # 'I comandi si scrivono.' e gioco.pulsanti().
+        self.modo_comandi: str = "entrambi"
+        # [1.4.0] Ciò che il giocatore ha SCOPERTO scrivendo: i verbi d'autore
+        # che ha usato e gli argomenti di cui ha chiesto (id personaggio, chiave).
+        # Con il campo di testo accanto, i pulsanti non svelano ciò che l'autore
+        # ha inventato finché il giocatore non l'ha trovato da sé. È memoria del
+        # giocatore, non del mondo: ANNULLA non la cancella.
+        self.verbi_scoperti: Set[str] = set()
+        self.argomenti_scoperti: Set[tuple] = set()
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
@@ -1185,7 +1201,9 @@ class Mondo:
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
-                       "archivio_salvataggi")
+                       "archivio_salvataggi",
+                       # [1.4.0] l'uscita dell'host e ciò che il giocatore ha scoperto
+                       "uscita", "verbi_scoperti", "argomenti_scoperti")
 
     # [1.3.0 / L-5] Campi STATICI: scritti dal compilatore e mai cambiati in
     # partita (regole, eventi, dialoghi, argomenti, vocabolario, messaggi).
@@ -1194,7 +1212,8 @@ class Mondo:
     _CAMPI_STATICI = ("regole", "eventi", "dialogo_nodi", "argomenti", "condizioni_testo",
                       "messaggi", "titolo", "autore", "prologo", "_stato_esteso",
                       "verbi_personalizzati", "verbi_intransitivi", "sinonimi_verbo",
-                      "alias", "opposti", "direzioni", "opposte_direzioni", "file_storia")
+                      "alias", "opposti", "direzioni", "opposte_direzioni", "file_storia",
+                      "modo_comandi")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per

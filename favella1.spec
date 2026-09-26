@@ -25,6 +25,8 @@ lark_datas, lark_binaries, lark_hiddenimports = collect_all("lark")
 #  2) come SORGENTE su disco, perché `esporta_html` li rilegge a runtime per
 #     incorporarli nell'HTML autoportante (li cerca in sys._MEIPASS, cioè la
 #     cartella del bundle). Per questo vanno aggiunti anche come `datas`.
+# [1.4.0 / L-7] Gli strumenti fuori dal nucleo (strumenti_ide, esportazione)
+# servono solo come codice: la pagina esportata non li incorpora.
 ENGINE_SOURCES = [
     ("favella_utils.py", "."),
     ("strutture.py", "."),
@@ -52,8 +54,9 @@ a = Analysis(
     binaries=lark_binaries,
     datas=datas,
     hiddenimports=lark_hiddenimports + [
-        "compilatore", "gioco", "collaudo", "esploratore", "strutture",
-        "libreria_azioni", "favella_utils", "favella_playground", "favella1",
+        "compilatore", "strumenti_ide", "esportazione", "gioco", "collaudo",
+        "esploratore", "strutture", "libreria_azioni", "favella_utils",
+        "favella_playground", "favella1",
     ],
     hookspath=[],
     runtime_hooks=[],

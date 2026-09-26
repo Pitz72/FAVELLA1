@@ -119,7 +119,7 @@ def cmd_playground(args):
 
 def cmd_esporta(args):
     """Genera un .html autoportante che gioca la storia nel browser (Pyodide)."""
-    from compilatore import esporta_html
+    from esportazione import esporta_html
     if not os.path.isfile(args.storia):
         print(f"[FAVELLA 1] File non trovato: '{args.storia}'.")
         return 1

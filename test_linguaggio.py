@@ -21,8 +21,8 @@ from compilatore import (
     analizza_file, costruisci_symbol_table, costruisci_grammatica,
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
     espandi_inclusioni, _GRAMMAR_TEMPLATE, analizza_file_strutturato,
-    analizza_regole,
 )
+from strumenti_ide import analizza_regole
 
 
 def _nomi_direzioni(simboli):
@@ -1693,6 +1693,11 @@ _CORPUS_GUARDIA = (
     'Invece di indaga: il bersaglio diventa l\'obiettivo.\n'                      # cons_variabile_copia
     'Invece di accusa se il bersaglio è come l\'obiettivo: dire "Preso.".\n'       # cond_variabile_uguali
     'Invece di dubita se il bersaglio non è come l\'obiettivo: dire "Non lui.".\n' # cond_variabile_uguali_neg
+    # [1.4.0] Pulsanti-verbo: le tre forme di 'I comandi si …' (vale l'ultima).
+    # Dopo 'si' il lookahead scrivono/scelgono, dopo 'scrivono' "."/"oppure".
+    "I comandi si scrivono.\n"
+    "I comandi si scelgono con i pulsanti.\n"
+    "I comandi si scrivono oppure si scelgono con i pulsanti.\n"
 )
 
 
@@ -3289,7 +3294,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.3.0.md")
+                          "grammatica-1.4.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3306,7 +3311,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.3.0.md è presente")
+           "documentazione/grammatica-1.4.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -6325,8 +6330,8 @@ def test_il_linter_vede_tutto_il_mondo():
 
 def test_forme_nuove_nell_ide():
     print("[1.3.0: l'IDE rilegge e riscrive le forme nuove]")
-    from compilatore import (_cond_to_json, _conseq_to_json, _serializza_condizione,
-                             _serializza_conseguenza)
+    from strumenti_ide import (_cond_to_json, _conseq_to_json, _serializza_condizione,
+                               _serializza_conseguenza)
     src = _SRC_E + ("Il sigillo è una cosa.\nLa guardia ha il sigillo.\nLa mela è rossa.\n"
                     'Invece di tocca la guardia se la guardia è in cucina e la mela non è qui '
                     'e la guardia ha il sigillo e la chiave è nella scatola: dire "x" e adesso '
@@ -6510,7 +6515,7 @@ def test_regole_prima_dopo_altrimenti_e_categorie():
 
 def test_forme_del_blocco_f_nell_ide():
     print("[1.3.0: l'IDE rilegge e riscrive fasi, 'altrimenti', categorie e timer]")
-    from compilatore import analizza_regole, _serializza_regola, _serializza_demone
+    from strumenti_ide import analizza_regole, _serializza_regola, _serializza_demone
     src = _SRC_F + (
         'Prima di prendi qualcosa di pesante se la porta è aperta: dire "Uff."; altrimenti dire "No.".\n'
         "La miccia è una cosa.\nLa miccia è in cucina.\n"
@@ -6593,6 +6598,413 @@ def test_salvataggi_dopo_una_correzione_della_storia():
                 + "Il rastrello è una cosa.\nIl rastrello è nell'orto.\n")
     c.archivio_salvataggi = archivio
     _check("altra storia" in esegui(c, "carica"), "una storia diversa con un altro titolo resta rifiutata")
+
+
+# ==============================================================================
+# [1.4.0] L-7 (uscita a eventi, compilatore diviso) e PULSANTI-VERBO
+# ==============================================================================
+
+_SRC_PULSANTI = (
+    'Il titolo è "Prova".\n'
+    "La cucina è una stanza.\n"
+    'La descrizione della cucina è "Una cucina.".\n'
+    "La cantina è una stanza.\nLa cantina è buia.\n"
+    "La cucina collega giù a la cantina.\n"
+    "La mela è una cosa.\nLa mela è in cucina.\nLa mela è prendibile.\n"
+    "La cassa è un contenitore.\nLa cassa è in cucina.\n"
+    "Il tavolo è un supporto.\nIl tavolo è in cucina.\n"
+    "La guardia è un personaggio.\nLa guardia è in cucina.\n"
+    '"lega" è un comando.\n"fischia" è un comando senza oggetto.\n"accendi" è un comando.\n'
+    'Invece di lega la mela al tavolo: dire "Legata.".\n'
+    'Invece di fischia: dire "Fiiii.".\n'
+    'Invece di accendi la mela: dire "Non è una lampada.".\n'
+    'Invece di dai la mela alla guardia: dire "Grazie.".\n'
+    'Se chiedi alla guardia di "chiave": dire "Non te la do.".\n'
+    'Il dialogo della guardia comincia con "saluto".\n'
+    'La guardia al nodo "saluto" dice "Ciao.".\n'
+    'Al nodo "saluto" l\'opzione "Ciao anche a te." chiude il dialogo.\n'
+)
+
+
+def _eventi(mondo, comando):
+    from favella_utils import raccogli_uscita
+    from gioco import elabora_comando
+    with raccogli_uscita(mondo) as uscita:
+        elabora_comando(mondo, comando)
+    return [(e.tipo, e.testo) for e in uscita.eventi]
+
+
+def test_uscita_a_eventi():
+    print("[1.4.0 L-7: ciò che il motore dice è un flusso di eventi tipizzati]")
+    from favella_utils import raccogli_uscita, Uscita, TIPI_EVENTO
+    from gioco import mostra_stanza
+    m = runtime(_SRC_PULSANTI)
+    with raccogli_uscita(m) as uscita:
+        mostra_stanza(m)
+    tipi = [e.tipo for e in uscita.eventi]
+    _check(tipi == ["stanza", "testo", "elenco", "elenco"], f"titolo, descrizione, oggetti, uscite ({tipi})")
+    primo = uscita.eventi[0]
+    _check(primo.stacco and primo.dati == {"id": "cucina"} and primo.testo == "--- La cucina ---",
+           "il titolo della stanza porta l'id e il capoverso")
+    _check(m.uscita is None, "fuori dal blocco il mondo torna al terminale")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        mostra_stanza(m)
+    _check(uscita.testo() == buf.getvalue(), "gli eventi in fila sono il testo del terminale, byte per byte")
+    _check(all(e.tipo in TIPI_EVENTO for e in uscita.eventi), "solo tipi dichiarati")
+    _check(uscita.come_dizionari()[0] == {"tipo": "stanza", "testo": "--- La cucina ---",
+                                         "stacco": True, "dati": {"id": "cucina"}},
+           "forma JSON dell'evento")
+    _check(_eventi(m, "prendi") == [("domanda", "Cosa vuoi prendere?")], "«Cosa vuoi prendere?» è una domanda")
+    ev = _eventi(m, "parla con la guardia")
+    _check([t for t, _ in ev] == ["dialogo", "opzione"] and ev[0][1] == "La guardia: Ciao.",
+           f"battuta e opzione del dialogo ({ev})")
+    with raccogli_uscita(m) as uscita:
+        from gioco import elabora_comando
+        elabora_comando(m, "esci")
+        elabora_comando(m, "parla con la guardia")
+    opz = uscita.eventi[-1]
+    _check(opz.tipo == "opzione" and opz.dati == {"numero": 1, "scelta": "Ciao anche a te."},
+           "l'opzione porta il numero e il testo da scegliere")
+    _eventi(m, "1")
+    _check(_eventi(m, "annulla")[0] == ("sistema", "(Hai annullato l'ultimo turno.)"),
+           "i messaggi di servizio sono 'sistema'")
+    f = runtime('La stanza è una stanza.\n"salta" è un comando senza oggetto.\n'
+                'Invece di salta: dire "Hop." e adesso vinci "Bravo!".\n')
+    ev = _eventi(f, "salta")
+    _check(ev[0] == ("testo", "Hop.") and ev[1] == ("fine", "Bravo!") and ev[2][0] == "sistema",
+           f"la fine della partita è un evento 'fine' ({ev})")
+
+    # Un host può scriversi la sua uscita.
+    class Contatore(Uscita):
+        def __init__(self):
+            self.n = 0
+
+        def emetti(self, evento):
+            self.n += 1
+    c = Contatore()
+    m.uscita = c
+    from gioco import elabora_comando
+    elabora_comando(m, "guarda")
+    m.uscita = None
+    _check(c.n == 4, "un'uscita dell'host riceve gli eventi")
+    _check("uscita" not in m.cattura_stato(), "l'uscita non entra nelle istantanee di ANNULLA")
+
+
+def test_carica_rigioca_in_silenzio():
+    print("[1.4.0 L-7: CARICA rigioca la partita con un'uscita muta, senza toccare stdout]")
+    m = runtime(_SRC_PULSANTI)
+    m.archivio_salvataggi = _ArchivioMemoria()
+    for c in ("prendi la mela", "metti la mela nella cassa", "fischia"):
+        _eventi(m, c)
+    _eventi(m, "salva prova")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ev = _eventi(m, "carica prova")
+    _check(buf.getvalue() == "", "niente arriva sul terminale mentre l'host raccoglie")
+    testi = " ".join(t for _, t in ev)
+    _check(ev[0][0] == "sistema" and "Partita caricata" in ev[0][1], "prima il messaggio del caricamento")
+    _check("Fiiii" not in testi and "Hai messo" not in testi, "i comandi rigiocati non si sentono")
+    _check(m.uscita is None, "dopo il caricamento torna l'uscita di prima")
+
+
+def test_compilatore_diviso():
+    print("[1.4.0 L-7: compilatore.py è il nucleo; strumenti ed esportazione a parte]")
+    import compilatore
+    import strumenti_ide
+    import esportazione
+    from compilatore import esporta_html, analizza_regole, serializza_frase, riordina_sorgente
+    _check(esporta_html is esportazione.esporta_html and analizza_regole is strumenti_ide.analizza_regole
+           and serializza_frase is strumenti_ide.serializza_frase
+           and riordina_sorgente is strumenti_ide.riordina_sorgente,
+           "i vecchi import da compilatore funzionano ancora")
+    with open(compilatore.__file__, encoding="utf-8") as f:
+        nucleo = f.read()
+    _check("def esporta_html" not in nucleo and "<!DOCTYPE" not in nucleo
+           and "def analizza_outline" not in nucleo and "def serializza_frase" not in nucleo,
+           "il nucleo non contiene più IDE, serializzatore né pagina HTML")
+    try:
+        compilatore.non_esiste
+        _check(False, "un nome sconosciuto dà AttributeError")
+    except AttributeError:
+        _check(True, "un nome sconosciuto dà AttributeError")
+
+    # Il motore del browser (5 moduli) basta a se stesso.
+    import shutil
+    import subprocess
+    radice = os.path.dirname(os.path.abspath(__file__))
+    with tempfile.TemporaryDirectory() as cartella:
+        for nome in esportazione._ENGINE_FILES:
+            shutil.copy(os.path.join(radice, nome), cartella)
+        with open(os.path.join(cartella, "s.fav"), "w", encoding="utf-8") as f:
+            f.write(_SRC_PULSANTI)
+        prova = (
+            "import sys, json\n"
+            "from compilatore import compila_mondo\n"
+            "from gioco import elabora_comando, pulsanti\n"
+            "from libreria_azioni import LIBRERIA_AZIONI\n"
+            "from favella_utils import raccogli_uscita\n"
+            "m = compila_mondo('s.fav'); m.carica_azioni(LIBRERIA_AZIONI); m.imposta_posizione_iniziale()\n"
+            "with raccogli_uscita(m) as u: elabora_comando(m, 'prendi la mela')\n"
+            "json.dumps(pulsanti(m))\n"
+            "print(u.testo().strip(), 'strumenti_ide' in sys.modules, 'esportazione' in sys.modules)\n")
+        r = subprocess.run([sys.executable, "-E", "-s", "-c", prova], cwd=cartella,
+                           capture_output=True, text=True)
+    _check(r.returncode == 0 and r.stdout.strip() == "Preso: la mela. False False",
+           f"i 5 moduli del browser giocano da soli ({r.stdout.strip()!r} {r.stderr[-200:]!r})")
+
+
+def test_elenchi_dei_moduli_del_motore_allineati():
+    print("[1.4.0 L-7: gli elenchi dei moduli del motore coincidono ovunque]")
+    import esportazione
+    radice = os.path.dirname(os.path.abspath(__file__))
+    attesi = list(esportazione._ENGINE_FILES)
+    fonti = {
+        "favella1.spec": (os.path.join(radice, "favella1.spec"), r'\("(\w+\.py)", "\."\)'),
+        "sito": (os.path.join(radice, "landingpage", "src", "lib", "favellaRuntime.ts"), None),
+        "esperimento": (os.path.join(radice, "landingpage", "esperimento", "src", "lib", "favellaRuntime.ts"), None),
+        "checkpoint": (os.path.join(radice, "landingpage", "scripts", "valida_checkpoint.py"),
+                       r'"(favella_utils|strutture|libreria_azioni|compilatore|gioco|strumenti_ide|esportazione)"'),
+    }
+    for nome, (percorso, regex) in fonti.items():
+        if not os.path.exists(percorso):
+            _check(True, f"{nome}: assente in questo checkout")
+            continue
+        with open(percorso, encoding="utf-8") as f:
+            testo = f.read()
+        if regex:
+            trovati = [t if t.endswith(".py") else t + ".py" for t in re.findall(regex, testo)]
+        else:
+            trovati = re.findall(r'"(\w+)(?:\.py)?"', testo[testo.find("ENGINE"):testo.find("]", testo.find("ENGINE"))])
+            trovati = [t if t.endswith(".py") else t + ".py" for t in trovati]
+        _check(sorted(trovati) == sorted(attesi), f"{nome}: {trovati}")
+
+
+def test_frase_dei_comandi():
+    print("[1.4.0: 'I comandi si scrivono.' e le altre due forme]")
+    base = "La cucina è una stanza.\n"
+    _check(runtime(base).modo_comandi == "entrambi", "senza frase: testo e pulsanti")
+    for frase, modo in (("I comandi si scrivono.", "testo"),
+                        ("I comandi si scelgono con i pulsanti.", "pulsanti"),
+                        ("I comandi si scrivono oppure si scelgono con i pulsanti.", "entrambi"),
+                        ("i comandi si scrivono.", "testo")):
+        m, log = compila(base + frase + "\n")
+        _check(m is not None and m.modo_comandi == modo, f"«{frase}» → {modo}")
+    m, log = compila(base + "I comandi si scrivono.\nI comandi si scelgono con i pulsanti.\n")
+    _check(m.modo_comandi == "pulsanti" and "dichiarato due volte" in log, "due modi diversi: vale l'ultimo, con un avviso")
+    m, log = compila("La plancia è una stanza.\nI comandi della nave sono una cosa.\n"
+                     "I comandi della nave sono in plancia.\nI comandi si scrivono.\n")
+    _check(m is not None and "comandi della nave" in m.oggetti and m.modo_comandi == "testo",
+           "un oggetto che si chiama «I comandi …» resta un oggetto")
+    _check("modo_comandi" in type(m)._CAMPI_STATICI, "il modo è un dato statico della storia")
+    from strumenti_ide import riordina_sorgente
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".fav", delete=False, encoding="utf-8") as f:
+        f.write("La cucina è una stanza.\nI comandi si scrivono.\n")
+    try:
+        r = riordina_sorgente(f.name)
+    finally:
+        os.unlink(f.name)
+    _check(r.get("ok") and r["text"].index("I comandi") < r["text"].index("La cucina"),
+           "il riordino la mette fra le impostazioni, in cima")
+
+
+def _voce(p, verbo):
+    return next((v for v in p["verbi"] if v["verbo"] == verbo), None)
+
+
+def test_pulsanti_verbo_proposte():
+    print("[1.4.0: che cosa propongono i pulsanti-verbo]")
+    import json
+    from gioco import pulsanti
+    m = runtime(_SRC_PULSANTI)
+    p = pulsanti(m)
+    json.dumps(p)
+    _check(p["modo"] == "entrambi" and p["fase"] == "gioco", "modo e fase")
+    _check([o["etichetta"] for o in p["oggetti"]] == ["Mela", "Cassa", "Tavolo", "Guardia"],
+           f"gli oggetti in vista, nell'ordine della storia ({[o['etichetta'] for o in p['oggetti']]})")
+    verbi = [v["etichetta"] for v in p["verbi"]]
+    _check(verbi[:3] == ["Esamina", "Prendi", "Parla con"], f"prima i verbi di base, poi parlare ({verbi})")
+    _check("Lascia" not in verbi and "Dai" not in verbi, "niente «Lascia» né «Dai» a mani vuote")
+    _check("Fischia" not in verbi and "Lega" not in verbi, "i verbi inventati dall'autore restano nascosti")
+    _check("Accendi" in verbi, "un verbo d'autore che è una parola della libreria si vede subito")
+    _check("Chiedi a" not in verbi, "nessun argomento scoperto: niente «Chiedi a»")
+    prendi = _voce(p, "prendi")
+    _check([x["testo"] for x in prendi["primi"]] == ["la mela", "la cassa", "il tavolo"],
+           "«Prendi» propone anche ciò che non si prende, ma non le persone")
+    metti = _voce(p, "metti")
+    _check(metti["secondo"] == "obbligatorio"
+           and [x["testo"] for x in metti["secondi"]] == ["nella mela", "nella cassa", "sul tavolo"],
+           f"«Metti»: 'sul' per i supporti, niente personaggi ({[x['testo'] for x in metti['secondi']]})")
+    _check(_voce(p, "parla")["primi"] == [{"id": "guardia", "testo": "con la guardia"}], "«Parla con» la guardia")
+    uscite = p["uscite"]
+    _check(uscite == [{"comando": "giù", "etichetta": "Giù", "stanza": "La cantina"}], f"uscite ({uscite})")
+    _check([s["comando"] for s in p["servizio"]] == ["guarda", "inventario", "aspetta", "annulla", "salva", "carica"],
+           "i comandi di servizio")
+
+    # Scoprire scrivendo.
+    _eventi(m, "fischia")
+    _eventi(m, "chiedi alla guardia della chiave")
+    _eventi(m, "prendi la mela")
+    p = pulsanti(m)
+    verbi = [v["etichetta"] for v in p["verbi"]]
+    _check("Fischia" in verbi and "Lega" not in verbi, "un verbo d'autore compare dopo che il giocatore l'ha usato")
+    chiedi = _voce(p, "chiedi")
+    _check(chiedi and chiedi["secondi_per"] == {"guardia": [{"etichetta": "Chiave", "testo": "di chiave"}]},
+           "l'argomento chiesto diventa un pulsante")
+    dai = _voce(p, "dai")
+    _check(dai and [x["testo"] for x in dai["primi"]] == ["la mela"]
+           and [x["testo"] for x in dai["secondi"]] == ["alla guardia"], "«Dai» la mela «alla guardia»")
+    _check(_voce(p, "lascia")["primi"] == [{"id": "mela", "testo": "la mela"}], "«Lascia» solo ciò che si porta")
+    _check(_eventi(m, "annulla") and "fischia" in m.verbi_scoperti, "ANNULLA non fa dimenticare ciò che si è scoperto")
+
+    # Con i soli pulsanti tutto ciò che l'autore ha inventato è subito lì.
+    solo = runtime("I comandi si scelgono con i pulsanti.\n" + _SRC_PULSANTI)
+    p = pulsanti(solo)
+    verbi = [v["etichetta"] for v in p["verbi"]]
+    _check(p["modo"] == "pulsanti" and "Fischia" in verbi and "Lega" in verbi and "Chiedi a" in verbi,
+           f"modo 'pulsanti': verbi e argomenti d'autore da subito ({verbi})")
+    _check(_voce(p, "fischia")["da_solo"] and not _voce(p, "fischia")["oggetto"], "un verbo senza oggetto si manda da solo")
+    lega = _voce(p, "lega")
+    _check(lega["secondo"] == "facoltativo" and "al tavolo" in [x["testo"] for x in lega["secondi"]],
+           "la preposizione della regola d'autore ('al tavolo')")
+
+    # Le fasi in cui al posto dei verbi ci sono le risposte.
+    _eventi(m, "parla con la guardia")
+    p = pulsanti(m)
+    _check(p["fase"] == "dialogo" and p["scelte"][0] == {"etichetta": "Ciao anche a te.", "comando": "1"}
+           and p["scelte"][-1]["comando"] == "esci" and p["verbi"] == [], "in dialogo: le opzioni")
+    _eventi(m, "1")
+    _eventi(m, "ricomincia")
+    _check(pulsanti(m)["fase"] == "conferma", "domanda di conferma: sì / no")
+    _eventi(m, "no")
+    a = runtime("La cella è una stanza.\nLa chiave rossa è una cosa.\nLa chiave rossa è in cella.\n"
+                "La chiave blu è una cosa.\nLa chiave blu è in cella.\n")
+    _eventi(a, "prendi la chiave")
+    p = pulsanti(a)
+    _check(p["fase"] == "scelta" and [s["comando"] for s in p["scelte"]] == ["1", "2"]
+           and p["scelte"][0]["etichetta"] == "Chiave rossa", "nome ambiguo: i candidati")
+    f = runtime('La stanza è una stanza.\n"salta" è un comando senza oggetto.\nInvece di salta: vinci.\n')
+    _eventi(f, "salta")
+    _check([s["comando"] for s in pulsanti(f)["scelte"]] == ["annulla", "ricomincia", "carica"],
+           "a partita finita: annulla, ricomincia, carica")
+
+    # Al buio: si vede solo ciò che si porta; le uscite solo con i soli pulsanti.
+    _eventi(m, "prendi la mela")
+    _eventi(m, "giù")
+    p = pulsanti(m)
+    _check([o["id"] for o in p["oggetti"]] == ["mela"] and p["uscite"] == [], "al buio: ciò che si porta, niente uscite")
+    _eventi(solo, "giù")
+    _check(pulsanti(solo)["uscite"] == [{"comando": "su", "etichetta": "Su", "stanza": None}],
+           "al buio, con i soli pulsanti: le uscite senza nome")
+
+    # Chiedere i pulsanti non cambia la partita, nemmeno il caso.
+    c = runtime("La piazza è una stanza.\nIl mago è un personaggio.\nIl mago è in piazza.\n"
+                'Il dialogo del mago comincia con "a".\nIl mago al nodo "a" dice "Ehi.".\n'
+                'Al nodo "a" l\'opzione "[se càpita (1 su 2)]Testa[altrimenti]Croce[fine]" chiude il dialogo.\n'
+                'Al nodo "a" l\'opzione "Ciao" se càpita (1 su 3) chiude il dialogo.\n'
+                'Se chiedi al mago di "sorte" se càpita (1 su 2): dire "Forse.".\n')
+    _eventi(c, "chiedi al mago di sorte")
+    _eventi(c, "parla con il mago")
+    prima = c.impronta_stato()
+    for _ in range(5):
+        pulsanti(c)
+    _check(c.impronta_stato() == prima, "pulsanti() non pesca dal caso e non cambia il mondo")
+
+
+def _comandi_dai_pulsanti(p):
+    comandi = [s["comando"] for s in p["scelte"]]
+    for v in p["verbi"]:
+        if v["da_solo"]:
+            comandi.append(v["verbo"])
+        for primo in v["primi"]:
+            base = v["verbo"] + " " + primo["testo"]
+            secondi = (v.get("secondi_per") or {}).get(primo["id"], []) if "secondi_per" in v else v.get("secondi", [])
+            secondi = [x for x in secondi if x.get("id") != primo["id"]]
+            if v["secondo"] != "obbligatorio" or not secondi:
+                comandi.append(base)
+            comandi += [base + " " + x["testo"] for x in secondi]
+    comandi += [u["comando"] for u in p["uscite"]]
+    comandi += [s["comando"] for s in p["servizio"] if s["comando"] not in ("salva", "carica")]
+    return comandi
+
+
+_NON_CAPITO = [re.compile(x) for x in (
+    r"^Non capisco questo verbo\.$", r"^Non vedo '.*' qui\.$", r"^Quale intendi: .*\?$",
+    r"^\S+ che cosa\?$", r"^Cosa vuoi \S+\?$", r"^Dove vuoi andare\?$", r"^Dove vuoi metterlo\?$",
+    r"^A chi vuoi chiedere\?$", r"^Con chi vuoi parlare\?$", r"^Cosa vuoi chiedere .*\?$",
+    r"^Non è una scelta valida", r"^\[ERRORE")]
+
+
+def test_pulsanti_verbo_frasi_capite():
+    print("[1.4.0: ogni frase composta con i pulsanti è capita dal parser (storie vere)]")
+    import copy
+    import random
+    from compilatore import compila_mondo
+    from libreria_azioni import LIBRERIA_AZIONI
+    from gioco import pulsanti
+    radice = os.path.dirname(os.path.abspath(__file__))
+    for storia in ("favella1/galleria/il-faro/il-faro.fav", "esempi/demo/relitto-silente/relitto.fav",
+                   "esempi/demo/appuntamenti/cuori-al-caffe.fav"):
+        base = compila_mondo(os.path.join(radice, storia))
+        problemi, provati = [], 0
+        for modo in ("pulsanti", "entrambi"):
+            for seme in range(2):
+                m = copy.deepcopy(base)
+                m.modo_comandi = modo
+                m.carica_azioni(LIBRERIA_AZIONI)
+                m.imposta_posizione_iniziale()
+                caso = random.Random(seme)
+                for _ in range(90):
+                    comando = caso.choice(_comandi_dai_pulsanti(pulsanti(m)))
+                    provati += 1
+                    righe = " ".join(t for _, t in _eventi(m, comando)).split("\n")
+                    if any(r.match(riga.strip()) for r in _NON_CAPITO for riga in righe):
+                        problemi.append((comando, righe[:2]))
+                    if m.stato_partita != "in_corso":
+                        _eventi(m, "annulla")
+        _check(not problemi, f"{os.path.basename(storia)}: {provati} comandi dai pulsanti, capiti tutti {problemi[:3]}")
+
+
+def test_pagina_esportata_con_pulsanti():
+    print("[1.4.0: la pagina esportata ha i pulsanti e mostra gli eventi]")
+    import json
+    from esportazione import esporta_html, _EXPORT_DRIVER_PY
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "prova.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write("I comandi si scelgono con i pulsanti.\n" + _SRC_PULSANTI
+                    + 'Il prologo è "Una storia con </script> dentro.".\n')
+        r = esporta_html(percorso)
+        _check(r["ok"] and r["title"] == "Prova", "il titolo della pagina è quello della storia")
+        html = r["html"]
+        _check('id="pulsanti"' in html and '"modo": "pulsanti"' in html, "pannello dei pulsanti e modo nei dati")
+        _check(html.count("</script>") == 1 and "\\u003c/script>" in html,
+               "nessun «</script>» nei dati: la pagina non si spezza")
+        ns = {}
+        exec(_EXPORT_DRIVER_PY, ns)
+        avvio = json.loads(ns["fav_boot"](percorso))
+        turno = json.loads(ns["fav_step"]("prendi la mela"))
+    _check(avvio["continua"] and avvio["eventi"][0]["tipo"] == "intestazione"
+           and avvio["pulsanti"]["modo"] == "pulsanti", "l'avvio restituisce eventi e pulsanti")
+    _check(turno["eventi"] == [{"tipo": "testo", "testo": "Preso: la mela."}]
+           and turno["text"] == "Preso: la mela.\n" and "lascia" in [v["verbo"] for v in turno["pulsanti"]["verbi"]],
+           "un turno: eventi, testo e pulsanti aggiornati")
+
+
+def test_sidecar_restituisce_gli_eventi():
+    print("[1.4.0 L-7: il sidecar dell'IDE restituisce gli eventi insieme al testo]")
+    import favella_server
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "prova.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write(_SRC_PULSANTI)
+        avvio = favella_server.rpc_session_start({"path": percorso})
+        turno = favella_server.rpc_session_send({"command": "prendi la mela"})
+    _check(avvio["ok"] and any(e["tipo"] == "stanza" for e in avvio["events"])
+           and "--- La cucina ---" in avvio["output"], "session.start: testo ed eventi")
+    _check(turno["events"] == [{"tipo": "testo", "testo": "Preso: la mela."}]
+           and turno["output"] == "Preso: la mela.\n", "session.send: testo ed eventi")
+
 
 
 def test_copie_del_motore_nel_sito_allineate():
@@ -7074,11 +7486,21 @@ def main():
         test_istantanee_senza_dati_statici,
         test_salvataggi_dopo_una_correzione_della_storia,
         test_copie_del_motore_nel_sito_allineate,
+        # [1.4.0] L-7 completata e pulsanti-verbo
+        test_uscita_a_eventi,
+        test_carica_rigioca_in_silenzio,
+        test_compilatore_diviso,
+        test_elenchi_dei_moduli_del_motore_allineati,
+        test_frase_dei_comandi,
+        test_pulsanti_verbo_proposte,
+        test_pulsanti_verbo_frasi_capite,
+        test_pagina_esportata_con_pulsanti,
+        test_sidecar_restituisce_gli_eventi,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.3.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.0)")
     print("=" * 60)
     for t in tests:
         t()

@@ -1,5 +1,5 @@
 # esploratore.py
-# Collaudo DINAMICO per FAVELLA 1 (v1.3.0): partite vere, giocate dal motore.
+# Collaudo DINAMICO per FAVELLA 1 (v1.4.0): partite vere, giocate dal motore.
 #
 # Il collaudo statico (collaudo.py) ragiona sulle frasi senza giocare; questo
 # modulo gioca. Due usi, dalla CLI:
@@ -30,6 +30,7 @@ import sys
 import traceback
 
 from strutture import ConseguenzaFinePartita, VERSIONE_MOTORE
+from favella_utils import raccogli_uscita, UscitaRaccolta
 
 # ------------------------------------------------------------------------------
 # 1. UNA PARTITA PILOTATA DA PYTHON
@@ -49,22 +50,24 @@ class Partita:
             self.m.rng = random.Random(seme)
         self.comandi = []
         self.eccezioni = []
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            from gioco import mostra_stanza
+        # [1.4.0 / L-7] Ciò che il motore dice si raccoglie come eventi sul
+        # mondo della partita, non più dirottando stdout.
+        from gioco import mostra_stanza
+        with raccogli_uscita(self.m) as uscita:
             mostra_stanza(self.m)
-        self.risposte = [buf.getvalue()]
+        self.risposte = [uscita.testo()]
 
     def esegui(self, cmd):
         from gioco import elabora_comando
-        buf = io.StringIO()
+        uscita = UscitaRaccolta()
+        eccezione = False
         try:
-            with contextlib.redirect_stdout(buf):
+            with raccogli_uscita(self.m, uscita):
                 elabora_comando(self.m, cmd)
         except Exception:
             self.eccezioni.append((cmd, traceback.format_exc()))
-            buf.write("\n[ECCEZIONE DEL MOTORE]\n")
-        out = buf.getvalue()
+            eccezione = True
+        out = uscita.testo() + ("\n[ECCEZIONE DEL MOTORE]\n" if eccezione else "")
         self.comandi.append(cmd)
         self.risposte.append(out)
         return out

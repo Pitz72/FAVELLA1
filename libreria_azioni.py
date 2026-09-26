@@ -1,10 +1,10 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.3.0)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.4.0)
 
 from strutture import Mondo, Azione, ConseguenzaProprieta
 from favella_utils import (rendi_testo, frase_indeterminativa, prima_maiuscola, nome_in_frase,
                            con_preposizione, accorda, pronome_oggetto, radice_proprieta,
-                           messaggio)
+                           messaggio, scrivi)
 
 def _riuscita(mondo: Mondo):
     """[1.3.0] L'azione di default ha fatto ciò che doveva (preso, aperto,
@@ -34,39 +34,39 @@ def _imposta(mondo: Mondo, oggetto, proprieta: str):
 
 
 def _elenca_contenuto(mondo: Mondo, oggetto):
-    """[Livello 4 / M1] Stampa il contenuto di un contenitore/supporto, se ne è
+    """[Livello 4 / M1] Mostra il contenuto di un contenitore/supporto, se ne è
     uno e (per i contenitori) se è aperto. [1.3.0 / M-10] Di un personaggio,
     ciò che tiene con sé."""
     if oggetto.is_personaggio:
         nomi = [frase_indeterminativa(mondo.oggetti[c].nome_visualizzato)
                 for c in mondo.oggetti if c in oggetto.contenuto]
         if nomi:
-            print(f"Ha con sé: {', '.join(nomi)}.")
+            scrivi(mondo, f"Ha con sé: {', '.join(nomi)}.", "elenco")
         return
     if oggetto.is_contenitore and not mondo.contenitore_aperto(oggetto):
-        print(f"È {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
+        scrivi(mondo, f"È {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
         return
     if oggetto.is_contenitore or oggetto.is_supporto:
         nomi = [frase_indeterminativa(mondo.oggetti[c].nome_visualizzato)
                 for c in sorted(oggetto.contenuto) if c in mondo.oggetti]
         if nomi:
             dove = "Sopra" if oggetto.is_supporto else "Dentro"
-            print(f"{dove} vedi: {', '.join(nomi)}.")
+            scrivi(mondo, f"{dove} vedi: {', '.join(nomi)}.", "elenco")
 
 def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     """Logica di default per l'azione ESAMINARE."""
     # [0.24.0 / A4] Al buio non si esamina nulla (una regola d'autore 'Invece di
     # esamina X' ha comunque la precedenza: è valutata prima della logica di default).
     if not mondo.c_e_luce():
-        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
+        scrivi(mondo, messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if oggetto and mondo.oggetto_raggiungibile(id_oggetto):
-        print(rendi_testo(mondo, oggetto.descrizione_attuale(mondo)))
+        scrivi(mondo, rendi_testo(mondo, oggetto.descrizione_attuale(mondo)))
         _elenca_contenuto(mondo, oggetto)
         _riuscita(mondo)
     else:
-        print("Non vedi nulla del genere qui.")
+        scrivi(mondo, "Non vedi nulla del genere qui.")
 
 def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     """Logica di default per l'azione PRENDERE. [1.3.0 / G-7] Con un secondo
@@ -75,24 +75,25 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     # restano prioritarie). Un oggetto luminoso a terra rischiara la stanza, quindi
     # 'c_e_luce' è già vero in quel caso: lo si può prendere senza problemi.
     if not mondo.c_e_luce():
-        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
+        scrivi(mondo, messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto):
-        print("Non vedi nulla del genere qui.")
+        scrivi(mondo, "Non vedi nulla del genere qui.")
         return
     if id_oggetto in mondo.inventario:
-        print("Ce l'hai già.")
+        scrivi(mondo, "Ce l'hai già.")
         return
     da = mondo.trova_oggetto(id_da) if id_da else None
     if da is not None and oggetto.posizione != id_da:
         dove = "su" if da.is_supporto else "in"
-        print(f"{_Nome(oggetto)} non è {con_preposizione(dove, da.nome_visualizzato)}.")
+        scrivi(mondo, f"{_Nome(oggetto)} non è {con_preposizione(dove, da.nome_visualizzato)}.")
         return
     if not oggetto.prendibile:
         # [1.3.0 / M-4] Il pronome si accorda: 'Non puoi prenderla.'
-        print(messaggio(mondo, "non si prende", f"Non puoi prender{pronome_oggetto(oggetto.nome_visualizzato)}.",
-                        oggetto=_nome(oggetto)))
+        scrivi(mondo, messaggio(mondo, "non si prende",
+                                f"Non puoi prender{pronome_oggetto(oggetto.nome_visualizzato)}.",
+                                oggetto=_nome(oggetto)))
         return
     # [Livello 7] Capacità di trasporto opzionale: se l'autore l'ha dichiarata,
     # l'inventario non può superarla (la base più i bonus degli oggetti già
@@ -100,8 +101,8 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     # [1.2.2] Conta tutto ciò che il giocatore ha addosso, anche dentro zaini e
     # borse, e il contenuto dell'oggetto preso (Mondo.puo_prendere).
     if not mondo.puo_prendere(oggetto):
-        print(messaggio(mondo, "mani piene", "Hai le mani troppo piene: lascia qualcosa prima di "
-                        f"prender{pronome_oggetto(oggetto.nome_visualizzato)}.", oggetto=_nome(oggetto)))
+        scrivi(mondo, messaggio(mondo, "mani piene", "Hai le mani troppo piene: lascia qualcosa prima di "
+                                f"prender{pronome_oggetto(oggetto.nome_visualizzato)}.", oggetto=_nome(oggetto)))
         return
 
     # [Livello 4 / M1] Rimuove l'oggetto da dove si trova (stanza, contenitore o
@@ -109,35 +110,35 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     mondo.rimuovi_da_posizione(oggetto)
     mondo.inventario.add(id_oggetto)
     oggetto.posizione = "inventario"
-    print(messaggio(mondo, "preso", f"Preso: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
+    scrivi(mondo, messaggio(mondo, "preso", f"Preso: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
     _riuscita(mondo)
 
 def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """[Livello 4 / M1] Logica di default per METTERE [ogg1] in/su [ogg2]."""
     # [0.24.0 / A4] Al buio non si manipola nulla.
     if not mondo.c_e_luce():
-        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
+        scrivi(mondo, messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     if not id_oggetto2:
-        print("Dove vuoi metterlo?")
+        scrivi(mondo, "Dove vuoi metterlo?", "domanda")
         return
     oggetto = mondo.trova_oggetto(id_oggetto1)
     dest = mondo.trova_oggetto(id_oggetto2)
     if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto1):
-        print("Non ce l'hai e non lo vedi qui.")
+        scrivi(mondo, "Non ce l'hai e non lo vedi qui.")
         return
     if not dest or not mondo.oggetto_raggiungibile(id_oggetto2):
-        print("Non vedi nulla del genere qui.")
+        scrivi(mondo, "Non vedi nulla del genere qui.")
         return
     if id_oggetto1 == id_oggetto2:
-        print("Non puoi metterlo dentro se stesso.")
+        scrivi(mondo, "Non puoi metterlo dentro se stesso.")
         return
     if not (dest.is_contenitore or dest.is_supporto):
-        print(f"{prima_maiuscola(con_preposizione('in', dest.nome_visualizzato))} "
-              f"non ci puoi mettere niente.")
+        scrivi(mondo, f"{prima_maiuscola(con_preposizione('in', dest.nome_visualizzato))} "
+                      f"non ci puoi mettere niente.")
         return
     if dest.is_contenitore and not mondo.contenitore_aperto(dest):
-        print(f"{_Nome(dest)} è {accorda(dest.nome_visualizzato, 'chiuso')}.")
+        scrivi(mondo, f"{_Nome(dest)} è {accorda(dest.nome_visualizzato, 'chiuso')}.")
         return
     # [1.2.2] Mettere qualcosa da terra in uno zaino che si porta significa
     # portarlo: pesa sulla capienza come prenderlo (fino alla 1.2.1 uno zaino
@@ -146,14 +147,14 @@ def metti_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None
     if (cap is not None and mondo.giocatore_possiede(id_oggetto2)
             and not mondo.giocatore_possiede(id_oggetto1)
             and mondo.numero_oggetti_portati() + 1 + len(mondo.racchiusi_in(id_oggetto1)) > cap):
-        print("Porti già troppe cose: non c'è posto per altro.")
+        scrivi(mondo, "Porti già troppe cose: non c'è posto per altro.")
         return
 
     mondo.rimuovi_da_posizione(oggetto)
     dest.contenuto.add(id_oggetto1)
     oggetto.posizione = id_oggetto2
     dove = "su" if dest.is_supporto else "in"
-    print(f"Hai messo {_nome(oggetto)} {con_preposizione(dove, dest.nome_visualizzato)}.")
+    scrivi(mondo, f"Hai messo {_nome(oggetto)} {con_preposizione(dove, dest.nome_visualizzato)}.")
     _riuscita(mondo)
 
 def lascia_logica_default(mondo: Mondo, id_oggetto: str):
@@ -162,10 +163,10 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     # (prima 'lascia' sfuggiva al blocco). Una fonte di luce accesa in mano rende
     # comunque 'c_e_luce' vero, quindi posarla per illuminare resta possibile.
     if not mondo.c_e_luce():
-        print(messaggio(mondo, "buio", "È troppo buio per vederci."))
+        scrivi(mondo, messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
     if not mondo.giocatore_possiede(id_oggetto):
-        print("Non ce l'hai.")
+        scrivi(mondo, "Non ce l'hai.")
         return
 
     oggetto = mondo.trova_oggetto(id_oggetto)
@@ -179,7 +180,7 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
         mondo.rimuovi_da_posizione(oggetto)
     oggetto.posizione = stanza_corrente.nome
     stanza_corrente.oggetti[id_oggetto] = oggetto
-    print(messaggio(mondo, "lasciato", f"Lasciato: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
+    scrivi(mondo, messaggio(mondo, "lasciato", f"Lasciato: {_nome(oggetto)}.", oggetto=_nome(oggetto)))
     _riuscita(mondo)
 
 def inventario_logica_default(mondo: Mondo):
@@ -191,9 +192,9 @@ def inventario_logica_default(mondo: Mondo):
     cap = mondo.capacita_attuale()
     suffisso = f" ({mondo.numero_oggetti_portati()}/{cap})" if cap is not None else ""
     if not mondo.inventario:
-        print(messaggio(mondo, "inventario vuoto", "Non stai portando nulla.") + suffisso)
+        scrivi(mondo, messaggio(mondo, "inventario vuoto", "Non stai portando nulla.") + suffisso)
     else:
-        print(f"Stai portando:{suffisso}")
+        scrivi(mondo, f"Stai portando:{suffisso}")
         for id_ogg in sorted(list(mondo.inventario)):
             _stampa_portato(mondo, id_ogg, 1, set())
     _riuscita(mondo)
@@ -206,7 +207,7 @@ def _stampa_portato(mondo: Mondo, id_ogg: str, livello: int, visti: set):
     visti.add(id_ogg)
     oggetto = mondo.oggetti[id_ogg]
     rientro = "  " + "    " * (livello - 1)   # livello 1: '  - ' come sempre
-    print(f"{rientro}- {oggetto.nome_visualizzato}")
+    scrivi(mondo, f"{rientro}- {oggetto.nome_visualizzato}", "elenco")
     if oggetto.is_supporto or (oggetto.is_contenitore and mondo.contenitore_aperto(oggetto)):
         for figlio in sorted(oggetto.contenuto):
             _stampa_portato(mondo, figlio, livello + 1, visti)
@@ -220,7 +221,7 @@ def muovi_logica_default(mondo: Mondo, direzione: str):
         _riuscita(mondo)
         # La descrizione della nuova stanza verrà mostrata da gioco.py
     else:
-        print(messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
+        scrivi(mondo, messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
 
 def guarda_logica_default(mondo: Mondo):
     """Logica di default per l'azione GUARDA: ristampa la stanza corrente.
@@ -234,26 +235,27 @@ def guarda_logica_default(mondo: Mondo):
 
 def aiuto_logica_default(mondo: Mondo):
     """Logica di default per l'azione AIUTO."""
-    print("\n--- AIUTO ---")
-    print("Comandi disponibili:")
-    print("  - Movimento: nord, sud, est, ovest (o n, s, e, o), su, giù, nordest...; entra, esci, sali, scendi")
-    print("  - Interazione: esamina (x) <oggetto>, prendi, lascia, apri, chiudi, accendi, spegni, metti <oggetto> in <oggetto>")
-    print("  - Anche più cose insieme: prendi tutto, prendi la chiave e la torcia")
-    print("  - Informazioni: inventario (o i, zaino), guarda (l), aspetta (z), aiuto")
-    print("  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'...")
-    print("  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), salva e carica (anche con un nome: salva mattina), trascrizione")
-    print("  - Sistema: ricomincia, esci (chiedono conferma)")
-    print("\nCerca di usare verbi semplici e nomi di oggetti.")
+    scrivi(mondo, "--- AIUTO ---", "sistema", stacco=True)
+    scrivi(mondo, "\n".join((
+        "Comandi disponibili:",
+        "  - Movimento: nord, sud, est, ovest (o n, s, e, o), su, giù, nordest...; entra, esci, sali, scendi",
+        "  - Interazione: esamina (x) <oggetto>, prendi, lascia, apri, chiudi, accendi, spegni, metti <oggetto> in <oggetto>",
+        "  - Anche più cose insieme: prendi tutto, prendi la chiave e la torcia",
+        "  - Informazioni: inventario (o i, zaino), guarda (l), aspetta (z), aiuto",
+        "  - Pronomi: puoi dire 'prendila', 'aprilo', 'esaminale'...",
+        "  - Servizio: annulla (disfa l'ultimo turno), ancora (ripeti), salva e carica (anche con un nome: salva mattina), trascrizione",
+        "  - Sistema: ricomincia, esci (chiedono conferma)")), "sistema")
+    scrivi(mondo, "Cerca di usare verbi semplici e nomi di oggetti.", "sistema", stacco=True)
 
 def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """Logica di default per l'azione USARE [ogg1] CON [ogg2]."""
     if id_oggetto2:
-        print(f"Usare {_nome(mondo.trova_oggetto(id_oggetto1))} con "
-              f"{_nome(mondo.trova_oggetto(id_oggetto2))} non ha alcun effetto particolare.")
+        scrivi(mondo, f"Usare {_nome(mondo.trova_oggetto(id_oggetto1))} con "
+                      f"{_nome(mondo.trova_oggetto(id_oggetto2))} non ha alcun effetto particolare.")
     else:
         oggetto = mondo.trova_oggetto(id_oggetto1)
         pron = pronome_oggetto(oggetto.nome_visualizzato) if oggetto else "lo"
-        print(f"Con cosa vuoi usar{pron}?")
+        scrivi(mondo, f"Con cosa vuoi usar{pron}?", "domanda")
 
 
 # --- [1.3.0 / G-4] Azioni con una logica propria -------------------------------
@@ -267,13 +269,13 @@ def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = 
 def aprire_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "apribile"):
-        print("Non si apre.")
+        scrivi(mondo, "Non si apre.")
         return
     if not _ha(oggetto, "chiusa"):
-        print(f"È già {accorda(oggetto.nome_visualizzato, 'aperto')}.")
+        scrivi(mondo, f"È già {accorda(oggetto.nome_visualizzato, 'aperto')}.")
         return
     _imposta(mondo, oggetto, "aperta")
-    print(f"Apri {_nome(oggetto)}.")
+    scrivi(mondo, f"Apri {_nome(oggetto)}.")
     if oggetto.is_contenitore:
         _elenca_contenuto(mondo, oggetto)
     _riuscita(mondo)
@@ -282,50 +284,50 @@ def aprire_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None
 def chiudere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "apribile"):
-        print("Non si chiude.")
+        scrivi(mondo, "Non si chiude.")
         return
     if _ha(oggetto, "chiusa"):
-        print(f"È già {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
+        scrivi(mondo, f"È già {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
         return
     _imposta(mondo, oggetto, "chiusa")
-    print(f"Chiudi {_nome(oggetto)}.")
+    scrivi(mondo, f"Chiudi {_nome(oggetto)}.")
     _riuscita(mondo)
 
 
 def accendere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "accendibile"):
-        print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
+        scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
     if _ha(oggetto, "accesa"):
-        print(f"È già {accorda(oggetto.nome_visualizzato, 'acceso')}.")
+        scrivi(mondo, f"È già {accorda(oggetto.nome_visualizzato, 'acceso')}.")
         return
     _imposta(mondo, oggetto, "accesa")
-    print(f"Accendi {_nome(oggetto)}.")
+    scrivi(mondo, f"Accendi {_nome(oggetto)}.")
     _riuscita(mondo)
 
 
 def spegnere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, "accendibile"):
-        print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
+        scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
     if not _ha(oggetto, "accesa"):
-        print(f"È già {accorda(oggetto.nome_visualizzato, 'spento')}.")
+        scrivi(mondo, f"È già {accorda(oggetto.nome_visualizzato, 'spento')}.")
         return
     _imposta(mondo, oggetto, "spenta")
-    print(f"Spegni {_nome(oggetto)}.")
+    scrivi(mondo, f"Spegni {_nome(oggetto)}.")
     _riuscita(mondo)
 
 
 def _consuma(mondo: Mondo, id_oggetto: str, proprieta: str, verbo: str, rifiuto: str):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not _ha(oggetto, proprieta):
-        print(rifiuto)
+        scrivi(mondo, rifiuto)
         return
     mondo.rimuovi_da_posizione(oggetto)
     oggetto.posizione = None
-    print(f"{verbo} {_nome(oggetto)}.")
+    scrivi(mondo, f"{verbo} {_nome(oggetto)}.")
     _riuscita(mondo)
 
 
@@ -338,7 +340,7 @@ def bere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
 
 
 def aspettare_logica_default(mondo: Mondo):
-    print(messaggio(mondo, "tempo", "Il tempo passa."))
+    scrivi(mondo, messaggio(mondo, "tempo", "Il tempo passa."))
     _riuscita(mondo)
     _riuscita(mondo)
 
@@ -346,19 +348,19 @@ def aspettare_logica_default(mondo: Mondo):
 def niente_logica_default(mondo: Mondo, id_oggetto: str = None, id_oggetto2: str = None):
     """Verbi che il motore riconosce ma a cui non dà un effetto proprio: ci
     pensano le regole d'autore."""
-    print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
+    scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
 
 
 def annusare_intorno_logica_default(mondo: Mondo):
-    print("Non senti odori particolari.")
+    scrivi(mondo, "Non senti odori particolari.")
 
 
 def ascoltare_intorno_logica_default(mondo: Mondo):
-    print("Non senti nulla di particolare.")
+    scrivi(mondo, "Non senti nulla di particolare.")
 
 
 def spostare_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
-    print(messaggio(mondo, "niente", "Non succede nulla di particolare."))
+    scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
 
 
 # --- DEFINIZIONE DELLA LIBRERIA ---

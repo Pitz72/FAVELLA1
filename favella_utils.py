@@ -116,6 +116,134 @@ def messaggio(mondo, chiave: str, predefinito: str, **valori) -> str:
     return rendi_testo(mondo, testo)
 
 
+# ==============================================================================
+# [1.4.0 / L-7] L'USCITA DEL MOTORE COME FLUSSO DI EVENTI
+# ------------------------------------------------------------------------------
+# Fino alla 1.3.0 il motore scriveva con print(): IDE, sito, playground e pagina
+# esportata dovevano dirottare stdout per raccogliere le risposte, e nessuno
+# poteva distinguere il titolo di una stanza da una domanda o da un messaggio di
+# servizio. Ora ogni cosa che il motore dice al giocatore è un EVENTO con un tipo,
+# consegnato all'uscita del mondo (mondo.uscita, vedi scrivi()).
+#
+# Senza un'uscita scelta dall'host gli eventi vanno sul terminale, byte per byte
+# come prima: la CLI, la TRASCRIZIONE e i test che leggono stdout non cambiano.
+# Un host che vuole gli eventi li raccoglie con raccogli_uscita(mondo).
+# ==============================================================================
+
+TIPI_EVENTO = (
+    "intestazione",   # titolo, autore, invito e prologo della storia
+    "stanza",         # il titolo della stanza («--- La cucina ---»); dati: id
+    "testo",          # descrizioni, risposte di regole ed eventi, messaggi della libreria
+    "elenco",         # ciò che si vede («Puoi vedere qui: …», «Sul tavolo: …») e le uscite
+    "domanda",        # il motore chiede di precisare o di confermare
+    "dialogo",        # la battuta di un personaggio
+    "opzione",        # un'opzione numerata di un dialogo; dati: numero
+    "sistema",        # servizio: salvataggi, annulla, aiuto, «A presto!»
+    "fine",           # l'esito della partita; dati: esito
+    "errore",         # un errore interno del motore
+)
+
+
+class Evento:
+    """Una cosa che il motore dice al giocatore. `stacco` chiede una riga vuota
+    prima (un nuovo capoverso); `dati` porta ciò che il testo da solo non dice
+    (l'id della stanza, il numero di un'opzione, l'esito della partita)."""
+    __slots__ = ("tipo", "testo", "stacco", "dati")
+
+    def __init__(self, tipo: str, testo: str, stacco: bool = False, dati: dict | None = None):
+        self.tipo = tipo
+        self.testo = testo
+        self.stacco = stacco
+        self.dati = dati or {}
+
+    def come_testo(self) -> str:
+        """L'evento come lo scriveva print(): l'eventuale riga vuota, il testo,
+        l'a capo."""
+        return ("\n" if self.stacco else "") + self.testo + "\n"
+
+    def come_dizionario(self) -> dict:
+        """L'evento in forma serializzabile in JSON (per IDE, sito, pagina esportata)."""
+        d = {"tipo": self.tipo, "testo": self.testo}
+        if self.stacco:
+            d["stacco"] = True
+        if self.dati:
+            d["dati"] = dict(self.dati)
+        return d
+
+    def __repr__(self):
+        return f"Evento({self.tipo!r}, {self.testo!r})"
+
+
+class Uscita:
+    """Dove vanno gli eventi del motore. Un host ne può scrivere una sua."""
+    def emetti(self, evento: Evento):
+        raise NotImplementedError
+
+
+class UscitaTerminale(Uscita):
+    """Il flusso standard CORRENTE, cioè quello che print() userebbe: rispetta
+    redirect_stdout e la TRASCRIZIONE della riga di comando."""
+    def emetti(self, evento: Evento):
+        flusso = sys.stdout
+        if flusso is not None:
+            flusso.write(evento.come_testo())
+
+
+class UscitaRaccolta(Uscita):
+    """Tiene gli eventi in una lista, per chi li mostra a modo suo."""
+    def __init__(self):
+        self.eventi = []
+
+    def emetti(self, evento: Evento):
+        self.eventi.append(evento)
+
+    def svuota(self) -> list:
+        eventi, self.eventi = self.eventi, []
+        return eventi
+
+    def testo(self) -> str:
+        """Gli eventi raccolti come li avrebbe scritti il terminale."""
+        return "".join(e.come_testo() for e in self.eventi)
+
+    def come_dizionari(self) -> list:
+        return [e.come_dizionario() for e in self.eventi]
+
+
+class UscitaMuta(Uscita):
+    """Non dice niente: serve quando il motore rigioca una partita (CARICA)."""
+    def emetti(self, evento: Evento):
+        pass
+
+
+USCITA_TERMINALE = UscitaTerminale()
+
+
+def scrivi(mondo, testo: str, tipo: str = "testo", stacco: bool = False, **dati):
+    """Il motore dice `testo` al giocatore: un evento del `tipo` dato va
+    all'uscita del mondo (o al terminale, se l'host non ne ha scelta una)."""
+    uscita = getattr(mondo, "uscita", None) or USCITA_TERMINALE
+    uscita.emetti(Evento(tipo, testo, stacco, dati))
+
+
+class raccogli_uscita:
+    """Per gli host: `with raccogli_uscita(mondo) as r:` raccoglie in `r` gli
+    eventi del blocco (r.eventi, r.testo(), r.come_dizionari()); all'uscita dal
+    blocco il mondo torna all'uscita di prima."""
+    def __init__(self, mondo, uscita: Uscita | None = None):
+        self._mondo = mondo
+        self._uscita = uscita if uscita is not None else UscitaRaccolta()
+        self._precedente = None
+
+    def __enter__(self):
+        self._precedente = getattr(self._mondo, "uscita", None)
+        self._mondo.uscita = self._uscita
+        return self._uscita
+
+    def __exit__(self, *_):
+        self._mondo.uscita = self._precedente
+        return False
+
+
 # [1.3.0 / M-6, M-7] Segnaposto sempre disponibili: il turno e il luogo.
 SEGNAPOSTO_DEL_MOTORE = ("turno", "luogo")
 

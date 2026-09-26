@@ -5,10 +5,14 @@
 # stdin/stdout. Importa il motore esistente con import PIATTI (stesso contesto
 # dei test e della CLI): non riscrive nulla, lo avvolge.
 #
-# DISCIPLINA STDOUT (critica): il motore stampa molto con print(). Allo startup
-# salviamo lo stdout REALE in `_REAL_OUT`; ogni chiamata al motore gira dentro
-# redirect_stdout(StringIO()), e i frame di protocollo vengono scritti SOLO su
-# `_REAL_OUT`. Così nessun print vagante del motore può corrompere il framing.
+# DISCIPLINA STDOUT (critica): i frame di protocollo vanno SOLO su `_REAL_OUT`,
+# lo stdout reale salvato allo startup. [1.4.0 / L-7] Il motore di gioco non
+# stampa più: ciò che dice al giocatore sono eventi, raccolti con
+# raccogli_uscita(mondo) e restituiti all'IDE come testo ('output') e come
+# eventi tipizzati ('events'). Il dispatcher continua comunque a far girare ogni
+# chiamata dentro redirect_stdout(StringIO()): il compilatore da riga di comando
+# (analizza_file) scrive ancora le sue diagnostiche, e nessuna riga vagante deve
+# poter corrompere il framing.
 #
 # Avvio: python favella_server.py   (lo lancia il processo main di Electron)
 # ==============================================================================
@@ -36,19 +40,20 @@ except Exception:
 _ENGINE_IMPORT_ERROR = None
 try:
     from compilatore import (analizza_file, analizza_file_strutturato,
-                             compila_mondo, analizza_outline, analizza_regole,
-                             analizza_variabili, analizza_dialoghi,
-                             riordina_sorgente, esporta_html,
-                             serializza_frase, VERBI_VALIDI,
-                             PAROLE_RISERVATE)
-    from favella_utils import DIREZIONI_BASE, rendi_testo
+                             compila_mondo, VERBI_VALIDI, PAROLE_RISERVATE)
+    # [1.4.0 / L-7] Gli strumenti per gli editor visuali e l'esportazione hanno
+    # moduli propri, fuori dal nucleo del compilatore.
+    from strumenti_ide import (analizza_outline, analizza_regole, analizza_variabili,
+                               analizza_dialoghi, riordina_sorgente, serializza_frase)
+    from esportazione import esporta_html
+    from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import elabora_comando, mostra_stanza, intestazione
     from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.9.11"  # v1.0.0: + movimento PNG (A5) → copertura editor COMPLETA
+VERSIONE_SIDECAR = "0.9.12"  # v1.4.0: + eventi del motore ('events') accanto al testo
 
 
 # ==============================================================================
@@ -170,13 +175,19 @@ def _stato_partita(mondo):
 
 
 def _intro(mondo):
-    """Testo d'apertura della console: banner + descrizione della stanza iniziale
-    (cattura le print di mostra_stanza in un buffer locale)."""
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    """Apertura della console: banner + descrizione della stanza iniziale, come
+    raccolta di eventi (vedi favella_utils.raccogli_uscita)."""
+    with raccogli_uscita(mondo) as uscita:
         intestazione(mondo, "Scrivi un comando, oppure 'esci' per terminare.")
         mostra_stanza(mondo)
-    return buf.getvalue()
+    return uscita
+
+
+def _esegui(mondo, comando):
+    """[1.4.0 / L-7] Un comando alla partita: (continua, uscita con gli eventi)."""
+    with raccogli_uscita(mondo) as uscita:
+        continua = elabora_comando(mondo, comando)
+    return continua, uscita
 
 
 def rpc_session_start(params):
@@ -207,24 +218,24 @@ def rpc_session_start(params):
 
     _SESSIONE = _SessioneGioco(mondo, percorso, sorgente)
     _registra_turno(_SESSIONE, None)  # [Fase 5] stato iniziale nella history
-    return {"ok": True, "output": _intro(mondo), "running": True,
-            "state": _stato_partita(mondo)}
+    uscita = _intro(mondo)
+    return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
+            "running": True, "state": _stato_partita(mondo)}
 
 
 def rpc_session_send(params):
-    """[Fase 3] Invia un comando alla partita attiva. L'output del motore è
-    catturato in un buffer locale e restituito come testo della console; 'running'
-    diventa False quando il giocatore esce o la partita finisce."""
+    """[Fase 3] Invia un comando alla partita attiva. Ciò che il motore dice è
+    restituito come testo della console ('output') e, dalla 1.4.0, come eventi
+    tipizzati ('events'); 'running' diventa False quando il giocatore esce o la
+    partita finisce."""
     if _SESSIONE is None:
         raise ValueError("Nessuna partita attiva: avvia prima con 'session.start'.")
     comando = params.get("command", "")
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        continua = elabora_comando(_SESSIONE.mondo, comando)
+    continua, uscita = _esegui(_SESSIONE.mondo, comando)
     _SESSIONE.running = bool(continua)
     _registra_turno(_SESSIONE, comando)  # [Fase 5] snapshot post-comando
-    return {"ok": True, "output": buf.getvalue(), "running": _SESSIONE.running,
-            "state": _stato_partita(_SESSIONE.mondo)}
+    return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
+            "running": _SESSIONE.running, "state": _stato_partita(_SESSIONE.mondo)}
 
 
 def rpc_session_reset(_params):
@@ -272,12 +283,10 @@ def rpc_session_load(params):
 
     pezzi = [res["output"]]
     for cmd in comandi:
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            continua = elabora_comando(_SESSIONE.mondo, cmd)
+        continua, uscita = _esegui(_SESSIONE.mondo, cmd)
         _SESSIONE.running = bool(continua)
         _registra_turno(_SESSIONE, cmd)
-        pezzi.append(f"\n> {cmd}\n{buf.getvalue()}")
+        pezzi.append(f"\n> {cmd}\n{uscita.testo()}")
 
     return {"ok": True, "output": "".join(pezzi), "running": _SESSIONE.running,
             "state": _stato_partita(_SESSIONE.mondo)}

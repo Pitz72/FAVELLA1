@@ -108,9 +108,21 @@ export interface GameState {
   turn: number
 }
 
+// [motore 1.4.0 / sidecar 0.9.12] Ciò che il motore dice, come evento tipizzato
+// (favella_utils.Evento). In fila, gli eventi danno lo stesso testo di 'output'.
+export interface EngineOutputEvent {
+  tipo: 'intestazione' | 'stanza' | 'testo' | 'elenco' | 'domanda' | 'dialogo'
+    | 'opzione' | 'sistema' | 'fine' | 'errore'
+  testo: string
+  stacco?: boolean
+  dati?: Record<string, unknown>
+}
+
 export interface SessionResult {
   ok: boolean
   output: string
+  // [sidecar 0.9.12] Lo stesso output come eventi tipizzati (per stilizzarlo).
+  events?: EngineOutputEvent[]
   running: boolean
   state: GameState | null
   // Presenti solo quando ok=false: diagnostiche d'autore (perché non si gioca).

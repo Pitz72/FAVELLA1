@@ -17,16 +17,14 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# Il motore stampa molto su stdout: lo catturiamo per-chiamata e non lo lasciamo
-# trapelare sul terminale del server.
-import contextlib
-import io
-
+# [1.4.0 / L-7] Il motore non stampa più: ciò che dice al giocatore arriva come
+# eventi, raccolti per ogni chiamata sul mondo della partita. Prima si dirottava
+# stdout, che è globale al processo e quindi fragile sotto un server a thread.
 from compilatore import analizza_file_strutturato, compila_mondo
 from gioco import elabora_comando, mostra_stanza, intestazione
 from libreria_azioni import LIBRERIA_AZIONI
 from strutture import VERSIONE_MOTORE
-from favella_utils import rendi_testo
+from favella_utils import rendi_testo, raccogli_uscita
 
 
 # --------------------------------------------------------------------------
@@ -81,26 +79,25 @@ def _avvia_partita(sorgente):
         return {"ok": False, "output": "", "running": False, "state": None,
                 "errors": [{"message": "Nessuna stanza definita: impossibile "
                                        "avviare il gioco.", "severity": "error"}]}
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    with raccogli_uscita(mondo) as uscita:
         intestazione(mondo, "Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
         mostra_stanza(mondo)
     _SESSIONE.mondo = mondo
-    return {"ok": True, "output": buf.getvalue(), "running": True,
-            "state": _stato_partita(mondo)}
+    return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
+            "running": True, "state": _stato_partita(mondo)}
 
 
 def _invia_comando(comando):
-    """Esegue un comando sulla partita attiva e restituisce l'output catturato."""
+    """Esegue un comando sulla partita attiva e restituisce ciò che il motore
+    ha detto (testo ed eventi)."""
     mondo = _SESSIONE.mondo
     if mondo is None:
         return {"ok": False, "output": "Nessuna partita attiva. Premi «Compila e "
                 "gioca».", "running": False, "state": None}
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    with raccogli_uscita(mondo) as uscita:
         continua = elabora_comando(mondo, comando)
-    return {"ok": True, "output": buf.getvalue(), "running": bool(continua),
-            "state": _stato_partita(mondo)}
+    return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
+            "running": bool(continua), "state": _stato_partita(mondo)}
 
 
 def _valida(sorgente):

@@ -60,6 +60,8 @@ py-modules = [
     "strutture",
     "libreria_azioni",
     "compilatore",
+    "strumenti_ide",
+    "esportazione",
     "gioco",
     "collaudo",
     "esploratore",
