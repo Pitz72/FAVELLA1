@@ -1371,3 +1371,435 @@ input[type='radio'] {
   flex: 1 1 180px;
   min-width: 140px;
 }
+
+/* ============================================================================
+   Studio 1.1 — Riordina e Salva con nome in barra, la struttura della storia a più
+   file, uscite modificabili, rinomina ed elimina.
+   ========================================================================== */
+
+/* --- Barra in alto: Riordina e Salva a due pezzi ---------------------------- */
+.btn-riordina {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-riordina:hover:not(:disabled) {
+  background: var(--bg-elev2);
+  border-color: #28507a;
+}
+
+.btn-riordina:disabled {
+  color: var(--text-dim);
+  opacity: 0.55;
+}
+
+.btn-salva-gruppo {
+  display: inline-flex;
+}
+
+.btn-salva-gruppo .btn-save {
+  border-radius: 9px 0 0 9px;
+}
+
+.btn-salva-gruppo .btn-save-caret {
+  border-radius: 0 9px 9px 0;
+  padding: 0 9px;
+  border-left: 0;
+  cursor: pointer;
+}
+
+.btn-save-caret.dirty {
+  border-left: 1px solid rgba(26, 17, 0, 0.35);
+}
+
+.btn-save-caret:hover {
+  background: var(--bg-elev2);
+}
+
+.btn-save-caret.dirty:hover {
+  background: #fbb43a;
+}
+
+.menu-nota {
+  font-size: 11px;
+  color: var(--fav);
+  border: 1px solid #6b4a10;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+.menu-nota-lunga {
+  margin: 4px 0 2px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+
+.crumb-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid #1f5666;
+  border-radius: 999px;
+  padding: 0 8px;
+}
+
+/* --- La storia come insieme di file (nell'Esplora) --------------------------- */
+.struttura {
+  padding: 12px 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.struttura-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.struttura-testa .icon-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.struttura-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.struttura-voce {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.struttura-voce.attivo {
+  background: var(--bg-elev2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.struttura-file {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-family: var(--font-code);
+  font-size: 13px;
+}
+
+.struttura-file > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.struttura-file svg {
+  flex: 0 0 auto;
+  color: var(--fav);
+}
+
+.struttura-file:hover {
+  background: #17304f55;
+}
+
+.struttura-etichetta {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--fav);
+  border: 1px solid #6b4a10;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+.struttura-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.struttura-azioni select {
+  font-size: 13px;
+  padding: 6px 8px;
+  max-width: 100%;
+}
+
+.struttura-nota {
+  margin: 10px 4px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.struttura-guida {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.struttura-guida p {
+  margin: 0 0 6px;
+}
+
+.struttura-guida pre {
+  margin: 6px 0;
+  padding: 6px 10px;
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  color: var(--fav);
+  background: var(--bg-elev);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.struttura-guida ol {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.struttura-guida li {
+  margin-bottom: 4px;
+}
+
+.struttura-guida code {
+  font-family: var(--font-code);
+  color: var(--fav);
+}
+
+.nuovo-includi {
+  margin: 14px 0 4px;
+}
+
+.modal-errore {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--err);
+}
+
+/* --- Dove vanno le cose nuove ---------------------------------------------------- */
+.ws-dove {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.ws-dove select {
+  font-family: var(--font-code);
+  font-size: 13px;
+  color: var(--fav);
+  padding: 6px 10px;
+}
+
+/* --- Rinomina, elimina, creazione con più campi ----------------------------------- */
+.rinomina-riga {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.objed-field .rinomina-riga input[type='text'] {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.objed-create-col {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.objed-create-riga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.objed-create-riga input {
+  flex: 1 1 220px;
+}
+
+.elimina-campo {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
+.modal-largo {
+  width: 640px;
+}
+
+.elimina-elenco {
+  margin: 12px 0 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 12px 10px;
+}
+
+.elimina-cat {
+  margin: 10px 0 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.elimina-voce {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.elimina-voce code {
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.elimina-file {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.elimina-note {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+/* --- Le uscite di una stanza ------------------------------------------------------- */
+.uscite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uscita-riga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.uscita-riga select {
+  font-size: 13.5px;
+  padding: 6px 10px;
+}
+
+.uscita-coppia {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uscita-coppia select {
+  flex: 1 1 100px;
+  min-width: 0;
+}
+
+.uscita-freccia {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+}
+
+.uscita-nuova {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.dir-nuova {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dir-nuova input {
+  width: 120px;
+  padding: 6px 9px;
+  font-size: 13.5px;
+}
+
+/* --- Sulla Mappa: la scheda delle uscite di una stanza -------------------------------- */
+.scheda-mappa {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  z-index: 6;
+  width: 360px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 68px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid #28507a;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+.scheda-mappa-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  color: var(--fav);
+}
+
+.scheda-mappa-corpo {
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+}

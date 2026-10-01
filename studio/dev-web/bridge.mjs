@@ -5,14 +5,14 @@
 import http from 'node:http'
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
-import { readdir, readFile, writeFile, stat } from 'node:fs/promises'
+import { readdir, readFile, writeFile, stat, cp } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, resolve, dirname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const qui = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(qui, '..', '..')
-const progetto = resolve(process.argv[2] ?? join(repo, 'esempi', 'materiale-didattico'))
+let progetto = resolve(process.argv[2] ?? join(repo, 'esempi', 'materiale-didattico'))
 const PORTA = Number(process.env.BRIDGE_PORT ?? 5301)
 const IGNORATE = new Set(['node_modules', '.git', '.venv', '__pycache__', 'out', 'release', 'dist'])
 
@@ -90,6 +90,19 @@ http.createServer(async (req, res) => {
       case '/api/rpc': return invia(200, await rpc(b.method, b.params))
       case '/api/open': return invia(200, { root: progetto, tree: await albero(progetto) })
       case '/api/new': return invia(200, null)
+      // «Salva il progetto come…» (banco di prova): copia la cartella accanto, in «<nome>-copia»,
+      // scrive sopra i testi non salvati e passa a lavorare lì.
+      case '/api/copyTo': {
+        const vecchia = progetto
+        const dest = vecchia + '-copia'
+        await cp(vecchia, dest, { recursive: true, filter: (o) => !/(^|[\\/])(node_modules|\.git)([\\/]|$)/.test(o) })
+        for (const [p, testo] of Object.entries(b.testi ?? {})) {
+          const rel = resolve(p).slice(vecchia.length)
+          await writeFile(join(dest, rel), testo, 'utf-8')
+        }
+        progetto = dest
+        return invia(200, { root: dest, tree: await albero(dest), oldRoot: vecchia })
+      }
       case '/api/tree': return invia(200, dentro(b.root) ? await albero(b.root) : [])
       case '/api/read':
         if (!dentro(b.path)) throw new Error('fuori dal progetto')

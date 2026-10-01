@@ -87,13 +87,13 @@ def analizza_outline(percorso_file, sorgente=None):
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     if not diag.get("ok"):
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "opposites": [], "startSpan": None,
+                "directions": [], "oppositeDirections": {}, "opposites": [], "startSpan": None,
                 "carryBase": None, "carryBaseSpan": None,
                 "errors": diag.get("errors", [])}
     mondo = compila_mondo(percorso_file, sorgente)
     if mondo is None:
         return {"ok": False, "rooms": [], "objects": [],
-                "directions": [], "opposites": [], "startSpan": None,
+                "directions": [], "oppositeDirections": {}, "opposites": [], "startSpan": None,
                 "carryBase": None, "carryBaseSpan": None,
                 "errors": diag.get("errors", [])}
 
@@ -326,8 +326,14 @@ def analizza_outline(percorso_file, sorgente=None):
     carry_base_span = next(
         (f["span"] for f in frasi if f["data"] == "def_giocatore_capacita"), None)
 
+    # [Studio 1.1] Per ogni direzione la sua opposta (nord↔sud, est↔ovest, le
+    # personalizzate in coppia): serve a riscrivere il ritorno di un'uscita quando
+    # se ne cambia la direzione dal pannello della stanza.
+    opposte_dir = {d: o for d, o in getattr(mondo, "opposte_direzioni", {}).items()}
+
     return {"ok": True, "rooms": rooms, "objects": objects,
-            "directions": directions, "opposites": opposites,
+            "directions": directions, "oppositeDirections": opposte_dir,
+            "opposites": opposites,
             "startSpan": start_span,
             "carryBase": carry_base, "carryBaseSpan": carry_base_span,
             "errors": []}
@@ -1178,8 +1184,10 @@ def analizza_dialoghi(percorso_file, sorgente=None):
 # (impostazioni → stanze → oggetti → stati → regole/eventi/demoni → dialoghi),
 # RAGGRUPPANDO le frasi di ogni entità. NON rigenera nulla: sposta blocchi di TESTO
 # VERBATIM (commenti adiacenti inclusi), così niente — regole, dialoghi, prosa — va
-# perso. Solo file SINGOLI (senza Includi): l'ordine d'un file con riferimenti a
-# entità di altri file non è parsabile in isolamento. ADDITIVA: motore intatto.
+# perso. riordina_sorgente lavora su file SINGOLI (senza Includi): l'ordine d'un file
+# con riferimenti a entità di altri file non è parsabile in isolamento. Per le storie
+# a più file c'è riordina_storia (Studio 1.1), più sotto: parsa la storia intera e
+# riordina ogni file nel suo file. ADDITIVA: motore intatto.
 # ==============================================================================
 
 _RE_HA_INCLUDI = re.compile(r"(?im)^\s*Includi\s")
@@ -1251,6 +1259,86 @@ def _autoformat_classifica(data, tok, mondo):
     return (8, "", 0)  # sconosciuto → verso il fondo, mai perso
 
 
+# Una direttiva d'inclusione occupa un'intera riga ('Includi "x.fav".' o
+# 'Includi la libreria "verbi".'): il preprocessore la toglie prima del parser,
+# quindi qui la si riconosce dal testo. Nel riordino resta in cima, nell'ordine in
+# cui l'autore l'ha scritta (l'ordine degli Includi decide anche da dove parte il
+# gioco, se la partenza non è dichiarata).
+_RE_RIGA_INCLUDI = re.compile(r'^\s*Includi\s+(?:la\s+libreria\s+)?"(?:\\.|[^"\\])*"\s*\.\s*$',
+                              re.IGNORECASE)
+
+
+def _riordina_righe(righe, frasi):
+    """Cuore del riordino: dalle righe di UN file e dalle sue frasi classificate
+    ({start, end, cls}, righe 1-based) rimonta il testo in ordine canonico. Sposta
+    blocchi VERBATIM (la frase con i commenti che la precedono): non rigenera nulla."""
+    frasi = sorted(frasi, key=lambda f: f["start"])
+
+    # I gruppi (entità) si ordinano per PRIMA apparizione, non alfabeticamente.
+    group_order = {}
+    for f in frasi:
+        grp = f["cls"][1]
+        if grp and grp not in group_order:
+            group_order[grp] = len(group_order)
+
+    n = len(righe)
+    by_start = {f["start"]: i for i, f in enumerate(frasi)}
+
+    def _trim(blocco):
+        b = blocco[:]
+        while b and b[0].strip() == "":
+            b.pop(0)
+        while b and b[-1].strip() == "":
+            b.pop()
+        return b
+
+    # Costruisce i BLOCCHI: ogni frase con i commenti/righe adiacenti che la
+    # precedono (le righe non-frase si attaccano alla frase seguente).
+    blocchi = []
+    pending = []
+    i = 1
+    while i <= n:
+        if i in by_start:
+            f = frasi[by_start[i]]
+            lead = _trim(pending)
+            body = righe[f["start"] - 1:f["end"]]
+            cat, grp, wi = f["cls"]
+            go = group_order.get(grp, -1) if grp else -1
+            blocchi.append({"text": lead + body,
+                            "key": (cat, go, wi, by_start[i])})
+            pending = []
+            i = f["end"] + 1
+        elif _RE_RIGA_INCLUDI.match(righe[i - 1]):
+            # [Studio 1.1] Una direttiva d'inclusione: sta in cima a tutto.
+            lead = _trim(pending)
+            blocchi.append({"text": lead + [righe[i - 1]],
+                            "key": (-1, -1, 0, i)})
+            pending = []
+            i += 1
+        else:
+            pending.append(righe[i - 1])
+            i += 1
+    coda = _trim(pending)
+    if coda:
+        blocchi.append({"text": coda, "key": (9, 9, 9, 10 ** 9)})
+
+    blocchi.sort(key=lambda b: b["key"])  # stabile, chiave totale
+
+    # Riassembla: una riga vuota fra entità/categorie diverse, frasi tight dentro.
+    out = []
+    prev_sig = None
+    for b in blocchi:
+        sig = (b["key"][0], b["key"][1])
+        if out and sig != prev_sig:
+            out.append("")
+        out.extend(b["text"])
+        prev_sig = sig
+    testo = "\n".join(out)
+    if not testo.endswith("\n"):
+        testo += "\n"
+    return testo
+
+
 def riordina_sorgente(percorso_file, sorgente=None):
     """[Autoformat] Riordino canonico del file. Ritorna {ok, text} o
     {ok:False, reason}. Idempotente, byte-safe (sposta testo verbatim)."""
@@ -1292,65 +1380,7 @@ def riordina_sorgente(percorso_file, sorgente=None):
                       "cls": _autoformat_classifica(nodo.data, _tokens_per_tipo(nodo), mondo)})
     if not frasi:
         return {"ok": True, "text": sorgente}
-    frasi.sort(key=lambda f: f["start"])
-
-    # I gruppi (entità) si ordinano per PRIMA apparizione, non alfabeticamente.
-    group_order = {}
-    for f in frasi:
-        grp = f["cls"][1]
-        if grp and grp not in group_order:
-            group_order[grp] = len(group_order)
-
-    righe = sorgente.split("\n")
-    n = len(righe)
-    by_start = {f["start"]: i for i, f in enumerate(frasi)}
-
-    def _trim(blocco):
-        b = blocco[:]
-        while b and b[0].strip() == "":
-            b.pop(0)
-        while b and b[-1].strip() == "":
-            b.pop()
-        return b
-
-    # Costruisce i BLOCCHI: ogni frase con i commenti/righe adiacenti che la
-    # precedono (le righe non-frase si attaccano alla frase seguente).
-    blocchi = []
-    pending = []
-    i = 1
-    while i <= n:
-        if i in by_start:
-            f = frasi[by_start[i]]
-            lead = _trim(pending)
-            body = righe[f["start"] - 1:f["end"]]
-            cat, grp, wi = f["cls"]
-            go = group_order.get(grp, -1) if grp else -1
-            blocchi.append({"text": lead + body,
-                            "key": (cat, go, wi, by_start[i])})
-            pending = []
-            i = f["end"] + 1
-        else:
-            pending.append(righe[i - 1])
-            i += 1
-    coda = _trim(pending)
-    if coda:
-        blocchi.append({"text": coda, "key": (9, 9, 9, 10 ** 9)})
-
-    blocchi.sort(key=lambda b: b["key"])  # stabile, chiave totale
-
-    # Riassembla: una riga vuota fra entità/categorie diverse, frasi tight dentro.
-    out = []
-    prev_sig = None
-    for b in blocchi:
-        sig = (b["key"][0], b["key"][1])
-        if out and sig != prev_sig:
-            out.append("")
-        out.extend(b["text"])
-        prev_sig = sig
-    testo = "\n".join(out)
-    if not testo.endswith("\n"):
-        testo += "\n"
-    return {"ok": True, "text": testo}
+    return {"ok": True, "text": _riordina_righe(sorgente.split("\n"), frasi)}
 
 
 
@@ -1365,6 +1395,15 @@ def riordina_sorgente(percorso_file, sorgente=None):
 # (es. «L'ingresso collega nord a il salotto.»). Fonte di verità unica delle forme
 # canoniche, in Python. ADDITIVA: non tocca motore/test.
 # ==============================================================================
+
+def _articolo_in_minuscolo(nome: str) -> str:
+    """Un nome con l'articolo maiuscolo («La cucina») scritto a metà frase: «la cucina».
+    Se il nome non comincia con un articolo (un nome proprio) resta com'è."""
+    art, _nucleo = _scomponi_articolo(nome)
+    if art and nome[:1].isupper():
+        return nome[:1].lower() + nome[1:]
+    return nome
+
 
 def _quota(testo: str) -> str:
     """Avvolge il testo tra virgolette doppie con escape canonico (\\\" e \\\\)."""
@@ -1768,7 +1807,8 @@ def serializza_frase(spec):
             return {"ok": True, "text": _frase_descrizione(spec["name"], spec.get("text", ""))}
         if op == "connection":
             return {"ok": True,
-                    "text": f"{spec['from']} collega {spec['direction']} a {spec['to']}."}
+                    "text": f"{spec['from']} collega {spec['direction']} a "
+                            f"{_articolo_in_minuscolo(spec['to'])}."}
         if op == "position":
             return {"ok": True, "text": _frase_posizione(
                 spec["name"], spec["prep"], spec["place"])}
@@ -1852,3 +1892,424 @@ def serializza_frase(spec):
         return {"ok": False, "error": f"Campo mancante per l'op {spec.get('op')!r}: {e}."}
     except ValueError as e:
         return {"ok": False, "error": str(e)}
+
+
+# ==============================================================================
+# STUDIO 1.1 — STORIE A PIÙ FILE, RIORDINO DI TUTTA LA STORIA, RINOMINA ED ELIMINA
+# ------------------------------------------------------------------------------
+# Quattro strumenti per l'editor visuale, tutti additivi (il nucleo non cambia):
+#   - sorgenti_vive: per la durata di una chiamata, i file elencati si leggono dal
+#     buffer dell'editor invece che dal disco. Così una storia a più file si
+#     compila e si legge con TUTTE le modifiche non ancora salvate;
+#   - riordina_storia: il riordino canonico di ogni file della storia (Includi
+#     compresi), ciascuno nel proprio file;
+#   - rinomina_entita: cambia il nome di una stanza o di un oggetto in tutte le
+#     frasi che lo citano, leggendo i token del parser (mai il testo delle
+#     descrizioni), e controlla che la storia compili ancora;
+#   - riferimenti_entita: l'elenco delle frasi che citano un'entità, per sapere
+#     che cosa porterebbe via un'eliminazione.
+# ==============================================================================
+
+import builtins
+import contextlib
+import io
+import os
+import sys
+
+from compilatore import PAROLE_RISERVATE
+from favella_utils import normalizza_tipografia
+
+
+def _chiave_percorso(percorso):
+    return os.path.normcase(os.path.abspath(percorso))
+
+
+@contextlib.contextmanager
+def sorgenti_vive(sorgenti):
+    """Per la durata del blocco, la lettura dei file indicati ({percorso: testo})
+    dà il testo dato invece di quello su disco. Vale per il compilatore (gli
+    'Includi'), per questo modulo e per l'esportazione. Annidabile: il livello
+    interno vince su quello esterno. Senza sorgenti non fa nulla."""
+    if not sorgenti:
+        yield
+        return
+    vive = {_chiave_percorso(p): t for p, t in sorgenti.items() if isinstance(t, str)}
+    moduli = [m for m in (sys.modules.get("compilatore"), sys.modules.get(__name__),
+                          sys.modules.get("esportazione")) if m is not None]
+    salvati = []
+
+    def _fabbrica(precedente):
+        def _apri(file, mode="r", *args, **kwargs):
+            if (isinstance(file, (str, os.PathLike)) and "r" in mode
+                    and not any(c in mode for c in "wax+b")):
+                testo = vive.get(_chiave_percorso(os.fspath(file)))
+                if testo is not None:
+                    return io.StringIO(testo)
+            return precedente(file, mode, *args, **kwargs)
+        return _apri
+
+    for m in moduli:
+        c_era = "open" in m.__dict__
+        precedente = m.__dict__.get("open", builtins.open)
+        salvati.append((m, c_era, precedente))
+        m.open = _fabbrica(precedente)
+    try:
+        yield
+    finally:
+        for m, c_era, precedente in reversed(salvati):
+            if c_era:
+                m.open = precedente
+            else:
+                try:
+                    del m.open
+                except AttributeError:
+                    pass
+
+
+def _analizza_storia(percorso_radice, sorgente=None):
+    """(mondo, albero, mappa_righe) della storia intera: il Mondo compilato più
+    l'albero del parser con le posizioni, e la mappa riga-espansa → (file, riga).
+    None se la storia non compila."""
+    diag = analizza_file_strutturato(percorso_radice, sorgente=sorgente)
+    if not diag.get("ok"):
+        return None
+    mondo = compila_mondo(percorso_radice, sorgente)
+    if mondo is None:
+        return None
+    try:
+        testo, mappa, _err = _espandi_inclusioni_seedable(percorso_radice, sorgente)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True, verbi_multi=simboli.verbi_multi)
+        albero = parser.parse(testo)
+    except Exception:
+        return None
+    return mondo, albero, mappa
+
+
+def _dentro_la_cartella(percorso, radice):
+    """True se 'percorso' sta nella cartella del file radice (o sotto): solo quei
+    file sono della storia; la libreria standard no."""
+    base = os.path.normcase(os.path.dirname(os.path.abspath(radice)))
+    p = os.path.normcase(os.path.abspath(percorso))
+    return p == base or p.startswith(base + os.sep)
+
+
+def _leggi_file(percorso, radice, sorgente_radice):
+    """Il testo di un file della storia: il buffer per la radice (se dato), il
+    disco (o una sorgente viva) per gli altri. Fine riga normalizzati a LF."""
+    if sorgente_radice is not None and _chiave_percorso(percorso) == _chiave_percorso(radice):
+        return sorgente_radice.replace("\r\n", "\n")
+    with open(percorso, encoding="utf-8") as f:
+        return f.read().replace("\r\n", "\n")
+
+
+def _frasi_di_primo_livello(albero, mappa, percorso_radice):
+    """Le frasi di primo livello dell'albero, ognuna col file e la riga in cui sta
+    davvero (la mappa le riporta dal testo unito ai singoli file). Solo i file
+    della cartella della storia: la libreria standard resta fuori."""
+    frasi = []
+    for nodo in albero.children:
+        if not isinstance(nodo, Tree):
+            continue
+        meta = getattr(nodo, "meta", None)
+        riga = getattr(meta, "line", None) if meta else None
+        if riga is None or not (1 <= riga <= len(mappa)):
+            continue
+        fine = getattr(meta, "end_line", riga) or riga
+        f_o, r_o = mappa[riga - 1]
+        _f2, r_fine = mappa[min(max(fine, 1), len(mappa)) - 1]
+        if not _dentro_la_cartella(f_o, percorso_radice):
+            continue
+        frasi.append({"nodo": nodo, "file": f_o, "start": int(r_o), "end": int(r_fine)})
+    return frasi
+
+
+def riordina_storia(percorso_radice, sorgente=None):
+    """[Studio 1.1] Riordino canonico di TUTTI i file di una storia, ciascuno nel
+    suo file: dove prima c'era solo il file singolo, ora anche le storie con
+    'Includi'. Ritorna {ok, files:[{path, text, changed}], reason}: 'files' elenca
+    ogni file della storia con il testo riordinato; 'changed' dice se è diverso da
+    com'era. Non scrive niente: il chiamante decide che farne."""
+    analizzata = _analizza_storia(percorso_radice, sorgente)
+    if analizzata is None:
+        return {"ok": False, "files": [],
+                "reason": "Correggi gli errori della storia prima di riordinare."}
+    mondo, albero, mappa = analizzata
+
+    per_file = {}
+    for f in _frasi_di_primo_livello(albero, mappa, percorso_radice):
+        per_file.setdefault(f["file"], []).append({
+            "start": f["start"], "end": f["end"],
+            "cls": _autoformat_classifica(f["nodo"].data, _tokens_per_tipo(f["nodo"]), mondo)})
+
+    # Il file radice c'è sempre, anche se contiene solo degli Includi.
+    per_file.setdefault(percorso_radice, [])
+    files = []
+    for percorso, frasi in per_file.items():
+        try:
+            originale = _leggi_file(percorso, percorso_radice, sorgente)
+        except OSError as e:
+            return {"ok": False, "files": [],
+                    "reason": f"Impossibile leggere «{os.path.basename(percorso)}»: {e}"}
+        if frasi or any(_RE_RIGA_INCLUDI.match(r) for r in originale.split("\n")):
+            nuovo = _riordina_righe(originale.split("\n"), frasi)
+        else:
+            nuovo = originale   # solo commenti: non c'è niente da riordinare
+        files.append({"path": percorso, "text": nuovo,
+                      "changed": nuovo.rstrip("\n") != originale.rstrip("\n")})
+    return {"ok": True, "files": files, "reason": None}
+
+
+# --- Rinomina ------------------------------------------------------------------
+
+# Preposizione semplice + articolo → preposizione articolata, e il suo inverso.
+_PREP_ARTICOLATE = {
+    "di": {"il": "del", "lo": "dello", "la": "della", "l'": "dell'",
+           "i": "dei", "gli": "degli", "le": "delle"},
+    "a":  {"il": "al", "lo": "allo", "la": "alla", "l'": "all'",
+           "i": "ai", "gli": "agli", "le": "alle"},
+    "da": {"il": "dal", "lo": "dallo", "la": "dalla", "l'": "dall'",
+           "i": "dai", "gli": "dagli", "le": "dalle"},
+    "in": {"il": "nel", "lo": "nello", "la": "nella", "l'": "nell'",
+           "i": "nei", "gli": "negli", "le": "nelle"},
+    "su": {"il": "sul", "lo": "sullo", "la": "sulla", "l'": "sull'",
+           "i": "sui", "gli": "sugli", "le": "sulle"},
+}
+_PREP_ART_INVERSA = {forma: (base, art)
+                     for base, tab in _PREP_ARTICOLATE.items() for art, forma in tab.items()}
+# Dall'articolo indeterminativo al determinativo che gli corrisponde.
+_ART_DETERMINATIVO = {"un'": "l'", "un": "il", "uno": "lo", "una": "la"}
+_RE_PREP_ARTICOLATA = re.compile(
+    r"(?<![\wÀ-ÿ'])(" + "|".join(re.escape(p) for p in
+                                  sorted(_PREP_ART_INVERSA, key=len, reverse=True)) + r")\s*$",
+    re.IGNORECASE)
+_RE_NOME_VALIDO = re.compile(r"^[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9' \-]*$")
+
+
+def _maiuscola(testo, si):
+    if not testo:
+        return testo
+    return (testo[:1].upper() if si else testo[:1].lower()) + testo[1:]
+
+
+def _trova_entita(mondo, nome):
+    """(id, 'stanza'|'oggetto', nome visualizzato) dell'entità indicata (per id o
+    per nome con l'articolo), oppure None."""
+    vid = normalizza_nome(nome)
+    if vid in mondo.stanze:
+        return vid, "stanza", mondo.stanze[vid].nome_visualizzato
+    if vid in mondo.oggetti:
+        return vid, "oggetto", mondo.oggetti[vid].nome_visualizzato
+    return None
+
+
+def _no_rinomina(motivo):
+    return {"ok": False, "files": [], "replaced": 0, "mentions": [], "reason": motivo}
+
+
+def rinomina_entita(percorso_radice, sorgente, nome, nuovo_nome):
+    """[Studio 1.1] Cambia il nome di una stanza o di un oggetto in ogni frase che
+    lo cita. Lavora sui TOKEN del parser, quindi non tocca mai il testo delle
+    descrizioni o delle risposte (se vi compare il vecchio nome, lo dice a parte in
+    'mentions'). Se il nuovo articolo è di un altro genere, adatta le preposizioni
+    che lo precedono («nella cucina» → «nel tinello»). Prima di restituire il
+    risultato ricompila la storia: se non compila più, non cambia niente.
+
+    Ritorna {ok, files:[{path, text}], replaced, mentions:[{file, line, text}],
+    reason}: 'files' elenca solo i file modificati, col testo intero."""
+    nuovo_nome = (nuovo_nome or "").strip()
+    analizzata = _analizza_storia(percorso_radice, sorgente)
+    if analizzata is None:
+        return _no_rinomina("Correggi gli errori della storia prima di rinominare.")
+    mondo, albero, mappa = analizzata
+    trovata = _trova_entita(mondo, nome)
+    if trovata is None:
+        return _no_rinomina(f"Non trovo «{nome}» nella storia.")
+    vid, _tipo, visualizzato = trovata
+
+    art_n, nuc_n = _scomponi_articolo(nuovo_nome)
+    nuovo_id = normalizza_nome(nuovo_nome)
+    if not nuovo_nome or not nuc_n or not _RE_NOME_VALIDO.match(nuovo_nome):
+        return _no_rinomina("Il nome può avere lettere, numeri, spazi, apostrofi e trattini.")
+    if nuovo_nome.strip().lower() == visualizzato.strip().lower():
+        return {"ok": True, "files": [], "replaced": 0, "mentions": [], "reason": None}
+    occupati = (set(mondo.stanze) | set(mondo.oggetti) | set(mondo.variabili)
+                | set(getattr(mondo, "contatori", {}) or {}))
+    if nuovo_id != vid and nuovo_id in occupati:
+        return _no_rinomina(f"Esiste già qualcosa che si chiama «{nuovo_id}».")
+    if nuovo_id != vid and nuovo_id in PAROLE_RISERVATE:
+        return _no_rinomina(f"«{nuovo_id}» è una parola riservata del linguaggio.")
+    _art_v, nuc_v = _scomponi_articolo(visualizzato)
+
+    # Ogni token ENTITA che indica questa entità, con la sua posizione vera.
+    citazioni = {}   # (file, riga) -> [(colonna0, fine0, grezzo)]
+    for tok in albero.scan_values(lambda v: isinstance(v, Token) and v.type == "ENTITA"):
+        if normalizza_nome(str(tok)) != vid:
+            continue
+        if not (1 <= tok.line <= len(mappa)):
+            continue
+        f_o, r_o = mappa[tok.line - 1]
+        if not _dentro_la_cartella(f_o, percorso_radice):
+            continue
+        citazioni.setdefault((f_o, r_o), []).append((tok.column - 1, tok.end_column - 1, str(tok)))
+
+    testi = {}   # file -> [righe]
+    modificati = set()
+    sostituiti = 0
+    for (f_o, r_o), lista in citazioni.items():
+        if f_o not in testi:
+            try:
+                testi[f_o] = _leggi_file(f_o, percorso_radice, sorgente).split("\n")
+            except OSError as e:
+                return _no_rinomina(f"Impossibile leggere «{os.path.basename(f_o)}»: {e}")
+        righe = testi[f_o]
+        riga = righe[r_o - 1]
+        if len(normalizza_tipografia(riga)) != len(riga):
+            riga = normalizza_tipografia(riga)   # le virgolette curve diventano dritte
+        for col, fine, grezzo in sorted(lista, reverse=True):
+            if riga[col:fine] != grezzo:
+                col = riga.find(grezzo)
+                fine = col + len(grezzo)
+                if col < 0:
+                    return _no_rinomina(f"Non ritrovo «{grezzo}» a riga {r_o} di "
+                                        f"{os.path.basename(f_o)}: rinomina dal testo.")
+            art_t, _nuc_t = _scomponi_articolo(grezzo)
+            sostituzione = None
+            inizio = col
+            if art_t is None:
+                nucleo = nuc_n
+                if grezzo[:1].isupper() and not nuc_v[:1].isupper():
+                    nucleo = _maiuscola(nuc_n, True)
+                m = _RE_PREP_ARTICOLATA.search(riga[:col])
+                if m:
+                    base, art_p = _PREP_ART_INVERSA[m.group(1).lower()]
+                    art_det = _ART_DETERMINATIVO.get(art_n, art_n) if art_n else None
+                    if art_det != art_p:
+                        prep = _PREP_ARTICOLATE[base][art_det] if art_det else base
+                        prep = _maiuscola(prep, m.group(1)[:1].isupper())
+                        sostituzione = prep + ("" if prep.endswith("'") else " ") + nucleo
+                        inizio = m.start(1)
+                if sostituzione is None:
+                    sostituzione = nucleo
+            elif art_n:
+                articolo = _maiuscola(art_n, grezzo[:1].isupper())
+                sostituzione = articolo + ("" if articolo.endswith("'") else " ") + nuc_n
+            else:
+                sostituzione = _maiuscola(nuc_n, grezzo[:1].isupper())
+            riga = riga[:inizio] + sostituzione + riga[fine:]
+            sostituiti += 1
+        righe[r_o - 1] = riga
+        modificati.add(f_o)
+
+    nuovi = {f: "\n".join(testi[f]) for f in modificati}
+    # La storia deve compilare ancora, e con le stesse entità.
+    root_nuovo = nuovi.get(percorso_radice, sorgente)
+    with sorgenti_vive({f: t for f, t in nuovi.items() if f != percorso_radice}):
+        verifica = analizza_file_strutturato(percorso_radice, sorgente=root_nuovo)
+        dopo = compila_mondo(percorso_radice, root_nuovo) if verifica.get("ok") else None
+    if (dopo is None or nuovo_id not in (set(dopo.stanze) | set(dopo.oggetti))
+            or len(dopo.stanze) != len(mondo.stanze) or len(dopo.oggetti) != len(mondo.oggetti)):
+        errori = verifica.get("errors") or []
+        motivo = errori[0].get("message") if errori else "la storia non compilerebbe più"
+        return _no_rinomina(f"Non rinomino: {motivo}")
+
+    # Il vecchio nome può restare dentro i testi (descrizioni, risposte): non si
+    # tocca, ma si segnala dove.
+    menzioni = []
+    if nuc_v:
+        rx = re.compile(r"(?<![\wÀ-ÿ])" + re.escape(nuc_v) + r"(?![\wÀ-ÿ])", re.IGNORECASE)
+        rx_testo = re.compile(r'"((?:\\.|[^"\\])*)"')
+        for f in sorted({percorso_radice} | modificati | {f for f, _ in citazioni}):
+            if not _dentro_la_cartella(f, percorso_radice) or len(menzioni) >= 20:
+                continue
+            if f in nuovi:
+                righe_f = nuovi[f].split("\n")
+            else:
+                try:
+                    righe_f = _leggi_file(f, percorso_radice, sorgente).split("\n")
+                except OSError:
+                    continue
+            for n, r in enumerate(righe_f, 1):
+                if any(rx.search(t) for t in rx_testo.findall(r)):
+                    menzioni.append({"file": f, "line": n, "text": r.strip()[:120]})
+                    if len(menzioni) >= 20:
+                        break
+    return {"ok": True, "replaced": sostituiti, "mentions": menzioni, "reason": None,
+            "files": [{"path": f, "text": t} for f, t in nuovi.items()]}
+
+
+# --- Riferimenti (per l'eliminazione) --------------------------------------------
+
+_CATEGORIE_FRASE = {
+    "def_stanza": "definizione", "def_oggetto": "definizione", "def_contenitore": "definizione",
+    "def_supporto": "definizione", "def_personaggio": "definizione",
+    "def_descrizione": "descrizione", "def_posto": "descrizione",
+    "def_posizione": "posizione", "def_anche_in": "posizione", "def_di_scena": "posizione",
+    "def_connessione": "uscita", "def_giocatore": "partenza",
+    "def_giocatore_inventario": "inventario", "def_png_ha": "inventario",
+    "def_proprieta": "proprietà", "def_alias": "sinonimo", "def_capacita_oggetto": "proprietà",
+    "def_illumina": "proprietà",
+    "def_regola": "regola", "evento_al": "regola", "evento_ogni": "regola",
+    "demone_ogni": "regola", "demone_quando": "regola", "demone_dopo": "regola",
+    "def_dialogo_inizio": "dialogo", "def_battuta": "dialogo", "def_opzione": "dialogo",
+    "def_argomento": "dialogo",
+}
+
+
+def riferimenti_entita(percorso_radice, sorgente, nome):
+    """[Studio 1.1] Tutte le frasi (di primo livello) che citano una stanza o un
+    oggetto, ciascuna con la categoria, l'anteprima e lo span: è ciò che porterebbe
+    via un'eliminazione. Per un personaggio include anche le risposte dei nodi in
+    cui parla. Ritorna {ok, id, kind, name, items:[{category, preview, span}], reason}."""
+    analizzata = _analizza_storia(percorso_radice, sorgente)
+    if analizzata is None:
+        return {"ok": False, "items": [],
+                "reason": "Correggi gli errori della storia prima di eliminare."}
+    mondo, albero, mappa = analizzata
+    trovata = _trova_entita(mondo, nome)
+    if trovata is None:
+        return {"ok": False, "items": [], "reason": f"Non trovo «{nome}» nella storia."}
+    vid, tipo, visualizzato = trovata
+
+    frasi = []
+    for f in _frasi_di_primo_livello(albero, mappa, percorso_radice):
+        tok = _tokens_per_tipo(f["nodo"])
+        frasi.append({"data": f["nodo"].data, "tok": tok,
+                      "ids": {normalizza_nome(str(t)) for t in tok.get("ENTITA", [])},
+                      "span": {"file": f["file"], "line": f["start"], "endLine": f["end"]}})
+
+    scelte = [f for f in frasi if vid in f["ids"]]
+    # Un personaggio: anche le risposte dei nodi in cui parla.
+    nodi_suoi = set()
+    for f in scelte:
+        if f["data"] == "def_battuta":
+            quotati = f["tok"].get("TESTO_QUOTATO", [])
+            ents = f["tok"].get("ENTITA", [])
+            if quotati and ents and normalizza_nome(str(ents[0])) == vid:
+                nodi_suoi.add(_spoglia_quotato(str(quotati[0])))
+    if nodi_suoi:
+        presenti = {(f["span"]["file"], f["span"]["line"]) for f in scelte}
+        for f in frasi:
+            if f["data"] != "def_opzione" or (f["span"]["file"], f["span"]["line"]) in presenti:
+                continue
+            quotati = f["tok"].get("TESTO_QUOTATO", [])
+            if quotati and _spoglia_quotato(str(quotati[0])) in nodi_suoi:
+                scelte.append(f)
+
+    cache = {}
+    voci = []
+    for f in sorted(scelte, key=lambda x: (x["span"]["file"], x["span"]["line"])):
+        sp = f["span"]
+        if sp["file"] not in cache:
+            try:
+                cache[sp["file"]] = _leggi_file(sp["file"], percorso_radice, sorgente).split("\n")
+            except OSError:
+                cache[sp["file"]] = []
+        righe = cache[sp["file"]]
+        anteprima = righe[sp["line"] - 1].strip() if 0 < sp["line"] <= len(righe) else ""
+        voci.append({"category": _CATEGORIE_FRASE.get(f["data"], "altro"),
+                     "preview": anteprima[:140], "span": sp})
+    return {"ok": True, "id": vid, "kind": tipo, "name": visualizzato,
+            "items": voci, "reason": None}

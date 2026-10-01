@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, dialog, Menu } from 'electron'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
@@ -9,8 +9,9 @@ import type { EngineEvent, Savegame } from '../shared/protocol'
 let mainWindow: BrowserWindow | null = null
 let gameWindow: BrowserWindow | null = null
 let sidecar: Sidecar | null = null
-// Payload (path + buffer live) passato dall'IDE alla finestra di gioco al lancio.
-let gameLaunch: { path: string; source?: string } | null = null
+// Payload (path + buffer live + buffer degli altri file della storia) passato dall'IDE
+// alla finestra di gioco al lancio.
+let gameLaunch: { path: string; source?: string; sources?: Record<string, string> } | null = null
 // Guardia «modifiche non salvate»: la chiusura della finestra IDE è intercettata
 // finché il renderer non conferma (eventuale salvataggio o scarto). Vedi createWindow.
 let allowClose = false
@@ -20,6 +21,19 @@ let allowClose = false
 function iconaFinestra(): string | undefined {
   const percorso = join(__dirname, '../../branding/icone/icon.png')
   return existsSync(percorso) ? percorso : undefined
+}
+
+// La barra dei menu (File, Modifica…) non serve: Studio ha i suoi comandi dentro la
+// finestra, e una barra vuota a metà schermo è solo rumore. Su macOS la barra dei menu
+// è del sistema e da lì passano ⌘C, ⌘V, ⌘Q: se ne lascia una minima, con i soli ruoli.
+function impostaMenu(): void {
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
+    )
+  } else {
+    Menu.setApplicationMenu(null)
+  }
 }
 
 function createWindow(): void {
@@ -32,6 +46,7 @@ function createWindow(): void {
     backgroundColor: '#1a1a1e',
     title: 'Favella Studio',
     icon: iconaFinestra(),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -39,6 +54,16 @@ function createWindow(): void {
       sandbox: true
     }
   })
+  mainWindow.setMenuBarVisibility(false)
+
+  // Senza menu non ci sono più le scorciatoie degli strumenti di sviluppo: in sviluppo
+  // (non nell'app installata) si rimettono a mano.
+  if (!app.isPackaged) {
+    mainWindow.webContents.on('before-input-event', (_e, input) => {
+      const aperti = input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')
+      if (input.type === 'keyDown' && aperti) mainWindow?.webContents.toggleDevTools()
+    })
+  }
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
 
@@ -116,6 +141,7 @@ function startSidecar(): void {
 }
 
 app.whenReady().then(() => {
+  impostaMenu()
   // Canale RPC unico: il renderer chiede, il main inoltra al sidecar.
   ipcMain.handle('rpc', async (_e, method: string, params: unknown) => {
     if (!sidecar) throw new Error('Sidecar non inizializzato')
@@ -130,7 +156,7 @@ app.whenReady().then(() => {
 
   // Finestra di gioco dedicata: l'IDE passa path + buffer live, poi la finestra
   // li recupera al caricamento e avvia la partita.
-  ipcMain.handle('game:open', (_e, payload: { path: string; source?: string }) => {
+  ipcMain.handle('game:open', (_e, payload: { path: string; source?: string; sources?: Record<string, string> }) => {
     gameLaunch = payload
     createGameWindow()
   })

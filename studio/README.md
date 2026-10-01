@@ -25,6 +25,17 @@ Cinque sezioni, nell'ordine in cui si scrive una storia: **Storia** (il testo), 
 sezione; `Ctrl +/−/0` regola la grandezza. I pannelli visuali scrivono nel testo, e il testo si
 può affiancare con un interruttore. Dettagli in [CHANGELOG.md](CHANGELOG.md).
 
+Tutto ciò che sta nella storia si crea e si cambia dai pannelli: stanze, oggetti, **personaggi**,
+uscite (anche dalla mappa), regole, dialoghi. Ogni elemento si **rinomina** (in tutte le frasi che lo
+citano) e si **elimina** (dopo aver visto che cosa se ne va con lui). **Riordina** (`Ctrl+Alt+R`)
+rimette il testo in ordine; **Salva con nome** (`Ctrl+Maiusc+S`) e **Salva il progetto come…**
+copiano il file o tutta la cartella.
+
+**Storie a più file.** Una storia può essere divisa in moduli: il file principale include gli
+altri con `Includi "nome.fav".`. Il pannello «La storia» nell'Esplora mostra com'è fatta, crea un
+file nuovo e lo include, o include uno che c'è già. Provare, riordinare ed esportare lavorano
+sempre sulla storia intera.
+
 ## Architettura
 
 ```

@@ -6,6 +6,7 @@ import Editor, {
 import type { editor as MonacoEditor } from 'monaco-editor'
 import { useStudio, stessoPercorso } from '../store'
 import { FAVELLA_THEME, registraLinguaFavella } from '../monaco/favella-language'
+import { modificaMinima } from '../utils/modifiche'
 
 const MARKER_OWNER = 'favella'
 
@@ -18,12 +19,14 @@ export default function EditorPane(): JSX.Element {
   const pendingEdit = useStudio((s) => s.pendingEdit)
   const updateContent = useStudio((s) => s.updateContent)
   const setCursor = useStudio((s) => s.setCursor)
-  const saveActive = useStudio((s) => s.saveActive)
+  const saveAll = useStudio((s) => s.saveAll)
   const compileActive = useStudio((s) => s.compileActive)
 
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
-  const editApplicatoRef = useRef<number>(0)
+  // Una modifica già in sospeso quando l'editor compare è già dentro il testo con cui parte:
+  // si applicano solo quelle che arrivano dopo.
+  const editApplicatoRef = useRef<number>(useStudio.getState().pendingEdit?.nonce ?? 0)
 
   const active = openFiles.find((f) => f.path === activePath)
 
@@ -41,8 +44,9 @@ export default function EditorPane(): JSX.Element {
     // fatta all'apertura del file nello store.
     editor.getModel()?.setEOL(monaco.editor.EndOfLineSequence.LF)
     editor.onDidChangeCursorPosition((e) => setCursor(e.position.lineNumber, e.position.column))
+    // Ctrl+S salva tutta la storia: un pannello può aver cambiato più di un file.
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      void saveActive()
+      void saveAll()
     })
     // Ctrl+B: forza una compilazione del buffer attivo (oltre all'auto-compile).
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => {
@@ -113,41 +117,20 @@ export default function EditorPane(): JSX.Element {
     if (!model) return
     editApplicatoRef.current = pendingEdit.nonce
 
-    const ops: MonacoEditor.IIdentifiedSingleEditOperation[] = []
-    for (const e of pendingEdit.edits) {
-      if (e.kind === 'append') {
-        const lastLine = model.getLineCount()
-        const lastCol = model.getLineMaxColumn(lastLine)
-        const testo = model.getValue()
-        const prefisso = testo.endsWith('\n') || testo === '' ? '' : '\n'
-        ops.push({
-          range: new monaco.Range(lastLine, lastCol, lastLine, lastCol),
-          text: prefisso + e.text + '\n',
-          forceMoveMarkers: true
-        })
-      } else if (e.kind === 'replaceLines') {
-        ops.push({
-          range: new monaco.Range(e.startLine, 1, e.endLine, model.getLineMaxColumn(e.endLine)),
-          text: e.text
-        })
-      } else {
-        const lineCount = model.getLineCount()
-        if (e.endLine < lineCount) {
-          ops.push({
-            range: new monaco.Range(e.startLine, 1, e.endLine + 1, 1),
-            text: ''
-          })
-        } else {
-          const sl = e.startLine > 1 ? e.startLine - 1 : e.startLine
-          const sc = e.startLine > 1 ? model.getLineMaxColumn(e.startLine - 1) : 1
-          ops.push({
-            range: new monaco.Range(sl, sc, e.endLine, model.getLineMaxColumn(e.endLine)),
-            text: ''
-          })
-        }
+    // Lo store dà il testo che il file deve avere dopo la modifica: a Monaco si passa
+    // solo la parte che cambia, così il cursore resta dov'è e l'annulla toglie proprio
+    // quella modifica.
+    const cambio = modificaMinima(model.getValue(), pendingEdit.finale)
+    if (!cambio) return
+    const da = model.getPositionAt(cambio.da)
+    const a = model.getPositionAt(cambio.a)
+    editor.executeEdits('favella-visual', [
+      {
+        range: new monaco.Range(da.lineNumber, da.column, a.lineNumber, a.column),
+        text: cambio.testo,
+        forceMoveMarkers: true
       }
-    }
-    editor.executeEdits('favella-visual', ops)
+    ])
     editor.pushUndoStop()
   }, [pendingEdit, activePath])
 

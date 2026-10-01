@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
 import type { ObjectKind, OutlineObject, OutlineLocation, OutlineSpan } from '../../../shared/protocol'
 import { specPosizione } from '../utils/posizione'
+import { EliminaElemento, RinominaElemento, idDiNome } from './ElementoAzioni'
 
 const KIND_LABEL: Record<ObjectKind, string> = {
   oggetto: 'Oggetto',
@@ -15,13 +16,15 @@ const KIND_ICON: Record<ObjectKind, string> = {
   supporto: '▤',
   personaggio: '☻'
 }
-const KINDS: ObjectKind[] = ['oggetto', 'contenitore', 'supporto', 'personaggio']
+// I personaggi hanno il loro pannello (Personaggi): qui si lavora sulle cose.
+const KINDS: ObjectKind[] = ['oggetto', 'contenitore', 'supporto']
 
 export default function ObjectsEditor(): JSX.Element {
   const outline = useStudio((s) => s.outline)
   const loading = useStudio((s) => s.outlineLoading)
   const loadOutline = useStudio((s) => s.loadOutline)
   const applyStatement = useStudio((s) => s.applyStatement)
+  const appendStatements = useStudio((s) => s.appendStatements)
   const deleteStatement = useStudio((s) => s.deleteStatement)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
 
@@ -29,6 +32,7 @@ export default function ObjectsEditor(): JSX.Element {
   const [creando, setCreando] = useState(false)
   const [nuovoNome, setNuovoNome] = useState('')
   const [nuovoKind, setNuovoKind] = useState<ObjectKind>('oggetto')
+  const [nuovaStanza, setNuovaStanza] = useState('')
   const [descBozza, setDescBozza] = useState('')
   const [propNew, setPropNew] = useState('')
   const [aliasNew, setAliasNew] = useState('')
@@ -71,16 +75,30 @@ export default function ObjectsEditor(): JSX.Element {
     )
   }
 
-  const objects = outline.objects
+  const objects = outline.objects.filter((o) => o.kind !== 'personaggio')
   const rooms = outline.rooms
+  const stanzaIniziale = rooms.find((r) => r.isStart)?.id ?? rooms[0]?.id ?? ''
 
+  const apriCreazione = (): void => {
+    setCreando((v) => !v)
+    setNuovaStanza(stanzaIniziale)
+  }
+
+  // Crea «<Nome> è una cosa.» e, se scelto, lo mette in una stanza (altrimenti non è da
+  // nessuna parte: nessun giocatore lo troverà finché non gli si dà un posto).
   const crea = async (): Promise<void> => {
     const nome = nuovoNome.trim()
     if (!nome) return
+    const stanza = rooms.find((r) => r.id === nuovaStanza)
+    const kind = nuovoKind
     setCreando(false)
     setNuovoNome('')
     setNuovoKind('oggetto')
-    await applyStatement({ op: 'object_def', name: nome, kind: nuovoKind })
+    await appendStatements([
+      { op: 'object_def', name: nome, kind },
+      ...(stanza ? [specPosizione(nome, { name: stanza.name, kind: 'stanza' as const })] : [])
+    ])
+    setSelId(idDiNome(nome))
   }
 
   // Coppie di proprietà opposte note nel mondo (aperta/chiusa di default + quelle
@@ -259,7 +277,7 @@ export default function ObjectsEditor(): JSX.Element {
           Oggetti<span className="debug-count"> · {objects.length}</span>
         </span>
         <div>
-          <button className="btn-testo" title="Aggiungi un oggetto alla storia" onClick={() => setCreando((v) => !v)}>
+          <button className="btn-testo" title="Aggiungi un oggetto alla storia" onClick={apriCreazione}>
             + Nuovo oggetto
           </button>
         </div>
@@ -277,10 +295,18 @@ export default function ObjectsEditor(): JSX.Element {
               if (e.key === 'Enter') void crea()
             }}
           />
-          <select value={nuovoKind} onChange={(e) => setNuovoKind(e.target.value as ObjectKind)}>
+          <select value={nuovoKind} onChange={(e) => setNuovoKind(e.target.value as ObjectKind)} aria-label="Tipo">
             {KINDS.map((k) => (
               <option key={k} value={k}>
                 {KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <select value={nuovaStanza} onChange={(e) => setNuovaStanza(e.target.value)} aria-label="In quale stanza">
+            <option value="">— da nessuna parte —</option>
+            {rooms.map((r) => (
+              <option key={r.id} value={r.id}>
+                in {r.name}
               </option>
             ))}
           </select>
@@ -314,6 +340,8 @@ export default function ObjectsEditor(): JSX.Element {
         {!sel && <div className="vuoto-scegli">Scegli un oggetto dall’elenco per modificarlo.</div>}
         {sel && (
           <div className="objed-form">
+            <RinominaElemento nome={sel.name} onRinominato={(n) => setSelId(idDiNome(n))} />
+
             <div className="objed-field">
               <label>Tipo</label>
               <select value={sel.kind} onChange={(e) => void cambiaTipo(e.target.value as ObjectKind)}>
@@ -549,6 +577,8 @@ export default function ObjectsEditor(): JSX.Element {
                 </button>
               </div>
             </div>
+
+            <EliminaElemento nome={sel.name} tipo="oggetto" onEliminato={() => setSelId(null)} />
           </div>
         )}
       </div>

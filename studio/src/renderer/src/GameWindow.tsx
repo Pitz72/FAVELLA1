@@ -44,10 +44,10 @@ export default function GameWindow(): JSX.Element {
   useEffect(() => {
     let attivo = true
     void window.favella.gameLaunchPayload().then((p) => {
-      if (attivo && p) void startGameWith(p.path, p.source)
+      if (attivo && p) void startGameWith(p.path, p.source, p.sources)
     })
     const unsub = window.favella.onGameRelaunch((p) => {
-      if (p) void startGameWith(p.path, p.source)
+      if (p) void startGameWith(p.path, p.source, p.sources)
     })
     return () => {
       attivo = false

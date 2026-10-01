@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FileNode } from '../../../shared/protocol'
 import { useStudio } from '../store'
+import StrutturaStoria from './StrutturaStoria'
 
 function TreeNode({ node, depth }: { node: FileNode; depth: number }): JSX.Element {
   // Cartelle chiuse di default (stile VS Code): così i file di root — inclusi i
@@ -77,6 +78,7 @@ export default function Explorer(): JSX.Element {
         </div>
       ) : (
         <div className="tree">
+          <StrutturaStoria />
           <div className="tree-root" title={projectRoot}>
             {projectRoot.split(/[\\/]/).pop()}
           </div>

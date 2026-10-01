@@ -102,3 +102,22 @@ export function IconaFreccia({ size = 14 }: { size?: number }): JSX.Element {
     </svg>
   )
 }
+
+export function IconaRiordina({ size = 16 }: { size?: number }): JSX.Element {
+  // Righe di testo di lunghezze diverse che si allineano: «metti in ordine».
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...P}>
+      <path d="M4 6h16M4 11h10M4 16h13M4 21h7" />
+      <path d="M19 12v7m0 0l-2.2-2.2M19 19l2.2-2.2" />
+    </svg>
+  )
+}
+
+export function IconaFile({ size = 16 }: { size?: number }): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...P}>
+      <path d="M6 3.5h8l4.5 4.5V19a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 19V5A1.5 1.5 0 0 1 6 3.5z" />
+      <path d="M14 3.5V8h4.5" />
+    </svg>
+  )
+}

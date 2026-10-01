@@ -13,6 +13,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { useStudio } from '../store'
 import type { WorldGraph } from '../../../shared/protocol'
+import { ConnessioneStanze, SchedaStanzaMappa } from './ConnessioneStanze'
 
 // Posizioni MANUALI dei nodi mappa, persistite per-file in localStorage (px
 // assoluti). Il layout automatico (disponiStanze) vale solo per le stanze senza
@@ -42,10 +43,8 @@ function clearPositions(path: string | null): void {
   if (k) localStorage.removeItem(k)
 }
 
-// Direzioni native di FAVELLA (le sole valide senza dichiarazione).
+// Direzioni di base di FAVELLA, valide senza dichiarazione (finché l'outline non arriva).
 const DIREZIONI_NATIVE = ['nord', 'sud', 'est', 'ovest']
-// Verticali comuni: se scelte e non ancora dichiarate, l'IDE le auto-dichiara.
-const VERTICALI = ['alto', 'basso']
 
 const GAP_X = 200
 const GAP_Y = 130
@@ -178,15 +177,16 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const loadOutline = useStudio((s) => s.loadOutline)
   const outline = useStudio((s) => s.outline)
   const addConnection = useStudio((s) => s.mapAddConnection)
-  const deleteConnection = useStudio((s) => s.mapDeleteConnection)
   const addRoom = useStudio((s) => s.mapAddRoom)
   // Le posizioni manuali si persistono solo nell'IDE (editable), per il file attivo.
   const activePath = useStudio((s) => (editable ? s.activePath : null))
 
   // Selettore di direzione per una nuova connessione (drag fra due stanze).
   const [picker, setPicker] = useState<{ from: string; to: string } | null>(null)
-  // Connessione selezionata per l'eliminazione (click su un arco in modifica).
+  // Connessione selezionata (click su una freccia in modifica): si cambia o si toglie.
   const [archoSel, setArcoSel] = useState<{ a: string; b: string; label?: string } | null>(null)
+  // Stanza selezionata (click su una stanza in modifica): le sue uscite si cambiano qui.
+  const [nodoSel, setNodoSel] = useState<string | null>(null)
   // Modale «nuova stanza»: nome digitato dall'autore.
   const [nuovaStanza, setNuovaStanza] = useState<string | null>(null)
   // Sotto-form «nuova direzione» (dentro il selettore di connessione): nome + opposta.
@@ -274,11 +274,8 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const nomeStanza = (id: string): string =>
     graph.rooms.find((r) => r.id === id)?.name ?? id
 
-  // Direzioni offerte: quelle VALIDE nel file (native + personalizzate dichiarate)
-  // più le verticali comuni (auto-dichiarate dallo store se mancano), senza doppioni.
-  const direzioniOfferte = Array.from(
-    new Set([...(outline?.directions ?? DIREZIONI_NATIVE), ...VERTICALI])
-  )
+  // Direzioni offerte: quelle VALIDE nel file (di base + personalizzate dichiarate).
+  const direzioniOfferte = outline?.directions ?? DIREZIONI_NATIVE
 
   const onConnect = (c: Connection): void => {
     if (!attivo || !c.source || !c.target || c.source === c.target) return
@@ -286,6 +283,7 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   }
   const onEdgeClick = (_e: React.MouseEvent, edge: RFEdge): void => {
     if (!attivo) return
+    setNodoSel(null)
     setArcoSel({
       a: edge.source,
       b: edge.target,
@@ -315,12 +313,6 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
     chiudiPicker()
     await addConnection(p.from, ndN, p.to, ndO)
   }
-  const confermaElimina = async (): Promise<void> => {
-    if (!archoSel) return
-    const a = archoSel
-    setArcoSel(null)
-    await deleteConnection(a.a, a.b)
-  }
   const confermaNuovaStanza = async (): Promise<void> => {
     const nome = (nuovaStanza ?? '').trim()
     if (!nome) return
@@ -344,7 +336,7 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
           </button>
           <span className="map-edit-hint">
             Trascina da un pallino di una stanza a un’altra per collegarle · clicca una
-            connessione per eliminarla
+            connessione per cambiarla o toglierla · clicca una stanza per le sue uscite
           </span>
         </div>
       )}
@@ -360,6 +352,8 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
         elementsSelectable={attivo}
         onConnect={onConnect}
         onEdgeClick={onEdgeClick}
+        onNodeClick={(_e, node) => attivo && setNodoSel(node.id)}
+        onPaneClick={() => setNodoSel(null)}
         minZoom={0.2}
         maxZoom={2}
       >
@@ -390,16 +384,7 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
               <>
                 <div className="dir-grid">
                   {direzioniOfferte.map((d) => (
-                    <button
-                      key={d}
-                      className="dir-btn"
-                      title={
-                        VERTICALI.includes(d) && !(outline?.directions ?? []).includes(d)
-                          ? 'Verrà dichiarata automaticamente'
-                          : undefined
-                      }
-                      onClick={() => void confermaDirezione(d)}
-                    >
+                    <button key={d} className="dir-btn" onClick={() => void confermaDirezione(d)}>
                       {d}
                     </button>
                   ))}
@@ -458,27 +443,9 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
         </div>
       )}
 
-      {archoSel && (
-        <div className="modal-backdrop" onClick={() => setArcoSel(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">Eliminare la connessione?</h2>
-            <p className="modal-body">
-              {nomeStanza(archoSel.a)} ↔ {nomeStanza(archoSel.b)}
-              {archoSel.label ? ` (${archoSel.label})` : ''}
-              <br />
-              <span className="modal-hint">La frase «collega» verrà rimossa dal sorgente.</span>
-            </p>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={() => setArcoSel(null)}>
-                Annulla
-              </button>
-              <button className="modal-btn danger" onClick={() => void confermaElimina()}>
-                Elimina
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {archoSel && <ConnessioneStanze aId={archoSel.a} bId={archoSel.b} onChiudi={() => setArcoSel(null)} />}
+
+      {nodoSel && attivo && <SchedaStanzaMappa id={nodoSel} onChiudi={() => setNodoSel(null)} />}
 
       {nuovaStanza !== null && (
         <div className="modal-backdrop" onClick={() => setNuovaStanza(null)}>

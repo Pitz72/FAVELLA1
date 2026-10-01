@@ -7202,6 +7202,127 @@ def test_sidecar_restituisce_gli_eventi():
 
 
 
+def _storia_a_due_file(cartella):
+    """Una storia con un Includi: scrive storia.fav e oggetti.fav e ne dà i percorsi."""
+    storia = os.path.join(cartella, "storia.fav")
+    oggetti = os.path.join(cartella, "oggetti.fav")
+    with open(storia, "w", encoding="utf-8") as f:
+        f.write('# La mia storia\nInclidi "x".\n') if False else f.write(
+            '# La mia storia\nIncludi "oggetti.fav".\n'
+            'La descrizione del salotto è "Un salotto con la cucina a sud.".\n'
+            'Il salotto è una stanza.\nLa cucina è una stanza.\n'
+            'Il giocatore comincia in cucina.\nLa cucina collega nord a il salotto.\n'
+            'La descrizione della cucina è "Una cucina fredda.".\n'
+            'Invece di aprire il frigo: dire "Il frigo della cucina è vuoto.".\n')
+    with open(oggetti, "w", encoding="utf-8") as f:
+        f.write('Il frigo è un contenitore.\nIl frigo è nella cucina.\nLa mela è una cosa.\n'
+                'La mela è nel frigo.\nIl gatto è un personaggio.\nIl gatto è in salotto.\n'
+                'Il dialogo del gatto comincia con "saluto".\nIl gatto al nodo "saluto" dice "Miao.".\n'
+                'Al nodo "saluto" l\'opzione "Ciao" chiude il dialogo.\n')
+    return storia, oggetti
+
+
+def test_storie_a_piu_file_per_lo_studio():
+    print("[Studio 1.1: sorgenti vive, riordino di tutta la storia, rinomina e riferimenti]")
+    from strumenti_ide import (sorgenti_vive, riordina_storia, rinomina_entita,
+                               riferimenti_entita, analizza_outline)
+    import favella_server
+    with tempfile.TemporaryDirectory() as cartella:
+        storia, oggetti = _storia_a_due_file(cartella)
+
+        # Sorgenti vive: il buffer non salvato di un file incluso conta.
+        viva = open(oggetti, encoding="utf-8").read() + "La pera è una cosa.\nLa pera è nel frigo.\n"
+        con = favella_server._gestisci_richiesta(
+            {"id": 1, "method": "world.outline", "params": {"path": storia, "sources": {oggetti: viva}}})
+        senza = favella_server._gestisci_richiesta(
+            {"id": 2, "method": "world.outline", "params": {"path": storia}})
+        _check("La pera" in [o["name"] for o in con["result"]["objects"]]
+               and "La pera" not in [o["name"] for o in senza["result"]["objects"]],
+               "una sorgente viva sostituisce il disco solo per la durata della chiamata")
+        _check(open(oggetti, encoding="utf-8").read() == viva[:viva.index("La pera è una cosa")],
+               "il disco non è stato toccato")
+
+        # L'outline dà anche le direzioni opposte (per riscrivere i ritorni).
+        out = analizza_outline(storia)
+        _check(out["oppositeDirections"].get("nord") == "sud" and out["oppositeDirections"].get("est") == "ovest",
+               "l'outline dice qual è l'opposta di ogni direzione")
+
+        # Riordino: ogni file nel suo file, gli Includi restano in cima.
+        r = riordina_storia(storia)
+        _check(r["ok"] and {os.path.basename(f["path"]) for f in r["files"]} == {"storia.fav", "oggetti.fav"},
+               "il riordino della storia copre tutti i file")
+        testo_storia = next(f["text"] for f in r["files"] if f["path"].endswith("storia.fav"))
+        righe = testo_storia.split("\n")
+        _check(righe[0] == "# La mia storia" and righe[1] == 'Includi "oggetti.fav".',
+               "il commento e l'Includi restano in cima")
+        _check(testo_storia.index("La cucina è una stanza.") < testo_storia.index("La descrizione della cucina")
+               and testo_storia.index("Invece di") > testo_storia.index("La cucina collega"),
+               "la stanza con la sua descrizione e le uscite, poi le regole")
+        scritte = {f["path"]: f["text"] for f in r["files"]}
+        with sorgenti_vive({p: t for p, t in scritte.items() if p != storia}):
+            ancora = riordina_storia(storia, scritte[storia])
+        _check(ancora["ok"] and not any(f["changed"] for f in ancora["files"]),
+               "riordinare una storia già riordinata non cambia più niente")
+        # Riordinare non cambia il mondo.
+        with sorgenti_vive({p: t for p, t in scritte.items() if p != storia}):
+            dopo = analizza_outline(storia, scritte[storia])
+        _check(dopo["ok"] and sorted(x["name"] for x in dopo["rooms"]) == sorted(x["name"] for x in out["rooms"])
+               and sorted(x["name"] for x in dopo["objects"]) == sorted(x["name"] for x in out["objects"]),
+               "dopo il riordino la storia compila e ha le stesse stanze e gli stessi oggetti")
+
+        # Rinomina: cambia genere, adatta le preposizioni, non tocca i testi.
+        r = rinomina_entita(storia, None, "La cucina", "Il tinello")
+        _check(r["ok"] and r["replaced"] == 5, "la cucina compare in 5 frasi e le cambia tutte")
+        ogg = next(f["text"] for f in r["files"] if f["path"].endswith("oggetti.fav"))
+        sto = next(f["text"] for f in r["files"] if f["path"].endswith("storia.fav"))
+        _check("Il frigo è nel tinello." in ogg, "«nella cucina» diventa «nel tinello» (anche nel file incluso)")
+        _check("Il tinello è una stanza." in sto and "Il tinello collega nord a il salotto." in sto
+               and "La descrizione del tinello è" in sto and "Il giocatore comincia in tinello." in sto,
+               "articolo maiuscolo a inizio frase, preposizioni adattate")
+        _check('"Una cucina fredda."' in sto and any(m["line"] for m in r["mentions"]),
+               "i testi non si toccano; il vecchio nome rimasto è segnalato")
+        r2 = rinomina_entita(storia, None, "La cucina", "L'atrio")
+        sto2 = next(f["text"] for f in r2["files"] if f["path"].endswith("storia.fav"))
+        _check(r2["ok"] and "La descrizione dell'atrio è" in sto2 and "l'atrio" in sto2.lower(),
+               "con un nome che comincia per vocale: «dell'atrio»")
+        _check(not rinomina_entita(storia, None, "La cucina", "Il salotto")["ok"],
+               "un nome già preso è rifiutato")
+        _check(not rinomina_entita(storia, None, "La cucina", "Il tin(ello)")["ok"],
+               "un nome con caratteri strani è rifiutato")
+        _check(not rinomina_entita(storia, None, "La cantina", "Il tinello")["ok"],
+               "un'entità che non c'è è rifiutata")
+        _check(rinomina_entita(storia, None, "La mela", "La pera")["ok"], "si rinominano anche gli oggetti")
+
+        # Riferimenti: che cosa porterebbe via l'eliminazione.
+        rif = riferimenti_entita(storia, None, "La cucina")
+        categorie = [i["category"] for i in rif["items"]]
+        _check(rif["ok"] and rif["kind"] == "stanza" and len(rif["items"]) == 5
+               and {"definizione", "partenza", "uscita", "descrizione", "posizione"} <= set(categorie),
+               "la cucina è citata da 5 frasi di cinque categorie")
+        _check(any(i["span"]["file"].endswith("oggetti.fav") for i in rif["items"]),
+               "ogni frase ha il suo file")
+        gatto = riferimenti_entita(storia, None, "Il gatto")
+        _check(sum(1 for i in gatto["items"] if i["category"] == "dialogo") == 3,
+               "di un personaggio, anche le risposte dei suoi nodi")
+        frigo = riferimenti_entita(storia, None, "Il frigo")
+        _check(any(i["category"] == "regola" for i in frigo["items"]), "le regole che lo citano sono elencate")
+
+
+def test_riordino_di_un_file_singolo_come_prima():
+    print("[Studio 1.1: il riordino del file singolo non è cambiato]")
+    from strumenti_ide import riordina_sorgente
+    with tempfile.TemporaryDirectory() as cartella:
+        p = os.path.join(cartella, "s.fav")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("La torcia è una cosa.\n# la stanza\nLa cucina è una stanza.\nLa torcia è nella cucina.\n")
+        r = riordina_sorgente(p)
+        _check(r["ok"] and r["text"].index("# la stanza") < r["text"].index("La torcia è una cosa."),
+               "le stanze prima degli oggetti, col loro commento")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write('Includi "altro.fav".\nLa cucina è una stanza.\n')
+        _check(not riordina_sorgente(p)["ok"], "con un Includi il vecchio riordino rifiuta ancora")
+
+
 def test_copie_del_motore_nel_sito_allineate():
     print("[1.3.0 L-7: le copie del motore nel sito sono identiche ai moduli]")
     cartella = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -7697,6 +7818,9 @@ def main():
         test_pagina_esportata_con_pulsanti,
         test_sidecar_restituisce_gli_eventi,
         test_parole_e_comandi_per_lo_studio,
+        # [Studio 1.1] storie a più file
+        test_storie_a_piu_file_per_lo_studio,
+        test_riordino_di_un_file_singolo_come_prima,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

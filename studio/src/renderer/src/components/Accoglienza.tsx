@@ -37,7 +37,8 @@ export function Benvenuto(): JSX.Element {
           </button>
         </div>
         <p className="acc-nota">
-          Una storia è un file <code>.fav</code> dentro una cartella. Puoi aprire una cartella che ne contiene già.
+          Una storia è un file <code>.fav</code> dentro una cartella (quando cresce, puoi dividerla in più file).
+          Puoi aprire una cartella che ne contiene già.
         </p>
       </div>
     </div>

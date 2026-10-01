@@ -18,8 +18,14 @@ import type {
   WorldRules,
   WorldVariables,
   WorldDialogues,
-  WorldWords
+  WorldWords,
+  StoryReorderResult,
+  RenameResult,
+  ReferencesResult
 } from '../shared/protocol'
+
+/** I buffer non salvati degli altri file della storia (percorso → testo). */
+type Fonti = Record<string, string>
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
 // Node o al processo figlio: tutto passa per IPC verso il main.
@@ -49,8 +55,8 @@ const api = {
    * Se `source` è dato, compila il buffer live invece del contenuto su disco
    * (gli Includi sono comunque risolti dal disco rispetto alla cartella di `path`).
    */
-  compile(path: string, source?: string): Promise<CompileResult> {
-    return ipcRenderer.invoke('rpc', 'compile', { path, source })
+  compile(path: string, source?: string, sources?: Fonti): Promise<CompileResult> {
+    return ipcRenderer.invoke('rpc', 'compile', { path, source, sources })
   },
   // --- Sessione di gioco (Fase 3) ---
   /**
@@ -58,8 +64,8 @@ const api = {
    * Restituisce l'output iniziale e lo stato; su errore di compilazione,
    * `ok=false` con le diagnostiche d'autore.
    */
-  startGame(path: string, source?: string): Promise<SessionResult> {
-    return ipcRenderer.invoke('rpc', 'session.start', { path, source })
+  startGame(path: string, source?: string, sources?: Fonti): Promise<SessionResult> {
+    return ipcRenderer.invoke('rpc', 'session.start', { path, source, sources })
   },
   /** Invia un comando alla partita attiva (anche il numero/testo di un'opzione di dialogo). */
   sendCommand(command: string): Promise<SessionResult> {
@@ -75,8 +81,8 @@ const api = {
    * Topologia del mondo per la Mappa. Senza `path` usa il mondo della partita
    * attiva; con `path` (+ `source`) compila il file/buffer per un'anteprima.
    */
-  worldGraph(path?: string, source?: string): Promise<WorldGraph> {
-    return ipcRenderer.invoke('rpc', 'world.graph', path ? { path, source } : {})
+  worldGraph(path?: string, source?: string, sources?: Fonti): Promise<WorldGraph> {
+    return ipcRenderer.invoke('rpc', 'world.graph', path ? { path, source, sources } : {})
   },
   /** Stato live della partita attiva (posizione, turno, variabili, inventario, oggetti). */
   worldSnapshot(): Promise<WorldSnapshot> {
@@ -93,24 +99,24 @@ const api = {
    * Senza `path` usa la storia della partita attiva; con `path` (+ `source`)
    * legge il file/buffer live.
    */
-  worldOutline(path?: string, source?: string): Promise<Outline> {
-    return ipcRenderer.invoke('rpc', 'world.outline', path ? { path, source } : {})
+  worldOutline(path?: string, source?: string, sources?: Fonti): Promise<Outline> {
+    return ipcRenderer.invoke('rpc', 'world.outline', path ? { path, source, sources } : {})
   },
   /** [Fase 6c] Modello editabile di regole/eventi con span sorgente. */
-  worldRules(path?: string, source?: string): Promise<WorldRules> {
-    return ipcRenderer.invoke('rpc', 'world.rules', path ? { path, source } : {})
+  worldRules(path?: string, source?: string, sources?: Fonti): Promise<WorldRules> {
+    return ipcRenderer.invoke('rpc', 'world.rules', path ? { path, source, sources } : {})
   },
   /** [Stati] Modello editabile di stati/contatori con span sorgente. */
-  worldVariables(path?: string, source?: string): Promise<WorldVariables> {
-    return ipcRenderer.invoke('rpc', 'world.variables', path ? { path, source } : {})
+  worldVariables(path?: string, source?: string, sources?: Fonti): Promise<WorldVariables> {
+    return ipcRenderer.invoke('rpc', 'world.variables', path ? { path, source, sources } : {})
   },
   /** [Fase 6b] Modello editabile di NPC/dialoghi con span sorgente. */
-  worldDialogues(path?: string, source?: string): Promise<WorldDialogues> {
-    return ipcRenderer.invoke('rpc', 'world.dialogues', path ? { path, source } : {})
+  worldDialogues(path?: string, source?: string, sources?: Fonti): Promise<WorldDialogues> {
+    return ipcRenderer.invoke('rpc', 'world.dialogues', path ? { path, source, sources } : {})
   },
   /** [Studio 1.0] Parole e comandi: verbi d'autore, sinonimi, modo dei comandi. */
-  worldWords(path?: string, source?: string): Promise<WorldWords> {
-    return ipcRenderer.invoke('rpc', 'world.words', path ? { path, source } : {})
+  worldWords(path?: string, source?: string, sources?: Fonti): Promise<WorldWords> {
+    return ipcRenderer.invoke('rpc', 'world.words', path ? { path, source, sources } : {})
   },
   /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
   serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {
@@ -120,9 +126,32 @@ const api = {
   reorderSource(path: string, source?: string): Promise<ReorderResult> {
     return ipcRenderer.invoke('rpc', 'source.reorder', { path, source })
   },
+  /** [Studio 1.1] Riordino canonico di TUTTA la storia (ogni file, Includi compresi). */
+  reorderStory(path: string, source?: string, sources?: Fonti): Promise<StoryReorderResult> {
+    return ipcRenderer.invoke('rpc', 'story.reorder', { path, source, sources })
+  },
+  /** [Studio 1.1] Rinomina una stanza o un oggetto in tutte le frasi che lo citano. */
+  renameEntity(
+    path: string,
+    source: string | undefined,
+    sources: Fonti | undefined,
+    name: string,
+    newName: string
+  ): Promise<RenameResult> {
+    return ipcRenderer.invoke('rpc', 'entity.rename', { path, source, sources, name, newName })
+  },
+  /** [Studio 1.1] Le frasi che citano un'entità (ciò che l'eliminazione porterebbe via). */
+  entityReferences(
+    path: string,
+    source: string | undefined,
+    sources: Fonti | undefined,
+    name: string
+  ): Promise<ReferencesResult> {
+    return ipcRenderer.invoke('rpc', 'entity.references', { path, source, sources, name })
+  },
   /** [Fase 7] Genera l'HTML autoportante della storia (giocabile via Pyodide). */
-  exportGameHtml(path: string, source?: string): Promise<ExportResult> {
-    return ipcRenderer.invoke('rpc', 'game.exportHtml', { path, source })
+  exportGameHtml(path: string, source?: string, sources?: Fonti): Promise<ExportResult> {
+    return ipcRenderer.invoke('rpc', 'game.exportHtml', { path, source, sources })
   },
   /** [Fase 7] Salva su file l'HTML esportato (dialogo nativo). */
   writeExport(html: string, name: string): Promise<{ ok: boolean; path?: string }> {
@@ -149,16 +178,17 @@ const api = {
 
   // --- Finestra di gioco dedicata (stile Godot) ---
   /** [IDE] Apre la finestra di gioco passando il file attivo (e il buffer live). */
-  openGameWindow(path: string, source?: string): Promise<void> {
-    return ipcRenderer.invoke('game:open', { path, source })
+  openGameWindow(path: string, source?: string, sources?: Fonti): Promise<void> {
+    return ipcRenderer.invoke('game:open', { path, source, sources })
   },
   /** [finestra di gioco] Recupera il payload di lancio (path + buffer) dall'IDE. */
-  gameLaunchPayload(): Promise<{ path: string; source?: string } | null> {
+  gameLaunchPayload(): Promise<{ path: string; source?: string; sources?: Fonti } | null> {
     return ipcRenderer.invoke('game:launchPayload')
   },
   /** [finestra di gioco] Notifica di rilancio (l'IDE ha ripremuto ▶ Gioca). */
-  onGameRelaunch(cb: (payload: { path: string; source?: string } | null) => void): () => void {
-    const handler = (_e: unknown, payload: { path: string; source?: string } | null): void => cb(payload)
+  onGameRelaunch(cb: (payload: { path: string; source?: string; sources?: Fonti } | null) => void): () => void {
+    const handler = (_e: unknown, payload: { path: string; source?: string; sources?: Fonti } | null): void =>
+      cb(payload)
     ipcRenderer.on('game-relaunch', handler)
     return () => ipcRenderer.removeListener('game-relaunch', handler)
   },
@@ -203,9 +233,26 @@ const api = {
   newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
     return ipcRenderer.invoke('project:new')
   },
+  /** [Studio 1.1] «Salva con nome»: il dialogo di sistema, dentro la cartella del progetto. */
+  chooseSavePath(defaultName: string): Promise<string | null> {
+    return ipcRenderer.invoke('dialog:savePath', defaultName)
+  },
+  /**
+   * [Studio 1.1] «Salva il progetto come…»: copia tutta la cartella in una cartella vuota
+   * scelta dall'utente (scrivendo sopra i testi non salvati) e la apre come progetto.
+   */
+  saveProjectAs(
+    overrides: Record<string, string>
+  ): Promise<{ root: string; tree: FileNode[]; oldRoot: string } | null> {
+    return ipcRenderer.invoke('project:copyTo', overrides)
+  },
   /** Ricarica l'albero dei file di un progetto già aperto. */
   refreshTree(root: string): Promise<FileNode[]> {
     return ipcRenderer.invoke('project:tree', root)
+  },
+  /** Dice se un file esiste (dentro il progetto aperto). */
+  pathExists(path: string): Promise<boolean> {
+    return ipcRenderer.invoke('fs:exists', path)
   },
   /** Legge il contenuto testuale di un file. */
   readFile(path: string): Promise<string> {

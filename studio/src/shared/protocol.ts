@@ -315,6 +315,9 @@ export interface Outline {
   objects: OutlineObject[]
   // Direzioni canoniche valide in questo mondo (base + personalizzate dichiarate).
   directions: string[]
+  // [Studio 1.1] Per ogni direzione, la sua opposta (nord↔sud…): serve a riscrivere il
+  // ritorno di un'uscita quando se ne cambia la direzione.
+  oppositeDirections?: Record<string, string>
   // Coppie di proprietà opposte note nel mondo (default + dichiarate dall'autore).
   opposites: OutlinePair[]
   // Span della frase «Il giocatore comincia in X.» (null se assente): permette
@@ -401,6 +404,34 @@ export interface ReorderResult {
   ok: boolean
   text?: string
   reason?: string
+}
+
+// [Studio 1.1] Riordino di TUTTA la storia: ogni file, nel suo file (non scrive niente).
+export interface StoryReorderResult {
+  ok: boolean
+  files: { path: string; text: string; changed: boolean }[]
+  reason?: string | null
+}
+
+// [Studio 1.1] Rinomina di una stanza o di un oggetto in tutte le frasi che lo citano.
+export interface RenameResult {
+  ok: boolean
+  // Solo i file modificati, col testo intero.
+  files: { path: string; text: string }[]
+  replaced: number
+  // Dove il vecchio nome resta dentro un testo (descrizioni, risposte): non si tocca.
+  mentions: { file: string; line: number; text: string }[]
+  reason?: string | null
+}
+
+// [Studio 1.1] Le frasi che citano un'entità: ciò che un'eliminazione porterebbe via.
+export interface ReferencesResult {
+  ok: boolean
+  id?: string
+  kind?: 'stanza' | 'oggetto'
+  name?: string
+  items: { category: string; preview: string; span: OutlineSpan }[]
+  reason?: string | null
 }
 
 // [Fase 7 / packaging] Export della storia come HTML autoportante (Pyodide).

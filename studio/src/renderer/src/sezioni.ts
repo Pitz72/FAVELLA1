@@ -47,7 +47,10 @@ export const SEZIONI: DefSezione[] = [
     titolo: 'Personaggi',
     descrizione: 'Chi vive nella storia e che cosa dice.',
     tasto: '3',
-    sotto: [{ tab: 'dialoghi', titolo: 'Dialoghi', aiuto: 'Personaggi, battute e scelte' }]
+    sotto: [
+      { tab: 'personaggi', titolo: 'Personaggi', aiuto: 'Chi c\u2019è nella storia, dove sta e com\u2019è fatto' },
+      { tab: 'dialoghi', titolo: 'Dialoghi', aiuto: 'Battute e scelte' }
+    ]
   },
   {
     id: 'regole',

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FileNode } from '../../../shared/protocol'
-import { useStudio } from '../store'
+import { useStudio, infoStoria } from '../store'
 import logoStudio from '../assets/favella-studio-logo.svg'
-import { IconaCartella, IconaFreccia, IconaMenu, IconaPlay, IconaSalva } from './Icone'
+import { IconaCartella, IconaFreccia, IconaMenu, IconaPlay, IconaRiordina, IconaSalva } from './Icone'
+import { stessoFile } from '../utils/progetto'
 
 function nomeCartella(root: string | null): string {
   if (!root) return ''
@@ -44,11 +45,38 @@ function SelettoreFile(): JSX.Element | null {
   const tree = useStudio((s) => s.tree)
   const activePath = useStudio((s) => s.activePath)
   const openFile = useStudio((s) => s.openFile)
+  // I file della storia a cui appartiene quello aperto (la radice e i moduli inclusi).
+  const membri = useStudio((s) => JSON.stringify(infoStoria(s)?.membri ?? []))
   const [aperto, setAperto] = useState(false)
   const ref = useChiudiFuori(aperto, () => setAperto(false))
   const file = useMemo(() => fileFav(tree), [tree])
-  const attivo = file.find((f) => f.path === activePath)
+  const dellaStoria = useMemo(() => JSON.parse(membri) as string[], [membri])
+  const attivo = file.find((f) => stessoFile(f.path, activePath))
   if (file.length === 0) return null
+
+  const aDestra = file.filter((f) => !dellaStoria.some((m) => stessoFile(m, f.path)))
+  const interni = dellaStoria
+    .map((m) => file.find((f) => stessoFile(f.path, m)))
+    .filter((f): f is FileNode => !!f)
+
+  const voce = (f: FileNode, principale: boolean): JSX.Element => (
+    <button
+      key={f.path}
+      role="option"
+      aria-selected={stessoFile(f.path, activePath)}
+      className={'menu-item' + (stessoFile(f.path, activePath) ? ' current' : '')}
+      onClick={() => {
+        setAperto(false)
+        void openFile(f)
+      }}
+    >
+      <span>
+        {principale && '★ '}
+        {f.name}
+      </span>
+      {principale && <span className="menu-nota">principale</span>}
+    </button>
+  )
 
   return (
     <div className="menu-wrap" ref={ref}>
@@ -60,25 +88,25 @@ function SelettoreFile(): JSX.Element | null {
         title="Scegli quale file della storia stai modificando"
       >
         <span className="crumb-file-name">{attivo?.name ?? 'Scegli un file…'}</span>
+        {dellaStoria.length > 1 && <span className="crumb-badge">{dellaStoria.length} file</span>}
         <IconaFreccia />
       </button>
       {aperto && (
         <div className="menu menu-left" role="listbox">
-          <div className="menu-title">File della storia</div>
-          {file.map((f) => (
-            <button
-              key={f.path}
-              role="option"
-              aria-selected={f.path === activePath}
-              className={'menu-item' + (f.path === activePath ? ' current' : '')}
-              onClick={() => {
-                setAperto(false)
-                void openFile(f)
-              }}
-            >
-              {f.name}
-            </button>
-          ))}
+          {interni.length > 1 && (
+            <>
+              <div className="menu-title">File di questa storia</div>
+              {interni.map((f, i) => voce(f, i === 0))}
+              {aDestra.length > 0 && <div className="menu-title">Altri file del progetto</div>}
+              {aDestra.map((f) => voce(f, false))}
+            </>
+          )}
+          {interni.length <= 1 && (
+            <>
+              <div className="menu-title">File della storia</div>
+              {file.map((f) => voce(f, false))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -89,11 +117,9 @@ export default function TopBar(): JSX.Element {
   const projectRoot = useStudio((s) => s.projectRoot)
   const activePath = useStudio((s) => s.activePath)
   const isFav = !!activePath?.toLowerCase().endsWith('.fav')
-  const dirty = useStudio((s) => {
-    const f = s.openFiles.find((x) => x.path === s.activePath)
-    return !!f && f.content !== f.savedContent
-  })
-  const saveActive = useStudio((s) => s.saveActive)
+  const daSalvare = useStudio((s) => s.openFiles.filter((f) => f.content !== f.savedContent).length)
+  const multiFile = useStudio((s) => (infoStoria(s)?.membri.length ?? 1) > 1)
+  const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
   const newProject = useStudio((s) => s.newProject)
   const zoom = useStudio((s) => s.zoom)
@@ -102,14 +128,20 @@ export default function TopBar(): JSX.Element {
   const busy = useStudio((s) => s.gameBusy)
   const [menu, setMenu] = useState(false)
   const refMenu = useChiudiFuori(menu, () => setMenu(false))
+  const [salvaMenu, setSalvaMenu] = useState(false)
+  const refSalva = useChiudiFuori(salvaMenu, () => setSalvaMenu(false))
   const st = useStudio.getState
 
-  const voce = (etichetta: string, azione: () => void, opts?: { disabilitata?: boolean; scorciatoia?: string }): JSX.Element => (
+  const voce = (
+    etichetta: string,
+    azione: () => void,
+    opts?: { disabilitata?: boolean; scorciatoia?: string; chiudi?: () => void }
+  ): JSX.Element => (
     <button
       className="menu-item"
       disabled={opts?.disabilitata}
       onClick={() => {
-        setMenu(false)
+        ;(opts?.chiudi ?? (() => setMenu(false)))()
         azione()
       }}
     >
@@ -117,6 +149,8 @@ export default function TopBar(): JSX.Element {
       {opts?.scorciatoia && <kbd>{opts.scorciatoia}</kbd>}
     </button>
   )
+  const voceSalva = (etichetta: string, azione: () => void, scorciatoia?: string, disabilitata = false): JSX.Element =>
+    voce(etichetta, azione, { scorciatoia, disabilitata, chiudi: () => setSalvaMenu(false) })
 
   return (
     <header className="topbar">
@@ -143,14 +177,51 @@ export default function TopBar(): JSX.Element {
       {projectRoot && (
         <>
           <button
-            className={'btn-save' + (dirty ? ' dirty' : '')}
-            onClick={() => void saveActive()}
-            disabled={!dirty}
-            title="Salva il file (Ctrl+S)"
+            className="btn-riordina"
+            onClick={() => void st().riordinaStoria()}
+            disabled={!isFav}
+            title={
+              multiFile
+                ? 'Riordina il testo di tutti i file della storia: stanze, oggetti, regole e dialoghi ognuno al suo posto (Ctrl+Alt+R)'
+                : 'Riordina il testo: stanze, oggetti, regole e dialoghi ognuno al suo posto, senza perdere niente (Ctrl+Alt+R)'
+            }
           >
-            <IconaSalva />
-            {dirty ? 'Salva' : 'Salvato'}
+            <IconaRiordina />
+            Riordina
           </button>
+
+          <div className="menu-wrap btn-salva-gruppo" ref={refSalva}>
+            <button
+              className={'btn-save' + (daSalvare > 0 ? ' dirty' : '')}
+              onClick={() => void saveAll()}
+              disabled={daSalvare === 0}
+              title={daSalvare > 1 ? `Salva i ${daSalvare} file cambiati (Ctrl+S)` : 'Salva (Ctrl+S)'}
+            >
+              <IconaSalva />
+              {daSalvare === 0 ? 'Salvato' : daSalvare > 1 ? `Salva (${daSalvare})` : 'Salva'}
+            </button>
+            <button
+              className={'btn-save btn-save-caret' + (daSalvare > 0 ? ' dirty' : '')}
+              onClick={() => setSalvaMenu((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={salvaMenu}
+              aria-label="Altri modi di salvare"
+              title="Salva con nome, salva il progetto altrove"
+            >
+              <IconaFreccia />
+            </button>
+            {salvaMenu && (
+              <div className="menu menu-right" role="menu">
+                {voceSalva('Salva con nome…', () => void st().salvaConNome(), 'Ctrl+Maiusc+S', !isFav)}
+                {voceSalva('Salva il progetto come…', () => void st().salvaProgettoCome())}
+                <p className="menu-nota-lunga">
+                  «Salva con nome» fa una copia di questo file (dentro il progetto). «Salva il progetto come…» copia
+                  tutta la cartella, storia e moduli, in una cartella nuova e passa a lavorare lì.
+                </p>
+              </div>
+            )}
+          </div>
+
           <button
             className="btn-prova"
             onClick={() => void startGame()}
@@ -181,8 +252,16 @@ export default function TopBar(): JSX.Element {
             {voce('Apri una cartella…', () => void openProject(), { scorciatoia: 'Ctrl+O' })}
             {projectRoot && (
               <>
+                {voce('Salva con nome…', () => void st().salvaConNome(), {
+                  disabilitata: !isFav,
+                  scorciatoia: 'Ctrl+Maiusc+S'
+                })}
+                {voce('Salva il progetto come…', () => void st().salvaProgettoCome())}
                 <div className="menu-title">Storia</div>
-                {voce('Riordina il testo in ordine canonico', () => void st().reorderActive(), { disabilitata: !isFav })}
+                {voce('Riordina il testo', () => void st().riordinaStoria(), {
+                  disabilitata: !isFav,
+                  scorciatoia: 'Ctrl+Alt+R'
+                })}
                 {voce('Esporta come pagina web giocabile…', () => void st().exportGame(), { disabilitata: !isFav })}
                 {voce('Apri il gioco in una finestra a parte', () => st().launchGameWindow(), { disabilitata: !isFav })}
               </>
@@ -208,3 +287,4 @@ export default function TopBar(): JSX.Element {
     </header>
   )
 }
+

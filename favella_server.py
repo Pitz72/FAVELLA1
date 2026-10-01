@@ -45,7 +45,8 @@ try:
     # moduli propri, fuori dal nucleo del compilatore.
     from strumenti_ide import (analizza_outline, analizza_regole, analizza_variabili,
                                analizza_dialoghi, analizza_parole, riordina_sorgente,
-                               serializza_frase)
+                               riordina_storia, rinomina_entita, riferimenti_entita,
+                               sorgenti_vive, serializza_frase)
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
@@ -54,7 +55,7 @@ try:
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.10.0"  # v1.4.2: + pulsanti-verbo ('buttons') accanto a testo ed eventi
+VERSIONE_SIDECAR = "0.11.0"  # Studio 1.1: + sorgenti vive ('sources'), story.reorder, entity.rename, entity.references
 
 
 # ==============================================================================
@@ -126,10 +127,13 @@ class _SessioneGioco:
     nato (per il reset, che rigioca lo stesso testo). [Fase 5] Tiene la 'history':
     uno snapshot per turno (più il comando che l'ha prodotto) per il debugger
     passo-passo dell'IDE, che ne calcola i diff."""
-    def __init__(self, mondo, path, source):
+    def __init__(self, mondo, path, source, sources=None):
         self.mondo = mondo
         self.path = path
         self.source = source
+        # [Studio 1.1] I buffer degli altri file della storia (gli 'Includi') com'erano
+        # all'avvio: il reset rigioca esattamente quel testo, non quello su disco.
+        self.sources = sources
         self.running = True
         self.history = []
 
@@ -227,7 +231,7 @@ def rpc_session_start(params):
                 "errors": [{"message": "Nessuna stanza definita: impossibile "
                                        "avviare il gioco.", "severity": "error"}]}
 
-    _SESSIONE = _SessioneGioco(mondo, percorso, sorgente)
+    _SESSIONE = _SessioneGioco(mondo, percorso, sorgente, params.get("sources"))
     _registra_turno(_SESSIONE, None)  # [Fase 5] stato iniziale nella history
     uscita = _intro(mondo)
     return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
@@ -257,7 +261,10 @@ def rpc_session_reset(_params):
     rigiocata pulita dello stesso mondo)."""
     if _SESSIONE is None:
         raise ValueError("Nessuna partita da riavviare.")
-    return rpc_session_start({"path": _SESSIONE.path, "source": _SESSIONE.source})
+    params = {"path": _SESSIONE.path, "source": _SESSIONE.source,
+              "sources": _SESSIONE.sources}
+    with sorgenti_vive(_SESSIONE.sources):
+        return rpc_session_start(params)
 
 
 def rpc_session_save(_params):
@@ -521,6 +528,37 @@ def rpc_source_reorder(params):
     return riordina_sorgente(percorso, params.get("source"))
 
 
+def rpc_story_reorder(params):
+    """[Studio 1.1] Riordino canonico di TUTTA la storia (ogni file, Includi
+    compresi). Richiede 'path' (il file principale) e, per il buffer non salvato,
+    'source' e 'sources'. Ritorna {ok, files:[{path, text, changed}], reason}: non
+    scrive niente, il chiamante applica i testi che vuole."""
+    percorso = params.get("path")
+    if not percorso:
+        return {"ok": False, "files": [], "reason": "Apri un file .fav per riordinarlo."}
+    return riordina_storia(percorso, params.get("source"))
+
+
+def rpc_entity_rename(params):
+    """[Studio 1.1] Rinomina una stanza o un oggetto in tutte le frasi che lo
+    citano. 'name' è il nome di ora, 'newName' quello nuovo (con l'articolo).
+    Ritorna {ok, files:[{path, text}], replaced, mentions, reason}."""
+    percorso = params.get("path")
+    if not percorso:
+        raise ValueError("Parametro 'path' mancante per 'entity.rename'.")
+    return rinomina_entita(percorso, params.get("source"),
+                           params.get("name", ""), params.get("newName", ""))
+
+
+def rpc_entity_references(params):
+    """[Studio 1.1] Le frasi che citano una stanza o un oggetto: ciò che
+    un'eliminazione porterebbe via. Ritorna {ok, id, kind, name, items, reason}."""
+    percorso = params.get("path")
+    if not percorso:
+        raise ValueError("Parametro 'path' mancante per 'entity.references'.")
+    return riferimenti_entita(percorso, params.get("source"), params.get("name", ""))
+
+
 def rpc_game_export_html(params):
     """[Fase 7 / packaging] Esporta la storia come HTML autoportante (motore +
     storia appiattita, giocabile nel browser via Pyodide). Ritorna {ok, html,
@@ -565,6 +603,9 @@ _METODI = {
     "world.dialogues": rpc_world_dialogues,
     "world.words": rpc_world_words,
     "source.reorder": rpc_source_reorder,
+    "story.reorder": rpc_story_reorder,
+    "entity.rename": rpc_entity_rename,
+    "entity.references": rpc_entity_references,
     "game.exportHtml": rpc_game_export_html,
     "outline.serialize": rpc_outline_serialize,
     "session.history": rpc_session_history,
@@ -614,7 +655,9 @@ def _gestisci_richiesta(richiesta):
     try:
         # Ogni chiamata al motore gira con stdout deviato: anche se il metodo non
         # lo prevede, è una rete di sicurezza contro print() inattesi.
-        with _cattura_stdout():
+        # [Studio 1.1] 'sources' = i buffer non salvati dei file della storia: per la
+        # durata della chiamata il motore li legge al posto del disco.
+        with _cattura_stdout(), sorgenti_vive(params.get("sources")):
             result = funzione(params)
         if id_ is None:
             return None  # notifica: nessuna risposta

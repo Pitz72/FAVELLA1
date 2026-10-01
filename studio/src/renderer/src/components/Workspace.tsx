@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
-import { useStudio } from '../store'
+import { useStudio, infoStoria } from '../store'
 import { defSezione, sezioneDi } from '../sezioni'
+import { nomeFile, stessoFile } from '../utils/progetto'
 import GamePanel from './GamePanel'
 import MapView from './MapView'
 import StateInspector from './StateInspector'
 import DebugPanel from './DebugPanel'
 import ObjectsEditor from './ObjectsEditor'
+import CharactersEditor from './CharactersEditor'
 import RoomEditor from './RoomEditor'
 import RulesEditor from './RulesEditor'
 import VariablesEditor from './VariablesEditor'
@@ -74,7 +76,22 @@ export default function Workspace(): JSX.Element | null {
   const loadDialogues = useStudio((s) => s.loadDialogues)
   const loadWords = useStudio((s) => s.loadWords)
   const gameRunning = useStudio((s) => s.gameRunning)
-  const activeContent = useStudio((s) => s.openFiles.find((f) => f.path === s.activePath)?.content)
+  const revisione = useStudio((s) => s.revisione)
+  const info = useStudio((s) => {
+    const st = infoStoria(s)
+    // Una stringa stabile (non un oggetto nuovo a ogni giro): il pannello si ridisegna solo se cambia la storia.
+    return st ? JSON.stringify({ r: st.radice, m: st.membri }) : ''
+  })
+  const destinazione = useStudio((s) => s.destinazioneNuovi)
+  const activePath = useStudio((s) => s.activePath)
+  const impostaDestinazione = useStudio((s) => s.impostaDestinazioneNuovi)
+  const storia = info ? (JSON.parse(info) as { r: string; m: string[] }) : null
+  const nuoviIn =
+    storia && destinazione && storia.m.some((m) => stessoFile(m, destinazione))
+      ? destinazione
+      : storia && activePath && storia.m.some((m) => stessoFile(m, activePath))
+        ? activePath
+        : (storia?.r ?? '')
 
   // Il lato della Prova effettivamente visibile (per sapere che cosa ricaricare).
   const latoProva = tab === 'stato' || tab === 'debug' ? tab : provaLato
@@ -84,6 +101,10 @@ export default function Workspace(): JSX.Element | null {
   useEffect(() => {
     if (tab === 'mappa') void loadGraph()
     if (tab === 'oggetti' || tab === 'stanze') void loadOutline()
+    if (tab === 'personaggi') {
+      void loadOutline()
+      void loadDialogues()
+    }
     if (tab === 'regole') void loadRules()
     if (tab === 'stati') void loadVariables()
     if (tab === 'dialoghi') void loadDialogues()
@@ -104,7 +125,7 @@ export default function Workspace(): JSX.Element | null {
       void loadOutline()
     }, 500)
     return () => clearTimeout(t)
-  }, [tab, activeContent, gameRunning, loadGraph, loadOutline])
+  }, [tab, revisione, gameRunning, loadGraph, loadOutline])
 
   if (tab === null) return null
   const sezione = defSezione(sezioneDi(tab))
@@ -136,6 +157,24 @@ export default function Workspace(): JSX.Element | null {
         )}
 
         <div className="ws-spacer" />
+
+        {/* Con una storia a più file: dove vanno le cose nuove. */}
+        {!inProva && storia && storia.m.length > 1 && (
+          <label
+            className="ws-dove"
+            title="Le stanze, gli oggetti e le frasi nuove si scrivono in questo file. Quelle già scritte si cambiano nel file in cui stanno."
+          >
+            <span>Le cose nuove vanno in</span>
+            <select value={nuoviIn} onChange={(e) => impostaDestinazione(e.target.value)}>
+              {storia.m.map((m) => (
+                <option key={m} value={m}>
+                  {nomeFile(m)}
+                  {m === storia.r ? ' (principale)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {!inProva && (
           <label className="switch" title="Mostra il testo della storia accanto a questo pannello">
@@ -169,6 +208,7 @@ export default function Workspace(): JSX.Element | null {
             <>
               {tab === 'mappa' && <MapView editable />}
               {tab === 'oggetti' && <ObjectsEditor />}
+              {tab === 'personaggi' && <CharactersEditor />}
               {tab === 'stanze' && <RoomEditor />}
               {tab === 'regole' && <RulesEditor />}
               {tab === 'stati' && <VariablesEditor />}

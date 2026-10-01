@@ -2,6 +2,7 @@ import { dialog, ipcMain, BrowserWindow } from 'electron'
 import { readdir, readFile, writeFile, rename, stat } from 'fs/promises'
 import { join, basename, dirname, resolve, sep } from 'path'
 import type { FileNode, OpenedProject } from '../shared/protocol'
+import { copiaProgetto, cartellaVuota, staDentro } from './copia'
 
 // Cartelle da non mostrare mai nell'albero del progetto.
 const IGNORATE = new Set([
@@ -106,6 +107,91 @@ export function registraFileSystemIPC(): void {
       const root = dirname(file)
       projectRoot = root
       return { root, tree: await costruisciAlbero(root), openPath: file }
+    }
+  )
+
+  // «Salva con nome»: il dialogo di sistema, aperto nella cartella del progetto. Il file
+  // deve restare DENTRO il progetto (altrimenti la scrittura sarebbe negata e gli
+  // «Includi» relativi si romperebbero): per una copia altrove c'è «Salva il progetto come…».
+  ipcMain.handle('dialog:savePath', async (e, nomeProposto: string): Promise<string | null> => {
+    if (!projectRoot) return null
+    const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Salva con nome',
+      defaultPath: join(projectRoot, nomeProposto || 'storia.fav'),
+      filters: [{ name: 'Storia FAVELLA', extensions: ['fav'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    let file = res.filePath
+    if (!file.toLowerCase().endsWith('.fav')) {
+      file += '.fav'
+      // Il dialogo ha già chiesto conferma per il nome scelto, non per quello con l'estensione.
+      try {
+        await stat(file)
+        const r = await dialog.showMessageBox(win!, {
+          type: 'question',
+          buttons: ['Sostituisci', 'Annulla'],
+          defaultId: 1,
+          cancelId: 1,
+          title: 'Salva con nome',
+          message: `«${basename(file)}» esiste già. Lo sostituisco?`
+        })
+        if (r.response !== 0) return null
+      } catch {
+        /* non esiste: nessuna conferma da chiedere */
+      }
+    }
+    if (!dentroIlProgetto(file)) {
+      await dialog.showMessageBox(win!, {
+        type: 'info',
+        title: 'Salva con nome',
+        message: 'Scegli un posto dentro la cartella del progetto.',
+        detail:
+          'Per salvare una copia della storia in un’altra cartella usa «Salva il progetto come…»: ' +
+          'copia tutti i file della storia in una cartella nuova e la apre.'
+      })
+      return null
+    }
+    return file
+  })
+
+  // «Salva il progetto come…»: copia tutta la cartella in una cartella nuova (o vuota) e
+  // passa a lavorare lì. I testi non salvati arrivano dal renderer (`testi`) e finiscono
+  // nella COPIA: il progetto di partenza resta com'era sul disco.
+  ipcMain.handle(
+    'project:copyTo',
+    async (e, testi: Record<string, string>): Promise<{ root: string; tree: FileNode[]; oldRoot: string } | null> => {
+      if (!projectRoot) return null
+      const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+      const res = await dialog.showOpenDialog(win!, {
+        title: 'Salva il progetto come… — scegli una cartella nuova o vuota',
+        buttonLabel: 'Salva qui',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (res.canceled || res.filePaths.length === 0) return null
+      const destinazione = res.filePaths[0]
+      if (staDentro(projectRoot, destinazione)) {
+        await dialog.showMessageBox(win!, {
+          type: 'info',
+          title: 'Salva il progetto come…',
+          message: 'La cartella di destinazione è dentro questo stesso progetto.',
+          detail: 'Scegline una fuori: crea una cartella nuova e scegli quella.'
+        })
+        return null
+      }
+      if (!(await cartellaVuota(destinazione))) {
+        await dialog.showMessageBox(win!, {
+          type: 'info',
+          title: 'Salva il progetto come…',
+          message: 'La cartella scelta non è vuota.',
+          detail: 'Per non sovrascrivere niente, scegli una cartella vuota o creane una nuova.'
+        })
+        return null
+      }
+      const oldRoot = projectRoot
+      await copiaProgetto(oldRoot, destinazione, testi)
+      projectRoot = destinazione
+      return { root: destinazione, tree: await costruisciAlbero(destinazione), oldRoot }
     }
   )
 

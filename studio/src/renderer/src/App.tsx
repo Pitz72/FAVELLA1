@@ -22,15 +22,15 @@ interface Toast {
 export default function App(): JSX.Element {
   const setLexicon = useStudio((s) => s.setLexicon)
   const setSidecarStatus = useStudio((s) => s.setSidecarStatus)
-  const saveActive = useStudio((s) => s.saveActive)
   const saveAll = useStudio((s) => s.saveAll)
+  const salvaConNome = useStudio((s) => s.salvaConNome)
+  const riordinaStoria = useStudio((s) => s.riordinaStoria)
   const openProject = useStudio((s) => s.openProject)
   const compileActive = useStudio((s) => s.compileActive)
   const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
-  const activeContent = useStudio((s) =>
-    s.openFiles.find((f) => f.path === s.activePath)?.content
-  )
+  // Sale a ogni cambio del testo (digitato o fatto da un pannello, in qualunque file della storia).
+  const revisione = useStudio((s) => s.revisione)
   const sidecarStatus = useStudio((s) => s.sidecarStatus)
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -92,15 +92,15 @@ export default function App(): JSX.Element {
     return unsub
   }, [loadLexicon, pushToast, setSidecarStatus])
 
-  // Auto-compile (Fase 2): compila il buffer attivo all'apertura, a ogni modifica
-  // (debounced) e quando il motore diventa pronto. Diagnostica sempre fresca senza
-  // bisogno di salvare; gli Includi sono risolti dal disco.
+  // Auto-compile (Fase 2): compila la storia (il file principale coi suoi moduli, sui
+  // buffer aperti) all'apertura, a ogni modifica (debounced) e quando il motore diventa
+  // pronto. Diagnostica sempre fresca senza bisogno di salvare.
   useEffect(() => {
     if (!activePath || !activePath.toLowerCase().endsWith('.fav')) return
     if (sidecarStatus !== 'ready') return
     const t = setTimeout(() => void compileActive(), 600)
     return () => clearTimeout(t)
-  }, [activePath, activeContent, sidecarStatus, compileActive])
+  }, [activePath, revisione, sidecarStatus, compileActive])
 
   // Guardia «modifiche non salvate» in uscita: quando il main chiede di chiudere,
   // se ci sono file sporchi mostra il dialogo nativo Salva/Non salvare/Annulla.
@@ -133,8 +133,9 @@ export default function App(): JSX.Element {
     return unsub
   }, [])
 
-  // Scorciatoie globali: Ctrl+S salva, Ctrl+Maiusc+S salva tutto, Ctrl+O apre una cartella,
-  // F5 prova la storia, Ctrl+1…5 cambia sezione, Ctrl +/−/0 la grandezza dell'interfaccia.
+  // Scorciatoie globali: Ctrl+S salva (tutti i file cambiati), Ctrl+Maiusc+S salva con nome,
+  // Ctrl+O apre una cartella, Ctrl+Alt+R riordina il testo, F5 prova la storia, Ctrl+1…5
+  // cambia sezione, Ctrl +/−/0 la grandezza dell'interfaccia.
   const startGame = useStudio((s) => s.startGame)
   const setSezione = useStudio((s) => s.setSezione)
   const setZoom = useStudio((s) => s.setZoom)
@@ -143,8 +144,12 @@ export default function App(): JSX.Element {
       const ctrl = e.ctrlKey || e.metaKey
       if (ctrl && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        if (e.shiftKey) void saveAll()
-        else void saveActive()
+        if (e.shiftKey) void salvaConNome()
+        else void saveAll()
+      }
+      if (ctrl && e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        void riordinaStoria()
       }
       if (ctrl && e.key.toLowerCase() === 'o') {
         e.preventDefault()
@@ -175,7 +180,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveActive, saveAll, openProject, startGame, setSezione, setZoom])
+  }, [saveAll, salvaConNome, riordinaStoria, openProject, startGame, setSezione, setZoom])
 
   const projectRoot = useStudio((s) => s.projectRoot)
   const sezione = sezioneDi(rightTab)

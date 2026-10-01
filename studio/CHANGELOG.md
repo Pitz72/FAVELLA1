@@ -4,6 +4,48 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [1.1.0] — 2026-10-02 — Tutto si può creare e cambiare dai pannelli
+
+Dopo l'uso vero della 1.0: ciò che c'era solo nel testo ora c'è anche nei pannelli, le storie
+a più file si capiscono, e il comando che mette in ordine il testo si trova.
+
+### Aggiunto
+- **Personaggi** (Personaggi → prima scheda): si crea un personaggio da zero (nome, dove sta,
+  com'è fatto), lo si sposta, gli si dà una descrizione e altri nomi, e da lì si arriva al suo
+  dialogo. Prima i personaggi si potevano solo promuovere da un oggetto esistente.
+- **Rinomina ed elimina** per stanze, oggetti e personaggi. «Rinomina» cambia il nome in *tutte*
+  le frasi che lo citano (anche negli altri file), adatta le preposizioni se cambia il genere
+  («nella cucina» → «nel tinello») e non tocca i testi; se il vecchio nome resta dentro una
+  descrizione, lo segnala. «Elimina» mostra prima le frasi che se ne vanno con l'elemento.
+- **Uscite modificabili dalla stanza e dalla mappa.** Nel pannello Stanze ogni uscita ha la
+  sua direzione e la sua destinazione da cambiare, si toglie, se ne aggiunge una (anche con una
+  direzione nuova). Sulla Mappa un clic su una freccia cambia o toglie la connessione, un clic su
+  una stanza apre la scheda delle sue uscite. Il ritorno dall'altra stanza si riscrive da solo.
+- **Nuova stanza già collegata** a un'altra, e **nuovo oggetto/personaggio già in una stanza**.
+- **Riordina** è un pulsante in barra (e Ctrl+Alt+R), non più una voce nascosta nel menu: mette
+  stanze, oggetti, regole e dialoghi ognuno al suo posto, senza perdere niente. **Ora anche per le
+  storie a più file**: ogni file si riordina nel suo file, con gli `Includi` in cima.
+- **Salva con nome** (Ctrl+Maiusc+S) e **Salva il progetto come…** (copia tutta la cartella in una
+  cartella nuova e passa a lavorare lì). Il pulsante Salva dice quanti file sono cambiati (Ctrl+S
+  salva tutti).
+- **Storie a più file, chiare.** Il pannello «La storia» nell'Esplora mostra il file principale e i
+  moduli inclusi; **Nuovo file** crea un file e lo include; **Includi un file…** ne aggiunge uno che
+  c'è già; la × lo toglie dalla storia. Un «?» spiega come si divide una storia. Dai pannelli, le
+  cose nuove vanno nel file scelto in alto («Le cose nuove vanno in…»); quelle già scritte si
+  cambiano nel file in cui stanno.
+
+### Cambiato
+- **Provare, compilare, esportare e leggere il mondo lavorano sempre sulla storia intera** (il file
+  principale coi suoi moduli), qualunque file sia aperto, e sui testi *non ancora salvati* di ogni
+  file (prima gli `Includi` si leggevano sempre dal disco).
+- I problemi in un file incluso si aprono saltando a quel file.
+- **Niente più barra dei menu** dell'app (File, Modifica…): non faceva niente. Su macOS resta il
+  minimo di sistema (copia, incolla, esci).
+- Le frasi «collega» scritte dai pannelli hanno l'articolo minuscolo a metà frase
+  («Il salotto collega sud a la cantina.»).
+- Sidecar 0.11.0: nuovi metodi `story.reorder`, `entity.rename`, `entity.references`; ogni metodo
+  accetta `sources` (i buffer non salvati dei file della storia). Motore invariato: **1.4.2**.
+
 ## [1.0.0] — 2026-10-01 — La prima versione ufficiale
 
 Favella Studio esce dallo stato di esperimento. Un'interfaccia ripensata da cima a fondo,
