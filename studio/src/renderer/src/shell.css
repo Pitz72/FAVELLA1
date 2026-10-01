@@ -1803,3 +1803,9 @@ input[type='radio'] {
   padding: 12px 14px 14px;
   overflow-y: auto;
 }
+
+/* I pulsanti dei moduli non vanno a capo («+ nome» in due righe). */
+.modal-btn,
+.objed-add button {
+  white-space: nowrap;
+}

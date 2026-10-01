@@ -46,6 +46,8 @@ a più file si capiscono, e il comando che mette in ordine il testo si trova.
 - Sidecar 0.11.0: nuovi metodi `story.reorder`, `entity.rename`, `entity.references`; ogni metodo
   accetta `sources` (i buffer non salvati dei file della storia). Motore invariato: **1.4.2**.
 
+---
+
 ## [1.0.0] — 2026-10-01 — La prima versione ufficiale
 
 Favella Studio esce dallo stato di esperimento. Un'interfaccia ripensata da cima a fondo,
