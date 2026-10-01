@@ -6,8 +6,8 @@
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.4.0";
-export const VERSION_LABEL = "v1.4.0 — Scrivi o tocca";
+export const VERSION = "1.4.1";
+export const VERSION_LABEL = "v1.4.1 — Scrivi o tocca";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
@@ -42,10 +42,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.1";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.1-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.1-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.1-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -156,10 +156,10 @@ export const NEWS: NewsItem[] = [
   },
   {
     tag: "Galleria",
-    date: "Settembre 2026",
+    date: "Ottobre 2026",
     emphasis: "primary",
-    title: "Il Viaggiatore diventa un gioco: 1.0.0 per Windows e Linux",
-    body: "Il Viaggiatore era nato come esperimento, una storia lunga scritta in FAVELLA per vedere fin dove il motore regge. Adesso è un gioco completo, con un repository e una release tutti suoi. Sette zone e trentanove luoghi di un sud rimasto senz'acqua, tredici personaggi, sei finali. Si comincia da un trailer montato sulla colonna sonora originale. I salvataggi sono sei, più uno automatico, e si fanno con F5 e F9; ognuno conserva un'impronta dello stato, così al caricamento il gioco controlla di aver ricostruito proprio la partita che avevi lasciato. L'installer per Windows e l'AppImage per Linux si aggiornano da soli quando esce una versione nuova; per chi preferisce ci sono anche la versione portatile per Windows e il pacchetto .deb. Il codice è sotto licenza MIT; storia, testi, musica e grafica sotto CC BY-SA 4.0. Qui sul sito, nella Galleria, resta la versione da provare nel browser.",
+    title: "Il Viaggiatore 1.11.0: la versione definitiva, per Windows e Linux",
+    body: "Il Viaggiatore era nato come esperimento, una storia lunga scritta in FAVELLA per vedere fin dove il motore regge. Adesso è un gioco completo, con un repository e una release tutti suoi. Sette zone e trentanove luoghi di un sud rimasto senz'acqua, quattordici personaggi, sei finali. Si comincia da un trailer montato sulla colonna sonora originale. Dalla 1.11.0 la voce si sparge: ciò che qualcuno ti ha detto in faccia, o il bluff che hai tentato, arriva alle orecchie di altri, e i pulsanti compongono i gesti senza svelare le soluzioni. I salvataggi sono sei, più uno automatico, e si fanno con F5 e F9; ognuno conserva un'impronta dello stato, così al caricamento il gioco controlla di aver ricostruito proprio la partita che avevi lasciato. L'installer per Windows e l'AppImage per Linux si aggiornano da soli quando esce una versione nuova; per chi preferisce ci sono anche la versione portatile per Windows e il pacchetto .deb. Il codice è sotto licenza MIT; storia, testi, musica e grafica sotto CC BY-SA 4.0. Qui sul sito, nella Galleria, resta la versione da provare nel browser.",
     cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
   },
   {
