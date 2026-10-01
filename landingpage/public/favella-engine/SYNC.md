@@ -6,7 +6,7 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ✅ **STATO AL 2026-10-01: motore 1.4.1 nel repository; il sito ridistribuito (2026-09-26) è ancora alla 1.4.0.**
+> ✅ **STATO AL 2026-10-01: motore 1.4.1, sito ridistribuito il 2026-10-01 (2.6.0).**
 > I cinque moduli in `engine/` sono il motore **1.4.1**: il motore parla per
 > eventi e propone i pulsanti-verbo, e `src/lib/favellaRuntime.ts` li usa
 > (cassette-gioco con i pulsanti, `src/components/PulsantiVerbo.tsx`). Sono
@@ -16,7 +16,7 @@ progetto FAVELLA 1.
 > fallisce se queste copie non sono identiche ai sorgenti, un altro
 > (`test_elenchi_dei_moduli_del_motore_allineati`) se gli elenchi dei moduli di
 > sito, esperimento e validatore non coincidono. `scripts/valida_checkpoint.py`:
-> 53/53. `src/constants.tsx` ha `ENGINE_VERSION` 1.4.1 ma `VERSION` e i link di download restano alla release v1.4.0 (GitHub e PyPI) finché non esce la 1.4.1.
+> 53/53. `src/constants.tsx` punta alla release v1.4.1 (GitHub e PyPI). `galleria/il-viaggiatore/` e `esperimento/` sono *Il Viaggiatore* 1.11.0.
 > `galleria/il-viaggiatore/` richiede almeno la 1.1.0.
 
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
