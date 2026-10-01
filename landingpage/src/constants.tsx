@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.1)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.2)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.4.1";
-export const VERSION_LABEL = "v1.4.1 — Scrivi o tocca";
+export const VERSION = "1.4.2";
+export const VERSION_LABEL = "v1.4.2 — Scrivi o tocca";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.4.1";
+export const ENGINE_VERSION = "1.4.2";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -33,7 +33,8 @@ export const SITE_URL = "https://favella.eu";
 // · 2.5.0 = motore 1.4.0: pulsanti-verbo nelle cassette-gioco, manuale a 95 pp.
 // · 2.6.0 = motore 1.4.1 (quattro difetti trovati giocando Il Viaggiatore),
 //   manuale aggiornato, /esperimento e galleria con Il Viaggiatore 1.11.0.
-export const SITE_VERSION = "2.6.0";
+// · 2.6.1 = motore 1.4.2: «usa X su Y» in più modi, «look».
+export const SITE_VERSION = "2.6.1";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -42,10 +43,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.1";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.1-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.1-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.1-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.2";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.2-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.2-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.2-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -483,7 +484,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.4.1**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.4.2**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -616,7 +617,7 @@ Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.1**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.2**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
