@@ -4,6 +4,7 @@
 // =============================================================================
 
 #import "fav.typ": fav, fav-inline, fav-colors
+#import "copertina-arte.typ": fronte, retro
 
 // --- PALETTE DI MARCA (da landingpage/tailwind.config.js) ---------------------
 #let c = (
@@ -37,78 +38,16 @@
 #let _capnum = counter("fav-capitolo")
 
 // =============================================================================
-// COPERTINA — pagina a vivo, navy, fedele al mockup originale
+// COPERTINA — pagina a vivo (3ª edizione)
 // =============================================================================
-// Copertina dell'ebook (pagina singola, a piena pagina) nello stile premium del
-// banner v1.0.0: fondo navy diagonale, aloni radiali, graffe-filigrana, pulviscolo,
-// logo hero, wordmark in gradiente, versione nel gradiente di marca.
-#let copertina(versione: "v1.0.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = page(
-  margin: 0pt,
-  fill: gradient.linear(rgb("#081120"), rgb("#050b16"), rgb("#03070f"), angle: 145deg),
-  header: none,
-  footer: none,
+// Copertina dell'ebook: pagina singola a tutta pagina. Il disegno è lo stesso della
+// copertina di stampa (vedi lib/copertina-arte.typ).
+#let copertina(versione: "v1.4.1", autore: "Simone Pizzi", edizione: "Terza edizione · 2026") = page(
+  margin: 0pt, fill: none, header: none, footer: none,
 )[
-  #let ver = versione.replace("v", "")
-  #let titleGrad = gradient.linear(rgb("#ffffff"), rgb("#c4d8ea"), angle: 90deg)
-  #let brandGrad = gradient.linear(c.cyan, c.teal, c.emerald, c.amber)
-
-  // Aloni radiali (ciano dietro il logo, teal dietro il titolo)
-  #place(top + left, dx: 0pt, dy: 0pt)[
-    #rect(width: 100%, height: 100%, stroke: none, fill: gradient.radial(
-      c.cyan.transparentize(74%), c.cyan.transparentize(100%), center: (50%, 22%), radius: 56%))
-  ]
-  #place(top + left, dx: 0pt, dy: 0pt)[
-    #rect(width: 100%, height: 100%, stroke: none, fill: gradient.radial(
-      c.teal.transparentize(88%), c.teal.transparentize(100%), center: (50%, 46%), radius: 48%))
-  ]
-  // Graffe-filigrana ai bordi
-  #place(horizon + left, dx: -0.55in, dy: 0pt)[
-    #text(font: font-display, weight: 800, size: 760pt, fill: c.teal.transparentize(95%))[\{]
-  ]
-  #place(horizon + right, dx: 0.55in, dy: 0pt)[
-    #text(font: font-display, weight: 800, size: 760pt, fill: c.teal.transparentize(95%))[\}]
-  ]
-  // Pulviscolo stellare
-  #let star(fx, fy, r, op) = place(top + left, dx: fx * 100%, dy: fy * 100%)[
-    #circle(radius: r, fill: rgb("#9fe9f5").transparentize(op), stroke: none)
-  ]
-  #star(0.16, 0.10, 1.4pt, 78%)
-  #star(0.85, 0.14, 1.6pt, 72%)
-  #star(0.78, 0.33, 1.2pt, 80%)
-  #star(0.12, 0.52, 1.3pt, 82%)
-  #star(0.88, 0.60, 1.4pt, 80%)
-  // Vignettatura
-  #place(top + left, dx: 0pt, dy: 0pt)[
-    #rect(width: 100%, height: 100%, stroke: none, fill: gradient.radial(
-      rgb("#000000").transparentize(100%), rgb("#000000").transparentize(48%), center: (50%, 48%), radius: 78%))
-  ]
-
-  // Blocco superiore: logo + titolo
-  #place(top + center, dx: 0pt, dy: 0.8in)[
-    #box(width: 84%)[
-      #align(center)[
-        #image("../assets/logo-hero.png", width: 3.3in)
-        #v(0.34in)
-        #text(font: font-display, size: 12pt, weight: 600, tracking: 5.5pt, fill: c.cyan-bright)[MOTORE DI NARRATIVA INTERATTIVA]
-        #v(6mm)
-        #text(font: font-display, size: 54pt, weight: 800, tracking: 1pt, fill: titleGrad)[FAVELLA 1]
-        #v(3mm)
-        #text(font: font-display, size: 30pt, weight: 800, tracking: 2pt, fill: brandGrad)[#ver]
-        #v(5mm)
-        #box(width: 46mm, line(length: 100%, stroke: 2pt + brandGrad))
-        #v(6mm)
-        #text(font: font-display, size: 20pt, weight: 600, fill: rgb("#dceaf6"))[Manuale di Programmazione]
-      ]
-    ]
-  ]
-  // Autore + edizione, in basso
-  #place(bottom + center, dx: 0pt, dy: -0.8in)[
-    #align(center)[
-      #text(font: font-display, size: 12.5pt, weight: 500, fill: rgb("#cfe0ee"))[#autore]
-      #v(3mm)
-      #text(font: font-display, size: 9pt, weight: 500, tracking: 1.4pt, fill: rgb("#7c91a6"))[#upper(edizione)]
-    ]
-  ]
+  #layout(size => fronte(size.width, size.height,
+    ins: (top: 40pt, right: 36pt, bottom: 44pt, left: 36pt),
+    versione: versione, edizione: edizione, autore: autore))
 ]
 
 // =============================================================================
@@ -117,7 +56,7 @@
 // Frontespizio interno (pagina bianca): rispecchia ORDINE e CONTENUTI della
 // copertina (occhiello «MOTORE…», FAVELLA 1, 1.0.0, linea, Manuale di Programmazione),
 // adattati alla stampa interna — testo scuro su bianco, accenti di marca.
-#let frontespizio(versione: "v1.0.0", edizione: "Seconda edizione · 2026", autore: "Simone Pizzi") = {
+#let frontespizio(versione: "v1.4.1", edizione: "Terza edizione · 2026", autore: "Simone Pizzi") = {
   let ver = versione.replace("v", "")
   let brandGrad = gradient.linear(c.cyan-dark, c.teal, c.emerald, c.amber)
   page(header: none, footer: none)[
@@ -163,7 +102,7 @@
 
 // Colophon → PAGINA DEI DIRITTI all'italiana (verso del frontespizio, p2).
 // Apre subito dopo il frontespizio: niente pagebreak iniziale qui.
-#let colophon(versione: "v1.0.0", autore: "Simone Pizzi", edizione: "Seconda edizione · 2026") = {
+#let colophon(versione: "v1.4.1", autore: "Simone Pizzi", edizione: "Terza edizione · 2026") = {
   page(header: none, footer: none)[
     #v(1fr)
     #align(center)[

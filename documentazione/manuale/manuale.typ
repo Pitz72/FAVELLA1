@@ -1,8 +1,7 @@
 #import "lib/manuale-template.typ": *
 
-// Versione del motore ed etichetta d'edizione: un solo punto di verità.
-#let MOTORE = "v1.4.1"
-#let EDIZIONE = "Seconda edizione · 2026"
+// Versione del motore ed etichetta d'edizione: un solo punto di verità (lib/edizione.typ).
+#import "lib/edizione.typ": MOTORE, EDIZIONE
 
 // Due tirature dalla stessa sorgente:
 //  • digitale (default) — include la copertina navy a pagina intera;

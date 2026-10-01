@@ -3,7 +3,7 @@
 Sorgente del manuale d'autore in **PDF tipografico**, generato con
 [Typst](https://typst.app). Focalizzato *esclusivamente sul linguaggio*; ogni
 costrutto è illustrato con esempi reali tratti dalla storia guida **«La Casa di Via
-Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Seconda
+Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Terza
 edizione · 2026**, allineata al motore **v1.4.1** (il linguaggio è completo e
 definitivo: vedi il [CHANGELOG](../../CHANGELOG.md)).
 
@@ -58,6 +58,8 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 |---|---|
 | `manuale.typ` | Documento principale: fronte del libro + capitoli (toggle copertina via `--input kdp=1`). |
 | `capitoli/` | I 21 capitoli, un file `.typ` ciascuno. |
+| `lib/edizione.typ` | **Versione del motore ed etichetta d'edizione** (`MOTORE`, `EDIZIONE`): l'unico punto da toccare a ogni rilascio o nuova edizione. |
+| `lib/copertina-arte.typ` | Il disegno della copertina (prima, quarta, mappa delle stanze), condiviso da ebook e copertina KDP. |
 | `lib/manuale-template.typ` | Identità tipografica: palette di marca, font, copertina, frontespizio, dedica, colophon, impaginazione, titoli, box (`sintassi`, `tranello`, `prova`, `nota`, `esempio`). |
 | `lib/fav.typ` | Evidenziatore di sintassi `.fav` (`#fav(...)`, `#fav-inline(...)`). |
 | `assets/logo.png` | Marchio `{F1}` ufficiale. |
@@ -68,7 +70,7 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 
 ## Stato
 
-**Completo** (Seconda edizione · 2026): **21 capitoli**, copertina, doppia dedica e
+**Completo** (Terza edizione · 2026): **21 capitoli**, copertina, doppia dedica e
 pagina dei diritti — **95 pagine** (ebook), allineato alla **v1.4.1**. L'ebook è pronto;
 l'interno KDP è rigenerato (colore standard, 96 pagine, multiplo di 4) e la copertina wrap è
 ricalcolata con dorso a 96 pp. (5,49 mm).
