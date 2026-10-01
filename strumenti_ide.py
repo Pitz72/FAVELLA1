@@ -1,5 +1,5 @@
 # strumenti_ide.py
-# Strumenti d'autore di FAVELLA 1 (v1.4.0), costruiti sopra il nucleo del
+# Strumenti d'autore di FAVELLA 1 (v1.4.1), costruiti sopra il nucleo del
 # compilatore: ciò che serve agli editor visuali di Favella Studio e al riordino
 # del sorgente.
 #

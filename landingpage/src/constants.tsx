@@ -1,5 +1,5 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.0)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.1)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
@@ -11,7 +11,7 @@ export const VERSION_LABEL = "v1.4.0 — Scrivi o tocca";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.4.0";
+export const ENGINE_VERSION = "1.4.1";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -31,7 +31,9 @@ export const SITE_URL = "https://favella.eu";
 //   identità visiva, /esperimento risincronizzato col gioco (taccuino, loghi).
 // · 2.4.0 = motore 1.3.0: tutte le criticità dell'analisi corrette.
 // · 2.5.0 = motore 1.4.0: pulsanti-verbo nelle cassette-gioco, manuale a 95 pp.
-export const SITE_VERSION = "2.5.0";
+// · 2.5.1 = motore 1.4.1 (quattro difetti trovati giocando Il Viaggiatore); gli
+//   installer e PyPI restano alla 1.4.0 finché non esce la Release.
+export const SITE_VERSION = "2.5.1";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -115,7 +117,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "parser",
     title: "Un motore solido",
-    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 1097 test, più 50 di collaudo, garantisce ogni costrutto.",
+    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 1115 test, più 50 di collaudo, garantisce ogni costrutto.",
   },
   {
     icon: "open",
@@ -345,7 +347,7 @@ L'intuizione che muove FAVELLA è radicale nella sua semplicità: e se l'italian
 
 Con l'avvento dei Large Language Models quel sogno è diventato un progetto concreto. FAVELLA 1 non è stato scritto in solitudine, ma in un dialogo costante con un'intelligenza artificiale: non un semplice strumento, ma un partner di sviluppo con cui definire le specifiche, esplorare il design della grammatica, generare codice e fare refactoring. Un approccio ibrido che lascia all'autore umano la visione e le decisioni, e accelera tutto il resto.
 
-Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1097 test, più 50 di collaudo.
+Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1115 test, più 50 di collaudo.
 
 Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
 
@@ -481,7 +483,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.4.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.4.1**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -614,7 +616,7 @@ Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.0**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.1**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.

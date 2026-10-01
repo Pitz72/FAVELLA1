@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.4.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.4.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 #
 # [1.4.0 / L-7] Questo è il NUCLEO del compilatore: parole riservate, scanner

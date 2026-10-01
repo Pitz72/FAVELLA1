@@ -6,8 +6,8 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ✅ **STATO AL 2026-09-26: motore 1.4.0, sito ridistribuito il 2026-09-26.**
-> I cinque moduli in `engine/` sono il motore **1.4.0**: il motore parla per
+> ✅ **STATO AL 2026-10-01: motore 1.4.1 nel repository; il sito ridistribuito (2026-09-26) è ancora alla 1.4.0.**
+> I cinque moduli in `engine/` sono il motore **1.4.1**: il motore parla per
 > eventi e propone i pulsanti-verbo, e `src/lib/favellaRuntime.ts` li usa
 > (cassette-gioco con i pulsanti, `src/components/PulsantiVerbo.tsx`). Sono
 > sempre gli stessi cinque file: gli strumenti che la 1.4.0 ha tolto da
@@ -16,7 +16,7 @@ progetto FAVELLA 1.
 > fallisce se queste copie non sono identiche ai sorgenti, un altro
 > (`test_elenchi_dei_moduli_del_motore_allineati`) se gli elenchi dei moduli di
 > sito, esperimento e validatore non coincidono. `scripts/valida_checkpoint.py`:
-> 53/53. `src/constants.tsx` punta alla release v1.4.0 (GitHub e PyPI).
+> 53/53. `src/constants.tsx` ha `ENGINE_VERSION` 1.4.1 ma `VERSION` e i link di download restano alla release v1.4.0 (GitHub e PyPI) finché non esce la 1.4.1.
 > `galleria/il-viaggiatore/` richiede almeno la 1.1.0.
 
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
@@ -83,9 +83,9 @@ Unica dipendenza esterna del motore: **lark** (puro Python, installata a runtime
 con `micropip`, versione PINNATA in `favellaRuntime.ts`). Tutto il resto è
 libreria standard.
 
-## Segnalazioni dal gioco «Il Viaggiatore» (2026-10-01, motore 1.4.0) — RISOLTE nella 1.4.1 (in preparazione, non committata)
+## Segnalazioni dal gioco «Il Viaggiatore» (2026-10-01, motore 1.4.0) — RISOLTE nella 1.4.1 (committate)
 
-> Tutte e quattro sono corrette nel working tree (`gioco.py`, `libreria_azioni.py`,
+> Tutte e quattro sono corrette (`gioco.py`, `libreria_azioni.py`,
 > `compilatore.py`), con 4 test nuovi in `test_linguaggio.py` (1115 passati, 0 falliti) e il
 > `CHANGELOG`. Le copie del sito (`engine/*.fav`) sono risincronizzate. Le voci qui sotto restano
 > come storia: che cosa era sbagliato, e come lo si è visto.
