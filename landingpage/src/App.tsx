@@ -12,6 +12,7 @@ import CoursePage from './pages/CoursePage';
 import CollaboratePage from './pages/CollaboratePage';
 import ProgramPage from './pages/ProgramPage';
 import GalleryPage from './pages/GalleryPage';
+import StudioPage from './pages/StudioPage';
 import LibraryPage from './pages/LibraryPage';
 import DownloadsPage from './pages/DownloadsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -33,6 +34,8 @@ function App() {
         return <CoursePage />;
       case '/programma':
         return <ProgramPage />;
+      case '/studio':
+        return <StudioPage />;
       case '/galleria':
         return <GalleryPage />;
       case '/libreria':
@@ -56,7 +59,7 @@ function App() {
   // propri gradienti radiali, padding interno); le altre restano nel
   // contenitore con padding finché non sono migrate. Aggiungere le rotte a
   // FULL_BLEED man mano che vengono ristilizzate.
-  const FULL_BLEED = new Set(["/", "/progetto", "/aggiornamenti", "/manuale", "/corso", "/programma", "/galleria", "/libreria", "/download", "/collabora"]);
+  const FULL_BLEED = new Set(["/", "/progetto", "/aggiornamenti", "/manuale", "/corso", "/programma", "/studio", "/galleria", "/libreria", "/download", "/collabora"]);
   const fullBleed = FULL_BLEED.has(route);
 
   return (

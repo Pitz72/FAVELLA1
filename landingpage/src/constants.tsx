@@ -34,7 +34,8 @@ export const SITE_URL = "https://favella.eu";
 // · 2.6.0 = motore 1.4.1 (quattro difetti trovati giocando Il Viaggiatore),
 //   manuale aggiornato, /esperimento e galleria con Il Viaggiatore 1.11.0.
 // · 2.6.1 = motore 1.4.2: «usa X su Y» in più modi, «look».
-export const SITE_VERSION = "2.6.1";
+// · 2.7.0 = Favella Studio 1.0 (pagina /studio), FAVELLA 1 dichiarata conclusa.
+export const SITE_VERSION = "2.7.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -55,6 +56,16 @@ export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
 // Sempre l'ultima release: il gioco si aggiorna (1.11.0 col motore FAVELLA 1.4.1).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
+
+// Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
+// Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
+export const STUDIO_VERSION = "1.0.0";
+const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
+export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
+export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
+export const STUDIO_RELEASE_URL = `https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v${STUDIO_VERSION}`;
+export const STUDIO_MAC_URL = "https://github.com/Pitz72/FAVELLA1/blob/main/studio/BUILD-MACOS.md";
+export const STUDIO_SOURCE_URL = "https://github.com/Pitz72/FAVELLA1/tree/main/studio";
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
 export const GITHUB_MANUALE_URL = `${_REPO}/documentazione/manuale`;
@@ -118,7 +129,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "parser",
     title: "Un motore solido",
-    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 1126 test, più 50 di collaudo, garantisce ogni costrutto.",
+    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 1143 test, più 50 di collaudo, garantisce ogni costrutto.",
   },
   {
     icon: "open",
@@ -147,6 +158,22 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "Favella Studio 1.0: l'ambiente di scrittura è qui",
+    body: "Un'app per scrivere la tua avventura senza perderti fra i file. Il testo, le stanze (con una mappa da trascinare), gli oggetti, i personaggi e i loro dialoghi, le regole e le parole del giocatore, e la prova della storia con i pulsanti-verbo: cinque sezioni, nell'ordine in cui si scrive. Ogni modifica dei pannelli si scrive nel testo, che puoi affiancare; la grandezza dell'interfaccia si regola, i contrasti sono alti, tutto si raggiunge da tastiera. Dentro c'è il motore vero del linguaggio, quindi non serve installare Python. È gratuito e open source: l'installer per Windows e l'AppImage per Linux sono su GitHub; chi ha un Mac se lo costruisce da sé con un comando, e le istruzioni sono nel repository.",
+    cta: { label: "Scopri Favella Studio", href: "/studio" },
+  },
+  {
+    tag: "Linguaggio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "FAVELLA 1 è finito: la 1.4.2 è la versione definitiva",
+    body: "Dopo la 1.0 il linguaggio è cresciuto soltanto aggiungendo, una storia vera dopo l'altra: i salvataggi, il collaudo che gioca, le regole «Prima di» e «Dopo di», i pulsanti-verbo. Adesso non manca più niente. La 1.4.2 è l'ultima versione di FAVELLA 1 e non verrà più toccata: il linguaggio, il motore, il manuale (nella sua terza edizione, anche cartacea) e il sito restano com'è. Le storie che scrivi oggi funzioneranno uguali fra dieci anni. Il repository resta aperto, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.",
+    cta: { label: "Scarica FAVELLA 1.4.2", href: "/download" },
+  },
   {
     tag: "Linguaggio",
     date: "Settembre 2026",
@@ -328,14 +355,14 @@ export const DONE_EVOLUTIONS: RoadmapItem[] = [
 // Da fare: la rotta oltre la v1.0.0 — il linguaggio è stabile, cresce il contorno.
 export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
-    area: "ecosistema",
-    title: "La galleria cresce",
-    body: "Le avventure scritte dagli autori, giocabili qui sul sito: scrivi in italiano, condividi un link. Le dieci storie di oggi sono una vetrina, non un tetto.",
+    area: "strumenti",
+    title: "Il lavoro è finito",
+    body: "FAVELLA 1 è completo: la 1.4.2 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio 1.0 e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
-    area: "strumenti",
-    title: "Il cantiere aperto",
-    body: "Che il linguaggio non rompa mai ciò che è stato scritto è una promessa fatta a chi ci scrive: quello che funziona oggi funzionerà anche fra dieci anni. Può crescere, come nella 1.1, solo aggiungendo. Il lavoro che resta sta tutto intorno — l'IDE fermo alla 0.9, le traduzioni, gli strumenti per chi scrive. Il codice è pubblico e sotto MIT: chi ha voglia di raccoglierlo lo trova su GitHub.",
+    area: "ecosistema",
+    title: "Il repository resta, come riferimento",
+    body: "Il codice è pubblico e sotto licenza MIT: chi vuole imparare come si costruisce un linguaggio in italiano, riprendere il lavoro o portarlo altrove lo trova su GitHub. La galleria e la libreria restano a disposizione, e le tue storie continueranno a girare.",
   },
 ];
 
@@ -348,9 +375,9 @@ L'intuizione che muove FAVELLA è radicale nella sua semplicità: e se l'italian
 
 Con l'avvento dei Large Language Models quel sogno è diventato un progetto concreto. FAVELLA 1 non è stato scritto in solitudine, ma in un dialogo costante con un'intelligenza artificiale: non un semplice strumento, ma un partner di sviluppo con cui definire le specifiche, esplorare il design della grammatica, generare codice e fare refactoring. Un approccio ibrido che lascia all'autore umano la visione e le decisioni, e accelera tutto il resto.
 
-Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1126 test, più 50 di collaudo.
+Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1143 test, più 50 di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, e chiunque voglia dare una mano, o addirittura prendere in carico il progetto, è il benvenuto.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, FAVELLA 1 è concluso: la 1.4.2 è la versione definitiva e non verrà più modificata. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -362,6 +389,26 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.4.2",
+    title: "«Usa X su Y» in più modi — la versione definitiva",
+    content: "Da una partita vera: chi non riusciva ad aprire una botola con la chiave aveva provato otto formulazioni sensate, e nessuna agganciava la regola. Adesso «usa la chiave per aprire la botola», «usa la chiave ed apri la botola» e «apri la botola con la chiave» valgono «usa la chiave sulla botola» e trovano la regola dell'autore; dopo «usa la chiave» basta rispondere «la botola» a «Con cosa vuoi usarla?»; «look» è come «guarda». Tutto additivo: le storie delle versioni precedenti girano identiche. È l'ultima versione di FAVELLA 1.",
+  },
+  {
+    version: "1.4.1",
+    title: "Quattro difetti trovati giocando Il Viaggiatore",
+    content: "Una mossa verso un'uscita che non c'è non fa più passare il tempo; «lascia» non ristampa la stanza; «accendi su» e «apri nord» rispondono «Non vedi nulla del genere qui.» invece di un errore interno; e l'avviso di un verbo del motore rimappato dice che cosa faceva la parola, con la nuova forma facoltativa «(voluto)» per dichiarare che il cambio è inteso.",
+  },
+  {
+    version: "1.4.0",
+    title: "I pulsanti-verbo",
+    content: "Chi gioca può comporre la frase toccando un verbo, un oggetto e, se serve, un secondo oggetto, oltre che scriverla: nella pagina esportata e nelle cassette del sito. L'autore sceglie con una frase: «I comandi si scrivono.», «I comandi si scelgono con i pulsanti.», o tutti e due. Sotto il cofano il motore smette di scrivere con print() ed emette un flusso di eventi tipizzati, e il compilatore si divide in nucleo, strumenti per l'IDE ed esportazione.",
+  },
+  {
+    version: "1.3.0",
+    title: "Tutte le criticità dell'analisi, corrette",
+    content: "I refusi non consumano turni, «esci» non chiude la partita per sbaglio, nuovi verbi (apri, chiudi, accendi, spegni, mangia, bevi, aspetta…) e direzioni (su, giù, nordest…), «dai la mela alla guardia», «prendi tutto». Per chi scrive: «se la guardia è in cucina», uscite che si aprono in partita, regole «Prima di» e «Dopo di», «altrimenti», testi condizionali, titolo e prologo, numeri in lettere. Le frasi scritte per la 1.2 restano valide.",
+  },
   {
     version: "1.2.1",
     title: "ANNULLA riporta indietro anche ANCORA",

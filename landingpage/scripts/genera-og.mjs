@@ -45,6 +45,7 @@ const ICONS = {
   aggiornamenti: `<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /><circle cx="12" cy="12" r="3.2" />`,
   manuale: `<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v16H6.5A2.5 2.5 0 0 0 4 21.5z" /><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v16h5.5A2.5 2.5 0 0 1 20 21.5z" />`,
   corso: `<rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="8.5" cy="12" r="2" /><circle cx="15.5" cy="12" r="2" /><path d="M10.5 12h3" /><path d="M6.5 18l1.2-2M17.5 18l-1.2-2" />`,
+  studio: `<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M3 9h6M3 14h6" /><path d="M13 9h5M13 13h3" />`,
   programma: `<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9l3 3-3 3M13 15h4" />`,
   galleria: `<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M10 9l5 3-5 3z" />`,
   libreria: `<path d="M5 4h3v16H5zM10 4h3v16h-3z" /><path d="M15.5 4.5l3 .8-3.5 14.5-3-.8z" />`,
@@ -54,12 +55,13 @@ const ICONS = {
 
 // Definizione delle anteprime: chiave file, nome grande, occhiello, icona, accento.
 const PAGES = [
-  { key: "home", eyebrow: "Il linguaggio è completo · v1.0.0", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
+  { key: "home", eyebrow: "Il linguaggio è completo · v1.4.2", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
   { key: "progetto", eyebrow: "Il progetto", title: "L'italiano è\nil codice", icon: "progetto", accent: C.teal },
   { key: "aggiornamenti", eyebrow: "Novità & Roadmap", title: "A che punto\nsiamo", icon: "aggiornamenti", accent: C.amber },
   { key: "manuale", eyebrow: "Guida rapida", title: "Impara a\nscrivere storie", icon: "manuale", accent: C.cyan },
   { key: "corso", eyebrow: "Corso interattivo · 21 cassette", title: "Il corso\nsu cassetta", icon: "corso", accent: C.emerald },
   { key: "programma", eyebrow: "Laboratorio nel browser", title: "Programma\nsenza installare", icon: "programma", accent: C.cyanBright },
+  { key: "studio", eyebrow: "Favella Studio 1.0", title: "Scrivi senza\nperderti", icon: "studio", accent: C.emerald },
   { key: "galleria", eyebrow: "Galleria di storie", title: "Avventure da\ngiocare", icon: "galleria", accent: C.teal },
   { key: "libreria", eyebrow: "Libreria di moduli", title: "Moduli pronti\nda includere", icon: "libreria", accent: C.emerald },
   { key: "download", eyebrow: "Tutto in un posto solo", title: "Scarica\nFAVELLA 1", icon: "download", accent: C.cyan },

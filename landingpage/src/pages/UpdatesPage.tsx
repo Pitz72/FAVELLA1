@@ -70,11 +70,10 @@ const UpdatesPage = () => {
         <div className="max-w-[760px]">
           <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Novità &amp; Roadmap</p>
           <h1 className="mb-[22px] font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-            Quello che è stato,<br />e quello che <span className="italic text-ink-accent">resta aperto</span>.
+            Quello che è stato,<br />e come <span className="italic text-ink-accent">finisce</span>.
           </h1>
           <p className="font-serif text-[20px] leading-[1.6] text-favella-text-secondary">
-            Il diario del progetto: come FAVELLA è arrivata alla 1.0, che cosa è venuto dopo, e che cosa rimane da
-            fare adesso che il linguaggio cresce soltanto aggiungendo.
+            Il diario del progetto: come FAVELLA è arrivata alla 1.0, che cosa è venuto dopo, e perché adesso, con la 1.4.2, è finita.
           </p>
         </div>
 

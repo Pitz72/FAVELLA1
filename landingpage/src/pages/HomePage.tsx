@@ -1,6 +1,7 @@
 import React from "react";
 import BrandMark from "../components/BrandMark";
 import ManualBanner from "../components/ManualBanner";
+import StudioBanner from "../components/StudioBanner";
 import { STATS, FEATURES, GITHUB_URL, ENGINE_VERSION } from "../constants";
 import { navigate } from "../router";
 
@@ -85,6 +86,9 @@ const HomePage = () => (
 
         {/* Banner: il manuale cartaceo è uscito */}
         <ManualBanner className="mx-auto mt-20 max-w-[1000px] text-left" />
+
+        {/* Banner: Favella Studio */}
+        <StudioBanner className="mx-auto mt-10 max-w-[1000px] text-left" />
 
         {/* Divider */}
         <div className="mx-auto mt-24 mb-2 max-w-[560px]">

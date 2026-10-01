@@ -18,7 +18,7 @@ const CARTELLE = [
   {
     path: "/",
     title: "Il motore",
-    body: "Compilatore, interprete, libreria delle azioni e i 1126 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
+    body: "Compilatore, interprete, libreria delle azioni e i 1143 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
     href: GITHUB_URL,
   },
   {
@@ -30,7 +30,7 @@ const CARTELLE = [
   {
     path: "/studio",
     title: "Favella Studio",
-    body: "L'IDE desktop, fermo alla 0.9 e senza nessuno che lo mantenga. Aperto con licenza MIT proprio perché qualcuno possa riprenderlo.",
+    body: "L'ambiente di scrittura visuale, versione 1.0: Windows e Linux (su Mac si costruisce da sé). Anche lui concluso, e aperto con licenza MIT.",
     href: GITHUB_IDE_URL,
   },
   {
@@ -54,10 +54,10 @@ const CARTELLE = [
 ];
 
 const WAYS = [
-  { n: "01", title: "Testa il linguaggio", body: "Scrivi storie, rompi il parser, segnala gli attriti: ogni frizione è una possibile parola nuova." },
-  { n: "02", title: "Scrivi avventure", body: "Porta una tua storia nella galleria: in italiano, giocabile, condivisa con un link." },
-  { n: "03", title: "Migliora i tool", body: "Playground, CLI, collaudatore, documentazione: c'è spazio per ogni tipo di contributo." },
-  { n: "04", title: "Proponi idee", body: "Il linguaggio è chiuso, ma l'ecosistema cresce: idee, moduli, pattern sono benvenuti." },
+  { n: "01", title: "Scrivi avventure", body: "Il linguaggio è completo e stabile: ciò che scrivi oggi funzionerà uguale fra dieci anni. Scrivi storie in italiano e condividile con un link." },
+  { n: "02", title: "Studia il codice", body: "Un compilatore a due passate con parser LALR(1) non ambiguo, in Python e nient'altro: un riferimento per chi vuole costruire un linguaggio." },
+  { n: "03", title: "Riprendi il lavoro", body: "Licenza MIT: forka, estendi, traduci. Un'altra lingua, un altro motore, un'altra idea: il repository è a disposizione." },
+  { n: "04", title: "Raccontaci cosa ne hai fatto", body: "Non servono permessi: se scrivi qualcosa con FAVELLA, ci fa piacere saperlo. I contatti sono qui sotto." },
 ];
 
 const CONTACTS = [
@@ -77,11 +77,10 @@ const CollaboratePage = () => (
       </div>
       <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-emerald">Collabora</p>
       <h1 className="mb-6 font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-        Un progetto aperto,<br />in cerca di <span className="italic text-ink-accent">compagni</span>.
+        Un progetto concluso,<br />aperto a <span className="italic text-ink-accent">chiunque</span>.
       </h1>
       <p className="mx-auto max-w-[680px] font-serif text-[20px] leading-[1.62] text-favella-text-secondary">
-        FAVELLA 1 è interamente pubblico su GitHub: codice, grammatica, documentazione ed esempi. Se l'idea ti
-        accende, ci sarebbe tanto da fare.
+        FAVELLA 1 è finito: la 1.4.2 è la versione definitiva e non verrà più modificata. Ma è interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.
       </p>
     </div>
 

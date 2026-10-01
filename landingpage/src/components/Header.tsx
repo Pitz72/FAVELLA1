@@ -12,6 +12,7 @@ const navItems = [
   { name: "Guida rapida", href: "/manuale" },
   { name: "Corso", href: "/corso" },
   { name: "Programma", href: "/programma" },
+  { name: "Studio", href: "/studio" },
   { name: "Galleria", href: "/galleria" },
   { name: "Libreria", href: "/libreria" },
   { name: "Download", href: "/download" },

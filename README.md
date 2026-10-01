@@ -6,7 +6,15 @@
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
 
-È un progetto sperimentale con una missione ambiziosa: rendere lo sviluppo di avventure testuali accessibile a tutti, specialmente a scrittori e game designer, usando la lingua italiana come un vero e proprio linguaggio di programmazione.
+È un progetto nato come esperimento, con una missione ambiziosa: rendere lo sviluppo di avventure testuali accessibile a tutti, specialmente a scrittori e game designer, usando la lingua italiana come un vero e proprio linguaggio di programmazione.
+
+> ### 🏁 Progetto concluso
+>
+> **FAVELLA 1 è finito.** La versione **1.4.2** è la definitiva e **non verrà più modificata**:
+> linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.0** è
+> la sua casa di scrittura. Il repository resta aperto, con licenza MIT, come **riferimento** per
+> chi voglia imparare, riprendere il lavoro o portarlo altrove. Le storie scritte oggi funzioneranno
+> uguali fra dieci anni.
 
 ---
 
@@ -14,7 +22,7 @@
 
 -   **Il Codice è Prosa:** Dimentica la sintassi complessa. Se puoi descrivere una scena, puoi programmarla. Esempio: `La biblioteca è una stanza.`
 -   **Semplicità per l'Autore:** L'obiettivo è massimizzare la semplicità per chi scrive. Tutta la complessità tecnica è nascosta e gestita dal compilatore e dall'interprete di FAVELLA.
--   **Sviluppo Iterativo:** Il linguaggio è in costante evoluzione. Partiamo da un piccolo sottoinsieme della lingua italiana per poi espanderlo passo dopo passo, aggiungendo nuove funzionalità a ogni versione.
+-   **Sviluppo Iterativo:** Il linguaggio è cresciuto passo dopo passo, partendo da un piccolo sottoinsieme della lingua italiana, fino a essere completo. Oggi è concluso.
 
 ---
 
@@ -143,9 +151,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1128
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1143
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-418 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
+419 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -184,7 +192,7 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Collaudatore statico (`collaudo.py`) | **1.4.2** | usa `VERSIONE_MOTORE` |
 | Collaudatore dinamico (`esploratore.py`) | **1.4.2** | nuovo nella 1.2.0 |
 | Specifica formale della grammatica | **1.4.2** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23) + i quattro difetti della 1.4.1 (§24)* |
-| Suite di test | **1.4.2** | 1128 asserzioni linguaggio + 50 collaudo (pytest 418) |
+| Suite di test | **1.4.2** | 1143 asserzioni linguaggio + 50 collaudo (pytest 419) |
 | Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.2 | protocollo 0.10.0 (+ eventi, + pulsanti-verbo) |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
@@ -328,22 +336,18 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
 ---
 
-## 🧪 Favella Studio — l'IDE, esperimento in fase primordiale
+## ✦ Favella Studio — l'ambiente di scrittura
 
-In [`studio/`](studio/) c'è **Favella Studio**: un tentativo di dare a FAVELLA un
-ambiente di sviluppo visuale desktop (Electron + React, col motore Python come
-sidecar). Mappa delle stanze, editor degli oggetti, delle regole e dei dialoghi,
-esportazione del gioco in HTML autoportante.
+In [`studio/`](studio/) c'è **Favella Studio 1.0**: l'ambiente di scrittura visuale per FAVELLA.
+Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
+oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
+comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra di gioco a parte per
+provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro l'app: non serve
+installarlo.
 
-> **Va preso per quello che è: un esperimento incompiuto.** Non è un prodotto
-> finito, non è supportato, non ha una data di uscita — la versione dice `0.9.x`
-> e lo dice sul serio. Nasceva come progetto separato e a pagamento; dal
-> **10 agosto 2026** è pubblicato in chiaro qui dentro, **così com'è**, con
-> licenza MIT. **Se a qualcuno interessa — usarlo, studiarlo, forkarlo,
-> riprenderlo in mano — è a disposizione.** Aspettatevi spigoli.
-
-Questo **non** riguarda il linguaggio: FAVELLA 1 è completo, stabile e coperto da
-1128 asserzioni. L'IDE è un accessorio sperimentale che gli sta accanto.
+- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.0.0).
+- **macOS**: si costruisce in cinque minuti sul proprio Mac, con un comando: [`studio/BUILD-MACOS.md`](studio/BUILD-MACOS.md).
+- Presentazione e schermate: [favella.eu/studio](https://www.favella.eu/studio). Licenza MIT.
 
 Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).
 
@@ -372,4 +376,4 @@ Invece di esaminare il libro: dire "Le pagine sono vuote.".
 
 ## 🤝 Contribuire
 
-Questo progetto è un esperimento aperto. Se l'idea ti affascina, sei invitato a contribuire in qualsiasi modo: segnalando bug, suggerendo nuove funzionalità grammaticali o scrivendo codice. Apri una issue o una pull request per iniziare!
+Il progetto è concluso: non si aspettano contributi al linguaggio. Ma il codice è tuo: puoi leggerlo, forkarlo, riprenderlo e portarlo dove vuoi (licenza MIT).

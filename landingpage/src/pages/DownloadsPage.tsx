@@ -135,11 +135,30 @@ const DownloadsPage = () => (
         </p>
         <div className="mb-5">
           <span className="rounded-full border border-favella-amber/25 px-2.5 py-1 font-mono text-[11px] text-favella-amber">
-            86 pp · 21 capp · v{VERSION}
+            95 pp · 21 capp · v{VERSION}
           </span>
         </div>
         <ExtBtn href={MANUAL_PDF_URL}>↓ Scarica il manuale</ExtBtn>
       </div>
+    </div>
+
+    {/* Favella Studio */}
+    <div className="mx-auto mt-10 max-w-[1040px]">
+      <Link
+        to="/studio"
+        className="flex flex-col items-start gap-5 rounded-[18px] border border-favella-emerald/25 bg-favella-emerald/[0.05] p-6 transition-colors hover:border-favella-emerald/50 sm:flex-row sm:items-center"
+      >
+        <img src="/studio/favella-studio-logo-256.png" alt="" width={72} height={72} className="rounded-2xl" />
+        <span className="flex-1">
+          <span className="block font-display text-[18px] font-semibold text-favella-text-primary">
+            Cerchi un ambiente per scrivere? Favella Studio
+          </span>
+          <span className="mt-1 block text-[14px] leading-snug text-favella-text-secondary">
+            Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola. Windows e Linux; su Mac te la costruisci da te.
+          </span>
+        </span>
+        <span className="font-mono text-[12px] text-favella-emerald">Scopri →</span>
+      </Link>
     </div>
 
     {/* Note di avvio / disclaimer per OS */}
