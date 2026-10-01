@@ -5743,6 +5743,76 @@ def test_avviso_del_sinonimo_dice_il_verbo_vero_e_si_silenzia():
     _check(mondo is not None and "Ringhia." in esegui(mondo, "colpisci il cane"), "il sinonimo vale comunque")
 
 
+_SRC_USA = (
+    "L'atrio è una stanza.\n"
+    "Il giocatore comincia in atrio.\n"
+    "La botola è una cosa.\n"
+    "La botola è in atrio.\n"
+    "La botola è chiusa.\n"
+    "La chiave della botola è una cosa.\n"
+    "La chiave della botola è prendibile.\n"
+    "La chiave della botola è in atrio.\n"
+    "Il sasso è una cosa.\n"
+    "Il sasso è in atrio.\n"
+    "Invece di usa la chiave della botola sulla botola se la botola è chiusa: dire \"Scatta.\" e adesso la botola è aperta.\n")
+
+
+def test_usare_una_cosa_su_un_altra_a_modo_proprio():
+    print("[1.4.2: «usa X per aprire Y», «apri Y con X», la risposta a «Con cosa…», «look»]")
+    forme = ("usa chiave sulla botola", "usa la chiave su botola", "usa chiave con botola",
+             "usa chiave per aprire botola", "usa la chiave per aprire la botola",
+             "usa chiave ed apri botola", "usa la chiave per la botola",
+             "apri botola con la chiave", "apri la botola con la chiave della botola")
+    guasti = []
+    for f in forme:
+        mondo = runtime(_SRC_USA)
+        esegui(mondo, "prendi la chiave")
+        out = esegui(mondo, f)
+        if "Scatta." not in out:
+            guasti.append((f, out.strip()[:50]))
+    _check(not guasti, f"nove modi di dire la stessa cosa agganciano la regola ({guasti})")
+
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi la chiave")
+    out = esegui(mondo, "usa la chiave")
+    _check("Con cosa vuoi usarla?" in out, "«usa la chiave» chiede ancora con cosa")
+    out = esegui(mondo, "botola")
+    _check("Scatta." in out, "e la risposta «botola» completa il comando")
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi la chiave")
+    esegui(mondo, "usa la chiave")
+    out = esegui(mondo, "sulla botola")
+    _check("Scatta." in out, "anche «sulla botola», con la preposizione")
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi la chiave")
+    esegui(mondo, "usa la chiave")
+    out = esegui(mondo, "guarda")
+    _check("Scatta." not in out and "---" in out, "una risposta che è un altro comando vale da sé")
+    out = esegui(mondo, "botola")
+    _check("Scatta." not in out, "e la domanda non resta in sospeso")
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi la chiave")
+    esegui(mondo, "usa la chiave")
+    out = esegui(mondo, "fantasma")
+    _check("Scatta." not in out, "una risposta che non nomina nulla non completa niente")
+
+    mondo = runtime(_SRC_USA)
+    out = esegui(mondo, "apri la botola con il sasso")
+    _check("Non si apre." in out, "senza la regola dell'autore «apri … con …» risponde come prima")
+    esegui(mondo, "prendi la chiave")
+    esegui(mondo, "usa chiave sulla botola")
+    out = esegui(mondo, "apri botola con la chiave")
+    _check("Scatta." not in out, "e a botola aperta la regola (che vuole la botola chiusa) non scatta")
+
+    mondo = runtime(_SRC_USA)
+    _check("---" in esegui(mondo, "look"), "«look» è come «guarda»")
+
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi il sasso")
+    out = esegui(mondo, "usa il sasso per la botola")
+    _check("non ha alcun effetto" in out, "una coppia senza regola dice sempre che non succede nulla")
+
+
 def test_esci_chiede_conferma():
     print("[1.3.0 G-8: 'esci' chiede conferma prima di chiudere la partita]")
     from gioco import elabora_comando
@@ -7507,6 +7577,7 @@ def main():
         test_posare_non_ristampa_la_stanza,
         test_una_direzione_non_e_una_cosa,
         test_avviso_del_sinonimo_dice_il_verbo_vero_e_si_silenzia,
+        test_usare_una_cosa_su_un_altra_a_modo_proprio,
         test_esci_chiede_conferma,
         test_esci_come_movimento,
         test_dopo_la_fine_si_puo_annullare_e_ricominciare,

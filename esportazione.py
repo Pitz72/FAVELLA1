@@ -1,5 +1,5 @@
 # esportazione.py
-# Esportazione di una storia FAVELLA 1 (v1.4.1) in una pagina HTML giocabile.
+# Esportazione di una storia FAVELLA 1 (v1.4.2) in una pagina HTML giocabile.
 #
 # [1.4.0 / L-7] Fino alla 1.3.0 stava in compilatore.py (che così conteneva
 # anche la pagina HTML, e la incorporava in ogni pagina esportata). Ora ha un

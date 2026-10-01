@@ -238,6 +238,14 @@ Invece di forza il cassetto con il portaombrelli se il cassetto è chiuso: dire 
   preposizione «giusta».
 ]
 
+Dalla versione 1.4.2 il giocatore ha altre strade per la stessa regola: `usa la
+chiave per aprire la porta`, `usa la chiave ed apri la porta` e `apri la porta con
+la chiave` fanno scattare la regola scritta con `usa`. Se scrive solo `usa la
+chiave`, il motore chiede «Con cosa vuoi usarla?», e basta rispondere `la porta`.
+Tu non devi scrivere altro: la regola è una, e le formulazioni che la raggiungono
+sono quelle che chiunque proverebbe. Se però scrivi tu una regola per `apri la
+porta con la chiave`, vince la tua.
+
 == Regole globali: senza bersaglio
 
 A volte la reazione non riguarda un oggetto, ma lo stato della storia. Una regola

@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.4.1)
+# Interprete Interattivo per FAVELLA 1 (v1.4.2)
 
 import copy
 import json
@@ -284,6 +284,58 @@ def _nomina(mondo: Mondo, testo: str) -> bool:
     return len(parti) > 1 and all(risolvi_in_silenzio(mondo, p)[0] is not None for p in parti)
 
 
+# [1.4.2] Come si dice «usa la chiave sulla botola» quando la si dice a modo proprio:
+# 'usa la chiave per aprire la botola', 'usa la chiave ed apri la botola', 'usa la
+# chiave per la botola'. Sono la stessa frase, e la regola dell'autore è una sola.
+_VERBI_DELL_ESITO = frozenset((
+    "aprire", "apri", "chiudere", "chiudi", "accendere", "accendi", "spegnere",
+    "spegni", "sbloccare", "sblocca", "forzare", "forza", "attivare", "attiva",
+    "azionare", "aziona", "rompere", "rompi"))
+_PREP_DEL_SECONDO = frozenset(("su", "sul", "sullo", "sulla", "sui", "sugli", "sulle", "sull'",
+                               "con", "contro", "a", "al", "allo", "alla", "ai", "agli", "alle", "all'"))
+
+
+def _riscrivi_usa_per(mondo: Mondo, verbo: str, parole):
+    """Riscrive 'usa X per [aprire] Y' e 'usa X ed apri Y' in 'usa X su Y'
+    (la lista delle parole del comando, verbo compreso). Altrimenti la lascia."""
+    if len(parole) < 4 or mondo.azione_del_verbo(verbo, con_oggetto=True) != "usare":
+        return parole
+    argomenti = parole[1:]
+    if _nomina(mondo, " ".join(argomenti)):
+        return parole      # 'usa il pezzo per il motore' è il nome di una cosa
+    for i in range(1, len(argomenti) - 1):
+        if argomenti[i] not in ("per", "ed", "e"):
+            continue
+        j = i + 1
+        if argomenti[j] in _VERBI_DELL_ESITO:
+            j += 1
+        elif argomenti[i] != "per":
+            continue       # 'e' e 'ed' valgono solo prima di un verbo: «ed apri la botola»
+        primo, secondo = " ".join(argomenti[:i]), " ".join(argomenti[j:])
+        if primo and secondo and _nomina(mondo, primo) and _nomina(mondo, secondo):
+            return [parole[0]] + argomenti[:i] + ["su"] + argomenti[j:]
+    return parole
+
+
+def _completa_usa(mondo: Mondo, id_primo: str, risposta: str) -> str:
+    """[1.4.2] La risposta a «Con cosa vuoi usarla?»: il nome di una cosa («la
+    botola») o con la preposizione («sulla botola», «con la botola») completa
+    'usa X'. Ogni altra risposta (un verbo, una direzione, un nome ignoto) è un
+    comando nuovo."""
+    parole = risposta.split()
+    if not parole or id_primo not in mondo.oggetti:
+        return risposta
+    if parole[0] in _PREP_DEL_SECONDO:
+        parole = parole[1:]
+    elif mondo.azione_del_verbo(parole[0], con_oggetto=True) or parole[0] in mondo.direzioni:
+        return risposta
+    testo = " ".join(parole)
+    trovato = risolvi_in_silenzio(mondo, testo)[0] if testo else None
+    if trovato is None or trovato == id_primo:
+        return risposta
+    return f"usa {mondo.oggetti[id_primo].nome_visualizzato} su {testo}"
+
+
 def _dividi_argomenti(mondo: Mondo, parole_arg):
     """[1.3.0 / M-5] Divide gli argomenti del comando in (oggetto, preposizione,
     secondo oggetto). Fino alla 1.2.2 si divideva sulla PRIMA preposizione, e un
@@ -316,6 +368,9 @@ def _dividi_argomenti(mondo: Mondo, parole_arg):
             return " ".join(parole_arg[:i]), parole_arg[i], " ".join(parole_arg[i + 1:])
     return intero, None, ""
 
+
+# [1.4.2] Le azioni che si compiono "con" uno strumento: vedi _esegui_comando.
+_AZIONI_CON_STRUMENTO = ("aprire", "chiudere", "accendere", "spegnere")
 
 # [1.3.0 / G-4] Verbi di movimento senza direzione: 'entra', 'sali', 'scendi',
 # 'esci dalla stanza'. Valgono se l'autore non li ha dichiarati come verbi.
@@ -562,6 +617,13 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
             mondo._ambiguita = amb
             scrivi(mondo, _domanda_ambiguita(mondo, scelti), "domanda")
             return True
+
+    # [1.4.2] La risposta a «Con cosa vuoi usarla?» completa 'usa X' ('botola' =
+    # 'usa la chiave su botola'). Una risposta che non nomina una cosa è un comando nuovo.
+    usa_in_sospeso = getattr(mondo, "_usa_in_sospeso", None)
+    mondo._usa_in_sospeso = None
+    if usa_in_sospeso and not era_in_dialogo:
+        comando_grezzo = comando_pulito = _completa_usa(mondo, usa_in_sospeso, comando_pulito)
 
     # [Livello 5b] Durante una conversazione 'esci' chiude il dialogo (gestito in
     # _esegui_comando), NON il gioco: l'uscita dal gioco vale solo fuori dialogo.
@@ -1331,6 +1393,9 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
             bersaglio = " ".join(p for p in parole[1:] if p != "con")
             return _avvia_dialogo(mondo, bersaglio)
         
+        # [1.4.2] 'usa la chiave per aprire la botola' = 'usa la chiave sulla botola'.
+        parole = _riscrivi_usa_per(mondo, verbo_giocatore, parole)
+
         # [1.3.0 / G-7, M-5] Divisione degli argomenti: vedi _dividi_argomenti.
         argomento_sx, preposizione_trovata, argomento_dx = _dividi_argomenti(mondo, parole[1:])
 
@@ -1492,6 +1557,16 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         regola, altrimenti = regola_della_fase("invece")
         if regola is not None:
             return _applica_regola(mondo, regola, altrimenti)
+
+        # [1.4.2] 'apri la botola con la chiave' è 'usa la chiave sulla botola': se
+        # l'autore ha scritto quella regola (e nessuna per 'apri'), vale. Prima la
+        # frase finiva in «Non si apre.», e il giocatore non trovava l'altra.
+        if (nome_azione in _AZIONI_CON_STRUMENTO and id_oggetto2
+                and preposizione_trovata == "con" and "usare" in mondo.azioni):
+            regola, altrimenti = _cerca_regola(
+                mondo, set(mondo.azioni["usare"].nomi), True, id_oggetto2, id_oggetto1, "su", "invece")
+            if regola is not None:
+                return _applica_regola(mondo, regola, altrimenti)
 
         # 2. Esecuzione Logica di Default
         mondo._azione_riuscita = False

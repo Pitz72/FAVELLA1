@@ -1,6 +1,6 @@
 # Indice del repository — FAVELLA 1
 
-Mappa di **dove sta ogni cosa**. Aggiornata al 2026-10-01 (motore 1.4.1).
+Mappa di **dove sta ogni cosa**. Aggiornata al 2026-10-01 (motore 1.4.2).
 
 ---
 
@@ -91,7 +91,7 @@ virtualenv, build e cache. Per rimetterlo in moto:
 ```bash
 # motore: serve solo Lark
 pip install lark
-python test_linguaggio.py     # 1115 asserzioni
+python test_linguaggio.py     # 1126 asserzioni
 python test_collaudo.py       # 50 asserzioni
 python favella.py gioca favella1/galleria/il-faro/il-faro.fav
 

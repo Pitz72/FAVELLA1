@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.4.1)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.4.2)
 
 from strutture import Mondo, Azione, ConseguenzaProprieta
 from favella_utils import (rendi_testo, frase_indeterminativa, prima_maiuscola, nome_in_frase,
@@ -269,6 +269,8 @@ def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = 
         oggetto = mondo.trova_oggetto(id_oggetto1)
         pron = pronome_oggetto(oggetto.nome_visualizzato) if oggetto else "lo"
         scrivi(mondo, f"Con cosa vuoi usar{pron}?", "domanda")
+        # [1.4.2] La risposta («la botola», «sulla botola») completa il comando.
+        mondo._usa_in_sospeso = id_oggetto1
 
 
 # --- [1.3.0 / G-4] Azioni con una logica propria -------------------------------
@@ -418,7 +420,7 @@ LIBRERIA_AZIONI = {
     # 'guarda' e 'osserva' stanno anche in «esaminare»: senza oggetto ristampano
     # la stanza, con un oggetto lo esaminano ([1.2.2], Mondo.azione_del_verbo).
     "guarda": Azione(
-        nomi=["guarda", "osserva", "descrivi", "l"],
+        nomi=["guarda", "osserva", "descrivi", "l", "look"],   # [1.4.2] look
         logica=guarda_logica_default,
         richiede_oggetto=False
     ),

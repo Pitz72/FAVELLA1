@@ -4,6 +4,30 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.4.2] - 2026-10-01
+### 🧭 «Usa X su Y» si può dire in più modi
+Dalla partita di Matthia a *Il Faro Spento* (2026-06-19): bloccato davanti alla
+botola, aveva provato otto formulazioni sensate e nessuna agganciava la regola
+`Invece di usa la chiave della botola sulla botola`. Solo additivo: ciò che
+funzionava funziona uguale; ciò che finiva in «Non vedo…» o «Non si apre.» ora trova,
+se c'è, la regola dell'autore.
+
+1. **`usa X per aprire Y`, `usa X per Y`, `usa X ed apri Y`** valgono `usa X su Y`.
+   (Anche con `chiudi`, `accendi`, `spegni`, `sblocca`, `forza`, `attiva`, `aziona`,
+   `rompi`.) Un nome che contiene «per» («il pezzo per il motore») resta un nome.
+2. **`apri Y con X`** (e `chiudi`, `accendi`, `spegni`) cerca la regola `usa X su Y`
+   quando l'autore non ne ha scritta una per `apri`. Prima finiva in «Non si apre.».
+   Se la regola non c'è, o la sua condizione è falsa, risponde come sempre.
+3. **La risposta a «Con cosa vuoi usarla?»** completa il comando: dopo `usa la
+   chiave`, scrivere `botola` o `sulla botola` vale `usa la chiave su botola`. Prima
+   la risposta finiva in «Non capisco questo verbo.». Una risposta che è un verbo, una
+   direzione o un nome ignoto è un comando nuovo, e la domanda non resta in sospeso.
+4. **`look`** è come `guarda` (`l` lo era già dalla 1.4.0).
+
+**Test.** `test_linguaggio.py`: 1 test nuovo (11 controlli).
+
+---
+
 ## [1.4.1] - 2026-10-01
 ### 🔧 Quattro difetti trovati giocando «Il Viaggiatore»
 Nessuna frase nuova di rilievo (una sola, facoltativa: `(voluto)`); le storie

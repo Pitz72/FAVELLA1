@@ -1648,3 +1648,22 @@ serve» (parola già sinonimo dello stesso verbo): quello non riguarda l'intenzi
 - Una direzione dopo un verbo che vuole una cosa (`accendi su`, `apri nord`) dà
   «Non vedi nulla del genere qui.», come `esamina nord`; prima sollevava un errore
   interno in `apri`, `chiudi`, `accendi`, `spegni`, `mangia`, `bevi`.
+
+## 25. «Usa X su Y» in più modi (1.4.2)
+
+La grammatica non cambia: cambia ciò che il parser dei comandi del giocatore riconduce
+alla frase a due oggetti (§22), in modo additivo.
+
+- `usa X per [aprire|chiudere|accendere|spegnere|sbloccare|forzare|attivare|azionare|
+  rompere] Y`, `usa X per Y` e `usa X ed apri Y` (anche gli altri verbi) valgono
+  `usa X su Y`. Se tutto il testo dopo `usa` nomina già una cosa («il pezzo per il
+  motore») non si divide.
+- `apri Y con X` (e `chiudi`, `accendi`, `spegni`): quando nessuna regola dell'autore
+  si applica a `apri`, si cerca la regola `usa X su Y` con quegli stessi oggetti; se la
+  si trova (e la sua condizione regge) è quella che scatta. Altrimenti, come prima.
+- La risposta a «Con cosa vuoi usarla?» completa il comando in sospeso: `botola`,
+  `la botola`, `sulla botola` valgono `usa X su botola`. Una risposta che comincia
+  con un verbo o una direzione, o che non nomina una cosa, è un comando nuovo; la
+  domanda non resta in sospeso oltre il comando successivo.
+- `look` è un nome dell'azione «guarda».
+
