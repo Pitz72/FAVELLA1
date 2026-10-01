@@ -1360,6 +1360,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
             verbo_giocatore = verso if verso in mondo.direzioni else verbo_giocatore
             if verbo_giocatore not in mondo.direzioni:
                 scrivi(mondo, messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
+                _senza_turno(mondo)   # [1.4.1] come la mossa verso un'uscita che non c'è
                 return True
 
         # --- Gestione Movimento ---
@@ -1613,9 +1614,12 @@ def _parla_di(scritte, chiave: str) -> bool:
 
 
 # Le azioni dopo le quali NON si ristampa la stanza (la risposta basta).
-# [1.3.0] Tutte quelle nuove: ristampano solo 'lascia' e poche altre, come sempre.
+# [1.3.0] Tutte quelle nuove: ristampavano solo 'lascia' e poche altre, come sempre.
+# [1.4.1] Anche 'lascia': «Lasciato: il coltello.» basta, e la stanza intera non si
+# riscrive a ogni oggetto posato (prima, in una partita lunga, ogni posa riempiva lo
+# schermo di un testo già letto; 'prendi', invece, rispondeva con la sola frase).
 _SENZA_RISTAMPA = frozenset((
-    "guarda", "aiuto", "esaminare", "prendere", "usare",
+    "guarda", "aiuto", "esaminare", "prendere", "usare", "lasciare",
     "aprire", "mangiare", "spostare",   # [1.2.2] ex «usare»
     "inventario", "_personalizzata", "_personalizzata_intransitiva", "mettere",
     "chiudere", "accendere", "spegnere", "bere", "aspettare", "toccare", "spingere",

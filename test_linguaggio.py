@@ -5676,6 +5676,73 @@ def test_errori_del_parser_non_consumano_turni():
     _check(mondo.turno_corrente == 0, "ANNULLA disfa l'ultima azione vera, non il refuso")
 
 
+def test_mossa_senza_uscita_non_consuma_turno():
+    print("[1.4.1: una mossa verso un'uscita che non c'è non fa passare il tempo]")
+    mondo = runtime(_SRC_SESSIONE)
+    for c in ("ovest", "sud", "entra", "sali"):
+        out = esegui(mondo, c)
+    _check("Non puoi andare in quella direzione." in out, "il motore dice che di là non si va")
+    _check(mondo.turno_corrente == 0 and mondo.variabili["passi"] == 0,
+           "ovest, sud, entra, sali dove non c'è niente: nessun turno, nessun evento")
+    _check(mondo._registro_comandi == [] and mondo._storia_stati == [],
+           "e nessuna traccia nella sequenza salvabile né nella pila di ANNULLA")
+    esegui(mondo, "nord")
+    _check(mondo.posizione_giocatore == "orto" and mondo.turno_corrente == 1,
+           "una mossa che riesce fa passare il turno, come sempre")
+    esegui(mondo, "nord")
+    _check(mondo.turno_corrente == 1, "e una che non riesce, subito dopo, no")
+
+
+def test_posare_non_ristampa_la_stanza():
+    print("[1.4.1: «lascia» risponde con la sola frase, come «prendi»]")
+    mondo = runtime(_SRC_SESSIONE)
+    out_prendi = esegui(mondo, "prendi la mela")
+    out_lascia = esegui(mondo, "lascia la mela")
+    _check("---" not in out_prendi and "---" not in out_lascia and "Lasciato" in out_lascia,
+           "né «prendi» né «lascia» riscrivono la stanza")
+    _check(mondo.oggetti["mela"].posizione == "cucina" and mondo.turno_corrente == 2,
+           "la mela è tornata nella stanza, e i due gesti sono due turni")
+    _check("mela" in esegui(mondo, "guarda").lower(), "e «guarda» la mostra, nella stanza")
+    out = esegui(mondo, "prendi tutto")
+    _check(out.count("---") == 0, "«prendi tutto» non cambia")
+
+
+def test_una_direzione_non_e_una_cosa():
+    print("[1.4.1: «accendi su», «apri nord»… non sollevano un errore interno]")
+    mondo = runtime(_SRC_SESSIONE)
+    guasti = []
+    for verbo in ("accendi", "spegni", "apri", "chiudi", "mangia", "bevi"):
+        for direzione in ("su", "nord", "giù"):
+            out = esegui(mondo, f"{verbo} {direzione}")
+            if "ERRORE" in out or "Non vedi nulla del genere qui." not in out:
+                guasti.append((verbo, direzione, out.strip()[:60]))
+    _check(not guasti, f"sei verbi con tre direzioni rispondono «Non vedi nulla del genere qui.» ({guasti})")
+    out = esegui(mondo, "apri il carro")
+    _check("Non si apre." in out, "e un oggetto vero, ma non apribile, risponde come prima")
+
+
+def test_avviso_del_sinonimo_dice_il_verbo_vero_e_si_silenzia():
+    print("[1.4.1: l'avviso di un verbo del motore rimappato dice cosa faceva, e «(voluto)» lo toglie]")
+    base = 'La casa è una stanza.\n"attacca" è un comando.\n'
+
+    def avvisi(src):
+        return " ".join(w["message"] for w in strutturato(src)["warnings"])
+    senza = avvisi(base + '"colpisci" è come attacca.\n')
+    _check("è l'azione 'colpire'" in senza and "fa come 'colpisci'" not in senza,
+           "«colpisci» (primo nome della sua azione) si dice «è l'azione 'colpire'», non «fa come 'colpisci'»")
+    _check('"colpisci" è come attacca (voluto).' in senza, "e l'avviso dice come dichiarare che è voluto")
+    _check(avvisi(base + '"colpisci" è come attacca (voluto).\n') == "", "con «(voluto)» l'avviso non c'è")
+    _check(avvisi('La casa è una stanza.\n"colpisci" è come attacca (voluto).\n"attacca" è un comando.\n') == "",
+           "anche se il comando d'autore è dichiarato dopo")
+    afferra = avvisi('La casa è una stanza.\n"afferra" è come esamina.\n')
+    _check("fa come 'prendi'" in afferra, "una parola il cui primo nome è altro dice «fa come 'prendi'»")
+    _check(avvisi('La casa è una stanza.\n"afferra" è come esamina (voluto).\n') == "",
+           "e anche questa si silenzia, verso un verbo di libreria")
+    mondo = runtime(base + '"colpisci" è come attacca (voluto).\nIl cane è una cosa.\nIl cane è in casa.\n'
+                    'Invece di attacca il cane: dire "Ringhia.".\n')
+    _check(mondo is not None and "Ringhia." in esegui(mondo, "colpisci il cane"), "il sinonimo vale comunque")
+
+
 def test_esci_chiede_conferma():
     print("[1.3.0 G-8: 'esci' chiede conferma prima di chiudere la partita]")
     from gioco import elabora_comando
@@ -7436,6 +7503,10 @@ def main():
         test_capienza_inventario_piatto_invariato,
         # [1.3.0] Blocco A: sessione e turni
         test_errori_del_parser_non_consumano_turni,
+        test_mossa_senza_uscita_non_consuma_turno,
+        test_posare_non_ristampa_la_stanza,
+        test_una_direzione_non_e_una_cosa,
+        test_avviso_del_sinonimo_dice_il_verbo_vero_e_si_silenzia,
         test_esci_chiede_conferma,
         test_esci_come_movimento,
         test_dopo_la_fine_si_puo_annullare_e_ricominciare,

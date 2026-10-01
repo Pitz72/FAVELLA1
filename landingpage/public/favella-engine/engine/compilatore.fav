@@ -403,8 +403,11 @@ _GRAMMAR_TEMPLATE = r"""
     // ('"lancia" è come getta.'), e — fra virgolette — un comando di più parole
     // ('"lancia il cibo" è come "getta il cibo".'). Dopo "come" il lookahead
     // WORD vs TESTO_QUOTATO distingue le due forme → 0-ambiguo.
-    def_sinonimo: TESTO_QUOTATO "è" "come" VERBO "."
-                | TESTO_QUOTATO "è" "come" TESTO_QUOTATO "."
+    // [1.4.1] «(voluto)» in fondo dice che il cambio di significato è inteso:
+    // '"colpisci" è come attacca (voluto).' non dà l'avviso «fa come …».
+    def_sinonimo: TESTO_QUOTATO "è" "come" VERBO voluto? "."
+                | TESTO_QUOTATO "è" "come" TESTO_QUOTATO voluto? "."
+    voluto: "(" "voluto" ")"
     // [Livello 5] La descrizione può essere CONDIZIONALE: con una clausola 'se',
     // si applica solo quando la condizione è vera (più dichiarazioni = varianti
     // in ordine; senza 'se' = descrizione di base/fallback). Dopo ENTITA il
@@ -1375,6 +1378,24 @@ class RegolaTarget:
         self.preposizione = preposizione
         self.secondario = secondario
 
+_VOLUTO = object()     # [1.4.1] il marcatore «(voluto)» di un sinonimo (vedi def_sinonimo)
+
+
+def _avviso_cambio_di_significato(sinonimo, azioni, canonico):
+    """[1.4.1] L'avviso di una parola del motore che un sinonimo d'autore rimappa.
+    Dice che cosa FACEVA la parola: «fa come 'attacca'», se il suo primo nome è
+    un altro verbo; «è l'azione 'colpire'», se il suo primo nome è la parola stessa
+    (prima diceva «fa come 'colpisci'» per '"colpisci" è come attacca.', cioè il verbo
+    che si stava rimappando). Chiude con come dichiarare che il cambio è voluto."""
+    parti = []
+    for a in sorted(azioni):
+        primo = LIBRERIA_AZIONI[a].nomi[0]
+        parti.append(f"è l'azione '{a}'" if primo == sinonimo else f"fa come '{primo}'")
+    return (f"'{sinonimo}' è già un verbo del motore ({' e '.join(parti)}): con questa "
+            f"dichiarazione farà invece come '{canonico}'. Se è voluto, scrivi "
+            f"'\"{sinonimo}\" è come {canonico} (voluto).' e l'avviso sparisce.")
+
+
 @v_args(inline=True) # Passa i figli dei nodi come argomenti singoli ai metodi
 class FavellaTransformer(Transformer):
     """
@@ -1620,7 +1641,11 @@ class FavellaTransformer(Transformer):
     def verbo_senza_oggetto(self, testo_quotato):
         return self._registra_verbo(testo_quotato, intransitivo=True)
 
-    def def_sinonimo(self, sinonimo_testo, verbo_canonico):
+    def voluto(self, *_):
+        """[1.4.1] Il marcatore «(voluto)» di un sinonimo."""
+        return _VOLUTO
+
+    def def_sinonimo(self, sinonimo_testo, verbo_canonico, voluto=None):
         # [0.26.0 / A6] '"ghermisci" è come prendi.': la parola-nuova (quotata)
         # rimappa al verbo di libreria 'verbo_canonico'. Il verbo bersaglio dev'essere
         # noto al motore, altrimenti il sinonimo è morto (warning non bloccante).
@@ -1633,7 +1658,7 @@ class FavellaTransformer(Transformer):
         if canonico not in VERBI_VALIDI:
             # [1.2.0] Può essere un verbo dichiarato dall'autore, magari più avanti
             # nel sorgente: si decide in valida_post.
-            self._pending_sinonimi.append((sinonimo, canonico))
+            self._pending_sinonimi.append((sinonimo, canonico, voluto is _VOLUTO))
             return None
         if sinonimo in VERBI_VALIDI:
             # [1.2.2] Due casi, che fino alla 1.2.1 ricevevano lo stesso avviso
@@ -1649,16 +1674,12 @@ class FavellaTransformer(Transformer):
                     f"'{sinonimo}' è già un sinonimo di '{principale}' nella libreria: "
                     f"le regole 'Invece di {principale} …' valgono anche per "
                     f"'{sinonimo}', quindi la dichiarazione non serve.")
-            else:
-                principali = ", ".join(sorted(f"'{LIBRERIA_AZIONI[a].nomi[0]}'"
-                                              for a in azioni_sinonimo))
-                self.warnings.append(
-                    f"'{sinonimo}' è già un verbo del motore (fa come {principali}): "
-                    f"con questa dichiarazione farà invece come '{canonico}'.")
+            elif voluto is not _VOLUTO:
+                self.warnings.append(_avviso_cambio_di_significato(sinonimo, azioni_sinonimo, canonico))
         self.mondo.dichiara_sinonimo(sinonimo, canonico)
         return None
 
-    def _applica_sinonimo_differito(self, sinonimo, canonico):
+    def _applica_sinonimo_differito(self, sinonimo, canonico, voluto=False):
         """[1.2.0] Sinonimo il cui bersaglio non è un verbo di libreria: vale se
         il bersaglio è un comando dichiarato dall'autore, altrimenti è morto."""
         if canonico in self.mondo.verbi_personalizzati:
@@ -1666,14 +1687,11 @@ class FavellaTransformer(Transformer):
                 self.warnings.append(
                     f"'{sinonimo}' è dichiarato sia come comando sia come sinonimo di "
                     f"'{canonico}': vale il sinonimo.")
-            elif sinonimo in _AZIONI_DI_VERBO:
+            elif sinonimo in _AZIONI_DI_VERBO and not voluto:
                 # [1.2.2] Come in def_sinonimo: una parola di libreria che diventa
                 # sinonimo di un comando d'autore cambia significato.
-                principali = ", ".join(sorted(f"'{LIBRERIA_AZIONI[a].nomi[0]}'"
-                                              for a in _AZIONI_DI_VERBO[sinonimo]))
                 self.warnings.append(
-                    f"'{sinonimo}' è già un verbo del motore (fa come {principali}): "
-                    f"con questa dichiarazione farà invece come '{canonico}'.")
+                    _avviso_cambio_di_significato(sinonimo, _AZIONI_DI_VERBO[sinonimo], canonico))
             self.mondo.dichiara_sinonimo(sinonimo, canonico)
             return
         # [0.30.0 / A4] Caso speciale: il bersaglio è una DIREZIONE
@@ -2670,8 +2688,8 @@ class FavellaTransformer(Transformer):
         self._valida_turno_e_testi()
         for conseguenze in self._pending_conseguenze:
             self._valida_conseguenze(conseguenze)
-        for sinonimo, canonico in self._pending_sinonimi:   # [1.2.0]
-            self._applica_sinonimo_differito(sinonimo, canonico)
+        for sinonimo, canonico, voluto in self._pending_sinonimi:   # [1.2.0]
+            self._applica_sinonimo_differito(sinonimo, canonico, voluto)
         # [1.1.0] 'e adesso X è in inventario' non passa dal controllo della
         # capienza (lo fa solo il prendere del giocatore): se la storia ne
         # dichiara una, lo si dice all'autore una volta per oggetto. Il

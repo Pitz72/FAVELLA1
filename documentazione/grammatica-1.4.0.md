@@ -390,8 +390,10 @@ di Lark (EBNF con azioni `-> nome`).
     // [A6] Sinonimo di verbo: '"ghermisci" è come prendi.'. Inizia con
     // TESTO_QUOTATO come def_verbo; dopo '"…" è' il lookahead "come" vs "un"
     // distingue → LALR(1) 0-ambiguo.
-    def_sinonimo: TESTO_QUOTATO "è" "come" VERBO "."
-                | TESTO_QUOTATO "è" "come" TESTO_QUOTATO "."   // [1.2.0]
+    def_sinonimo: TESTO_QUOTATO "è" "come" VERBO voluto? "."
+                | TESTO_QUOTATO "è" "come" TESTO_QUOTATO voluto? "."   // [1.2.0]
+    // [1.4.1] «(voluto)»: il cambio di significato di un verbo del motore è inteso.
+    voluto: "(" "voluto" ")"
     // [A2] Il valore della descrizione è delegato a descr_valore: stringa singola
     // (storico) o varianti casuali / in sequenza. Dopo "è" il lookahead
     // TESTO_QUOTATO | "una" | "in" distingue le tre forme → LALR(1) 0-ambiguo.
@@ -1609,3 +1611,40 @@ serializzatore) ed `esportazione.py` (la pagina HTML). I vecchi import
 motore nel browser carica sempre gli stessi 5 moduli, e un test verifica che gli
 elenchi di quei moduli coincidano ovunque (PyInstaller, sito, esperimento,
 validatore dei checkpoint).
+
+## 24. Quattro difetti trovati giocando (1.4.1)
+
+La 1.4.1 non cambia il linguaggio, salvo una forma facoltativa, e corregge quattro
+difetti che *Il Viaggiatore* aveva trovato nel motore (vedi il `CHANGELOG`).
+
+### 24.1 `(voluto)` — un cambio di significato inteso
+
+Quando un sinonimo d'autore rimappa una parola che il motore già conosce
+(`"colpisci" è come attacca.`) il compilatore avvisa che quella parola «farà
+invece» un'altra cosa. Se l'autore lo vuole, lo dice nella stessa frase:
+
+```ebnf
+def_sinonimo: TESTO_QUOTATO "è" "come" VERBO voluto? "."
+            | TESTO_QUOTATO "è" "come" TESTO_QUOTATO voluto? "."
+voluto: "(" "voluto" ")"
+```
+
+`"colpisci" è come attacca (voluto).` vale esattamente come senza marcatore, ma non
+dà l'avviso. «voluto» è una parola della grammatica solo dopo la parentesi: non è
+riservata altrove e nessun nome di storia cambia. L'avviso di chi non lo scrive
+dice che cosa faceva la parola: `fa come 'prendi'` se il suo primo nome è un altro
+verbo, `è l'azione 'colpire'` se è la parola stessa (prima nominava il verbo che si
+stava rimappando). Il marcatore non silenzia l'altro avviso, «la dichiarazione non
+serve» (parola già sinonimo dello stesso verbo): quello non riguarda l'intenzione.
+
+### 24.2 Movimento, posa, direzioni
+
+- Una mossa verso un'uscita che non c'è (`ovest`, `sali`, `entra`…) non fa passare
+  il tempo: come un comando non capito (§22), non scatta niente, non entra nella
+  sequenza salvabile, non lascia un'istantanea per ANNULLA. Le regole d'autore
+  `Invece di vai …` non cambiano.
+- `lascia` risponde con la sola frase («Lasciato: la mela.»), come `prendi`: non
+  ristampa più la stanza.
+- Una direzione dopo un verbo che vuole una cosa (`accendi su`, `apri nord`) dà
+  «Non vedi nulla del genere qui.», come `esamina nord`; prima sollevava un errore
+  interno in `apri`, `chiudi`, `accendi`, `spegni`, `mangia`, `bevi`.

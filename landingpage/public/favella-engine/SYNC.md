@@ -82,3 +82,47 @@ foreach ($f in 'compilatore','gioco','strutture','libreria_azioni','favella_util
 Unica dipendenza esterna del motore: **lark** (puro Python, installata a runtime
 con `micropip`, versione PINNATA in `favellaRuntime.ts`). Tutto il resto è
 libreria standard.
+
+## Segnalazioni dal gioco «Il Viaggiatore» (2026-10-01, motore 1.4.0) — RISOLTE nella 1.4.1 (in preparazione, non committata)
+
+> Tutte e quattro sono corrette nel working tree (`gioco.py`, `libreria_azioni.py`,
+> `compilatore.py`), con 4 test nuovi in `test_linguaggio.py` (1115 passati, 0 falliti) e il
+> `CHANGELOG`. Le copie del sito (`engine/*.fav`) sono risincronizzate. Le voci qui sotto restano
+> come storia: che cosa era sbagliato, e come lo si è visto.
+
+Quattro cose trovate giocando e collaudando *Il Viaggiatore* (repo del gioco, `motore/` è una
+copia del 1.4.0). Le prime tre sono spigoli, la quarta un guasto. Non vanno corretti nel gioco; qui sono
+solo annotate, in attesa di decidere se e quando toccarle nel motore.
+
+1. **Una mossa verso un'uscita che non c'è fa passare un turno.** In una stanza senza uscita a
+   ovest, `ovest` risponde «Non puoi andare in quella direzione.» e il turno avanza (eventi,
+   demoni, sete e fame compresi). Un comando non capito (`blablabla`: «Non capisco questo
+   verbo.»), dalla 1.2.0, non lo fa. Verificato: turno +1 contro +0. Per un gioco di
+   sopravvivenza è un costo che il giocatore non vede arrivare; in uno senza orologio non
+   conta. Possibile correzione: trattarlo come un comando non capito, o renderlo opzionale.
+2. **Posare una cosa ristampa la stanza intera.** `lascia il coltello` risponde «Lasciato: il
+   coltello.» e subito dopo la descrizione completa del luogo, con uscite e presenze, come
+   dopo un `guarda`. In una partita lunga, ogni «lascia» riempie lo schermo di un testo che
+   il giocatore ha già letto. `prendi`, invece, risponde solo «Preso: …». Possibile
+   correzione: la sola frase, e la stanza ristampata solo se la posa cambia ciò che si vede
+   (per esempio al buio).
+3. **Rimappare un verbo del motore su un comando d'autore dà un avviso anche quando è voluto, e
+   l'avviso dice il verbo sbagliato.** Il gioco dichiara `"colpisci" è come attacca.` perché,
+   con il fucile in mano, «colpire» vuol dire sparare. La compilazione avvisa:
+   «'colpisci' è già un verbo del motore (fa come 'colpisci'): con questa dichiarazione farà
+   invece come 'attacca'.» Il «fa come 'colpisci'» è il nome dell'azione di libreria (il suo
+   primo nome), cioè lo stesso verbo che si sta rimappando: chi legge non capisce cosa faceva
+   prima. L'avviso è in `compilatore.py`, nei due punti dove si compone «fa come {principali}»
+   (`def_sinonimo` e `_applica_sinonimo_differito`). Due richieste: dire che cosa faceva
+   il verbo (la sua azione di libreria, in parole) e permettere di dichiarare che il cambio è
+   voluto, così da non lasciare in ogni compilazione un avviso che nessuno più legge. Nel
+   Viaggiatore resta l'unico avviso, voluto, e va ricordato a mano.
+4. **Un verbo seguito da una parola di direzione dà un errore interno.** `accendi su`, `apri su`,
+   `chiudi su`, `mangia su` rispondono «[ERRORE CRITICO] Si è verificato un errore durante
+   l'esecuzione del comando: 'NoneType' object has no attribute 'proprieta'» (in
+   `libreria_azioni.py`, `_ha(oggetto, …)` riceve `None`: «su» è una direzione, non una cosa,
+   e il parser non trova l'oggetto ma prosegue). Con una parola qualunque (`accendi xyz`)
+   risponde correttamente «Non vedo 'xyz' qui.»; anche `spegni con` lo fa. Trovato dal
+   collaudo del testo (`collaudo/testo.py` del gioco, che prova ogni verbo con ogni genere di
+   bersaglio). Possibile correzione: se l'oggetto non si risolve, «Non vedo … qui.» come
+   per le altre parole, o un controllo `None` in `_ha`.

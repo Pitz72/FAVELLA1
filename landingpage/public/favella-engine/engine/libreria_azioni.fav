@@ -12,6 +12,16 @@ def _riuscita(mondo: Mondo):
     mondo._azione_riuscita = True
 
 
+def _manca(mondo: Mondo, oggetto) -> bool:
+    """[1.4.1] Il nome indicato non è una cosa del mondo: è una direzione ('accendi
+    su', 'apri nord'), che il parser riconosce ma che non ha proprietà. Prima di
+    questo controllo l'azione di default sollevava un errore interno."""
+    if oggetto is None:
+        scrivi(mondo, "Non vedi nulla del genere qui.")
+        return True
+    return False
+
+
 def _nome(oggetto) -> str:
     """Il nome dell'oggetto a metà frase ('la mela', non 'La mela')."""
     return nome_in_frase(oggetto.nome_visualizzato)
@@ -222,6 +232,9 @@ def muovi_logica_default(mondo: Mondo, direzione: str):
         # La descrizione della nuova stanza verrà mostrata da gioco.py
     else:
         scrivi(mondo, messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
+        # [1.4.1] Una mossa verso un'uscita che non c'è non fa passare il tempo, come
+        # un comando non capito (1.3.0): non si è mossa nessuna cosa del mondo.
+        mondo._turno_libero = True
 
 def guarda_logica_default(mondo: Mondo):
     """Logica di default per l'azione GUARDA: ristampa la stanza corrente.
@@ -268,6 +281,8 @@ def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = 
 
 def aprire_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
     if not _ha(oggetto, "apribile"):
         scrivi(mondo, "Non si apre.")
         return
@@ -283,6 +298,8 @@ def aprire_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None
 
 def chiudere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
     if not _ha(oggetto, "apribile"):
         scrivi(mondo, "Non si chiude.")
         return
@@ -296,6 +313,8 @@ def chiudere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = No
 
 def accendere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
     if not _ha(oggetto, "accendibile"):
         scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
@@ -309,6 +328,8 @@ def accendere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = N
 
 def spegnere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
     if not _ha(oggetto, "accendibile"):
         scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
         return
@@ -322,6 +343,8 @@ def spegnere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = No
 
 def _consuma(mondo: Mondo, id_oggetto: str, proprieta: str, verbo: str, rifiuto: str):
     oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
     if not _ha(oggetto, proprieta):
         scrivi(mondo, rifiuto)
         return

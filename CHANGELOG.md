@@ -4,6 +4,40 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.4.1] - in preparazione (non rilasciata)
+### 🔧 Quattro difetti trovati giocando «Il Viaggiatore»
+Nessuna frase nuova di rilievo (una sola, facoltativa: `(voluto)`); le storie
+scritte per la 1.4.0 si comportano come prima, tranne in tre punti che erano
+difetti (qui sotto, 1, 2 e 4). Trovati dal collaudo e dalle partite del gioco
+(repo `il-viaggiatore-favella`), che usa il motore come copia.
+
+1. **Una mossa verso un'uscita che non c'è non fa più passare un turno.** «ovest»,
+   «sali», «entra» dove non c'è passaggio dicevano «Non puoi andare in quella
+   direzione.» e facevano scattare eventi, demoni, sete e fame; un comando non
+   capito, dalla 1.3.0, no. Ora anche questa non fa passare il tempo, non entra
+   nella sequenza salvabile e non lascia un'istantanea per ANNULLA. (Le regole
+   `Invece di vai …` dell'autore non cambiano: sono scelte dell'autore.)
+2. **«Lascia» non ristampa più la stanza.** Dopo «Lasciato: il coltello.» il motore
+   riscriveva descrizione, uscite e presenze come per un «guarda»: in una partita
+   lunga ogni posa riempiva lo schermo di un testo già letto. Ora risponde con la
+   sola frase, come «prendi».
+3. **L'avviso di un verbo del motore rimappato dice la verità e si può silenziare.**
+   `"colpisci" è come attacca.` dava «'colpisci' è già un verbo del motore (fa come
+   'colpisci')…»: il «fa come» nominava il verbo stesso, perché è il primo nome della
+   sua azione. Ora dice «(è l'azione 'colpire')» (o «fa come 'prendi'» se il primo nome
+   è un altro verbo) e come dichiarare che il cambio è voluto. Nuova forma, facoltativa:
+   **`"colpisci" è come attacca (voluto).`** — il cambio vale e l'avviso non c'è.
+   Anche per i sinonimi verso un verbo d'autore dichiarato più avanti.
+4. **Un verbo seguito da una parola di direzione non solleva più un errore interno.**
+   «accendi su», «apri nord», «chiudi giù», «mangia est», «spegni su» rispondevano
+   «[ERRORE CRITICO] … 'NoneType' object has no attribute 'proprieta'»: la direzione è
+   riconosciuta dal parser ma non è una cosa. Ora dicono «Non vedi nulla del genere
+   qui.», come «esamina nord».
+
+**Test.** `test_linguaggio.py`: 4 test nuovi (18 controlli) per i quattro punti.
+
+---
+
 ## [1.4.0] - 2026-09-26
 ### 🔘 I pulsanti-verbo e l'architettura del motore (L-7)
 Chiude l'ultima parte di L-7 dell'[analisi critica](documentazione/analisi-critica-1.2.1.md)
