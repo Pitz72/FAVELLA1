@@ -4,7 +4,7 @@ Sorgente del manuale d'autore in **PDF tipografico**, generato con
 [Typst](https://typst.app). Focalizzato *esclusivamente sul linguaggio*; ogni
 costrutto è illustrato con esempi reali tratti dalla storia guida **«La Casa di Via
 Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Seconda
-edizione · 2026**, allineata al motore **v1.0.0** (il linguaggio è completo e
+edizione · 2026**, allineata al motore **v1.4.1** (il linguaggio è completo e
 definitivo: vedi il [CHANGELOG](../../CHANGELOG.md)).
 
 ## Come compilare
@@ -40,16 +40,17 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 ### Note di produzione (Amazon KDP)
 
 - Trim: **6,69×9,61″** (169,93×244,09 mm), formato standard KDP.
-- Interno: **84 pagine** (multiplo di 4, con pagine vacat in coda solo per il KDP),
+- Interno: **96 pagine** (multiplo di 4, con pagine vacat in coda solo per il KDP),
   **colore standard** (la grafica è a colori). Solo il **capitolo 1** apre su pagina
   dispari (recto); gli altri proseguono sulla prima pagina utile. Caricare
   `manuale-interno-kdp.pdf` (senza copertina).
 - Paratesto: frontespizio (p1) · pagina dei diritti/colophon (p2, verso del
   frontespizio) · dedica allineata a destra (p3, recto) · indice su recto.
-- Copertina wrap: dorso per **84 pp.** → `84 × 0,002252″ = 0,1892″ ≈ **4,81 mm**`
+- Copertina wrap: dorso per **96 pp.** → `96 × 0,002252″ = 0,2162″ ≈ **5,49 mm**`
   (carta bianca; il colore standard ha lo stesso spessore-pagina del B/N). Dorso
   senza testo (regola KDP sotto 100 pp.). Sorgente `copertina-kdp.typ` (cartella
-  KDP esterna) con `pagine = 84`; foglio copertina 994,98 × 709,92 pt.
+  KDP esterna, e anche in questa cartella) con `pagine = 96`; foglio copertina
+  996,93 × 709,92 pt. Se cambia il numero di pagine, ricalcola `pagine` nelle due copie.
 
 ## Struttura
 
@@ -62,14 +63,15 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 | `assets/logo.png` | Marchio `{F1}` ufficiale. |
 | `fonts/` | Font di marca **statici** (Sora, Source Code Pro — licenza OFL). |
 | `manuale.pdf` | **Ebook pubblico**: edizione digitale compilata, tracciata nel repo per il download diretto. |
-| *(kit KDP, fuori dal repo)* | `copertina-kdp.typ`, `manuale-interno-kdp.pdf`, `copertina-kdp.pdf` e l'asset `copertina-manuale.png` vivono in `C:\Users\Utente\Documents\KDP\FAVELLA1`. |
+| `copertina-kdp.typ` | Sorgente della copertina wrap per KDP (solo il sorgente, non il PDF). |
+| *(kit KDP, fuori dal repo)* | `manuale-interno-kdp.pdf`, `copertina-kdp.pdf` e una copia di sorgente, `lib/`, `assets/`, `fonts/` vivono in `C:\Users\Utente\Documents\KDP\FAVELLA1`. |
 
 ## Stato
 
 **Completo** (Seconda edizione · 2026): **21 capitoli**, copertina, doppia dedica e
-pagina dei diritti — **84 pagine**, allineato alla **v1.0.0**. L'ebook è pronto;
-l'interno KDP è rigenerato (colore standard, multiplo di 4) e la copertina wrap è
-ricalcolata con dorso a 84 pp. (4,81 mm).
+pagina dei diritti — **95 pagine** (ebook), allineato alla **v1.4.1**. L'ebook è pronto;
+l'interno KDP è rigenerato (colore standard, 96 pagine, multiplo di 4) e la copertina wrap è
+ricalcolata con dorso a 96 pp. (5,49 mm).
 
 ## Font e licenze
 

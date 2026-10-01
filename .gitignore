@@ -204,12 +204,13 @@ Thumbs.db
 # Nel repo resta solo l'edizione digitale pubblica `manuale.pdf` e i sorgenti dei
 # capitoli. Build dell'interno (dal repo, output verso la cartella KDP esterna):
 #   typst compile --input kdp=1 --font-path fonts manuale.typ <KDP>\manuale-interno-kdp.pdf
-# La copertina si compila dalla cartella KDP esterna (sorgente e asset là).
+# Il SORGENTE della copertina (copertina-kdp.typ) sta invece nel repo (perso una
+# volta con la cartella KDP, 2026-08): si compila da documentazione/manuale/ o dalla
+# cartella KDP esterna (che ne tiene una copia con lib/assets/fonts).
 # Le righe seguenti sono una rete di sicurezza: se un file KDP ricompare qui, non
 # entra nel repo.
 /documentazione/manuale/manuale-interno-kdp.pdf
 /documentazione/manuale/copertina-kdp.pdf
-/documentazione/manuale/copertina-kdp.typ
 
 # (Storico) La cartella lib/ del manuale è SORGENTE Typst — template e evidenziatore.
 # Serviva un'eccezione finché «lib/» era una regola globale; ora che è ancorata alla
