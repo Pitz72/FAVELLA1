@@ -4,7 +4,7 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
-## [1.4.1] - 2026-10-01 (nel repository e nel motore del sito; Release, PyPI e installer sono ancora alla 1.4.0)
+## [1.4.1] - 2026-10-01
 ### 🔧 Quattro difetti trovati giocando «Il Viaggiatore»
 Nessuna frase nuova di rilievo (una sola, facoltativa: `(voluto)`); le storie
 scritte per la 1.4.0 si comportano come prima, tranne in tre punti che erano
