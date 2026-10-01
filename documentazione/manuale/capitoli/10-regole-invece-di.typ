@@ -191,6 +191,11 @@ Adesso `lancia il sasso` segue le regole di `getta`, e `butta via il cibo` quell
 del comando a cui rimanda. Se a destra c'è una parola che FAVELLA non conosce e che
 non hai dichiarato, te lo segnala con un avviso.
 
+Se la parola a sinistra è già un verbo del motore (`"colpisci" è come attacca.`),
+FAVELLA ti avvisa che da ora in poi farà un'altra cosa, e ti dice che cosa faceva
+prima. Se il cambio è quello che volevi, scrivilo nella frase stessa e l'avviso
+sparisce (dalla versione 1.4.1): `"colpisci" è come attacca (voluto).`
+
 #tranello[
   `è come` vale *solo per i verbi*. Per le direzioni non funziona: `"destra" è
   come est` non crea una direzione. Per dire che due direzioni sono l'una l'opposto

@@ -10,13 +10,15 @@
 // ====================================================================
 
 // [SITO] Copia del sorgente dell'app di «Il Viaggiatore» (repository
-// Pitz72/il-viaggiatore-favella), adattata al sito in DUE punti soltanto:
+// Pitz72/il-viaggiatore-favella), adattata al sito in TRE punti soltanto:
 //  1. Pyodide dalla CDN (versione pinnata, la stessa del pacchetto npm del
 //     gioco): l'hosting di favella.eu risponde 403 ai .json, quindi
 //     pyodide-lock.json non si può servire da qui. Lark arriva con micropip.
 //  2. Il motore sta in /favella-engine/ alla RADICE del dominio, condiviso col
 //     sito, non sotto /esperimento/.
-// Tutto il resto è identico al gioco: per aggiornarlo si ricopia app/src.
+//  3. Lark da PyPI con micropip (non il wheel di vendor/, che sul sito non c'è).
+// Tutto il resto è identico al gioco: per aggiornarlo si ricopia app/src e si
+// rifanno questi tre punti.
 const PYODIDE_VERSION = "v0.27.2";
 const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
 
@@ -127,6 +129,41 @@ export interface StatoMondo {
   dialog?: { chi: string; opzioni: string[] } | null;
   capacity?: number | null;
   turn?: number;
+  /** turni che ANNULLA può ancora disfare */
+  undo?: number;
+  /** la domanda (sì/no) del motore in attesa: «esci», «ricomincia» */
+  conferma?: string | null;
+  /** le voci che corrono su di te e che qualcuno ti ha riferito: «del sangue», «del bluff»… */
+  voci?: string[];
+}
+
+/** Che cosa farebbe un comando, senza farlo (vedi fav_anteprima in ponte.py). */
+export interface Anteprima {
+  ok: boolean;
+  errore?: string | null;
+  /** false: il motore non ha capito il comando (verbo ignoto, oggetto assente) */
+  capito: boolean;
+  testo: string;
+  /** contatori che cambierebbero: {acqua: -3, sete: -8} */
+  delta: Record<string, number>;
+  /** stati (non numerici) che cambierebbero */
+  stati: { nome: string; prima: unknown; dopo: unknown }[];
+  /** ciò che ti esce dalla bisaccia (dato via, consumato), non ciò che posi per terra */
+  perde: { id: string; nome: string }[];
+  ottiene: { id: string; nome: string }[];
+  /** i contatori dopo il comando e il suo turno di tetti e pavimenti: la tanica tiene 10 */
+  dopo: Record<string, number>;
+  /** quanto di ciò che il gesto dà il tetto rimanda indietro: {acqua: 2} */
+  sprecato?: Record<string, number>;
+  esito: StatoPartita;
+  dialogo: boolean;
+}
+
+/** I verbi d'autore che qui e adesso hanno un effetto (vedi fav_azioni in ponte.py).
+ *  Le combinazioni «usa X su Y» non ci sono: offrirle sarebbe dare la soluzione. */
+export interface AzioniContesto {
+  soli: string[];
+  bersagli: { verbo: string; id: string; nome: string }[];
 }
 
 /** Il cuore di un salvataggio, prodotto dal ponte (vedi ponte.py). */
@@ -157,6 +194,8 @@ export interface SessioneGioco {
   carica: (p: Pick<PartitaSalvata, "comandi" | "impronta" | "ultimo">) => EsitoCaricamento;
   motore: () => string;
   stato: () => StatoMondo;
+  anteprima: (cmd: string) => Anteprima;
+  azioni: () => AzioniContesto;
 }
 
 // Prepara una sessione di gioco: scrive i .fav nel FS e ritorna boot/step.
@@ -196,5 +235,10 @@ export async function avviaGioco(spec: GiocoSpec, onStatus: OnStatus): Promise<S
       return JSON.parse(pyodide.runPython("fav_carica(_entry, _comandi, _impronta, _ultimo)")) as EsitoCaricamento;
     },
     motore: () => (JSON.parse(pyodide.runPython("fav_info()")) as { motore: string }).motore,
+    anteprima: (cmd: string) => {
+      pyodide.globals.set("_cmd", cmd);
+      return JSON.parse(pyodide.runPython("fav_anteprima(_cmd)")) as Anteprima;
+    },
+    azioni: () => JSON.parse(pyodide.runPython("fav_azioni()")) as AzioniContesto,
   };
 }

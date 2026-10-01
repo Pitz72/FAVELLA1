@@ -23,6 +23,18 @@ Lo stato della grata è chiusa.
 Lo stato della discesa è uno stato.
 Lo stato della discesa è nuova.
 
+# Il bluff con la pistola scarica: non è sangue, ma Vito lo racconta, e la voce arriva al mercato.
+Lo stato del bluff è uno stato.
+Lo stato del bluff è nuovo.
+
+# Imma: del paese, è tornata dal casello con l'ultimo pane lasciato a Vito. Digiuna sulla
+# discesa; sfamata (nutrita) se ne va avanti, e a fine turno conta come un dono; arrivata
+# quando la si ritrova in osteria (z5-paese.fav).
+Lo stato di Imma è uno stato.
+Lo stato di Imma è digiuna.
+Lo stato del discorso di Imma è uno stato.
+Lo stato del discorso di Imma è nuovo.
+
 # --- Stanze ---
 La rampa è una stanza.
 La descrizione della rampa è "La condotta sbuca su una rampa che sale alla superstrada: due corsie di asfalto crepato, i guardrail mangiati dalla ruggine. Il silenzio è diverso, qui: di cose costruite e lasciate. A OVEST il casello; a EST la condotta da cui sei venuto.".
@@ -33,7 +45,7 @@ La descrizione del casello se la vita di Vito è al massimo 0 è "Un casello di 
 La descrizione del casello se lo stato del casello è aperto è "Un casello di pedaggio in mezzo al nulla, la sbarra alzata. VITO ci sta dietro come dietro un bancone e ti guarda passare. A NORD una piazzola di sosta, a SUD una vecchia area di servizio. A OVEST la strada prosegue, oltre la sbarra. A EST la rampa.".
 
 La piazzola è una stanza.
-La descrizione della piazzola è "Una piazzola di sosta con due auto sventrate, gli sportelli aperti come bocche. Si torna a SUD, al casello.".
+La descrizione della piazzola è "Una piazzola di sosta con due auto sventrate, gli sportelli spalancati, i sedili ridotti alle molle. Si torna a SUD, al casello.".
 
 L'area di servizio è una stanza.
 La descrizione dell'area di servizio è "Una stazione di servizio diroccata, le pompe a secco da anni; la porta del ripostiglio è sfondata. A OVEST una GRATA chiude un sottopasso di servizio. A NORD il casello.".
@@ -43,6 +55,7 @@ La descrizione del sottopasso è "Un budello di cemento che passa sotto la carre
 
 La discesa è una stanza.
 La descrizione della discesa è "La statale ridiscende dolce verso una conca di tetti. Un filo di fumo sale da un camino: il paese, ancora vivo. Per la prima volta da giorni, in lontananza, voci.".
+La descrizione della discesa se lo stato di Imma è digiuna è "La statale ridiscende dolce verso una conca di tetti. Un filo di fumo sale da un camino: il paese, ancora vivo. Per la prima volta da giorni, in lontananza, voci. Sul guardrail siede IMMA, un sacchetto di tela tra i piedi. (PARLA CON Imma.)".
 
 # --- Collegamenti (auto-reciproci). La condotta è agganciata da z3-invaso.fav. ---
 La rampa collega ovest a il casello.
@@ -61,7 +74,7 @@ La pistola è una cosa.
 La pistola è prendibile.
 La pistola è in la piazzola.
 Il posto della pistola è "Sotto il sedile della seconda, una PISTOLA.".
-La descrizione della pistola è "Una pistola vera, pesante, e completamente scarica. Non spara: ma chi se la trova puntata addosso non può saperlo. (Con questa in mano, MINACCIA chi ti sbarra la strada.)".
+La descrizione della pistola è "Una pistola vera, pesante, scarica da chissà quanto. Non spara: ma chi se la trova puntata addosso non può saperlo. (Con questa in mano, MINACCIA chi ti sbarra la strada.)".
 
 Le cartucce è una cosa.
 Le cartucce è prendibile.
@@ -111,6 +124,7 @@ La descrizione di Vito se la vita di Vito è al massimo 0 è "Vito è seduto a t
 
 Il dialogo di Vito comincia con "vito_inizio".
 Vito al nodo "vito_inizio" dice "Respira storto, seduto contro la sbarra, una mano sulle costole. Non ti guarda. «Hai vinto tu. Va', che qui non c'è più niente da prendere.»" se la vita di Vito è al massimo 0.
+Vito al nodo "vito_inizio" dice "Non si alza. «Tu.» Lo dice come si dice il nome di un cane che ha morso. «Hai tirato fuori un ferro vuoto, e io ti ho detto calma, calma, come a un bambino.» Si passa una mano sulla faccia. «Lo racconto, adesso, a chi passa. Lo racconto bene.» Una pausa. «La sbarra è su. Passa, e non fermarti.»" se lo stato del bluff è fatto e la fiducia di Vito è al massimo 0.
 Vito al nodo "vito_inizio" dice "«Tu.» Non si alza. «La sbarra è su. Passa, e non fermarti.»" se la fiducia di Vito è al massimo 0.
 Vito al nodo "vito_inizio" dice "«Adesso vuoi parlare?» Stringe il tubo. «Paga, e forse ci ripenso.»" se lo stato di Vito è ostile.
 Vito al nodo "vito_inizio" dice "«Strada privata, amico. La mia.» Batte il tubo sul bancone, due colpi, senza cattiveria. «Si paga il pedaggio: qualcosa di buono, e passi. Sennò, dietrofront.»" se lo stato del casello è chiuso.
@@ -141,15 +155,17 @@ Invece di attacca Vito se la vita di Vito è più di 0 e il giocatore ha la chia
 Invece di attacca Vito se la vita di Vito è più di 0 e il giocatore ha il coltello: dire "Affondi il coltello dove puoi. Lui è grosso e non molla." e adesso diminuisci la vita di Vito di 3 e adesso lo stato di Vito è ostile.
 Invece di attacca Vito se la vita di Vito è più di 0: dire "Lo colpisci a mani nude: è come picchiare un muro che picchia a sua volta." e adesso diminuisci la vita di Vito di 1 e adesso lo stato di Vito è ostile.
 Invece di attacca Vito: dire "Vito è a terra. La strada è libera.".
+# Alzare le mani su Vito è sangue; il bluff con la pistola scarica no: non muore nessuno.
+Quando lo stato di Vito è ostile: aumenta il sangue di 1.
 
 Ogni turno se il giocatore è in il casello e la vita di Vito è più di 0 e lo stato di Vito è ostile: dire "Vito cala il tubo di ferro. Senti le costole protestare." e adesso diminuisci la vita di 2.
 Ogni turno se il giocatore è in il casello e la vita di Vito è più di 0 e lo stato di Vito è ostile e càpita (1 su 4): dire "Un colpo ti prende in pieno: il sapore del ferro in bocca." e adesso diminuisci la vita di 1.
 
-Quando la vita di Vito è al massimo 0: dire "Vito arretra contro la sbarra, la schiena che scivola giù. «…e va'. Va' pure, allora.» Non si rialza. La strada è aperta, e ti è costata." e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo.
+Quando la vita di Vito è al massimo 0: dire "Vito arretra contro la sbarra, la schiena che scivola giù. «…e va'. Va' pure, allora.» Non si rialza. La strada è aperta, e ti è costata." e adesso lo stato del casello è aperto e adesso lo stato di Vito è calmo e adesso aumenta il sangue di 1.
 
 # --- VIA 4 · BLUFFARE: la pistola scarica (lui non sa che è vuota) ---
 "minaccia" è un comando.
-Invece di minaccia Vito se il giocatore ha la pistola e lo stato del casello è chiuso: dire "Tiri fuori la pistola e gliela punti in faccia. Vito non sa che è scarica: per un attimo lo legge nei tuoi occhi, poi alza le mani piano e solleva la sbarra. «Calma, calma. Passa. Passa pure.» Mentre passi, ti fissa la faccia per ricordarsela." e adesso lo stato del casello è aperto e adesso diminuisci la fiducia di Vito di 1.
+Invece di minaccia Vito se il giocatore ha la pistola e lo stato del casello è chiuso: dire "Tiri fuori la pistola e gliela punti in faccia. Vito non sa che è scarica: per un attimo lo legge nei tuoi occhi, poi alza le mani piano e solleva la sbarra. «Calma, calma. Passa. Passa pure.» Mentre passi, ti fissa la faccia per ricordarsela." e adesso lo stato del casello è aperto e adesso diminuisci la fiducia di Vito di 1 e adesso lo stato del bluff è fatto.
 Invece di minaccia Vito se lo stato del casello è aperto: dire "La sbarra è già su. Inutile fare il duro adesso.".
 Invece di minaccia Vito: dire "Minacciare Vito a mani vuote è il modo più rapido per prenderle.".
 
@@ -162,6 +178,56 @@ Il casello collega ovest a la discesa.
 Invece di curati se il giocatore ha le medicine e la vita è al massimo 9: dire "Apri la scatola, prendi quel che serve. Il dolore si allenta, le forze tornano un poco." e adesso aumenta la vita di 3 e adesso le medicine è nel nulla.
 Invece di curati se il giocatore ha le medicine: dire "Stai abbastanza in forze. Sprecare le medicine adesso sarebbe stupido: c'è chi potrebbe averne più bisogno.".
 Invece di curati: dire "Non hai medicine con cui curarti.".
+
+# --- IMMA  [minore: TORNARE, come te. Vive dietro la piazzetta; è andata a vedere se oltre il casello c'era ancora qualcosa] ---
+# Le chiede da mangiare e basta. Dargliene costa due porzioni (o l'ultima che hai) proprio dove le
+# scorte stringono, un attimo prima del paese. Chi lo fa non riceve niente sul momento: se ne parla
+# in osteria (z5-paese.fav), dove la voce arriva prima di te, e al guado.
+Imma è un personaggio.
+Imma è in la discesa.
+Imma si chiama anche "donna".
+La descrizione di Imma è "Una donna sui cinquant'anni, tutta tendini dentro una camicia da uomo. Una scarpa slacciata, che non si china ad allacciare. Guarda la statale, non te.".
+La descrizione di Imma se lo stato di Imma è arrivata è "Una donna sui cinquant'anni, tutta tendini dentro una camicia da uomo. La scarpa, adesso, è allacciata, e ha il colore di chi ha mangiato.".
+
+Il dialogo di Imma comincia con "imma_inizio".
+Imma al nodo "imma_inizio" dice "Mastica con calma, il piatto tra i gomiti. «Per oggi ho detto abbastanza. Se vuoi sapere del paese, chiedi a Rosaria.»" se lo stato di Imma è arrivata.
+Imma al nodo "imma_inizio" dice "«Allora?» Aspetta, le mani sulle ginocchia." se lo stato del discorso di Imma è avviato.
+Imma al nodo "imma_inizio" dice "Ti guarda lo zaino prima della faccia, e capisce. «Tu non ne hai. Si vede da come cammini.» Quasi si scusa." se il cibo è al massimo 0.
+Imma al nodo "imma_inizio" dice "Non alza subito la testa. «Non ti chiedo l'acqua: in paese qualcuno ne dà sempre. Mi serve da mangiare.» Poi ti guarda, e vede come ti tieni lo stomaco. «Sì, lo so. Anche tu.»" se la fame è almeno 7.
+Imma al nodo "imma_inizio" dice "Non alza subito la testa. «Non ti chiedo l'acqua: in paese qualcuno ne dà sempre. Mi serve da mangiare.» Ti guarda, senza chiedere scusa. «Sono tre giorni che mi tengo in piedi con la saliva.»".
+
+Al nodo "imma_inizio" l'opzione "Tieni, mangia." se lo stato di Imma è digiuna e il cibo è almeno 2 conduce al nodo "imma_mangia" e adesso diminuisci il cibo di 2 e adesso lo stato di Imma è nutrita e adesso Imma è nel nulla.
+Al nodo "imma_inizio" l'opzione "È l'ultimo che ho. Tieni." se lo stato di Imma è digiuna e il cibo è almeno 1 e il cibo è al massimo 1 conduce al nodo "imma_ultimo" e adesso diminuisci il cibo di 1 e adesso lo stato di Imma è nutrita e adesso Imma è nel nulla.
+Al nodo "imma_inizio" l'opzione "Chi sei?" se lo stato di Imma è digiuna conduce al nodo "imma_chi".
+Al nodo "imma_inizio" l'opzione "Com'è il paese?" se lo stato di Imma è digiuna conduce al nodo "imma_paese".
+Al nodo "imma_inizio" l'opzione "Non posso. Mi dispiace." se lo stato di Imma è digiuna conduce al nodo "imma_no" e adesso lo stato del discorso di Imma è avviato.
+Al nodo "imma_inizio" l'opzione "Il vicolo di cui parlavi…" se lo stato di Imma è arrivata e lo stato di Pasquale è malato conduce al nodo "imma_vicolo".
+Al nodo "imma_inizio" l'opzione "Ti lascio stare." chiude il dialogo e adesso lo stato del discorso di Imma è avviato.
+
+Imma al nodo "imma_mangia" dice "Prende quello che le dai con tutte e due le mani e mangia come si mangia dopo tre giorni: guardando solo ciò che ha davanti. Poi si china, finalmente, e allaccia la scarpa. «Alla Rosaria ci arrivo prima di te.» Raccoglie il sacchetto. «Non so dirti cosa le racconterò. Ma per ora ho la bocca piena.»".
+Al nodo "imma_mangia" l'opzione "…" chiude il dialogo.
+
+Imma al nodo "imma_ultimo" dice "È un boccone, e lo sa. Ne mangia metà, per farlo durare, e l'altra metà se la mette in tasca. Si china ad allacciare la scarpa. «Alla Rosaria ci arrivo prima di te.» Ti guarda, una volta sola. «L'ultimo non lo dà quasi nessuno. Quello, in paese, si viene a sapere.»".
+Al nodo "imma_ultimo" l'opzione "…" chiude il dialogo.
+
+Imma al nodo "imma_no" dice "«Lo so.» Non è un rimprovero. «Lo dicono tutti, e quasi tutti hanno ragione.» Torna a guardare la statale. Se ci ripensi, è qui.".
+Al nodo "imma_no" l'opzione "…" conduce al nodo "imma_inizio".
+
+Imma al nodo "imma_chi" dice "«Imma. Sono di giù, dal vicolo dietro la piazzetta.» Muove il mento verso la conca di tetti. «Sono andata a vedere se oltre il casello c'era ancora qualcosa. C'è la statale.» Ti guarda la bisaccia, la tanica. «Tu vai dall'altra parte, o torni. Non si capisce.»".
+Al nodo "imma_chi" l'opzione "E il casello?" conduce al nodo "imma_vito".
+Al nodo "imma_chi" l'opzione "…" conduce al nodo "imma_inizio" e adesso lo stato del discorso di Imma è avviato.
+
+Imma al nodo "imma_vito" dice "«Vito.» Lo dice come si dice il tempo. «All'andata guardava altrove. Al ritorno mi ha preso il pane che mi restava e mi ha chiamata sorella.»".
+Al nodo "imma_vito" l'opzione "…" conduce al nodo "imma_inizio" e adesso lo stato del discorso di Imma è avviato.
+
+Imma al nodo "imma_paese" dice "«Il paese tiene.» Conta sulle dita. «Rosaria ti mette a sedere, se arrivi pulito. Se arrivi con qualcosa addosso, ti serve in piedi: la statale parla più in fretta di chi la cammina.» Una pausa. «E il ragazzo della piazzetta ti chiederà di portarlo via. Digli di sì o di no, ma subito. Ha già aspettato abbastanza per tre.»".
+Al nodo "imma_paese" l'opzione "…" conduce al nodo "imma_inizio" e adesso lo stato del discorso di Imma è avviato.
+
+Imma al nodo "imma_vicolo" dice "«Pasquale? Quello con la febbre.» Posa il cucchiaio. «Non l'ho mai sentito lamentarsi. È questo che mi fa paura.»".
+Al nodo "imma_vicolo" l'opzione "…" conduce al nodo "imma_inizio".
+
+# Il cibo dato a Imma è un dono, e conta una volta sola (come la brocca di Rosaria).
+Quando lo stato di Imma è nutrita: aumenta la generosità di 1.
 
 # --- Passaggio a Z5: la discesa porta alla porta del paese ---
 # (la porta è la stanza d'ingresso di z5-paese.fav)

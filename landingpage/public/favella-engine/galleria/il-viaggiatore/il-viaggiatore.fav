@@ -22,6 +22,25 @@ L'acqua parte da 3.
 Il cibo è un contatore.
 Il cibo parte da 2.
 
+# I due fili del viaggio: come sei passato (il sangue) e cosa hai lasciato a chi è
+# rimasto (la generosità). La voce corre lungo la strada e arriva prima di te: la
+# raccolgono Rosaria, Tore, Onofrio e, al guado, Cosimo. Vedi pre-produzione/06.
+Il sangue è un contatore.
+Il sangue parte da 0.
+La generosità è un contatore.
+La generosità parte da 0.
+
+# Quello che si dice di te. Ogni voce parte «ignota» e diventa «udita» quando qualcuno te la
+# riferisce in faccia (Rosaria, Ciro, Imma): l'interfaccia la scrive a lato dello schermo
+# solo allora, come una cosa che hai sentito, non come un contatore. Se ne aggiungi una,
+# aggiungi la sua riga in app/src/gioco/testo.ts (VOCI): lo verifica collaudo/testo.py.
+Lo stato della voce del sangue è uno stato.
+Lo stato della voce del sangue è ignota.
+Lo stato della voce della generosità è uno stato.
+Lo stato della voce della generosità è ignota.
+Lo stato della voce del bluff è uno stato.
+Lo stato della voce del bluff è ignota.
+
 # ============================================================================
 # INVENTARIO  [7 slot: tanica e biglietto di casa, più cinque scelte. La tanica è la vita.]
 # ============================================================================
@@ -53,6 +72,28 @@ Includi "z7-guado.fav".
 Invece di attingi: dire "Qui non c'è niente da cui attingere.".
 Invece di attacca: dire "Alzi le mani, poi le riabbassi. Non è questa la cosa con cui prendertela.".
 Invece di minaccia: dire "Nessuno qui ti ha fatto niente. La minaccia ti resta in gola.".
+# Le parole della violenza: chi scrive «uccidi», «picchia», «colpisci» intende
+# attaccare. «Colpisci» è un verbo del motore: qui lo si vuole proprio come «attacca»,
+# e «(voluto)» lo dice al compilatore (motore 1.4.1). «Spara» chiede un'arma che spari.
+"uccidi" è come attacca.
+"ammazza" è come attacca.
+"picchia" è come attacca.
+"aggredisci" è come attacca.
+"colpisci" è come attacca (voluto).
+"spara" è un comando.
+Invece di spara se il giocatore ha il fucile: dire "Abbassi la canna. Onofrio non te l'ha dato per questo.".
+Invece di spara se il giocatore ha la pistola: dire "Premi il grilletto: un clic secco, e niente. La pistola è scarica, e lo sapevi: serve a farsi credere.".
+Invece di spara: dire "Non hai niente che spari.".
+
+# ============================================================================
+# L'ULTIMA PAROLA DEL TURNO  [dopo le zone: i loro conti sono già fatti]
+# ============================================================================
+# I demoni si valutano nell'ordine in cui sono scritti. Qui in fondo, i tetti e i
+# pavimenti valgono anche per ciò che le zone hanno dato nello stesso turno
+# (l'accoglienza di Rosaria, le medicine): niente sete -1, niente vita 11.
+Ogni turno se la sete è meno di 0: la sete diventa 0.
+Ogni turno se la fame è meno di 0: la fame diventa 0.
+Ogni turno se la vita è più di 10: la vita diventa 10.
 
 # Punto di partenza (la stazione è dichiarata in z1-acquaviva.fav).
 Il giocatore comincia in la stazione.

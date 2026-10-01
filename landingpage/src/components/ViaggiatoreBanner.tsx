@@ -15,7 +15,7 @@ import { VIAGGIATORE_RELEASE_URL, VIAGGIATORE_REPO_URL } from "../constants";
 //  vero <a href> con ricarica completa, non il router della SPA.
 // ====================================================================
 
-const FATTI = ["7 zone", "39 luoghi", "13 personaggi", "6 finali"];
+const FATTI = ["7 zone", "39 luoghi", "14 personaggi", "6 finali"];
 
 // Il viandante, piedi a y=0, alto circa 150 unità. Stesse forme dell'icona.
 const Viandante = () => (

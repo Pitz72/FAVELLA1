@@ -31,9 +31,9 @@ export const SITE_URL = "https://favella.eu";
 //   identità visiva, /esperimento risincronizzato col gioco (taccuino, loghi).
 // · 2.4.0 = motore 1.3.0: tutte le criticità dell'analisi corrette.
 // · 2.5.0 = motore 1.4.0: pulsanti-verbo nelle cassette-gioco, manuale a 95 pp.
-// · 2.5.1 = motore 1.4.1 (quattro difetti trovati giocando Il Viaggiatore); gli
-//   installer e PyPI restano alla 1.4.0 finché non esce la Release.
-export const SITE_VERSION = "2.5.1";
+// · 2.6.0 = motore 1.4.1 (quattro difetti trovati giocando Il Viaggiatore),
+//   manuale aggiornato, /esperimento e galleria con Il Viaggiatore 1.11.0.
+export const SITE_VERSION = "2.6.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -52,7 +52,7 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: il gioco si aggiorna (1.1.1 col motore FAVELLA 1.2.1).
+// Sempre l'ultima release: il gioco si aggiorna (1.11.0 col motore FAVELLA 1.4.1).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;

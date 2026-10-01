@@ -18,7 +18,9 @@ iniziali `n`, `s`, `e`, `o`; dalla versione 1.3 anche `su`, `giù`, `nordest`,
 direzioni personalizzate che hai dichiarato (`alto`, `dentro`...). In alternativa,
 `vai nord`. `sali` e `scendi` vanno su e giù, `entra` va `dentro`, `esci dalla
 stanza` va `fuori`, se la stanza ha quell'uscita e tu non hai dichiarato quei verbi
-per conto tuo.
+per conto tuo. Una mossa verso un'uscita che non c'è (`ovest` in una stanza senza
+uscita a ovest) risponde «Non puoi andare in quella direzione.» e non fa passare il
+tempo: niente eventi, niente demoni, niente da disfare con `annulla` (dalla 1.4.1).
 
 Per rivedere dove ci si trova c'è `guarda` (o `l`); per osservare un oggetto da
 vicino, `esamina [oggetto]` (o `x`), oppure `guarda [oggetto]` e `osserva
@@ -34,7 +36,7 @@ contenitori aperti: «Sul tavolo: una mela.».
   inset: 6pt,
   align: (left + top, left + top),
   table.header([*Comando*], [*Effetto*]),
-  [#gc[prendi / lascia]], [Raccogliere o posare un oggetto prendibile (`prendi la mela dal tavolo`, `lascia la mela sul tavolo`).],
+  [#gc[prendi / lascia]], [Raccogliere o posare un oggetto prendibile (`prendi la mela dal tavolo`, `lascia la mela sul tavolo`). Risponde con la sola frase: «Lasciato: la mela.».],
   [#gc[inventario]], [Vedere cosa si porta con sé (anche `i`), compreso quel che sta negli zaini.],
   [#gc[usa X con Y]], [Far interagire due oggetti.],
   [#gc[metti X in/su Y]], [Posare un oggetto in un contenitore o su un supporto (anche `sopra`).],

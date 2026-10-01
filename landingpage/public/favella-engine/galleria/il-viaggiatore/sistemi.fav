@@ -6,17 +6,60 @@
 # ╚════════════════════════════════════════════════════════════════════════════╝
 
 # --- BERE / MANGIARE  [verbi su CONTATORE — consumo SEMPRE protetto da guard] ---
+# Un sorso toglie 4 alla sete e costa 1 d'acqua; una porzione toglie 3 alla fame
+# e costa 1 di cibo. Si può bere e mangiare anche in più riprese in un turno solo:
+# «bevi due sorsi», «mangia tre porzioni». I pulsanti dell'interfaccia (la tanica,
+# le scorte) mandano proprio questi comandi. Le forme vecchie («mangia qualcosa»)
+# restano valide: sono dentro i salvataggi già fatti.
 "bevi" è un comando senza oggetto.
+"bevi acqua" è come "bevi".
+"bere acqua" è come "bevi".
+"bevi un sorso" è come "bevi".
+"bevi 1" è come "bevi".
+"bevi due sorsi" è un comando senza oggetto.
+"bevi 2" è come "bevi due sorsi".
+"bevi 2 sorsi" è come "bevi due sorsi".
+"bevi tre sorsi" è un comando senza oggetto.
+"bevi 3" è come "bevi tre sorsi".
+"bevi 3 sorsi" è come "bevi tre sorsi".
 Invece di bevi se la sete è al massimo 1: dire "Non hai sete. Quest'acqua costa troppo per berla senza bisogno.".
 Invece di bevi se l'acqua è almeno 1: dire "Bevi a piccoli sorsi dalla tanica. La gola brucia meno." e adesso diminuisci l'acqua di 1 e adesso diminuisci la sete di 4.
 Invece di bevi: dire "Porti la tanica alle labbra: vuota. Solo il sapore del metallo caldo.".
+Invece di bevi due sorsi se la sete è al massimo 1: dire "Non hai sete. Quest'acqua costa troppo per berla senza bisogno.".
+Invece di bevi due sorsi se l'acqua è almeno 2: dire "Bevi due sorsi lenti, tenendoli in bocca prima di mandarli giù. La gola smette di raspare." e adesso diminuisci l'acqua di 2 e adesso diminuisci la sete di 8.
+Invece di bevi due sorsi se l'acqua è almeno 1: dire "Nella tanica c'è un fondo solo: due sorsi non ci sono. Ne resta uno.".
+Invece di bevi due sorsi: dire "Porti la tanica alle labbra: vuota. Solo il sapore del metallo caldo.".
+Invece di bevi tre sorsi se la sete è al massimo 1: dire "Non hai sete. Quest'acqua costa troppo per berla senza bisogno.".
+Invece di bevi tre sorsi se l'acqua è almeno 3: dire "Bevi a lungo, gli occhi chiusi, finché la tanica non cambia suono. Per un po' la sete tace." e adesso diminuisci l'acqua di 3 e adesso diminuisci la sete di 12.
+Invece di bevi tre sorsi se l'acqua è almeno 1: dire "Nella tanica non c'è acqua per tre sorsi.".
+Invece di bevi tre sorsi: dire "Porti la tanica alle labbra: vuota. Solo il sapore del metallo caldo.".
 
-# NB: 'mangia' è un verbo TRANSITIVO riservato del motore (usa/apri/mangia/sposta):
-# non si può ridichiarare 'senza oggetto'. Comando multiparola intransitivo dedicato.
+# NB: 'mangia' è un verbo TRANSITIVO del motore, che lo chiede all'oggetto («Cosa
+# vuoi mangiare?»); il cibo qui non è un oggetto ma un contatore. Il comando
+# multiparola «mangia qualcosa» lo consuma, e le altre forme sono sinonimi suoi.
+# Non si dichiara «"mangia" è come …»: farebbe mangiare la scorta anche a «mangia
+# la mappa». Il «mangia» e il «bere» soli li completa il ponte dell'app.
 "mangia qualcosa" è un comando senza oggetto.
+"mangia cibo" è come "mangia qualcosa".
+"mangia una porzione" è come "mangia qualcosa".
+"mangia 1" è come "mangia qualcosa".
+"mangia due porzioni" è un comando senza oggetto.
+"mangia 2" è come "mangia due porzioni".
+"mangia 2 porzioni" è come "mangia due porzioni".
+"mangia tre porzioni" è un comando senza oggetto.
+"mangia 3" è come "mangia tre porzioni".
+"mangia 3 porzioni" è come "mangia tre porzioni".
 Invece di mangia qualcosa se la fame è al massimo 1: dire "Non hai fame. Il cibo lo tieni per quando servirà.".
 Invece di mangia qualcosa se il cibo è almeno 1: dire "Mastichi piano. Non sa di niente, ma è qualcosa nello stomaco." e adesso diminuisci il cibo di 1 e adesso diminuisci la fame di 3.
 Invece di mangia qualcosa: dire "Non hai niente da mettere sotto i denti.".
+Invece di mangia due porzioni se la fame è al massimo 1: dire "Non hai fame. Il cibo lo tieni per quando servirà.".
+Invece di mangia due porzioni se il cibo è almeno 2: dire "Mangi con metodo, un boccone dopo l'altro, senza guardare cos'è. Lo stomaco smette di stringere." e adesso diminuisci il cibo di 2 e adesso diminuisci la fame di 6.
+Invece di mangia due porzioni se il cibo è almeno 1: dire "Di cibo ce n'è per una porzione sola, non per due.".
+Invece di mangia due porzioni: dire "Non hai niente da mettere sotto i denti.".
+Invece di mangia tre porzioni se la fame è al massimo 1: dire "Non hai fame. Il cibo lo tieni per quando servirà.".
+Invece di mangia tre porzioni se il cibo è almeno 3: dire "Mangi tutto quello che c'è da mangiare, senza fretta e senza sapore. Per il momento, lo stomaco è zitto." e adesso diminuisci il cibo di 3 e adesso diminuisci la fame di 9.
+Invece di mangia tre porzioni se il cibo è almeno 1: dire "Non hai cibo per tre porzioni.".
+Invece di mangia tre porzioni: dire "Non hai niente da mettere sotto i denti.".
 # La tanica non si lascia: è il recipiente del contatore "acqua". Senza, bere non ha senso.
 Invece di lascia la tanica: dire "La tanica non la molli. Senza, l'acqua non avresti dove tenerla.".
 
@@ -34,13 +77,13 @@ Lo stato della pancia è quieta.
 Ogni turno se la sete è almeno 6 e la sete è meno di 9 e lo stato della gola è secca e càpita (1 su 4): dire "La lingua ti si incolla al palato.".
 Ogni turno se la sete è almeno 6 e lo stato della gola è quieta: dire "Hai la lingua impastata. Devi bere." e adesso lo stato della gola è secca.
 Ogni turno se la sete è meno di 6: lo stato della gola è quieta.
-Ogni turno se la sete è almeno 9: dire "La testa martella, le mani tremano." e adesso diminuisci la vita di 1.
+Ogni turno se la sete è almeno 9: dire "Le mani tremano, la vista si stringe ai bordi. (BEVI.)" e adesso diminuisci la vita di 1.
 Quando la sete è almeno 13: dire "Le gambe cedono sul ciglio della strada. Da terra, i sassi scottano più dell'aria." e adesso perdi "La sete ti ha avuto prima di casa.".
 
-Ogni turno se la fame è almeno 7 e la fame è meno di 11 e lo stato della pancia è vuota e càpita (1 su 4): dire "Lo stomaco brontola. (MANGIA QUALCOSA.)".
-Ogni turno se la fame è almeno 7 e lo stato della pancia è quieta: dire "Lo stomaco è un nodo stretto. (MANGIA QUALCOSA, se hai di che.)" e adesso lo stato della pancia è vuota.
+Ogni turno se la fame è almeno 7 e la fame è meno di 11 e lo stato della pancia è vuota e càpita (1 su 4): dire "Lo stomaco brontola. (MANGIA.)".
+Ogni turno se la fame è almeno 7 e lo stato della pancia è quieta: dire "Lo stomaco ti si è chiuso. (MANGIA, se hai di che.)" e adesso lo stato della pancia è vuota.
 Ogni turno se la fame è meno di 7: lo stato della pancia è quieta.
-Ogni turno se la fame è almeno 11: dire "La debolezza ti rallenta i passi." e adesso diminuisci la vita di 1.
+Ogni turno se la fame è almeno 11: dire "La debolezza ti rallenta i passi. (MANGIA.)" e adesso diminuisci la vita di 1.
 Quando la fame è almeno 15: dire "Non hai più la forza di rialzarti." e adesso perdi "La fame ti ha fermato lungo la strada.".
 
 # La vita cede prima che sete o fame tocchino la soglia estrema (la sete sale di 1
@@ -50,13 +93,13 @@ Quando la vita è al massimo 0 e la sete è almeno 9: dire "Le gambe cedono sul 
 Quando la vita è al massimo 0 e la sete è meno di 9 e la fame è almeno 11: dire "Non hai più la forza di rialzarti." e adesso perdi "La fame ti ha fermato lungo la strada.".
 Quando la vita è al massimo 0 e la sete è meno di 9 e la fame è meno di 11: dire "Ti accasci, e non riparti più." e adesso perdi "Il viaggio finisce qui.".
 
-# --- FLOOR-CLAMP COSMETICO  [sete/fame non scendono sotto 0: niente valori negativi
-# nello STATO se si beve/mangia in eccesso. I contatori del motore non clampano.] ---
-Ogni turno se la sete è meno di 0: la sete diventa 0.
-Ogni turno se la fame è meno di 0: la fame diventa 0.
-# --- LA VITA  [tetto a 10; un poco di ripresa quando il corpo non chiede niente] ---
-Ogni turno se la vita è più di 10: la vita diventa 10.
-Ogni turno se la sete è al massimo 3 e la fame è al massimo 3 e la vita è meno di 10 e il giocatore non è in la serra e il giocatore non è in il casello e il giocatore non è in il guado e càpita (1 su 6): dire "Il corpo, per una volta, non chiede niente. Ti senti un poco più in forze." e adesso aumenta la vita di 1.
+# --- LA VITA  [un poco di ripresa quando il corpo non chiede niente] ---
+# «Niente» vuol dire sotto i due avvisi (sete 6, fame 7), non a pancia piena: chi
+# beve e mangia quando il corpo lo chiede ritrova le forze camminando, una volta
+# ogni tanto. Mai nei luoghi di scontro (la serra, il casello, il guado). Il tetto a
+# 10 e i pavimenti a 0 di sete e fame stanno in fondo a il-viaggiatore.fav, dopo le
+# zone: così valgono anche per l'acqua e il cibo che le zone danno nello stesso turno.
+Ogni turno se la sete è al massimo 5 e la fame è al massimo 6 e la vita è meno di 10 e il giocatore non è in la serra e il giocatore non è in il casello e il giocatore non è in il guado e càpita (1 su 8): dire "Il corpo, per una volta, non chiede niente. Ti senti un poco più in forze." e adesso aumenta la vita di 1.
 
 # --- CAPIENZA  [la tanica tiene dieci litri; con la damigiana, venti] ---
 Ogni turno se l'acqua è più di 20: dire "Tanica e damigiana sono piene fino all'orlo: il resto lo lasci andare." e adesso l'acqua diventa 20.

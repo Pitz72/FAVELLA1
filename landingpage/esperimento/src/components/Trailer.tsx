@@ -17,7 +17,7 @@
 // ====================================================================
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { W, H, BANDA, SCENE, DURATA, presenza, TAPPE_T0, TAPPE_PASSO, CINQUE_T0, CINQUE_PASSO, REGOLA_DUR } from "../trailer/scaletta";
-import { disegnaScena, precarica, tappaCorrente, REGOLE, FONT, type Cache } from "../trailer/paesaggi";
+import { disegnaScena, avviaPreparazione, seguiPreparazione, tappaCorrente, REGOLE, FONT, cacheTrailer } from "../trailer/paesaggi";
 import { clamp, seg, easeOut, easeIn, expoOut, inviluppo } from "../trailer/tempo";
 import { ColonnaSonora } from "../trailer/audio";
 import branoIntro from "../assets/intro.mp3";
@@ -63,8 +63,8 @@ const CUES: Cue[] = [
   { id: "mappa", da: 33.6, a: 36.1, tipo: "dissolvi", box: centro(190), righe: [{ testo: "Sette tappe fino a casa.", stile: serif(64, { color: "#e8eef6" }) }] },
   { id: "cinque", da: 49.3, a: 52.4, tipo: "maschera", sfalsa: 0.18, box: centro(420),
     righe: [{ testo: "Cinque modi di stare", stile: serif(78, { color: "#eef2f8" }) }, { testo: "in un mondo che muore.", stile: serif(78, { color: "#eef2f8", fontStyle: "italic" }) }] },
-  { id: "guado1", da: 61.8, a: 67.5, tipo: "maschera", box: centro(214), righe: [{ testo: "E al guado, ad aspettarti,", stile: serif(76, { color: "#f6e6e2" }) }] },
-  { id: "guado2", da: 63.7, a: 67.5, tipo: "maschera", box: centro(318), righe: [{ testo: "tuo fratello.", stile: serif(76, { color: "#ff8f8f", fontStyle: "italic" }) }] },
+  { id: "guado1", da: 61.8, a: 67.5, tipo: "maschera", box: centro(214), righe: [{ testo: "E al guado, ad aspettarti,", stile: serif(76, { color: "#f6e6e2", textShadow: "0 2px 26px rgba(20,4,10,.75), 0 0 2px rgba(20,4,10,.5)" }) }] },
+  { id: "guado2", da: 63.7, a: 67.5, tipo: "maschera", box: centro(318), righe: [{ testo: "tuo fratello.", stile: serif(76, { color: "#ffa0a0", fontStyle: "italic", textShadow: "0 2px 26px rgba(20,4,10,.8), 0 0 2px rgba(20,4,10,.5)" }) }] },
   ...REGOLE.map((r, i): Cue => ({
     id: "regola" + i, da: 67.8 + i * REGOLA_DUR + 0.06, a: 67.8 + (i + 1) * REGOLA_DUR - 0.04, entra: 0.35, esce: 0.12, tipo: "maschera",
     box: { left: 150, top: 390, width: 980 },
@@ -77,19 +77,47 @@ const CUES: Cue[] = [
     righe: [{ testo: "Un'avventura testuale in italiano, scritta e giocata col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
 ];
 
-const STATS = [{ n: 7, l: "tappe" }, { n: 39, l: "luoghi" }, { n: 13, l: "personaggi" }, { n: 6, l: "finali" }];
+const STATS = [{ n: 7, l: "tappe" }, { n: 39, l: "luoghi" }, { n: 14, l: "personaggi" }, { n: 6, l: "finali" }];
 
 const CINQUE = [
+  // Saverio custodisce il pozzo: tetto a due falde, carrucola, secchio, muro di pietre
   { nome: "Saverio", luogo: "il pozzo", verbo: "custodire", a: "#e6a85a",
-    d: ["M28 72 H92 V102 H28 Z", "M34 72 V38", "M86 72 V38", "M24 38 H96", "M60 38 V60", "M51 60 H69 L66 74 H54 Z"] },
+    d: ["M30 76 Q60 90 90 76", "M30 76 Q60 64 90 76", "M30 76 V102 Q60 112 90 102 V76", "M31 88 Q60 98 89 88",
+        "M46 82 V93", "M62 84 V96", "M77 82 V92", "M40 94 V104", "M55 97 V108",
+        "M38 74 V34", "M82 74 V34", "M24 34 H96", "M22 34 L60 12 L98 34", "M34 27 H86", "M45 20 H75",
+        "M54 44 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0", "M60 50 V64", "M52 64 H68 L65.5 78 H54.5 Z", "M53 70 H67", "M82 44 H100 L104 52"],
+    riempi: ["M22 34 L60 12 L98 34 Z", "M52 64 H68 L65.5 78 H54.5 Z"] },
+  // Iole aspetta alla pompa: corpo, manico alzato, beccuccio, la goccia che tarda a cadere
   { nome: "Iole", luogo: "la diga", verbo: "aspettare", a: "#a9dbe4",
-    d: ["M60 104 V36", "M46 104 H74", "M60 46 L96 30", "M60 62 H38 V72", "M38 82 V86", "M38 94 V96"] },
+    d: ["M38 106 H82", "M44 106 V94 H76 V106", "M52 94 V40 Q52 32 60 32 Q68 32 68 40 V94", "M52 78 H68", "M52 58 H68",
+        "M68 62 H90 Q98 62 98 70 V74", "M60 32 V14", "M52 14 H68", "M60 24 L26 14", "M22 12 L30 18",
+        "M98 82 Q94 90 98 94 Q102 90 98 82 Z", "M84 108 Q98 112 112 108"],
+    riempi: ["M52 94 V40 Q52 32 60 32 Q68 32 68 40 V94 Z", "M98 82 Q94 90 98 94 Q102 90 98 82 Z"] },
+  // Vito tiene il casello: garitta, sbarra alzata a strisce, contrappeso, lampada
   { nome: "Vito", luogo: "il casello", verbo: "predare", a: "#f2ad45",
-    d: ["M28 104 V44", "M18 104 H40", "M28 54 L104 40", "M48 51 L54 50", "M66 48 L72 47", "M84 44 L90 43"] },
+    d: ["M14 106 H52", "M20 106 V58 H44 V106", "M17 58 L32 46 L47 58", "M26 70 H38 V84 H26 Z",
+        "M44 66 L104 36", "M56 60 L54 53", "M68 54 L66 47", "M80 48 L78 41", "M92 42 L90 35",
+        "M100 36 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0", "M44 66 L36 76", "M27 78 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0"],
+    riempi: ["M20 106 V58 H44 V106 Z", "M26 70 H38 V84 H26 Z"] },
+  // Rosaria resta: un bicchiere d'acqua sul tavolo, con il suo menisco
   { nome: "Rosaria", luogo: "l'osteria", verbo: "restare", a: "#ec7d54",
-    d: ["M42 36 L50 100 H70 L78 36 Z", "M45 60 H75", "M32 104 H88"] },
+    d: ["M38 34 L44 102 H76 L82 34", "M38 34 Q60 42 82 34 Q60 26 38 34", "M41 58 Q60 66 79 58", "M46 44 L50 92",
+        "M30 106 H90", "M96 84 Q92 92 96 96 Q100 92 96 84 Z"],
+    riempi: ["M41 58 Q60 66 79 58 L76 102 H44 Z"] },
+  // Onofrio rinuncia: il cavallo di legno, intagliato, con le venature
   { nome: "Onofrio", luogo: "la grotta", verbo: "rinunciare", a: "#9aa6e0",
-    d: ["M26 94 L64 56", "M64 56 L84 42 L76 62 Z", "M58 102 Q70 76 96 70", "M36 104 Q42 98 48 104", "M86 96 Q92 90 98 96"] },
+    d: [// le due gambe lontane, dietro il corpo
+        "M62 74 L62 98 L66 103", "M58 76 L59 99 L63 103",
+        // il corpo del cavallo, di profilo: groppa, dorso, criniera, testa lunga, petto, zampe
+        "M30 52 C38 44 52 44 62 45 C66 45 68 44 69 41 C71 34 73 26 80 18 L88 22 C93 27 97 34 100 41 C101 44 100 47 97 47 L93 45 C90 43 88 40 85 38 C86 45 88 52 88 58 C88 63 86 66 84 68 L85 84 L84 99 L88 104 L77 104 L78 99 L77 86 L74 72 C66 76 58 76 52 72 C52 80 50 86 50 92 L50 100 L54 104 L42 104 L43 99 L41 90 C36 84 33 74 32 66 C28 62 27 56 30 52 Z",
+        // l'orecchio, la criniera, la coda, l'occhio, la narice
+        "M81 19 L82 11 L86 18", "M70.5 37 L64 38", "M73 30 L66 30", "M76 24 L69 23",
+        "M30 55 C20 57 14 67 16 80 C17 86 14 90 12 93", "M13 78 C10 84 12 90 10 94",
+        "M89.6 28 a1.4 1.4 0 1 0 2.8 0 a1.4 1.4 0 1 0 -2.8 0", "M97 43 a0.9 0.9 0 1 0 1.8 0 a0.9 0.9 0 1 0 -1.8 0",
+        // l'intaglio: la rosetta sul fianco e le fascette alle giunture delle zampe
+        "M41 58 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0", "M44 58 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0", "M77 90 H85", "M42 93 H50",
+        "M18 106 H102"],
+    riempi: ["M30 52 C38 44 52 44 62 45 C66 45 68 44 69 41 C71 34 73 26 80 18 L88 22 C93 27 97 34 100 41 C101 44 100 47 97 47 L93 45 C90 43 88 40 85 38 C86 45 88 52 88 58 C88 63 86 66 84 68 L85 84 L84 99 L88 104 L77 104 L78 99 L77 86 L74 72 C66 76 58 76 52 72 C52 80 50 86 50 92 L50 100 L54 104 L42 104 L43 99 L41 90 C36 84 33 74 32 66 C28 62 27 56 30 52 Z"] },
 ];
 
 // --------------------------------------------------------------------
@@ -118,12 +146,15 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   const extraRef = useRef<Record<string, HTMLElement | null>>({});
   const tRef = useRef(startAtEnd ? DURATA : 0);
   const pausaRef = useRef(false);
-  const cache = useRef<Cache>({});
   const suono = useRef<ColonnaSonora | null>(null);
   const buffer = useRef<HTMLCanvasElement | null>(null);
+  // la risoluzione del canvas cala (1 → .75 → .5) se il computer non regge i 30 fotogrammi: meglio meno nitido che a scatti
+  const qualita = useRef(1);
+  const adattaRef = useRef<() => void>(() => {});
 
   const [scala, setScala] = useState(1);
   const [pronto, setPronto] = useState(false);
+  const [carica, setCarica] = useState(0);            // avanzamento della preparazione delle tele (0…1)
   const [finito, setFinito] = useState(startAtEnd);
   const [audio, setAudio] = useState(false);
   const [taccuino, setTaccuino] = useState(false);
@@ -139,30 +170,27 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     const adatta = () => {
       const s = el.clientWidth / W;
       setScala(s);
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) * qualita.current;
       const bw = Math.max(320, Math.min(Math.round(el.clientWidth * dpr), 2560));
       const bh = Math.round(bw * H / W);
       if (tela.width !== bw) { tela.width = bw; tela.height = bh; }
       if (!buffer.current) buffer.current = document.createElement("canvas");
       if (buffer.current.width !== bw) { buffer.current.width = bw; buffer.current.height = bh; }
     };
+    adattaRef.current = adatta;
     const ro = new ResizeObserver(adatta);
     ro.observe(el);
     adatta();
     return () => ro.disconnect();
   }, []);
 
-  // font (servono al canvas) + tele precalcolate, poi si parte
+  // font (servono al canvas) + tele precalcolate, poi si parte. La preparazione è già cominciata
+  // durante i loghi (vedi App.tsx): qui si aspetta soltanto che finisca.
   useEffect(() => {
     let vivo = true;
-    const famiglie = [`500 24px ${FONT.serif}`, `italic 500 24px ${FONT.serif}`, `700 24px ${FONT.display}`, `600 24px ${FONT.display}`, `500 24px ${FONT.mono}`, `600 24px ${FONT.mono}`];
-    const attesa = Promise.all(famiglie.map((f) => document.fonts?.load(f).catch(() => null)));
-    Promise.race([attesa, new Promise((r) => setTimeout(r, 2500))]).then(() => {
-      if (!vivo) return;
-      precarica(cache.current);
-      setPronto(true);
-    });
-    return () => { vivo = false; };
+    avviaPreparazione().then(() => { if (vivo) setPronto(true); });
+    const smetti = seguiPreparazione((k) => { if (vivo) setCarica(k); });
+    return () => { vivo = false; smetti(); };
   }, []);
 
   // la colonna si crea subito, così il brano si precarica prima del tasto audio
@@ -172,19 +200,6 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     // trailer è il primo schermo del gioco, non una pagina web.
     if (inDesktop()) { suono.current.attiva(); setAudio(true); }
     return () => { suono.current?.chiudi(); suono.current = null; };
-  }, []);
-
-  // solo in sviluppo: posizionare il tempo per controllare le inquadrature
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const w = window as unknown as { __trailer?: object };
-    w.__trailer = {
-      vai: (t: number) => { tRef.current = t; pausaRef.current = true; setFinito(t >= DURATA); },
-      riprendi: () => { pausaRef.current = false; },
-      t: () => tRef.current,
-      brano: () => suono.current?.diagnosi(),
-    };
-    return () => { delete w.__trailer; };
   }, []);
 
   // ── il fotogramma ──────────────────────────────────────────────────
@@ -201,14 +216,14 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       if (p <= 0) continue;
       if (p >= 1) {
         ctx.save(); ctx.setTransform(k, 0, 0, k, 0, 0);
-        disegnaScena(ctx, s.id, t, cache.current);
+        disegnaScena(ctx, s.id, t, cacheTrailer);
         ctx.restore();
       } else {
         // dissolvenza: la scena si compone a parte e si posa con la sua opacità
         bctx.setTransform(1, 0, 0, 1, 0, 0);
         bctx.clearRect(0, 0, buf.width, buf.height);
         bctx.save(); bctx.setTransform(k, 0, 0, k, 0, 0);
-        disegnaScena(bctx, s.id, t, cache.current);
+        disegnaScena(bctx, s.id, t, cacheTrailer);
         bctx.restore();
         ctx.save(); ctx.globalAlpha = p; ctx.drawImage(buf, 0, 0); ctx.restore();
       }
@@ -261,7 +276,10 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       col.style.opacity = String(e * (1 - easeIn(seg(t, 58.9, 59.5))));
       col.style.transform = `translateY(${(1 - e) * 60}px)`;
       const tratto = easeOut(seg(t, t0 + 0.1, t0 + 1.3));
-      col.querySelectorAll<SVGPathElement>("path").forEach((p) => { p.style.strokeDashoffset = String(1 - tratto); });
+      col.querySelectorAll<SVGPathElement>("path").forEach((p) => {
+        if (p.dataset.riempi) p.style.opacity = String(clamp((tratto - 0.4) * 1.6) * 0.32);
+        else p.style.strokeDashoffset = String(1 - tratto);
+      });
     });
 
     // I · i numeri che contano
@@ -277,7 +295,8 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     }
 
     // J · il titolo: il tracking si stringe, la luce ci passa sopra
-    const tit = extraRef.current.titolo, sub = extraRef.current.sottotitolo;
+    const tit = extraRef.current.titolo, sub = extraRef.current.sottotitolo, velo = extraRef.current.velo;
+    if (velo) velo.style.opacity = String(clamp(seg(t, 82.2, 84.0)));
     if (tit && sub) {
       const e = expoOut(seg(t, 82.3, 84.6));
       tit.style.opacity = String(clamp(seg(t, 82.3, 83.2)));
@@ -304,13 +323,48 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     if (gr) gr.style.backgroundPosition = `${Math.floor(Math.random() * 256)}px ${Math.floor(Math.random() * 256)}px`;
   }, [startAtEnd]);
 
+  // solo in sviluppo: posizionare il tempo per controllare le inquadrature, e misurare quanto costa un fotogramma
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __trailer?: object };
+    w.__trailer = {
+      vai: (t: number) => { tRef.current = t; pausaRef.current = true; setFinito(t >= DURATA); },
+      riprendi: () => { pausaRef.current = false; },
+      t: () => tRef.current,
+      brano: () => suono.current?.diagnosi(),
+      // disegna n fotogrammi consecutivi da t e restituisce i millisecondi (la lettura di un pixel costringe la GPU a finire)
+      // (la sincronia passa da WebGL: leggere i pixel dal canvas 2D farebbe passare Chrome al disegno su CPU e falserebbe la misura)
+      prova: (t: number, n = 30) => {
+        const tela = telaRef.current;
+        if (!tela) return null;
+        const gl = document.createElement("canvas").getContext("webgl");
+        if (!gl) return null;
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        const px = new Uint8Array(4);
+        const ms: number[] = [];
+        for (let i = 0; i < n; i++) {
+          const a = performance.now();
+          disegna(t + i / 60);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tela);
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          ms.push(performance.now() - a);
+        }
+        ms.sort((x, y) => x - y);
+        return { mediana: +ms[Math.floor(n / 2)].toFixed(1), p95: +ms[Math.floor(n * 0.95)].toFixed(1), max: +ms[n - 1].toFixed(1) };
+      },
+    };
+    return () => { delete w.__trailer; };
+  }, [disegna]);
+
   // ── l'orologio ────────────────────────────────────────────────────
   useEffect(() => {
     if (!pronto) return;
     if (ridotto) { tRef.current = DURATA; setFinito(true); disegna(DURATA); return; }
-    let raf = 0, prec = performance.now(), finePrec = startAtEnd;
+    let raf = 0, prec = performance.now(), finePrec = startAtEnd, giri = 0, lento = 0;
     const passo = (ora: number) => {
-      const dt = Math.min(0.1, (ora - prec) / 1000);
+      const grezzo = ora - prec;
+      const dt = Math.min(0.1, grezzo / 1000);
       prec = ora;
       const fermo = pausaRef.current || document.hidden;
       if (!fermo) {
@@ -319,6 +373,11 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
         // allora vale il tempo della pellicola e aggiorna() riposiziona il brano.
         const tm = suono.current?.orologio();
         tRef.current = tm != null && Math.abs(tm - tRef.current) < 0.5 ? tm : tRef.current + dt;
+        // passati i primi due secondi, se i fotogrammi restano lenti a lungo si scende di risoluzione
+        if (++giri > 120) {
+          lento = grezzo > 36 ? lento + 1 : Math.max(0, lento - 1);
+          if (lento > 50 && qualita.current > 0.5) { qualita.current -= 0.25; lento = 0; adattaRef.current(); }
+        }
       }
       const t = tRef.current;
       disegna(t);
@@ -397,6 +456,16 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 48%, transparent 55%, rgba(0,0,0,.55) 100%)" }} />
           <div ref={graneRef} style={{ position: "absolute", inset: 0, backgroundImage: `url(${grana})`, opacity: 0.075, mixBlendMode: "overlay" }} />
 
+          {/* le tele si dipingono a pezzi mentre girano i loghi; su un computer lento possono servire ancora un momento */}
+          {!pronto && (
+            <div style={{ position: "absolute", left: 0, right: 0, top: 500, textAlign: "center", opacity: 0, animation: "kf-on .8s ease .7s forwards" }}>
+              <div style={mono(20, { color: "rgba(214,224,238,.62)", letterSpacing: "0.42em" })}>PREPARO IL VIAGGIO</div>
+              <div style={{ width: 340, height: 2, margin: "24px auto 0", background: "rgba(255,255,255,.12)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.max(6, Math.round(carica * 100))}%`, background: "#f0b77e", transition: "width .6s ease" }} />
+              </div>
+            </div>
+          )}
+
           {/* testi */}
           {CUES.map((c) => (
             <div key={c.id} ref={(el) => { cueRef.current[c.id] = el; }} style={{ position: "absolute", visibility: "hidden", ...c.box }}>
@@ -422,7 +491,8 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           <div style={{ position: "absolute", left: 0, right: 0, top: 318, display: "flex", justifyContent: "center", gap: 26 }}>
             {CINQUE.map((c, i) => (
               <div key={c.nome} ref={reg("col" + i)} style={{ width: 300, textAlign: "center", opacity: 0, borderLeft: i ? "1px solid rgba(255,255,255,.07)" : "none" }}>
-                <svg viewBox="0 0 120 120" width={150} height={150} style={{ display: "block", margin: "0 auto", overflow: "visible", filter: `drop-shadow(0 0 12px ${c.a}55)` }}>
+                <svg viewBox="0 0 120 120" width={196} height={196} style={{ display: "block", margin: "-14px auto -18px", overflow: "visible", filter: `drop-shadow(0 0 14px ${c.a}66)` }}>
+                  {c.riempi.map((d, j) => <path key={"f" + j} d={d} fill={c.a} stroke="none" data-riempi="1" style={{ opacity: 0 }} />)}
                   {c.d.map((d, j) => <path key={j} d={d} pathLength={1} fill="none" stroke={c.a} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" style={{ strokeDasharray: 1, strokeDashoffset: 1 }} />)}
                 </svg>
                 <div style={mono(17, { color: c.a, marginTop: 34 })}>{c.nome}</div>
@@ -442,7 +512,12 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
             ))}
           </div>
 
-          {/* J · il titolo */}
+          {/* J · il titolo, su un velo scuro e morbido: sul cielo acceso dell'alba la scritta resta leggibile */}
+          <div ref={reg("velo")} style={{
+            position: "absolute", left: 0, right: 0, top: (finito ? 176 : 262) - 62, height: 400, opacity: 0, pointerEvents: "none",
+            background: "radial-gradient(48% 50% at 50% 50%, rgba(10,7,24,.6) 0%, rgba(10,7,24,.34) 52%, rgba(10,7,24,0) 100%)",
+            transition: "top 1.1s cubic-bezier(.2,.7,.2,1)",
+          }} />
           <div style={{ position: "absolute", left: 0, right: 0, top: finito ? 176 : 262, textAlign: "center", transition: "top 1.1s cubic-bezier(.2,.7,.2,1)" }}>
             <h1 ref={reg("titolo")} style={{
               // nowrap: all'inizio la spaziatura (0.5em) supera la larghezza del quadro;
@@ -452,7 +527,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               backgroundSize: "300% 100%", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
               textShadow: "0 0 60px rgba(255,190,130,.18)", paddingLeft: "0.14em",
             }}>IL VIAGGIATORE</h1>
-            <div ref={reg("sottotitolo")} style={mono(22, { color: "#ffd2a4", letterSpacing: "0.5em", marginTop: 26, opacity: 0, textShadow: "0 1px 18px rgba(0,0,0,.8)" })}>un esperimento in favella 1</div>
+            <div ref={reg("sottotitolo")} style={mono(22, { color: "#ffe0bd", fontWeight: 500, letterSpacing: "0.5em", marginTop: 26, opacity: 0, textShadow: "0 1px 3px rgba(20,8,10,.85), 0 1px 22px rgba(0,0,0,.85)" })}>un esperimento in favella 1</div>
           </div>
 
           {/* letterbox */}
@@ -464,7 +539,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               <div style={{ position: "absolute", left: "50%", top: -140, width: 1500, height: 720, transform: "translateX(-50%)", background: "radial-gradient(50% 50% at 50% 50%, rgba(6,5,10,.78) 0%, rgba(6,5,10,.5) 50%, rgba(6,5,10,0) 100%)", pointerEvents: "none", zIndex: -1 }} />
               <p style={{ margin: 0, ...serif(40, { color: "#f4ece0" }) }}>Si parte a piedi.</p>
               <p style={{ margin: "22px auto 0", maxWidth: 820, ...serif(27, { color: "rgba(230,222,208,.72)", lineHeight: 1.5 }) }}>
-                Da qui in poi scrivi tu i comandi, in italiano. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.
+                Da qui in poi comandi tu: scrivi in italiano o scegli con i pulsanti. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.
               </p>
               <div style={{ marginTop: 46, display: "flex", justifyContent: "center", alignItems: "center", gap: 22 }}>
                 {ultimo && (
@@ -505,7 +580,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           {finito ? (
             <>
               <p style={{ margin: 0, fontFamily: FONT.serif, fontSize: 17, lineHeight: 1.45, color: "rgba(230,222,208,.8)", maxWidth: 340 }}>
-                Si parte a piedi. Da qui in poi scrivi tu i comandi, in italiano. Il gioco rende meglio in orizzontale.
+                Si parte a piedi. Da qui in poi comandi tu: scrivi in italiano o scegli con i pulsanti. Il gioco rende meglio in orizzontale.
               </p>
               <button onClick={() => onLaunch(ultimo)} style={{ cursor: "pointer", border: "none", borderRadius: 999, padding: "14px 30px", fontFamily: FONT.display, fontWeight: 700, fontSize: 17, color: "#140c06", background: "#f0b77e", ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite" } as React.CSSProperties}>{ultimo ? "Continua il viaggio →" : "Inizia il viaggio →"}</button>
               <div style={{ display: "flex", gap: 10 }}>

@@ -18,24 +18,39 @@ export type Blocco =
 
 export const PERSONAGGI = [
   "Nunzio", "Saverio", "Iole", "Rocco", "Vito", "Rosaria", "Concetta",
-  "Pasquale", "Peppe", "Ciro", "Tore", "Onofrio", "Cosimo",
+  "Pasquale", "Peppe", "Ciro", "Tore", "Onofrio", "Cosimo", "Imma",
 ];
 
 // Messaggi del corpo e dell'ambiente (demoni del gioco): vanno in margine,
 // come sensazioni, non nella narrazione.
 const CORPO = [
-  "Hai la lingua impastata", "La lingua ti si incolla", "La testa martella", "Lo stomaco",
+  "Hai la lingua impastata", "La lingua ti si incolla", "Le mani tremano", "Lo stomaco",
   "La debolezza ti rallenta", "Il corpo, per una volta", "Il sole picchia", "Il riverbero del sale",
-  "Quassù il vento taglia", "Il cane ti azzanna", "Stavolta affonda", "Vito cala il tubo",
+  "Quassù il vento passa", "Il cane ti azzanna", "Stavolta i denti", "Vito cala il tubo",
   "Un colpo ti prende", "La tanica è piena", "Tanica e damigiana", "Dividi un boccone",
   "Non c'è niente da dividere", "Peppe beve un sorso",
 ];
 
-const SISTEMA = [
+// Le risposte che il motore dà da sé, non la storia: servizio, rifiuti, domande. Il motore le
+// manda tutte come testo semplice (l'evento «testo» comprende anche le descrizioni
+// dell'autore, quindi non basta il tipo a separarle): si riconoscono dalla forma.
+// collaudo/testo.py le prova tutte, e prova che nessuna riga della storia ne somigli una.
+export const SISTEMA = [
   /^Preso:/, /^Lasciato:/, /^Non vedo /, /^Non capisco/, /^Non puoi /, /^Non ce l'hai/,
   /^Hai le mani troppo piene/, /^Stai portando/, /^\s+- /, /^Non stai portando/, /^\(Fine della conversazione\.\)/,
   /^Non è una scelta valida/, /^Concludi la conversazione/, /^\(La conversazione si chiude\.\)/,
   /^Annullato/, /^Non c'è niente da annullare/, /^Con chi vuoi parlare/,
+  // le domande del motore quando il comando è incompleto («Cosa vuoi esaminare?», «Attacca che cosa?»)
+  /^(Cosa|Che cosa|Dove|Con cosa|Con chi|A chi) vuoi [a-zà-ÿ' ]+\?$/, /^[A-ZÀ-Ý][a-zà-ÿ]+ che cosa\?$/,
+  /^Vuoi davvero .+\((sì|si)\/no\)/,
+  // il tempo, i sensi, ciò che non si può fare con una cosa
+  /^Il tempo passa\.$/, /^Non senti /, /^Non succede nulla/, /^Non si (apre|chiude|mangia|beve|può)/, /^Ce l'hai già\./,
+  /^Non vedi nulla/, /^Nel(la|lo|l')\s?[\wà-ÿ' ]+ non ci puoi mettere niente\./,
+  /^Usare .+ non ha alcun effetto particolare\./,
+  // l'aiuto, il riepilogo dello stato, i servizi (annulla, ancora, salva, carica, esci)
+  /^Comandi disponibili:/, /^Cerca di usare verbi semplici/, /^Vita \d+\/10 · Sete /,
+  /^Non hai ancora fatto nulla/, /^Qui non c'è nessuno/, /^A presto!/, /^\((Si continua|Non c'è nessun salvataggio)/,
+  /^\[ERRORE/,
 ];
 
 export function analizza(testo: string): Blocco[] {
@@ -59,6 +74,16 @@ export function analizza(testo: string): Blocco[] {
   }
   return out;
 }
+
+/** Quello che si dice di te, a lato dello schermo, quando qualcuno te lo ha riferito.
+ *  Le chiavi sono gli stati «stato della voce …» della storia (il-viaggiatore.fav); la riga
+ *  è come la direbbe chi la racconta, non come la conta il gioco. collaudo/testo.py verifica
+ *  che ogni voce dichiarata nei .fav ne abbia una, e che nessuna sia di troppo. */
+export const VOCI: Record<string, string> = {
+  "del sangue": "che alzi le mani",
+  "della generosità": "che lasci qualcosa a chi resta",
+  "del bluff": "che al casello hai puntato una pistola scarica",
+};
 
 /** Testo di una descrizione: MAIUSCOLE (oggetti notevoli), parentesi (suggerimenti), «dialoghi». */
 export type Pezzo = { k: "t" | "chiave" | "aiuto"; s: string };

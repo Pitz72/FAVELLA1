@@ -54,9 +54,26 @@ export async function autoverifica(scrivi: (riga: string) => void) {
     const st = s.stato();
     if (!st.inventory.some((n) => /mappa/i.test(n))) { ok = false; nota("KO la mappa non è in bisaccia"); }
 
+    // i pulsanti: l'anteprima di un comando (senza farlo), bere a dosi, «mangia» solo
+    for (let i = 0; i < 12; i++) s.step("aspetta");
+    const prima = s.stato().counters;
+    const ante = s.anteprima("bevi due sorsi");
+    if (!ante.ok || !ante.capito || ante.delta.acqua !== -2) { ok = false; nota(`KO anteprima di «bevi due sorsi»: ${JSON.stringify(ante.delta)}`); }
+    else nota("ok l'anteprima dice cosa costa bere due sorsi");
+    if (s.stato().counters.acqua !== prima.acqua) { ok = false; nota("KO l'anteprima ha toccato il mondo"); }
+    else nota("ok l'anteprima non tocca il mondo");
+    const beve = s.step("bevi due sorsi");
+    if (!beve.text.includes("due sorsi lenti") || s.stato().counters.acqua !== prima.acqua - 2) { ok = false; nota(`KO «bevi due sorsi»: ${beve.text.slice(0, 120)}`); }
+    else nota("ok si beve a dosi: due sorsi in un turno");
+    const mangia = s.step("mangia");
+    if (!mangia.text.includes("Mastichi piano")) { ok = false; nota(`KO «mangia» solo: ${mangia.text.slice(0, 120)}`); }
+    else nota("ok «mangia» solo mangia una porzione");
+    if (!Array.isArray(s.azioni().soli)) { ok = false; nota("KO le azioni di contesto"); }
+    if ((s.stato().undo ?? 0) < 1) { ok = false; nota("KO lo stato non dice quanti turni si possono annullare"); }
+
     // salvataggio e ricaricamento: la partita ricostruita dev'essere identica
-    s.step("annulla");   // disfa l'ultimo turno («guarda»)…
-    s.step("guarda");    // …e lo rifà: la sequenza salvata deve contenerlo una volta sola
+    s.step("annulla");   // disfa l'ultimo turno («mangia»)…
+    s.step("guarda");    // …e ne fa un altro: la sequenza salvata deve contenere i turni una volta sola
     const salvata = s.salva();
     const esito = s.carica(salvata);
     if (!esito.ok || !esito.identica) { ok = false; nota(`KO ricaricamento: ${esito.errore ?? "impronta diversa"}`); }

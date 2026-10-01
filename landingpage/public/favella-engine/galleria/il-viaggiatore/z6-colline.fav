@@ -12,6 +12,11 @@ La fiducia di Onofrio parte da 1.
 
 Lo stato del lascito è uno stato.
 Lo stato del lascito è offerto.
+# Chi torna a parlare non si sente ripetere il benvenuto.
+Lo stato del discorso di Onofrio è uno stato.
+Lo stato del discorso di Onofrio è nuovo.
+Lo stato del discorso di Tore è uno stato.
+Lo stato del discorso di Tore è nuovo.
 
 # --- Stanze ---
 Il sentiero è una stanza.
@@ -30,7 +35,7 @@ La cappella è una stanza.
 La descrizione della cappella è "Una cappella senza tetto, l'altare spaccato, le panche ribaltate. Si torna a OVEST.".
 
 Il valico è una stanza.
-La descrizione del valico è "Il punto più alto della salita. Di qua le colline finiscono e il terreno ricomincia a scendere, verso un greto e un guado. Oltre, lo sai, c'è Acquamorta. (Al guado: USA LA LETTERA SU Cosimo, oppure ATTACCA Cosimo.) A NORD si scende al guado; a SUD il pianoro.".
+La descrizione del valico è "Il punto più alto della salita. Di qua le colline finiscono e il terreno ricomincia a scendere, verso un greto e un guado. Oltre, lo sai, c'è Acquamorta. (Al guado: USA LA LETTERA SU Cosimo; col fucile, ATTACCA Cosimo o LASCIA IL FUCILE.) A NORD si scende al guado; a SUD il pianoro.".
 
 # --- Collegamenti (auto-reciproci). La salita è agganciata da z5-paese.fav. ---
 La salita collega nord a il sentiero.
@@ -61,7 +66,7 @@ La descrizione della lettera è "La lettera che Cosimo scrisse e non spedì mai.
 
 Il fucile è una cosa.
 Il fucile è prendibile.
-La descrizione del fucile è "Un fucile da caccia a due colpi, oliato di fresco da mani che non cacciano più niente. Carico. Onofrio non ti ha detto per chi lo teneva pronto. (Al guado: ATTACCA Cosimo.)".
+La descrizione del fucile è "Un fucile da caccia a due colpi, oliato di fresco da mani che non cacciano più niente. Carico. Onofrio non ti ha detto per chi lo teneva pronto. (Al guado: ATTACCA Cosimo. Oppure posalo: LASCIA IL FUCILE.)".
 
 # --- ONOFRIO  [maggiore: RINUNCIARE. La verità a pezzi, e il lascito che sceglie la via]
 Onofrio è un personaggio.
@@ -69,20 +74,22 @@ Onofrio è in la grotta.
 La descrizione di Onofrio è "Vecchio quanto i muri a secco là fuori. Ha smesso di scendere a valle quando laggiù non c'era più niente che gli servisse. Intaglia anche al buio, a memoria, e non posa il legno nemmeno per parlare.".
 
 Il dialogo di Onofrio comincia con "onofrio_inizio".
+Onofrio al nodo "onofrio_inizio" dice "Il coltellino ha ripreso a lavorare il legno. «Chiedi, finché ho voglia di rispondere.»" se lo stato del discorso di Onofrio è avviato.
 Onofrio al nodo "onofrio_inizio" dice "«Non scendo, non parlo, non prego più. Cosa vuoi da un vecchio rimasto.» Poi ti mette a fuoco, e il coltellino si ferma. «Ma tu… io ti conosco. Tu sei di quella casa.»".
 Al nodo "onofrio_inizio" l'opzione "Cosa è successo, ad Acquamorta?" conduce al nodo "onofrio_verita".
 Al nodo "onofrio_inizio" l'opzione "Ti mostro questo cavallo di legno." se il giocatore ha il giocattolo e la fiducia di Onofrio è al massimo 2 conduce al nodo "onofrio_giocattolo" e adesso aumenta la fiducia di Onofrio di 2.
 Al nodo "onofrio_inizio" l'opzione "Ti mostro questo santino." se il giocatore ha il santino e la fiducia di Onofrio è al massimo 2 conduce al nodo "onofrio_santino" e adesso aumenta la fiducia di Onofrio di 2.
 Al nodo "onofrio_inizio" l'opzione "Devo passare il guado." se la fiducia di Onofrio è almeno 3 conduce al nodo "onofrio_lascito".
 Al nodo "onofrio_inizio" l'opzione "Mi serve il tuo aiuto, per il guado." se la fiducia di Onofrio è al massimo 2 conduce al nodo "onofrio_rifiuto".
-Al nodo "onofrio_inizio" l'opzione "Lasciami stare anche tu." chiude il dialogo.
+Al nodo "onofrio_inizio" l'opzione "Lasciami stare anche tu." chiude il dialogo e adesso lo stato del discorso di Onofrio è avviato.
 
+Onofrio al nodo "onofrio_verita" dice "«Sei andato via per mandare i soldi. Per un po' sono arrivati, i soldi. Poi l'acqua se n'è andata, e i soldi non si bevono.» Tace, sceglie le parole come sassi. «Il piccolo per primo, l'estate della febbre. Lei un mese dopo. Cosimo li ha messi sotto terra da solo, dietro la casa, e non ha voluto nessuno ad aiutarlo.» Soffia via un truciolo. «Giù al paese hai rimesso in piedi uno con la febbre, mi hanno detto.» Un'altra passata di lama. «Quell'estate, qui, le medicine non le aveva nessuno.»" se lo stato di Pasquale è curato.
 Onofrio al nodo "onofrio_verita" dice "«Sei andato via per mandare i soldi. Per un po' sono arrivati, i soldi. Poi l'acqua se n'è andata, e i soldi non si bevono.» Tace, sceglie le parole come sassi. «Il piccolo per primo, l'estate della febbre. Lei un mese dopo. Cosimo li ha messi sotto terra da solo, dietro la casa, e non ha voluto nessuno ad aiutarlo.»".
 Al nodo "onofrio_verita" l'opzione "E il biglietto che diceva di non tornare?" conduce al nodo "onofrio_lettere".
-Al nodo "onofrio_verita" l'opzione "…" conduce al nodo "onofrio_inizio".
+Al nodo "onofrio_verita" l'opzione "…" conduce al nodo "onofrio_inizio" e adesso lo stato del discorso di Onofrio è avviato.
 
 Onofrio al nodo "onofrio_lettere" dice "«Quella riga l'ha scritta Cosimo. Il perché chiedilo a lui.» Si gratta la barba. «Poi ne scrisse un'altra, di notte, e non la spedì. Ce l'ho io. Lui non sa che ce l'ho.»".
-Al nodo "onofrio_lettere" l'opzione "…" conduce al nodo "onofrio_inizio".
+Al nodo "onofrio_lettere" l'opzione "…" conduce al nodo "onofrio_inizio" e adesso lo stato del discorso di Onofrio è avviato.
 
 Onofrio al nodo "onofrio_giocattolo" dice "Prende il cavallo di legno con due dita, lo gira. Per un attimo il vecchio non c'è più, c'è un uomo. «Era del piccolo. Lo so perché glielo intagliai io.» Te lo rende. «Adesso ascolta.»".
 Al nodo "onofrio_giocattolo" l'opzione "Cosa mi dai?" conduce al nodo "onofrio_lascito".
@@ -90,13 +97,13 @@ Onofrio al nodo "onofrio_santino" dice "Lo prende e gira il retro verso la poca 
 Al nodo "onofrio_santino" l'opzione "Cosa mi dai?" conduce al nodo "onofrio_lascito".
 
 Onofrio al nodo "onofrio_rifiuto" dice "«Il guado.» Il coltellino riprende a grattare il legno. «Ne sono passati, di quelli che chiedevano. Io non do niente a chi non so chi è.» Soffia via un truciolo. «Portami qualcosa di quella casa. Allora parliamo.»".
-Al nodo "onofrio_rifiuto" l'opzione "…" conduce al nodo "onofrio_inizio".
+Al nodo "onofrio_rifiuto" l'opzione "…" conduce al nodo "onofrio_inizio" e adesso lo stato del discorso di Onofrio è avviato.
 
 Onofrio al nodo "onofrio_lascito" dice "«Al guado c'è Cosimo, e non ti lascia passare. Posso darti una cosa sola.» Indica il buio della grotta. «La lettera che non spedì: portagliela, e mettilo davanti a quello che ha scritto. O il fucile: e fattela tu, la strada. Scegli, e va'.»" se lo stato del lascito è offerto.
 Onofrio al nodo "onofrio_lascito" dice "«Ho già dato. Quello che hai in mano è la tua scelta, ormai.»" se lo stato del lascito non è offerto.
 Al nodo "onofrio_lascito" l'opzione "Dammi la lettera." se lo stato del lascito è offerto e la fiducia di Onofrio è almeno 3 conduce al nodo "onofrio_dato" e adesso la lettera è in la grotta e adesso lo stato del lascito è lettera.
 Al nodo "onofrio_lascito" l'opzione "Dammi il fucile." se lo stato del lascito è offerto e la fiducia di Onofrio è almeno 3 conduce al nodo "onofrio_dato" e adesso il fucile è in la grotta e adesso lo stato del lascito è fucile.
-Al nodo "onofrio_lascito" l'opzione "Devo pensarci." conduce al nodo "onofrio_inizio".
+Al nodo "onofrio_lascito" l'opzione "Devo pensarci." conduce al nodo "onofrio_inizio" e adesso lo stato del discorso di Onofrio è avviato.
 
 Onofrio al nodo "onofrio_dato" dice "Indica una mensola in fondo, nel buio. «È là, piegata dentro il messale. Prendila tu: io non la tocco più.» Poi, piano: «Va'. E qualunque cosa fai al guado, falla guardandolo in faccia.»" se lo stato del lascito è lettera.
 Onofrio al nodo "onofrio_dato" dice "Indica il chiodo sopra la porta. «È là, carico. Prendilo tu: io non lo tocco più.» Poi, piano: «Va'. E qualunque cosa fai al guado, falla guardandolo in faccia.»" se lo stato del lascito è fucile.
@@ -108,27 +115,33 @@ Tore è in il pianoro.
 La descrizione di Tore è "Asciutto, la faccia screpolata dal vento. Conta le pecore a mezza voce anche mentre ti parla.".
 
 Il dialogo di Tore comincia con "tore_inizio".
+Tore al nodo "tore_inizio" dice "Ricomincia a contare da capo, a mezza voce. «Che altro?»" se lo stato del discorso di Tore è avviato.
+Tore al nodo "tore_inizio" dice "«Quassù non sale più nessuno, e tu invece sali. Rosaria ha mandato a dire di lasciarti passare.» Conta una pecora. «Ha mandato a dire anche il resto.» Studia da che parte vieni. «Ho formaggio, se hai da scambiare. Acqua, magari: di quella, quassù, se ne beve poca.»" se il sangue è almeno 1.
+Tore al nodo "tore_inizio" dice "«Quassù non sale più nessuno, e tu invece sali. Rosaria ha mandato a dire di lasciarti passare.» Conta una pecora, e quasi sorride. «Ha mandato a dire anche che al casello hai tirato fuori un ferro vuoto, e che l'altro ha fatto calma, calma.» Studia da che parte vieni. «Quassù i ferri vuoti non li tiriamo fuori. Ma ho formaggio, se hai da scambiare. Acqua, magari.»" se lo stato del bluff è fatto.
+Tore al nodo "tore_inizio" dice "«Quassù non sale più nessuno, e tu invece sali. Rosaria ha mandato a dire che lasci qualcosa a chi resta.» Studia da che parte vieni. «Gente così, quassù, si ferma poco. Ho formaggio, se hai da scambiare. Acqua, magari: di quella, quassù, se ne beve poca.»" se la generosità è almeno 2.
 Tore al nodo "tore_inizio" dice "«Quassù non sale più nessuno, e tu invece sali. Rosaria ha mandato a dire che sei uno a posto.» Studia da che parte vieni. «Ho formaggio, se hai da scambiare. Acqua, magari: di quella, quassù, se ne beve poca.»".
 Al nodo "tore_inizio" l'opzione "Ti do un po' d'acqua per del formaggio." se l'acqua è almeno 2 conduce al nodo "tore_baratto" e adesso diminuisci l'acqua di 2 e adesso aumenta il cibo di 3.
 Al nodo "tore_inizio" l'opzione "Chi c'è, al guado?" conduce al nodo "tore_guado".
 Al nodo "tore_inizio" l'opzione "Il vecchio nella grotta?" conduce al nodo "tore_onofrio".
-Al nodo "tore_inizio" l'opzione "Tiro avanti." chiude il dialogo.
+Al nodo "tore_inizio" l'opzione "Tiro avanti." chiude il dialogo e adesso lo stato del discorso di Tore è avviato.
 
 Tore al nodo "tore_baratto" dice "Taglia una fetta di pecorino duro e te la passa. «Roba che cammina con te per giorni.»".
-Al nodo "tore_baratto" l'opzione "…" conduce al nodo "tore_inizio".
+Al nodo "tore_baratto" l'opzione "…" conduce al nodo "tore_inizio" e adesso lo stato del discorso di Tore è avviato.
 
 Tore al nodo "tore_guado" dice "«Uno che non lascia passare. Sta là da quando il paese è morto, a guardia di niente.» Conta una pecora, poi un'altra. «Tuo fratello, dicono giù al paese. Io non chiedo.»".
-Al nodo "tore_guado" l'opzione "…" conduce al nodo "tore_inizio".
+Al nodo "tore_guado" l'opzione "…" conduce al nodo "tore_inizio" e adesso lo stato del discorso di Tore è avviato.
 
 Tore al nodo "tore_onofrio" dice "«Onofrio non parla con anima viva. Con te, forse, se gli porti qualcosa di casa tua. È l'unico che sappia com'è andata davvero, laggiù.»".
-Al nodo "tore_onofrio" l'opzione "…" conduce al nodo "tore_inizio".
+Al nodo "tore_onofrio" l'opzione "…" conduce al nodo "tore_inizio" e adesso lo stato del discorso di Tore è avviato.
 
 # --- La sorgente: acqua pulita e gratis (rara), via il comando ATTINGI ---
 Invece di attingi se il giocatore è in la sorgente: dire "Metti la tanica sotto la vena. Viene su un'acqua che sa di pietra e di freddo, la prima acqua buona che non devi a nessuno. La vena è sottile: per riempire ci vuole tempo." e adesso aumenta l'acqua di 6 e adesso aumenta la fame di 1.
 
 # --- Il freddo del valico: senza coperta, logora ---
-Ogni turno se il giocatore è in il valico e il giocatore non ha la coperta e il giocatore non ha il giubbotto: dire "Quassù il vento taglia. Tremi, e tremare prosciuga." e adesso aumenta la sete di 1.
-Quando il giocatore è in il valico e lo stato di Peppe è compagno e lo stato della tappa di Peppe è salita: dire "Peppe si ferma a riprendere fiato e guarda giù, verso il greto. «È là, casa tua?» Non rispondi, e lui non chiede più." e adesso lo stato della tappa di Peppe è valico.
+Ogni turno se il giocatore è in il valico e il giocatore non ha la coperta e il giocatore non ha il giubbotto: dire "Quassù il vento passa attraverso la camicia. Tremi, e tremare prosciuga." e adesso aumenta la sete di 1.
+Quando il giocatore è in il valico e lo stato di Peppe è compagno e lo stato della tappa di Peppe è salita e lo stato del sapere di Peppe è nuovo: dire "Peppe si ferma a riprendere fiato e guarda giù, verso il greto. «È là, casa tua?» Non rispondi, e lui non chiede più." e adesso lo stato della tappa di Peppe è valico.
+Quando il giocatore è in il valico e lo stato di Peppe è compagno e lo stato della tappa di Peppe è salita e lo stato del sapere di Peppe è vero: dire "Peppe si ferma a riprendere fiato e guarda giù, verso il greto. «È là, casa tua?» Non rispondi. «Mi hai detto del male che hai fatto.» Lo dice piano, senza accusa. «Se là devi farne ancora, dimmelo prima. Io resto indietro, ma voglio saperlo.»" e adesso lo stato della tappa di Peppe è valico.
+Quando il giocatore è in il valico e lo stato di Peppe è compagno e lo stato della tappa di Peppe è salita e lo stato del sapere di Peppe è bugia: dire "Peppe si ferma a riprendere fiato e guarda giù, verso il greto. «È là, casa tua?» Non rispondi, e lui non chiede più. Poi, senza voltarsi: «Giù, ti ho chiesto una cosa, e mi hai detto di no. Io i conti li tengo.»" e adesso lo stato della tappa di Peppe è valico.
 
 # --- IL GATE [!] verso Z7: al guado non si va a mani vuote ---
 # (il guado è la stanza d'ingresso di z7-guado.fav)

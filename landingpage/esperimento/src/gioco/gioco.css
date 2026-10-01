@@ -87,7 +87,12 @@
 .vg-metro-barra div { height: 100%; border-radius: 99px; transition: width .6s ease, background .4s ease; }
 .vg-metro-barra i { position: absolute; top: -2px; width: 1px; height: 9px; background: rgba(255,255,255,.3); }
 .vg-scorte { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.vg-scorta { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); }
+.vg-scorta { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+  font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+.vg-scorta:hover:not(:disabled), .vg-scorta:focus-visible { border-color: var(--acc); background: rgba(255,255,255,.055); outline: none; }
+.vg-scorta:disabled { cursor: default; opacity: .7; }
+.vg-scorta-attiva { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 13%, transparent); }
+.vg-scorta-azione { position: absolute; right: 9px; top: 7px; font-style: normal; font-family: 'Source Code Pro', monospace; font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--acc); opacity: .75; }
 .vg-scorta svg { width: 22px; height: 22px; flex-shrink: 0; fill: none; stroke: var(--acc); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .vg-scorta b { display: block; font-family: 'Sora', sans-serif; font-size: 20px; line-height: 1; color: #f3ede2; font-variant-numeric: tabular-nums; }
 .vg-scorta span { font-family: 'Source Code Pro', monospace; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: rgba(230,223,210,.45); white-space: nowrap; }
@@ -99,6 +104,10 @@
 .vg-oggetto:disabled { cursor: default; opacity: .7; }
 .vg-fiducie { list-style: none; margin: 0; padding: 0; }
 .vg-fiducie li { display: flex; align-items: center; justify-content: space-between; margin: 5px 0; font-size: 14px; color: #e3dccf; }
+.vg-voci { list-style: none; margin: 0; padding: 0; }
+.vg-voci li { margin: 5px 0; font-style: italic; font-size: 13px; line-height: 1.35; color: rgba(230,223,210,.7); }
+.vg-voci li::before { content: "«"; margin-right: 3px; opacity: .5; }
+.vg-voci li::after { content: "»"; margin-left: 3px; opacity: .5; }
 .vg-pip i { display: inline-block; width: 12px; height: 5px; margin-left: 3px; border-radius: 2px; background: rgba(255,255,255,.1); }
 .vg-pip i.on { background: var(--acc); box-shadow: 0 0 6px var(--acc); }
 .vg-cammino { display: flex; align-items: center; gap: 5px; }
@@ -122,3 +131,66 @@
 .vg-carica .vg-bottone { margin-top: 20px; }
 
 @keyframes vg-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ====================================================================
+   PULSANTI E CONFERME  (bere/mangiare, azioni, annulla, parole del testo)
+   ==================================================================== */
+/* le parole in maiuscolo del testo: se indicano qualcosa che c'è, si toccano */
+button.vg-chiave-tasto { cursor: pointer; background: none; border: 0; border-bottom: 1px dotted color-mix(in srgb, var(--acc) 55%, transparent); padding: 0; margin: 0;
+  font: inherit; font-variant: small-caps; font-weight: 600; letter-spacing: .03em; color: var(--acc); transition: border-color .15s, color .15s; }
+button.vg-chiave-tasto:hover, button.vg-chiave-tasto:focus-visible { border-bottom-style: solid; border-bottom-color: var(--acc); color: #fff; outline: none; }
+
+.vg-annulla { cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(230,223,210,.7);
+  border: 1px solid rgba(255,255,255,.14); background: transparent; border-radius: 8px; padding: 6px 10px; transition: border-color .2s, color .2s; }
+.vg-annulla:hover:not(:disabled), .vg-annulla:focus-visible { border-color: var(--acc); color: #fff; outline: none; }
+.vg-annulla:disabled { opacity: .3; cursor: default; }
+
+.vg-servizio { margin-left: auto; display: inline-flex; gap: 6px; }
+.vg-tenue { color: rgba(216,223,232,.62); border-style: dashed; }
+.vg-verbo { border-color: color-mix(in srgb, var(--acc) 42%, transparent); }
+.vg-verbo .vg-freccia { font-size: 9px; }
+
+/* «Vuoi bere?» «Vuoi mangiare?» */
+.vg-pannello { display: flex; align-items: stretch; gap: 14px; padding: 10px 12px 10px 14px; border-radius: 14px; animation: vg-entra .2s ease both;
+  border: 1px solid color-mix(in srgb, var(--acc) 38%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 9%, transparent), rgba(255,255,255,.02)); }
+.vg-pannello-testa { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+.vg-pannello-testa b { display: block; font-family: 'Sora', sans-serif; font-weight: 600; font-size: 15px; color: #f7f1e7; }
+.vg-pannello-testa span { display: block; margin-top: 2px; font-family: 'Source Code Pro', monospace; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(230,223,210,.55); }
+.vg-pannello-icona { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--acc) 14%, transparent); }
+.vg-pannello-icona svg { width: 20px; height: 20px; fill: none; stroke: var(--acc); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vg-dosi { display: flex; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.vg-dose { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; cursor: pointer; padding: 7px 14px 8px; border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.04); color: #efe8dc; font-family: 'Lora', serif; font-size: 14.5px; line-height: 1.2; transition: border-color .2s, background .2s; }
+.vg-dose small { font-family: 'Source Code Pro', monospace; font-size: 9.5px; letter-spacing: .05em; color: var(--acc); white-space: nowrap; }
+.vg-dose:hover:not(:disabled), .vg-dose:focus-visible { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 13%, transparent); outline: none; }
+.vg-dose:disabled { opacity: .5; cursor: default; }
+.vg-dose:disabled small { color: rgba(230,223,210,.55); white-space: normal; max-width: 210px; font-family: 'Lora', serif; font-style: italic; font-size: 11.5px; letter-spacing: 0; }
+.vg-pannello-nota { margin: 0; align-self: center; flex: 1; font-style: italic; font-size: 14px; line-height: 1.4; color: rgba(230,223,210,.7); }
+
+/* la conferma di una scelta che costa */
+.vg-conf-velo { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: radial-gradient(70% 70% at 50% 50%, rgba(4,4,8,.6), rgba(4,4,8,.86)); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: vg-entra .2s ease both; }
+.vg-conf { width: min(540px, 100%); padding: 24px 28px 22px; border-radius: 18px; border: 1px solid rgba(255,255,255,.14);
+  background: linear-gradient(180deg, rgba(26,23,30,.98), rgba(12,11,15,.99)); box-shadow: 0 28px 90px rgba(0,0,0,.65), 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent); }
+.vg-conf-tipo-violenza, .vg-conf-tipo-fine { box-shadow: 0 28px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(239,107,126,.42); }
+.vg-conf-quota { margin: 10px 0 0; font-style: italic; font-size: 15px; color: rgba(230,223,210,.62); }
+.vg-conf-quota::before { content: "«"; }
+.vg-conf-quota::after { content: "»"; }
+.vg-conf h2 { margin: 6px 0 0; font-family: 'Lora', serif; font-weight: 500; font-size: 23px; line-height: 1.28; color: #f7eddb; text-wrap: balance; }
+.vg-conf-conti { display: flex; align-items: stretch; gap: 14px; margin-top: 18px; }
+.vg-conf-col { flex: 1; min-width: 0; padding: 10px 14px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.03); }
+.vg-conf-col ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.vg-conf-col li { margin: 3px 0; font-size: 16px; line-height: 1.35; color: #f0e9dc; }
+.vg-conf-titolo { font-family: 'Source Code Pro', monospace; font-size: 9.5px; letter-spacing: .26em; text-transform: uppercase; }
+.vg-conf-meno { border-color: rgba(239,107,126,.32); background: rgba(239,107,126,.06); }
+.vg-conf-meno .vg-conf-titolo { color: #ef8b9a; }
+.vg-conf-piu { border-color: color-mix(in srgb, var(--acc) 38%, transparent); background: color-mix(in srgb, var(--acc) 8%, transparent); }
+.vg-conf-piu .vg-conf-titolo { color: var(--acc); }
+.vg-conf-freccia { align-self: center; font-family: 'Sora', sans-serif; font-size: 20px; color: rgba(230,223,210,.45); }
+.vg-conf-pesa { margin: 12px 0 0; font-family: 'Source Code Pro', monospace; font-size: 12px; color: #f2ad45; }
+.vg-conf-dopo { margin: 10px 0 0; font-family: 'Source Code Pro', monospace; font-size: 11.5px; letter-spacing: .04em; color: rgba(230,223,210,.55); }
+.vg-conf-azioni { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.vg-conf-azioni .vg-bottone { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; }
+.vg-conf-azioni kbd { font-family: 'Source Code Pro', monospace; font-size: 9.5px; padding: 1px 6px; border-radius: 5px; border: 1px solid currentColor; opacity: .55; }
+.vg-conf-nota { margin: 14px 0 0; text-align: right; font-style: italic; font-size: 12.5px; color: rgba(230,223,210,.42); }

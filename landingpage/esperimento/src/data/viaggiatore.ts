@@ -2,7 +2,7 @@
 //  «Il Viaggiatore» — dati dell'esperimento
 // --------------------------------------------------------------------
 //  Un'avventura di sopravvivenza/GDR scritta in FAVELLA 1 (7 zone, 39
-//  location, 13 personaggi, ~44 oggetti, 6 finali). Qui vivono: la
+//  location, 14 personaggi, ~45 oggetti, 6 finali). Qui vivono: la
 //  mappa stanza→zona, il TEMA CROMATICO di ogni zona (la palette cambia
 //  mentre cammini) e i contenuti della presentazione d'intro.
 // ====================================================================
@@ -76,7 +76,7 @@ export function zoneOf(roomId: string | null): ZoneKey {
 export const INTRO_STATS = [
   { n: 7, label: "zone" },
   { n: 39, label: "luoghi" },
-  { n: 13, label: "personaggi" },
+  { n: 14, label: "personaggi" },
   { n: 44, label: "oggetti" },
   { n: 6, label: "finali" },
 ];

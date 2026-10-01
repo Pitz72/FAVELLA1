@@ -5,16 +5,17 @@
 
 # --- Stanze ---
 La stazione è una stanza.
-La descrizione della stazione è "La stazione di Acquaviva. I binari finiscono qui, mangiati dalla gramigna; un cartello arrugginito promette treni che non passano da anni. È da qui che parti, a piedi. In tasca hai l'ultimo biglietto arrivato da casa. Le lettere di prima le scriveva tua moglie, fitte, con le notizie del bambino in fondo; questo è in stampatello, senza firma, e dice una cosa sola: «Non è il caso di tornare.» Sei tornato lo stesso. (ESAMINA IL BIGLIETTO per rileggerlo.) A NORD la piazza. (Quando il corpo lo chiede: BEVI per la sete, MANGIA QUALCOSA per la fame; STATO per vederti addosso.)".
+La descrizione della stazione è "La stazione di Acquaviva. I binari finiscono qui, mangiati dalla gramigna; un cartello arrugginito promette treni che non passano da anni. È da qui che parti, a piedi. In tasca hai l'ultimo biglietto arrivato da casa. Le lettere di prima le scriveva tua moglie, fitte, con le notizie del bambino in fondo; questo è in stampatello, senza firma, e dice una cosa sola: «Non è il caso di tornare.» Sei tornato lo stesso. (ESAMINA IL BIGLIETTO per rileggerlo.) A NORD la piazza. (Quando il corpo lo chiede: BEVI per la sete, MANGIA per la fame; STATO per vederti addosso.)".
 
 La piazza è una stanza.
 La descrizione della piazza è "La piazza del paese attorno a un pozzo asciutto. Persiane sbarrate, una fontana muta. Solo il BAR, a EST, tiene una luce accesa. A NORD una casa aperta, a OVEST il margine del paese e la strada. A SUD la stazione.".
 
 Il bar è una stanza.
-La descrizione del bar è "Un bar fermo agli ultimi avventori. Dietro il banco, NUNZIO asciuga un bicchiere che è già asciutto. (PARLA CON Nunzio per barattare.) Si torna a OVEST.".
+La descrizione del bar è "Un bar fermo agli ultimi avventori. Dietro il banco, NUNZIO tiene in fila bottiglie vuote, le etichette in avanti. (PARLA CON Nunzio per barattare.) Si torna a OVEST.".
 
 La casa è una stanza.
-La descrizione della casa è "Una casa lasciata in fretta: cassetti aperti, una foto storta alla parete. Marito, moglie, un bambino in braccio: gente di qui, che non conosci. Ti viene da raddrizzarla. Si torna a SUD.".
+La descrizione della casa è "Una casa lasciata in fretta: cassetti aperti, una FOTO storta alla parete. Marito, moglie, un bambino in braccio: gente di qui, che non conosci. Ti viene da raddrizzarla. Si torna a SUD.".
+La descrizione della casa se lo stato della foto è dritta è "Una casa lasciata in fretta: cassetti aperti, una FOTO alla parete, adesso dritta. Marito, moglie, un bambino in braccio: gente di qui, che non conosci. Si torna a SUD.".
 
 Il margine è una stanza.
 La descrizione del margine è "Dove finiscono le case comincia il bianco. La strada esce a OVEST, nella piana che frigge sotto il sole. Si torna a EST, in piazza.".
@@ -43,37 +44,52 @@ Il coltello è in la casa.
 Il posto del coltello è "Sul lavello, un COLTELLO da cucina.".
 La descrizione del coltello è "Un coltello da cucina, la lama ancora buona. Meglio di niente, contro i denti.".
 
+# --- La foto: un gesto per gente che non conosci ---
+La foto è una cosa.
+La foto è in la casa.
+La foto è di scena.
+La descrizione della foto è "Marito, moglie e un bambino in braccio, in posa davanti alla fontana della piazza, quando buttava ancora acqua. Una crepa attraversa il vetro in un angolo.".
+Lo stato della foto è uno stato.
+Lo stato della foto è storta.
+"raddrizza" è un comando.
+Invece di raddrizza la foto se lo stato della foto è storta: dire "La raddrizzi con due dita. Il chiodo tiene. Per un momento la casa sembra soltanto chiusa, non lasciata." e adesso lo stato della foto è dritta.
+Invece di raddrizza la foto: dire "È dritta. Di più non puoi fare, per gente che non conosci.".
+Invece di prendi la foto: dire "La lasci al suo chiodo. Non è roba tua, e non è roba da portare in viaggio.".
+
 # --- NUNZIO  [baratto via dialogo] ---
 Nunzio è un personaggio.
 Nunzio è in il bar.
 La descrizione di Nunzio è "Magro, la camicia stirata anche adesso che non viene più nessuno. Tiene aperto per testardaggine.".
 
+Lo stato del discorso di Nunzio è uno stato.
+Lo stato del discorso di Nunzio è nuovo.
 Il dialogo di Nunzio comincia con "banco".
+Nunzio al nodo "banco" dice "Rimette il bicchiere al suo posto. «Altro?» (Hai [acqua] d'acqua e [cibo] di cibo.)" se lo stato del discorso di Nunzio è avviato.
 Nunzio al nodo "banco" dice "«Acqua non ne ho da regalare, di questi tempi. Ma qualcosa per la strada lo trovo, se hai da scambiare.» (Hai [acqua] d'acqua e [cibo] di cibo.)".
 
 Al nodo "banco" l'opzione "Ti do l'orologio per dell'acqua." se il giocatore ha l'orologio conduce al nodo "scambio_acqua" e adesso l'orologio è nel nulla e adesso aumenta l'acqua di 3.
 Al nodo "banco" l'opzione "Hai qualcosa da mangiare?" se l'acqua è almeno 1 e il cibo è al massimo 3 conduce al nodo "scambio_cibo" e adesso diminuisci l'acqua di 1 e adesso aumenta il cibo di 2.
 Al nodo "banco" l'opzione "Posso lavorare, per un po' d'acqua?" se l'acqua è al massimo 2 conduce al nodo "lavoro" e adesso aumenta l'acqua di 1 e adesso aumenta la fame di 2.
 Al nodo "banco" l'opzione "Da che parte è Acquamorta?" conduce al nodo "indicazioni".
-Al nodo "banco" l'opzione "Niente, per ora." chiude il dialogo.
+Al nodo "banco" l'opzione "Niente, per ora." chiude il dialogo e adesso lo stato del discorso di Nunzio è avviato.
 
 Nunzio al nodo "scambio_acqua" dice "«Oro per acqua. Ai miei tempi avrei riso. Tieni.» Versa nella tua tanica. (Ora hai [acqua] d'acqua.)".
-Al nodo "scambio_acqua" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco".
-Al nodo "scambio_acqua" l'opzione "Basta così." chiude il dialogo.
+Al nodo "scambio_acqua" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco" e adesso lo stato del discorso di Nunzio è avviato.
+Al nodo "scambio_acqua" l'opzione "Basta così." chiude il dialogo e adesso lo stato del discorso di Nunzio è avviato.
 
 Nunzio al nodo "scambio_cibo" dice "«Un po' di scorta secca. Ti costa un sorso, ma cammini meglio.» (Ora hai [cibo] di cibo.)".
-Al nodo "scambio_cibo" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco".
-Al nodo "scambio_cibo" l'opzione "Basta così." chiude il dialogo.
+Al nodo "scambio_cibo" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco" e adesso lo stato del discorso di Nunzio è avviato.
+Al nodo "scambio_cibo" l'opzione "Basta così." chiude il dialogo e adesso lo stato del discorso di Nunzio è avviato.
 Nunzio al nodo "lavoro" dice "«Le casse vuote, nel retro. Portale giù in cantina e un bicchiere te lo verso.» Quando risali hai la schiena rotta e un fondo d'acqua in più nella tanica. (Ora hai [acqua] d'acqua.)".
-Al nodo "lavoro" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco".
-Al nodo "lavoro" l'opzione "Basta così." chiude il dialogo.
+Al nodo "lavoro" l'opzione "Torno a vedere cos'hai." conduce al nodo "banco" e adesso lo stato del discorso di Nunzio è avviato.
+Al nodo "lavoro" l'opzione "Basta così." chiude il dialogo e adesso lo stato del discorso di Nunzio è avviato.
 
-Nunzio al nodo "indicazioni" dice "«A ovest, oltre la piana, c'è l'invaso secco. Poi la statale, e un paese che resiste. Le colline, infine. Acquamorta è dietro le colline.» Guarda la tua tanica. «Ma serve una mappa, e acqua. Senza, non ci arrivi.»".
-Al nodo "indicazioni" l'opzione "Grazie." chiude il dialogo.
-Al nodo "indicazioni" l'opzione "Altro." conduce al nodo "banco".
+Nunzio al nodo "indicazioni" dice "«A ovest, oltre la piana, c'è l'invaso secco. Poi la statale, e un paese che resiste. Poi le colline: Acquamorta è dietro.» Guarda la tua tanica. «Ma serve una mappa, e acqua. Senza, non ci arrivi.»".
+Al nodo "indicazioni" l'opzione "Grazie." chiude il dialogo e adesso lo stato del discorso di Nunzio è avviato.
+Al nodo "indicazioni" l'opzione "Altro." conduce al nodo "banco" e adesso lo stato del discorso di Nunzio è avviato.
 
 # --- Gate [!] verso Z2: servono la mappa e un minimo d'acqua ---
 # (il tratto è la stanza d'ingresso di z2-piana.fav)
 Invece di vai ovest se il giocatore è in il margine e il giocatore non ha la mappa: dire "Senza una mappa, là fuori è solo perdersi. Cerca in giro prima di partire.".
-Invece di vai ovest se il giocatore è in il margine e l'acqua è meno di 3: dire "Guardi la distesa che frigge. Con quest'acqua non arrivi dall'altra parte. Fa' scorta, prima: al bar si baratta, e chi non ha niente da dare può sempre faticare.".
+Invece di vai ovest se il giocatore è in il margine e l'acqua è meno di 3: dire "Guardi la distesa bianca. Con quest'acqua non arrivi dall'altra parte. Fa' scorta, prima: al bar si baratta, e chi non ha niente da dare può sempre faticare.".
 Il margine collega ovest a il tratto.

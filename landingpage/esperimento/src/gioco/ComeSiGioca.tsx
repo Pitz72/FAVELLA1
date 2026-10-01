@@ -11,23 +11,23 @@ const MONO = "'Source Code Pro', ui-monospace, monospace";
 interface Scheda { titolo: string; segno: string; testo: string; esempi?: string[] }
 
 const SCHEDE: Scheda[] = [
-  { titolo: "Scrivi quello che fai", segno: "M4 18 L16 6 M13 5 L17 9 M4 18 L3 21 L6 20",
-    testo: "Si gioca a parole, in italiano. Scrivi un comando e premi Invio: il mondo risponde. Uscite, cose e persone del luogo sono anche pulsanti da toccare.",
+  { titolo: "Scrivi o tocca", segno: "M4 18 L16 6 M13 5 L17 9 M4 18 L3 21 L6 20",
+    testo: "Si gioca a parole, in italiano: scrivi un comando e premi Invio. Ma ogni cosa che puoi fare è anche un pulsante (uscite, cose, persone, azioni) e manda lo stesso comando. Le parole in maiuscolo del testo si toccano.",
     esempi: ["guarda", "nord", "esamina la mappa", "prendi il coltello", "parla con Nunzio"] },
   { titolo: "Il corpo", segno: "M12 3 C8 9 6 12 6 15 A6 6 0 0 0 18 15 C18 12 16 9 12 3 Z",
-    testo: "La sete sale col tempo e sotto il sole; la fame più piano. Oltre certe soglie la vita cala, e torna poco. Bevi e mangia quando serve: senza bisogno non si spreca niente.",
-    esempi: ["bevi", "mangia qualcosa", "stato"] },
+    testo: "La sete sale col tempo e sotto il sole; la fame più piano. Oltre certe soglie la vita cala, e torna poco. Tocca l'acqua o il cibo fra le scorte (o la tanica): «Vuoi bere?», «Vuoi mangiare?», e scegli quanti sorsi, quante porzioni.",
+    esempi: ["bevi", "bevi due sorsi", "mangia", "mangia tre porzioni", "stato"] },
   { titolo: "Acqua, cibo, baratto", segno: "M5 9 H19 L17 20 H7 Z M9 9 V6 A3 3 0 0 1 15 6 V9",
-    testo: "Acqua e cibo sono scorte che si contano. Si barattano parlando con le persone, si trovano attingendo dove l'acqua c'è ancora: un pozzo, una pompa, una sorgente.",
+    testo: "Acqua e cibo sono scorte che si contano. Si barattano parlando con le persone, si trovano attingendo dove l'acqua c'è ancora. Prima di una scelta che costa (un baratto, un dono, una violenza) il gioco chiede conferma e ti mostra cosa dai e cosa ricevi.",
     esempi: ["attingi", "parla con Ciro"] },
   { titolo: "Parlare", segno: "M4 5 H20 V15 H10 L6 19 V15 H4 Z",
     testo: "Nei dialoghi scegli una risposta col numero o toccandola. I doni fanno crescere la fiducia, e la fiducia apre porte, pozzi, sentieri.",
     esempi: ["1", "2"] },
   { titolo: "La bisaccia", segno: "M6 8 H18 L19 20 H5 Z M9 8 A3 3 0 0 1 15 8",
-    testo: "Porti sette cose: la tanica e il biglietto di casa, più cinque a scelta. Quando è piena, lascia ciò che non serve. Alcune cose si usano su altre.",
-    esempi: ["inventario", "lascia la batteria", "usa le pastiglie su la pompa"] },
+    testo: "Porti sette cose: la tanica e il biglietto di casa, più cinque a scelta. Quando è piena, lascia ciò che non serve. Alcune cose si usano su altre: tocca una cosa e scegli «usa su…», poi su che cosa. Il gioco non dice quali coppie funzionano: tocca a te provare. Scrivendo è lo stesso.",
+    esempi: ["inventario", "lascia la batteria", "usa il coltello sulla mappa"] },
   { titolo: "Leggere il mondo", segno: "M3 12 C6 6 18 6 21 12 C18 18 6 18 3 12 Z M12 9 A3 3 0 1 0 12 15 A3 3 0 1 0 12 9",
-    testo: "Le parole in MAIUSCOLO sono cose con cui fare qualcosa; tra parentesi ci sono i suggerimenti. Se sbagli una mossa, puoi tornare indietro. Sei finali: come arrivi decide quale.",
+    testo: "Le parole in MAIUSCOLO sono cose con cui fare qualcosa; tra parentesi ci sono i suggerimenti. Se sbagli una mossa, ↶ annulla (o Ctrl+Z) ti riporta indietro. Sei finali: come arrivi decide quale.",
     esempi: ["annulla"] },
 ];
 

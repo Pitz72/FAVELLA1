@@ -20,14 +20,14 @@ La conca è una stanza.
 La descrizione della conca è "Il fondo dell'invaso, una piana di fango secco spaccata in lastre che scricchiolano sotto i passi. Il sale acceca, l'aria sa di minerale. A NORD la diga sbarra l'orizzonte; a SUD un fondale dove qualcuno raspa; a OVEST la carcassa di un'auto insabbiata. A EST la sterrata risale verso la piana.".
 
 La diga è una stanza.
-La descrizione della diga è "Lo sbarramento: una parete di cemento striata di calcare, alta e muta. Al piede, un vecchio gruppo di POMPA a mano pesca ancora nell'acqua bassa, ma quell'acqua è veleno salato. IOLE ci sta accanto, china sul meccanismo come su un malato. (PARLA CON Iole.) A NORD il casotto dove vive; a OVEST la condotta scende verso la statale. A SUD si torna nella conca.".
-La descrizione della diga se lo stato della pompa è attiva è "Lo sbarramento: una parete di cemento striata di calcare, alta e muta. Al piede, la POMPA a mano col tuo filtro legato alla bocca: adesso quello che tira su si lascia bere, se non hai pretese. (ATTINGI, se la tanica si svuota.) IOLE ci sta accanto e controlla le guarnizioni. (PARLA CON Iole.) A NORD il casotto dove vive; a OVEST la condotta scende verso la statale. A SUD si torna nella conca.".
+La descrizione della diga è "Lo sbarramento: una parete di cemento striata di calcare, alta come un palazzo di dieci piani. Al piede, un vecchio gruppo di POMPA a mano pesca ancora nell'acqua bassa, ma quell'acqua è veleno salato. IOLE ci sta accanto, china sul meccanismo. (PARLA CON Iole.) A NORD il casotto dove vive; a OVEST la condotta scende verso la statale. A SUD si torna nella conca.".
+La descrizione della diga se lo stato della pompa è attiva è "Lo sbarramento: una parete di cemento striata di calcare, alta come un palazzo di dieci piani. Al piede, la POMPA a mano col tuo filtro legato alla bocca: adesso quello che tira su si lascia bere, se non hai pretese. (ATTINGI, se la tanica si svuota.) IOLE ci sta accanto e controlla le guarnizioni. (PARLA CON Iole.) A NORD il casotto dove vive; a OVEST la condotta scende verso la statale. A SUD si torna nella conca.".
 
 Il casotto è una stanza.
 La descrizione del casotto è "Una stanza sola, tenuta in ordine come una cappella. Una branda, un fornello spento, gli attrezzi appesi a un chiodo. Si torna a SUD.".
 
 Il fondale è una stanza.
-La descrizione del fondale è "Pozze salmastre che luccicano come specchi e ingannano la sete. ROCCO raspa il sale a mani nude, le labbra spaccate in croste bianche. (Volendo, BEVI SALMASTRA: Rocco lo fa.) A NORD la conca, a SUD una torre di presa in mezzo al fango.".
+La descrizione del fondale è "Pozze salmastre, lucide e ferme, che ingannano la sete. ROCCO raspa il sale a mani nude, le labbra spaccate in croste bianche. (Volendo, BEVI SALMASTRA: Rocco lo fa.) A NORD la conca, a SUD una torre di presa in mezzo al fango.".
 
 Il relitto è una stanza.
 La descrizione del relitto è "La carcassa di un'utilitaria insabbiata fino agli assali, le portiere spalancate, il bagagliaio aperto. A EST si torna nella conca.".
@@ -117,6 +117,8 @@ Al nodo "iole_inizio" l'opzione "Niente, per ora." chiude il dialogo.
 Iole al nodo "iole_dono" dice "Mette da parte il dono senza guardarlo. «Il casotto è là dietro. Prendi quello che ti serve e fa' andare la pompa. Le pastiglie bastano per una volta. Dopo, col filtro solo, tiri su acqua che sa di ferro: si beve, non si ama.»".
 Iole al nodo "iole_dono" dice "Mette da parte il dono senza guardarlo. «La pompa la sai far andare, ormai. Il resto è pazienza.»" se lo stato della pompa è attiva.
 Al nodo "iole_dono" l'opzione "Grazie." conduce al nodo "iole_inizio".
+# Il dono a Iole NON entra nella generosità: senza, il casotto resta chiuso e la
+# pompa non va. Lo pagano tutti quelli che passano: è un prezzo, non un dono.
 
 Iole al nodo "iole_sapere" dice "«Si filtra, poi si tratta. Il filtro lo monti tu: tela e carbone ce n'è là nella carcassa. Il trattamento sta in casa mia: pastiglie. Ma in casa mia non entra chi non conosco.»".
 Al nodo "iole_sapere" l'opzione "Capito." conduce al nodo "iole_inizio".
@@ -133,8 +135,8 @@ Invece di vai nord se il giocatore è in la diga e la fiducia di Iole è al mass
 La diga collega nord a il casotto.
 
 # --- IL PUZZLE DELL'ACQUA  [climax: usa le pastiglie su la pompa, col filtro] ---
-Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro e il giocatore ha le pastiglie e il giocatore ha la damigiana: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: viene su un'acqua torbida che si schiarisce nella tela. Ci sciogli una pastiglia, aspetti che il cloro lavori. Poi riempi tanica e damigiana fino all'orlo. Per una volta, hai acqua da non contare." e adesso aumenta l'acqua di 12 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla e adesso il filtro è nel nulla.
-Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro e il giocatore ha le pastiglie: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: l'acqua si schiarisce nella tela. Ci sciogli una pastiglia, aspetti. Poi bevi a lungo e riempi la tanica fino all'orlo. Acqua vera, finalmente." e adesso aumenta l'acqua di 8 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla e adesso il filtro è nel nulla.
+Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro e il giocatore ha le pastiglie e il giocatore ha la damigiana: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: viene su un'acqua torbida che si schiarisce nella tela. Ci sciogli una pastiglia, aspetti che il cloro lavori. Poi bevi a lungo, e riempi tanica e damigiana fino all'orlo. Per una volta, hai acqua da non contare." e adesso aumenta l'acqua di 12 e adesso la sete diventa 0 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla e adesso il filtro è nel nulla.
+Invece di usa le pastiglie su la pompa se il giocatore è in la diga e il giocatore ha il filtro e il giocatore ha le pastiglie: dire "Leghi il filtro alla bocca della pompa e tiri lo stantuffo: l'acqua si schiarisce nella tela. Ci sciogli una pastiglia, aspetti. Poi bevi a lungo e riempi la tanica fino all'orlo. Acqua vera, finalmente." e adesso aumenta l'acqua di 8 e adesso la sete diventa 0 e adesso lo stato della pompa è attiva e adesso le pastiglie è nel nulla e adesso il filtro è nel nulla.
 Invece di usa le pastiglie su la pompa se il giocatore non ha le pastiglie: dire "Le pastiglie sono lì per terra: raccoglile, prima.".
 Invece di usa le pastiglie su la pompa: dire "Le pastiglie da sole non bastano: l'acqua della diga è troppo torbida e salata. Prima ci vuole un filtro.".
 # Dopo il puzzle la pompa col filtro resta una fonte di riserva: acqua di ferro, un po' salata.
@@ -175,4 +177,4 @@ La diga collega ovest a la condotta.
 # --- Passaggio a Z4: la condotta sbocca sulla rampa della statale ---
 # (la rampa è la stanza d'ingresso di z4-statale.fav)
 La condotta collega ovest a la rampa.
-Quando il giocatore è in la condotta e lo stato della condotta è nuova: dire "Ti cali nella condotta con la tanica piena e pesante d'acqua vera. L'invaso morto resta dietro, bianco e muto. Davanti, la statale, e chi la tiene." e adesso lo stato della condotta è vista.
+Quando il giocatore è in la condotta e lo stato della condotta è nuova: dire "Ti cali nella condotta con la tanica piena e pesante d'acqua vera. L'invaso morto resta dietro, bianco e fermo. Davanti, la statale, e chi la tiene." e adesso lo stato della condotta è vista.
