@@ -26,3 +26,4 @@ dist-ssr
 # artefatti dello script di validazione checkpoint
 scripts/_tmp_valida/
 __pycache__/
+.foto

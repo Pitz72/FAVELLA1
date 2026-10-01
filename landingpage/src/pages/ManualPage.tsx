@@ -1,17 +1,13 @@
 import React from "react";
-import { MANUAL_CONTENT, MANUAL_PDF_URL, ENGINE_VERSION } from "../constants";
+import { MANUAL_CONTENT, MANUAL_PDF_URL, ENGINE_VERSION, MANUAL_PDF_PAGES } from "../constants";
 import CodeBlock from "../components/CodeBlock";
 import ManualBanner from "../components/ManualBanner";
-import { navigate } from "../router";
+import { Btn, Ink, PageHero, Reveal } from "../ui/primitives";
 
-const goHash = (href: string) => {
-  navigate(href);
-};
-
-// Inline: **grassetto** e `codice`.
+// Inline: **grassetto**, *corsivo* e `codice`.
 const parseInline = (line: string): React.ReactNode => {
   const parts = line
-    .split(/(\*\*.*?\*\*|`.*?`)/g)
+    .split(/(\*\*.*?\*\*|`.*?`|\*[^*\s][^*]*?\*)/g)
     .filter(Boolean)
     .map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**"))
@@ -20,9 +16,15 @@ const parseInline = (line: string): React.ReactNode => {
             {part.slice(2, -2)}
           </strong>
         );
+      if (part.length > 2 && part.startsWith("*") && part.endsWith("*"))
+        return (
+          <em key={i} className="italic text-favella-text-primary">
+            {part.slice(1, -1)}
+          </em>
+        );
       if (part.startsWith("`") && part.endsWith("`"))
         return (
-          <code key={i} className="rounded-[5px] border border-favella-cyan/15 bg-favella-cyan/10 px-1.5 py-0.5 font-mono text-[0.9em] text-favella-cyan-bright">
+          <code key={i} className="rounded-[6px] border border-favella-cyan/15 bg-favella-cyan/10 px-1.5 py-0.5 font-mono text-[0.9em] text-favella-cyan-bright">
             {part.slice(1, -1)}
           </code>
         );
@@ -30,6 +32,14 @@ const parseInline = (line: string): React.ReactNode => {
     });
   return <>{parts}</>;
 };
+
+const slug = (t: string): string =>
+  t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 // Render markdown editoriale del MANUAL_CONTENT (fonte di verità).
 const render = (content: string): React.ReactNode[] => {
@@ -41,7 +51,7 @@ const render = (content: string): React.ReactNode[] => {
     if (part.startsWith("```favella")) {
       const code = part.replace(/```favella\n?/g, "").replace(/```/g, "").trim();
       els.push(
-        <div key={`cw-${k++}`} className="my-7 overflow-hidden rounded-[14px] border border-favella-cyan/14 bg-favella-panel">
+        <div key={`cw-${k++}`} className="my-8 overflow-hidden rounded-2xl border border-favella-cyan/15 bg-favella-panel shadow-[0_30px_70px_-40px_rgba(0,0,0,0.9)]">
           <CodeBlock>{code}</CodeBlock>
         </div>
       );
@@ -54,9 +64,9 @@ const render = (content: string): React.ReactNode[] => {
       if (listItems.length) {
         els.push(
           listType === "ul" ? (
-            <ul key={`ul-${k++}`} className="mb-6 space-y-2 text-favella-text-secondary">{listItems}</ul>
+            <ul key={`ul-${k++}`} className="mb-6 space-y-2.5 text-favella-text-secondary">{listItems}</ul>
           ) : (
-            <ol key={`ol-${k++}`} className="mb-6 list-decimal space-y-2 pl-6 text-favella-text-secondary">{listItems}</ol>
+            <ol key={`ol-${k++}`} className="mb-6 list-decimal space-y-2.5 pl-6 text-favella-text-secondary">{listItems}</ol>
           )
         );
         listItems = [];
@@ -74,7 +84,7 @@ const render = (content: string): React.ReactNode[] => {
         const text = t.substring(level).trim();
         if (level === 1) {
           els.push(
-            <h2 key={`h1-${k++}`} className="mb-5 mt-14 font-serif text-[clamp(24px,3vw,32px)] font-semibold text-favella-text-primary">
+            <h2 key={`h1-${k++}`} className="mb-5 mt-16 font-display text-[clamp(26px,3.2vw,38px)] font-bold tracking-[-0.03em] text-favella-text-primary">
               {parseInline(text)}
             </h2>
           );
@@ -83,14 +93,14 @@ const render = (content: string): React.ReactNode[] => {
           const marker = m ? m[1].padStart(2, "0") : text.toLowerCase().includes("domande") ? "?" : "§";
           const title = m ? m[2] : text;
           els.push(
-            <div key={`h2-${k++}`} className="mb-[18px] mt-14 flex items-baseline gap-3.5">
-              <span className="font-mono text-[13px] text-favella-amber">{marker}</span>
-              <h2 className="m-0 font-serif text-[clamp(24px,3vw,32px)] font-semibold text-favella-text-primary">{parseInline(title)}</h2>
+            <div key={`h2-${k++}`} id={slug(text.replace(/\s*\(FAQ\)\s*$/, ""))} className="mb-5 mt-16 flex scroll-mt-28 items-baseline gap-4">
+              <span className="font-mono text-[14px] text-favella-amber">{marker}</span>
+              <h2 className="m-0 font-display text-[clamp(26px,3.2vw,38px)] font-bold tracking-[-0.03em] text-favella-text-primary">{parseInline(title)}</h2>
             </div>
           );
         } else if (level === 3) {
           els.push(
-            <h3 key={`h3-${k++}`} className="mb-2 mt-8 font-display text-[16px] font-semibold text-favella-text-primary">
+            <h3 key={`h3-${k++}`} className="mb-2.5 mt-10 font-display text-[18px] font-bold tracking-[-0.01em] text-favella-text-primary">
               {parseInline(text)}
             </h3>
           );
@@ -106,14 +116,14 @@ const render = (content: string): React.ReactNode[] => {
 
       if (t === "---") {
         flush();
-        els.push(<hr key={`hr-${k++}`} className="my-10 border-favella-text-secondary/10" />);
+        els.push(<hr key={`hr-${k++}`} className="my-12 border-favella-text-secondary/10" />);
         return;
       }
 
       if (t.startsWith(">")) {
         flush();
         els.push(
-          <blockquote key={`bq-${k++}`} className="my-7 border-l-2 border-favella-amber/50 pl-6 font-serif text-[17px] italic leading-[1.6] text-favella-text-secondary">
+          <blockquote key={`bq-${k++}`} className="my-8 border-l-2 border-favella-amber/50 pl-6 font-serif text-[18px] italic leading-[1.65] text-favella-text-secondary">
             {parseInline(t.substring(1).trim())}
           </blockquote>
         );
@@ -123,8 +133,8 @@ const render = (content: string): React.ReactNode[] => {
       if (t.startsWith("* ")) {
         if (listType !== "ul") { flush(); listType = "ul"; }
         listItems.push(
-          <li key={`li-${k++}`} className="relative pl-6 text-[15px] leading-[1.65]">
-            <span className="absolute left-0 top-[10px] h-1.5 w-1.5 rounded-full bg-favella-cyan" />
+          <li key={`li-${k++}`} className="relative pl-6 text-[16px] leading-[1.7]">
+            <span className="absolute left-0 top-[11px] h-1.5 w-1.5 rounded-full bg-favella-cyan" />
             {parseInline(t.substring(2))}
           </li>
         );
@@ -134,13 +144,13 @@ const render = (content: string): React.ReactNode[] => {
       const ol = t.match(/^(\d+)\.\s+(.*)/);
       if (ol) {
         if (listType !== "ol") { flush(); listType = "ol"; }
-        listItems.push(<li key={`li-${k++}`} className="pl-1 text-[15px] leading-[1.65]">{parseInline(ol[2])}</li>);
+        listItems.push(<li key={`li-${k++}`} className="pl-1 text-[16px] leading-[1.7]">{parseInline(ol[2])}</li>);
         return;
       }
 
       flush();
       els.push(
-        <p key={`p-${k++}`} className="mb-5 font-serif text-[17px] leading-[1.7] text-[#c4d3e2]">
+        <p key={`p-${k++}`} className="mb-5 font-serif text-[18px] leading-[1.75] text-[#c4d3e2]">
           {parseInline(line.trim())}
         </p>
       );
@@ -151,8 +161,7 @@ const render = (content: string): React.ReactNode[] => {
 };
 
 const ManualPage = () => {
-  // Salta il titolo + l'intro del markdown (li sostituisce l'hero del redesign):
-  // tutto dopo il primo divisore «---».
+  // Salta il titolo + l'intro del markdown (li sostituisce la testata): tutto dopo il primo «---».
   const sep = MANUAL_CONTENT.indexOf("\n---\n");
   const body = sep >= 0 ? MANUAL_CONTENT.slice(sep + 5).trim() : MANUAL_CONTENT;
 
@@ -163,70 +172,92 @@ const ManualPage = () => {
     .map((l) => l.replace(/^##\s+/, "").replace(/\s*\(FAQ\)\s*$/, ""));
 
   return (
-    <section className="px-6 pb-28 pt-[74px]">
-      {/* Hero */}
-      <div className="mx-auto max-w-[820px]">
-        <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Guida rapida · v{ENGINE_VERSION}</p>
-        <h1 className="mb-[22px] font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-          La sintassi, in <span className="italic text-ink-accent">una panoramica</span>.
-        </h1>
-        <p className="mb-[18px] font-serif text-[20px] leading-[1.6] text-favella-text-secondary">
-          La filosofia è una sola: <strong className="font-semibold text-favella-text-primary">il tuo codice è una storia.</strong>{" "}
-          Scrivi frasi in italiano, ognuna chiusa da un punto{" "}
-          <code className="rounded-[5px] bg-favella-cyan/10 px-1.5 py-px font-mono text-favella-cyan-bright">.</code> ; i commenti
-          iniziano con <code className="rounded-[5px] bg-favella-cyan/10 px-1.5 py-px font-mono text-favella-cyan-bright">#</code>.
+    <>
+      <PageHero
+        eyebrow={`Guida rapida · v${ENGINE_VERSION}`}
+        title={
+          <>
+            La sintassi, in <Ink>una panoramica.</Ink>
+          </>
+        }
+        lead={
+          <>
+            La filosofia è una sola: <strong className="font-semibold text-favella-text-primary">il tuo codice è una storia.</strong> Scrivi frasi in italiano,
+            ognuna chiusa da un punto <code className="rounded-md bg-favella-cyan/10 px-1.5 py-px font-mono text-favella-cyan-bright">.</code>; i commenti iniziano con{" "}
+            <code className="rounded-md bg-favella-cyan/10 px-1.5 py-px font-mono text-favella-cyan-bright">#</code>.
+          </>
+        }
+      >
+        <p className="m-0 max-w-[620px] text-[15px] leading-[1.65] text-favella-text-muted">
+          Per la trattazione organica di tutti i costrutti c'è il Manuale di Programmazione completo: {MANUAL_PDF_PAGES} pagine, 21 capitoli, in PDF su GitHub.
         </p>
-        <p className="m-0 text-[14.5px] leading-[1.6] text-favella-text-muted">
-          Per la trattazione organica di tutti i costrutti c'è il Manuale di Programmazione completo — 95 pagine, 21
-          capitoli, in PDF su GitHub.
-        </p>
+      </PageHero>
 
-        {/* Indice */}
-        <div className="mb-2.5 mt-9 flex flex-wrap gap-2">
-          {chips.map((c) => (
-            <span key={c} className="rounded-full border border-favella-cyan/18 px-3 py-1.5 font-mono text-[12px] text-favella-text-secondary">
-              {c}
-            </span>
-          ))}
-        </div>
-      </div>
+      <section className="px-6 pb-20">
+        <div className="mx-auto grid max-w-[1180px] gap-14 lg:grid-cols-[250px_1fr]">
+          {/* indice */}
+          <nav aria-label="In questa pagina" className="hidden lg:block">
+            <div className="sticky top-28">
+              <p className="mb-4 font-mono text-[10.5px] uppercase tracking-[0.24em] text-favella-text-muted">In questa pagina</p>
+              <ul className="space-y-1 border-l border-favella-cyan/15">
+                {chips.map((c) => (
+                  <li key={c}>
+                    <a
+                      href={`#${slug(c)}`}
+                      className="-ml-px block border-l border-transparent py-1.5 pl-4 text-[14px] text-favella-text-secondary transition-colors hover:border-favella-cyan hover:text-favella-cyan-bright"
+                    >
+                      {c}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </nav>
 
-      {/* Banner: il manuale cartaceo è uscito */}
-      <div className="mx-auto mt-12 max-w-[820px]">
-        <ManualBanner />
-      </div>
-
-      {/* Corpo */}
-      <div className="mx-auto mt-14 max-w-[820px]">
-        <article>{render(body)}</article>
-
-        {/* CTA */}
-        <div className="mt-14 rounded-[20px] border border-favella-cyan/14 bg-gradient-to-b from-favella-surface/50 to-favella-panel/35 px-8 py-11 text-center">
-          <h2 className="mb-3.5 font-serif text-[clamp(22px,3vw,30px)] font-medium text-favella-text-primary">Vai più a fondo.</h2>
-          <p className="mx-auto mb-7 max-w-[520px] text-[15px] leading-[1.6] text-favella-text-secondary">
-            Il Manuale di Programmazione completo — 95 pagine, 21 capitoli — tratta ogni costrutto nel dettaglio, con la
-            Casa di Via Stradivari come esempio dall'inizio alla fine.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3.5">
-            <a
-              href={MANUAL_PDF_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-xl bg-brand-gradient px-[26px] py-3.5 font-display text-[15px] font-bold text-favella-void transition-transform duration-300 hover:-translate-y-0.5"
-            >
-              Scarica il manuale (PDF)
-            </a>
-            <a
-              href="/corso"
-              onClick={(e) => { e.preventDefault(); goHash("/corso"); }}
-              className="cursor-pointer rounded-xl border border-favella-cyan/25 bg-favella-surface/40 px-[26px] py-3.5 font-display text-[15px] font-semibold text-favella-text-primary transition-colors hover:border-favella-cyan/50"
-            >
-              Impara col corso
-            </a>
+          <div className="min-w-0 max-w-[820px]">
+            {/* indice per telefono */}
+            <div className="mb-10 flex flex-wrap gap-2 lg:hidden">
+              {chips.map((c) => (
+                <a key={c} href={`#${slug(c)}`} className="rounded-full border border-favella-cyan/20 px-3 py-1.5 font-mono text-[12px] text-favella-text-secondary hover:border-favella-cyan/60">
+                  {c}
+                </a>
+              ))}
+            </div>
+            <article>{render(body)}</article>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* Il libro */}
+      <section className="px-4 pb-16 sm:px-6">
+        <div className="mx-auto max-w-[1180px]">
+          <ManualBanner variant="compact" />
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="px-6 pb-8">
+        <Reveal>
+          <div className="mx-auto max-w-[900px] rounded-[32px] border border-favella-cyan/20 bg-[radial-gradient(80%_120%_at_50%_0%,rgba(34,211,238,0.12),transparent_60%),linear-gradient(180deg,#0b1a28,#060d17)] px-8 py-14 text-center">
+            <h2 className="mb-4 font-display text-[clamp(28px,4vw,46px)] font-bold tracking-[-0.04em] text-favella-text-primary">
+              Vai più <Ink>a fondo.</Ink>
+            </h2>
+            <p className="mx-auto mb-8 max-w-[560px] font-serif text-[17px] leading-[1.65] text-favella-text-secondary">
+              Il Manuale di Programmazione completo — {MANUAL_PDF_PAGES} pagine, 21 capitoli — tratta ogni costrutto nel dettaglio, con la Casa di Via Stradivari come
+              esempio dall'inizio alla fine.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Btn href={MANUAL_PDF_URL} size="lg">
+                Scarica il manuale (PDF)
+              </Btn>
+              <Btn to="/corso" variant="ghost" size="lg">
+                Impara col corso
+              </Btn>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+    </>
   );
 };
 

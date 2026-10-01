@@ -35,7 +35,10 @@ export const SITE_URL = "https://favella.eu";
 //   manuale aggiornato, /esperimento e galleria con Il Viaggiatore 1.11.0.
 // · 2.6.1 = motore 1.4.2: «usa X su Y» in più modi, «look».
 // · 2.7.0 = Favella Studio 1.0 (pagina /studio), FAVELLA 1 dichiarata conclusa.
-export const SITE_VERSION = "2.7.0";
+// · 2.8.0 = redesign totale del sito («Nottetempo»: stessa palette, linguaggio visivo
+//   nuovo), banner del manuale cartaceo ridisegnato, Favella Studio 1.1, link, numeri e
+//   informazioni controllati uno per uno.
+export const SITE_VERSION = "2.8.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -59,7 +62,7 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.0.0";
+export const STUDIO_VERSION = "1.1.0";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -80,6 +83,18 @@ export const MANUAL_PDF_URL = "https://github.com/Pitz72/FAVELLA1/raw/main/docum
 // Edizione cartacea a colori del manuale (Amazon.it) — auto-finanziamento del progetto.
 export const AMAZON_PAPERBACK_URL = "https://www.amazon.it/dp/B0H6SKM9JR";
 export const MANUAL_PRICE = "13,51 €";
+// Il PDF gratuito (documentazione/manuale/manuale.pdf) è sempre l'ultima edizione.
+export const MANUAL_PDF_PAGES = 95;
+export const MANUAL_PDF_EDITION = "Terza edizione";
+// Ciò che oggi si compra su Amazon.it (verificato sulla scheda del libro: 84 pagine,
+// 13,51 €, pubblicato il 27 giugno 2026). Quando la terza edizione per la stampa sarà
+// caricata su KDP basta far salire qui edizione/versione/pagine e togliere `next`.
+export const PAPERBACK = {
+  edition: "Seconda edizione",
+  version: "1.0.0",
+  pages: 84,
+  next: { edition: "Terza edizione", version: "1.4.2", pages: 96 } as { edition: string; version: string; pages: number } | null,
+};
 
 export const AUTHOR_NAME = "Simone Pizzi";
 export const AUTHOR_EMAIL = "simonepizzi.1972@proton.me";
@@ -94,8 +109,13 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // --------------------------------------------------------------------
 //  Statistiche di colpo d'occhio
 // --------------------------------------------------------------------
+// I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
+// galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
+// la Home, le FAQ e il testo del progetto li leggono da qui.
+export const STATS_NUMERI = { test: 1166, collaudo: 50, avventure: 10, cassette: 21 };
+
 export const STATS = [
-  { value: "734", label: "test verdi", hint: "+ 50 di collaudo" },
+  { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
   { value: ENGINE_VERSION, label: "linguaggio completo", hint: "dalla 1.0 si aggiunge, non si rompe" },
   { value: "0", label: "ambiguità", hint: "grammatica LALR(1)" },
   { value: "100%", label: "italiano", hint: "le frasi SONO il codice" },
@@ -129,7 +149,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "parser",
     title: "Un motore solido",
-    body: "Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di 1143 test, più 50 di collaudo, garantisce ogni costrutto.",
+    body: `Compilatore a due passate con parser LALR(1) non ambiguo per costruzione, in Python. Una suite di ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo, garantisce ogni costrutto.`,
   },
   {
     icon: "open",
@@ -162,6 +182,14 @@ export const NEWS: NewsItem[] = [
     tag: "Studio",
     date: "Ottobre 2026",
     emphasis: "primary",
+    title: "Favella Studio 1.1: tutto si crea e si cambia dai pannelli",
+    body: "Dopo i primi giorni d'uso sono arrivate le richieste giuste, e la 1.1 le fa tutte. I personaggi ora si creano da zero, con nome, stanza e descrizione, senza passare dagli oggetti. Stanze, oggetti e personaggi si rinominano (il nome cambia in tutte le frasi che lo citano, anche negli altri file, e le preposizioni si adattano: «nella cucina» diventa «nel tinello») e si eliminano, dopo aver visto che cosa se ne va con loro. Le uscite delle stanze si cambiano sia dal pannello sia dalla mappa: un clic su una freccia o su una stanza, e cambi direzione e destinazione; il ritorno si riscrive da solo. Le storie a più file sono finalmente chiare: un pannello mostra il file principale e i moduli, «Nuovo file» ne crea uno e lo include, e provare, esportare e riordinare lavorano sempre sulla storia intera, anche sui testi non ancora salvati. Riordina, il comando che rimette stanze, oggetti, regole e dialoghi ognuno al suo posto senza perdere un commento, è ora un pulsante in barra e funziona su più file. Ci sono «Salva con nome» e «Salva il progetto come…», e la barra dei menu dell'app, che non serviva a niente, è sparita.",
+    cta: { label: "Scopri Favella Studio", href: "/studio" },
+  },
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "normal",
     title: "Favella Studio 1.0: l'ambiente di scrittura è qui",
     body: "Un'app per scrivere la tua avventura senza perderti fra i file. Il testo, le stanze (con una mappa da trascinare), gli oggetti, i personaggi e i loro dialoghi, le regole e le parole del giocatore, e la prova della storia con i pulsanti-verbo: cinque sezioni, nell'ordine in cui si scrive. Ogni modifica dei pannelli si scrive nel testo, che puoi affiancare; la grandezza dell'interfaccia si regola, i contrasti sono alti, tutto si raggiunge da tastiera. Dentro c'è il motore vero del linguaggio, quindi non serve installare Python. È gratuito e open source: l'installer per Windows e l'AppImage per Linux sono su GitHub; chi ha un Mac se lo costruisce da sé con un comando, e le istruzioni sono nel repository.",
     cta: { label: "Scopri Favella Studio", href: "/studio" },
@@ -268,13 +296,6 @@ export const NEWS: NewsItem[] = [
     body: "Un omaggio ai corsi di programmazione su cassetta dei primi anni '80, ma vivo: ventuno «cassette», una per capitolo del manuale, che ti insegnano FAVELLA facendoti scrivere — fino ai Temi, le aggiunte più recenti (il caso, le quantità, il mondo che cambia, gli stati che si parlano). Quando una lezione ti chiede una frase, è il motore vero a compilarla. In più due avventure complete — «La Casa di Via Stradivari» e «Il Relitto Silente» — giocabili dentro la pagina.",
     cta: { label: "Entra nel corso interattivo", href: "/corso" },
   },
-  {
-    tag: "Esperimento",
-    date: "Agosto 2026",
-    emphasis: "secondary",
-    title: "Favella Studio: il cantiere aperto, così com'è",
-    body: "Il cantiere di cui non parlavamo era questo. Favella Studio è un tentativo di dare a FAVELLA un ambiente di sviluppo visuale: la mappa delle stanze che si disegna trascinando, gli editor per oggetti, regole e dialoghi, un comando che impacchetta la storia in un HTML giocabile da solo. Funziona, in buona parte. Ma è fermo alla 0.9 da mesi, nessuno lo mantiene e non ha una data d'uscita, perché non ne avrà una. Doveva essere il pezzo a pagamento del progetto; alla fine lo abbiamo aperto. Il codice sta lì, sotto MIT, per chi ha voglia di guardarci dentro o di riprenderlo in mano. Il linguaggio invece è finito, e quello non si tocca.",
-  },
 ];
 
 // --------------------------------------------------------------------
@@ -357,7 +378,7 @@ export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
     title: "Il lavoro è finito",
-    body: "FAVELLA 1 è completo: la 1.4.2 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio 1.0 e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
+    body: "FAVELLA 1 è completo: la 1.4.2 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
     area: "ecosistema",
@@ -375,7 +396,7 @@ L'intuizione che muove FAVELLA è radicale nella sua semplicità: e se l'italian
 
 Con l'avvento dei Large Language Models quel sogno è diventato un progetto concreto. FAVELLA 1 non è stato scritto in solitudine, ma in un dialogo costante con un'intelligenza artificiale: non un semplice strumento, ma un partner di sviluppo con cui definire le specifiche, esplorare il design della grammatica, generare codice e fare refactoring. Un approccio ibrido che lascia all'autore umano la visione e le decisioni, e accelera tutto il resto.
 
-Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a 1143 test, più 50 di collaudo.
+Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo.
 
 Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, FAVELLA 1 è concluso: la 1.4.2 è la versione definitiva e non verrà più modificata. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 

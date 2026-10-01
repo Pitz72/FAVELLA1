@@ -54,26 +54,10 @@ function App() {
     }
   };
 
-  // Layout del redesign: nav orizzontale sticky in alto, contenuto a tutta
-  // larghezza. Le pagine MIGRATE al redesign sono «full-bleed» (sezioni coi
-  // propri gradienti radiali, padding interno); le altre restano nel
-  // contenitore con padding finché non sono migrate. Aggiungere le rotte a
-  // FULL_BLEED man mano che vengono ristilizzate.
-  const FULL_BLEED = new Set(["/", "/progetto", "/aggiornamenti", "/manuale", "/corso", "/programma", "/studio", "/galleria", "/libreria", "/download", "/collabora"]);
-  const fullBleed = FULL_BLEED.has(route);
-
   return (
     <div className="flex min-h-screen flex-col bg-favella-void font-sans text-favella-text-primary">
       <Header />
-      <main className="flex-1">
-        {fullBleed ? (
-          renderPage()
-        ) : (
-          <div className="mx-auto min-h-[calc(100vh-12rem)] max-w-6xl px-4 py-10 md:px-8 md:py-14">
-            {renderPage()}
-          </div>
-        )}
-      </main>
+      <main className="flex-1">{renderPage()}</main>
       <Footer />
       <CookieBanner />
     </div>

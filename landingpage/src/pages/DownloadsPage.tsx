@@ -1,12 +1,15 @@
-import React from "react";
 import CodeBlock from "../components/CodeBlock";
 import { Link } from "../router";
+import { Btn, Eyebrow, Ink, PageHero, Reveal, Spot } from "../ui/primitives";
 import {
   PYPI_URL,
   RELEASES_URL,
   MANUAL_PDF_URL,
   GITHUB_URL,
   VERSION,
+  STUDIO_VERSION,
+  MANUAL_PDF_PAGES,
+  MANUAL_PDF_EDITION,
   DOWNLOAD_WINDOWS,
   DOWNLOAD_MACOS,
   DOWNLOAD_LINUX,
@@ -16,228 +19,193 @@ import {
 const OsDownload = ({ os, ext, href }: { os: string; ext: string; href: string }) => (
   <a
     href={href}
-    className="flex items-center justify-between rounded-lg border border-favella-emerald/25 bg-favella-panel/40 px-3.5 py-2.5 transition-colors hover:border-favella-emerald hover:bg-favella-emerald/10"
+    className="group flex items-center justify-between rounded-2xl border border-favella-emerald/25 bg-favella-void/40 px-4 py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-favella-emerald hover:bg-favella-emerald/10"
   >
-    <span className="font-display text-[13.5px] font-semibold text-favella-text-primary">{os}</span>
-    <span className="font-mono text-[11px] text-favella-emerald">↓ {ext}</span>
-  </a>
-);
-
-// Pulsante esterno (apre in nuova scheda).
-const ExtBtn = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <a
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center gap-2 rounded-lg border border-favella-cyan/35 bg-favella-cyan/10 px-5 py-2.5 font-display text-[14px] font-semibold text-favella-cyan-bright transition-colors hover:border-favella-cyan hover:bg-favella-cyan hover:text-favella-dark"
-  >
-    {children}
+    <span className="font-display text-[15px] font-semibold text-favella-text-primary">{os}</span>
+    <span className="font-mono text-[11.5px] text-favella-emerald">↓ {ext}</span>
   </a>
 );
 
 // Riga "altro da scaricare" (link secondari, interni o esterni).
-const Secondary = ({
-  to,
-  href,
-  title,
-  desc,
-}: {
-  to?: string;
-  href?: string;
-  title: string;
-  desc: string;
-}) => {
+const Secondary = ({ to, href, title, desc }: { to?: string; href?: string; title: string; desc: string }) => {
   const inner = (
     <>
-      <span className="font-display text-[15px] font-semibold text-favella-text-primary">{title}</span>
-      <span className="mt-1 block text-[13.5px] leading-snug text-favella-text-secondary">{desc}</span>
+      <span className="flex items-center justify-between font-display text-[17px] font-bold tracking-[-0.02em] text-favella-text-primary">
+        {title}
+        <span className="text-favella-cyan transition-transform group-hover:translate-x-1">→</span>
+      </span>
+      <span className="mt-2 block text-[14px] leading-snug text-favella-text-secondary">{desc}</span>
     </>
   );
-  const cls =
-    "block rounded-[14px] border border-favella-cyan/12 bg-favella-panel/40 px-5 py-4 transition-colors hover:border-favella-cyan/35 hover:bg-favella-surface/40";
   return to ? (
-    <Link to={to} className={cls}>
+    <Spot as={Link} to={to} className="group block px-6 py-5">
       {inner}
-    </Link>
+    </Spot>
   ) : (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
+    <Spot as="a" href={href} target="_blank" rel="noopener noreferrer" className="group block px-6 py-5">
       {inner}
-    </a>
+    </Spot>
   );
 };
 
 const DownloadsPage = () => (
-  <section className="px-6 pb-28 pt-[74px]">
-    {/* Hero */}
-    <div className="mx-auto max-w-[840px]">
-      <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">
-        Tutto in un posto solo
-      </p>
-      <h1 className="mb-[22px] font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-        Scarica <span className="italic text-ink-accent">FAVELLA&nbsp;1</span>.
-      </h1>
-      <p className="mb-2 font-serif text-[20px] leading-[1.6] text-favella-text-secondary">
-        Il linguaggio si usa in tre modi, e sono tutti gratuiti e open-source. Scegli quello
-        che fa per te: un comando nel terminale, un'app da installare, o il manuale da leggere.
-      </p>
-    </div>
+  <>
+    <PageHero
+      eyebrow="Tutto in un posto solo"
+      title={
+        <>
+          Scarica <Ink>FAVELLA&nbsp;1.</Ink>
+        </>
+      }
+      lead="Il linguaggio si usa in tre modi, e sono tutti gratuiti e open source: un comando nel terminale, un'app da installare, o il manuale da leggere."
+    />
 
     {/* I tre canali principali */}
-    <div className="mx-auto mt-[46px] grid max-w-[1040px] gap-7 md:grid-cols-3">
-      {/* 1 — Pacchetto Python */}
-      <div className="flex flex-col rounded-[18px] border border-favella-cyan/16 bg-gradient-to-b from-favella-surface/50 to-favella-panel/30 p-7">
-        <span className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-favella-cyan">
-          Per chi usa Python
-        </span>
-        <h2 className="mb-2 font-serif text-[24px] font-semibold text-favella-text-primary">
-          Pacchetto Python
-        </h2>
-        <p className="mb-4 flex-1 text-[14.5px] leading-[1.65] text-favella-text-secondary">
-          Il motore ufficiale su PyPI. Un comando e ce l'hai ovunque, da usare come programma
-          o come libreria.
-        </p>
-        <div className="mb-5 overflow-hidden rounded-[10px] border border-favella-cyan/12">
-          <CodeBlock>pip install favella1</CodeBlock>
-        </div>
-        <ExtBtn href={PYPI_URL}>↗ Vai a favella1 su PyPI</ExtBtn>
-      </div>
+    <section className="px-6 pb-12">
+      <div className="mx-auto grid max-w-[1240px] gap-5 md:grid-cols-3">
+        {/* 1 — Pacchetto Python */}
+        <Reveal>
+          <Spot className="flex h-full flex-col p-8">
+            <Eyebrow className="mb-5">Per chi usa Python</Eyebrow>
+            <h2 className="mb-3 font-display text-[28px] font-bold tracking-[-0.03em] text-favella-text-primary">Pacchetto Python</h2>
+            <p className="mb-5 flex-1 font-serif text-[16px] leading-[1.65] text-favella-text-secondary">
+              Il motore ufficiale su PyPI. Un comando e ce l'hai ovunque, da usare come programma o come libreria.
+            </p>
+            <div className="mb-6 overflow-hidden rounded-xl border border-favella-cyan/12">
+              <CodeBlock>pip install favella1</CodeBlock>
+            </div>
+            <Btn href={PYPI_URL} variant="ghost">
+              Vai a favella1 su PyPI ↗
+            </Btn>
+          </Spot>
+        </Reveal>
 
-      {/* 2 — App desktop */}
-      <div className="flex flex-col rounded-[18px] border border-favella-cyan/16 bg-gradient-to-b from-favella-surface/50 to-favella-panel/30 p-7">
-        <span className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-favella-emerald">
-          Senza installare Python
-        </span>
-        <h2 className="mb-2 font-serif text-[24px] font-semibold text-favella-text-primary">
-          App desktop
-        </h2>
-        <p className="mb-4 text-[14.5px] leading-[1.65] text-favella-text-secondary">
-          L'eseguibile pronto all'uso per il tuo sistema (release v{VERSION}). Niente prerequisiti:
-          scarichi e avvii. <a href="#avvio" className="text-favella-emerald underline-offset-2 hover:underline">Leggi le note di avvio ↓</a>
-        </p>
-        <div className="mt-auto flex flex-col gap-2">
-          <OsDownload os="Windows" ext=".exe" href={DOWNLOAD_WINDOWS} />
-          <OsDownload os="macOS (Apple Silicon)" ext=".dmg" href={DOWNLOAD_MACOS} />
-          <OsDownload os="Linux" ext=".AppImage" href={DOWNLOAD_LINUX} />
-        </div>
-      </div>
+        {/* 2 — App desktop */}
+        <Reveal delay={100}>
+          <Spot className="flex h-full flex-col p-8">
+            <Eyebrow tone="emerald" className="mb-5">
+              Senza installare Python
+            </Eyebrow>
+            <h2 className="mb-3 font-display text-[28px] font-bold tracking-[-0.03em] text-favella-text-primary">App desktop</h2>
+            <p className="mb-5 font-serif text-[16px] leading-[1.65] text-favella-text-secondary">
+              L'eseguibile pronto all'uso per il tuo sistema (release {VERSION}). Niente prerequisiti: scarichi e avvii.{" "}
+              <a href="#avvio" className="text-favella-emerald underline-offset-2 hover:underline">
+                Note di avvio ↓
+              </a>
+            </p>
+            <div className="mt-auto flex flex-col gap-2.5">
+              <OsDownload os="Windows" ext=".exe" href={DOWNLOAD_WINDOWS} />
+              <OsDownload os="macOS (Apple Silicon)" ext=".dmg" href={DOWNLOAD_MACOS} />
+              <OsDownload os="Linux" ext=".AppImage" href={DOWNLOAD_LINUX} />
+            </div>
+          </Spot>
+        </Reveal>
 
-      {/* 3 — Manuale */}
-      <div className="flex flex-col rounded-[18px] border border-favella-cyan/16 bg-gradient-to-b from-favella-surface/50 to-favella-panel/30 p-7">
-        <span className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-favella-amber">
-          Per imparare
-        </span>
-        <h2 className="mb-2 font-serif text-[24px] font-semibold text-favella-text-primary">
-          Manuale (PDF)
-        </h2>
-        <p className="mb-4 flex-1 text-[14.5px] leading-[1.65] text-favella-text-secondary">
-          Il Manuale di Programmazione completo: 95 pagine, 21 capitoli, dalla prima frase
-          al mondo che cambia.
-        </p>
-        <div className="mb-5">
-          <span className="rounded-full border border-favella-amber/25 px-2.5 py-1 font-mono text-[11px] text-favella-amber">
-            95 pp · 21 capp · v{VERSION}
-          </span>
-        </div>
-        <ExtBtn href={MANUAL_PDF_URL}>↓ Scarica il manuale</ExtBtn>
+        {/* 3 — Manuale */}
+        <Reveal delay={200}>
+          <Spot className="flex h-full flex-col p-8">
+            <Eyebrow tone="amber" className="mb-5">
+              Per imparare
+            </Eyebrow>
+            <h2 className="mb-3 font-display text-[28px] font-bold tracking-[-0.03em] text-favella-text-primary">Manuale (PDF)</h2>
+            <p className="mb-5 flex-1 font-serif text-[16px] leading-[1.65] text-favella-text-secondary">
+              Il Manuale di Programmazione completo: {MANUAL_PDF_PAGES} pagine, 21 capitoli, dalla prima frase al mondo che cambia.
+            </p>
+            <div className="mb-6">
+              <span className="rounded-full border border-favella-amber/30 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-favella-amber">
+                {MANUAL_PDF_PAGES} pp · 21 capp · {MANUAL_PDF_EDITION.toLowerCase()}
+              </span>
+            </div>
+            <Btn href={MANUAL_PDF_URL} variant="ghost">
+              ↓ Scarica il manuale
+            </Btn>
+          </Spot>
+        </Reveal>
       </div>
-    </div>
+    </section>
 
     {/* Favella Studio */}
-    <div className="mx-auto mt-10 max-w-[1040px]">
-      <Link
-        to="/studio"
-        className="flex flex-col items-start gap-5 rounded-[18px] border border-favella-emerald/25 bg-favella-emerald/[0.05] p-6 transition-colors hover:border-favella-emerald/50 sm:flex-row sm:items-center"
-      >
-        <img src="/studio/favella-studio-logo-256.png" alt="" width={72} height={72} className="rounded-2xl" />
-        <span className="flex-1">
-          <span className="block font-display text-[18px] font-semibold text-favella-text-primary">
-            Cerchi un ambiente per scrivere? Favella Studio
-          </span>
-          <span className="mt-1 block text-[14px] leading-snug text-favella-text-secondary">
-            Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola. Windows e Linux; su Mac te la costruisci da te.
-          </span>
-        </span>
-        <span className="font-mono text-[12px] text-favella-emerald">Scopri →</span>
-      </Link>
-    </div>
+    <section className="px-6 pb-12">
+      <div className="mx-auto max-w-[1240px]">
+        <Reveal>
+          <Spot
+            as={Link}
+            to="/studio"
+            className="group flex flex-col items-start gap-6 p-7 sm:flex-row sm:items-center md:p-9"
+          >
+            <img src="/studio/favella-studio-logo-256.png" alt="" width={84} height={84} className="rounded-[22px] shadow-[0_20px_50px_-16px_rgba(34,211,238,0.5)]" />
+            <span className="flex-1">
+              <span className="block font-display text-[24px] font-bold tracking-[-0.03em] text-favella-text-primary">
+                Cerchi un ambiente per scrivere? Favella Studio {STUDIO_VERSION}
+              </span>
+              <span className="mt-1.5 block font-serif text-[16px] leading-snug text-favella-text-secondary">
+                Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola. Windows e Linux; su Mac te la costruisci da te.
+              </span>
+            </span>
+            <span className="font-display text-[15px] font-semibold text-favella-emerald transition-transform group-hover:translate-x-1">Scopri →</span>
+          </Spot>
+        </Reveal>
+      </div>
+    </section>
 
     {/* Note di avvio / disclaimer per OS */}
-    <div id="avvio" className="mx-auto mt-12 max-w-[1040px] scroll-mt-24">
-      <div className="rounded-[18px] border border-favella-amber/25 bg-favella-amber/[0.06] p-7">
-        <h2 className="mb-2 font-serif text-[22px] font-semibold text-favella-text-primary">
-          ⚠️ Note di avvio (importante)
-        </h2>
-        <p className="mb-5 text-[14px] leading-[1.6] text-favella-text-secondary">
-          Gli eseguibili sono sicuri ma <strong>non sono firmati con un certificato a pagamento</strong>:
-          è normale per un progetto open-source indipendente. La prima volta il sistema potrebbe
-          avvisarti. Ecco come procedere.
-        </p>
-        <div className="grid gap-5 sm:grid-cols-3">
-          <div>
-            <p className="mb-1.5 font-display text-[14px] font-semibold text-favella-cyan">Windows</p>
-            <p className="text-[13px] leading-[1.6] text-favella-text-secondary">
-              Se compare «Windows ha protetto il PC» (SmartScreen): clicca su
-              <strong> «Ulteriori informazioni»</strong> e poi <strong>«Esegui comunque»</strong>.
-            </p>
+    <section id="avvio" className="scroll-mt-24 px-6 pb-12">
+      <div className="mx-auto max-w-[1240px]">
+        <div className="rounded-[28px] border border-favella-amber/25 bg-favella-amber/[0.05] p-8 md:p-10">
+          <h2 className="mb-3 font-display text-[26px] font-bold tracking-[-0.03em] text-favella-text-primary">Note di avvio</h2>
+          <p className="mb-7 max-w-[760px] font-serif text-[16px] leading-[1.65] text-favella-text-secondary">
+            Gli eseguibili sono sicuri ma <strong className="text-favella-text-primary">non sono firmati con un certificato a pagamento</strong>: è normale per un
+            progetto open source indipendente. La prima volta il sistema potrebbe avvisarti. Ecco come procedere.
+          </p>
+          <div className="grid gap-8 sm:grid-cols-3">
+            <div>
+              <p className="mb-2 font-display text-[15px] font-bold text-favella-cyan">Windows</p>
+              <p className="text-[14px] leading-[1.65] text-favella-text-secondary">
+                Se compare «Windows ha protetto il PC» (SmartScreen): clicca su <strong>«Ulteriori informazioni»</strong> e poi <strong>«Esegui comunque»</strong>.
+              </p>
+            </div>
+            <div>
+              <p className="mb-2 font-display text-[15px] font-bold text-favella-cyan">macOS</p>
+              <p className="text-[14px] leading-[1.65] text-favella-text-secondary">
+                Il <code className="font-mono text-[12.5px] text-favella-emerald">.dmg</code> è per Mac Apple Silicon. Se appare «impossibile verificare lo sviluppatore»:{" "}
+                <strong>tasto destro sull'app → Apri</strong>, oppure Impostazioni → Privacy e sicurezza → «Apri comunque».
+              </p>
+            </div>
+            <div>
+              <p className="mb-2 font-display text-[15px] font-bold text-favella-cyan">Linux</p>
+              <p className="text-[14px] leading-[1.65] text-favella-text-secondary">
+                Rendi eseguibile l'AppImage: <code className="font-mono text-[12.5px] text-favella-emerald">chmod +x favella1-*.AppImage</code> (o Proprietà → Permessi →
+                «Consenti esecuzione»), poi avviala. Su alcune distro serve <strong>FUSE</strong>.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="mb-1.5 font-display text-[14px] font-semibold text-favella-cyan">macOS</p>
-            <p className="text-[13px] leading-[1.6] text-favella-text-secondary">
-              Il <code className="font-mono text-[12px] text-favella-emerald">.dmg</code> è per Mac
-              Apple Silicon. Se appare «impossibile verificare lo sviluppatore»: <strong>tasto destro
-              sull'app → Apri</strong>, oppure Impostazioni → Privacy e sicurezza → «Apri comunque».
-            </p>
-          </div>
-          <div>
-            <p className="mb-1.5 font-display text-[14px] font-semibold text-favella-cyan">Linux</p>
-            <p className="text-[13px] leading-[1.6] text-favella-text-secondary">
-              Rendi eseguibile l'AppImage: <code className="font-mono text-[12px] text-favella-emerald">chmod +x favella1-*.AppImage</code>
-              {" "}(o Proprietà → Permessi → «Consenti esecuzione»), poi avviala. Su alcune distro serve
-              <strong> FUSE</strong>.
-            </p>
-          </div>
+          <p className="mt-7 text-[14px] text-favella-text-muted">
+            Preferisci non installare nulla? Usa il pacchetto Python (<code className="font-mono text-favella-cyan">pip install favella1</code>) o prova le storie
+            direttamente nel browser. Tutti gli eseguibili sono anche su{" "}
+            <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" className="text-favella-cyan hover:underline">
+              GitHub Releases
+            </a>
+            .
+          </p>
         </div>
-        <p className="mt-5 text-[13px] text-favella-text-muted">
-          Preferisci non installare nulla? Usa il pacchetto Python (<code className="font-mono text-favella-cyan">pip install favella1</code>)
-          o prova le storie direttamente nel browser. Tutti gli eseguibili sono anche su{" "}
-          <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" className="text-favella-cyan hover:underline">GitHub Releases</a>.
-        </p>
       </div>
-    </div>
+    </section>
 
     {/* Altro da scaricare / esplorare */}
-    <div className="mx-auto mt-12 max-w-[1040px]">
-      <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-favella-text-muted">
-        E poi c'è altro
-      </p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Secondary
-          to="/libreria"
-          title="Libreria di moduli"
-          desc="File .fav pronti da includere: sinonimi, proprietà, verbi. Si copiano e si scaricano."
-        />
-        <Secondary
-          to="/galleria"
-          title="Galleria di storie"
-          desc="Avventure complete e vincibili, giocabili nel browser o da scaricare e rigiocare."
-        />
-        <Secondary
-          href={GITHUB_URL}
-          title="Codice sorgente"
-          desc="Tutto il progetto su GitHub, licenza MIT. Clona, leggi, contribuisci."
-        />
-        <Secondary
-          href={RELEASES_URL}
-          title="Tutte le release"
-          desc="Lo storico delle versioni con note di rilascio ed eseguibili per ogni sistema."
-        />
+    <section className="px-6 pb-12">
+      <div className="mx-auto max-w-[1240px]">
+        <Eyebrow className="mb-6 text-favella-text-muted">E poi c'è altro</Eyebrow>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Secondary to="/libreria" title="Libreria di moduli" desc="File .fav pronti da includere: sinonimi, proprietà, verbi. Si copiano e si scaricano." />
+          <Secondary to="/galleria" title="Galleria di storie" desc="Avventure complete e vincibili, giocabili nel browser o da scaricare e rigiocare." />
+          <Secondary href={GITHUB_URL} title="Codice sorgente" desc="Tutto il progetto su GitHub, licenza MIT. Clona, leggi, contribuisci." />
+          <Secondary href={RELEASES_URL} title="Tutte le release" desc="Lo storico delle versioni con note di rilascio ed eseguibili per ogni sistema." />
+        </div>
       </div>
-    </div>
+    </section>
 
-    <p className="mx-auto mt-12 max-w-[840px] text-center font-serif text-[15px] italic text-favella-text-muted">
-      Tutto gratuito, tutto open-source. «Il tuo codice è una storia.»
-    </p>
-  </section>
+    <p className="px-6 text-center font-serif text-[16px] italic text-favella-text-muted">Tutto gratuito, tutto open source. «Il tuo codice è una storia.»</p>
+  </>
 );
 
 export default DownloadsPage;

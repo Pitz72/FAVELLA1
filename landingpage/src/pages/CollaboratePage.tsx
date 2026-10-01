@@ -1,3 +1,4 @@
+import { Btn, Eyebrow, Ink, PageHero, Reveal, SectionHead, Spot } from "../ui/primitives";
 import {
   GITHUB_URL,
   GITHUB_DISCUSSIONS_URL,
@@ -11,6 +12,9 @@ import {
   AUTHOR_EMAIL,
   AUTHOR_NAME,
   FACEBOOK_GROUP_URL,
+  STATS_NUMERI,
+  STUDIO_VERSION,
+  VERSION,
 } from "../constants";
 
 // Le cartelle del repository, per chi arriva e non sa da dove cominciare.
@@ -18,7 +22,7 @@ const CARTELLE = [
   {
     path: "/",
     title: "Il motore",
-    body: "Compilatore, interprete, libreria delle azioni e i 1143 test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.",
+    body: `Compilatore, interprete, libreria delle azioni e i ${STATS_NUMERI.test} test che li tengono onesti. Python e nient'altro: l'unica dipendenza è Lark.`,
     href: GITHUB_URL,
   },
   {
@@ -30,7 +34,7 @@ const CARTELLE = [
   {
     path: "/studio",
     title: "Favella Studio",
-    body: "L'ambiente di scrittura visuale, versione 1.0: Windows e Linux (su Mac si costruisce da sé). Anche lui concluso, e aperto con licenza MIT.",
+    body: `L'ambiente di scrittura visuale, versione ${STUDIO_VERSION}: Windows e Linux (su Mac si costruisce da sé), con licenza MIT.`,
     href: GITHUB_IDE_URL,
   },
   {
@@ -62,105 +66,109 @@ const WAYS = [
 
 const CONTACTS = [
   { kind: "repository", label: "GitHub · Pitz72/FAVELLA1", href: GITHUB_URL },
-  { kind: "discuti", label: "Discussions & Issues", href: GITHUB_DISCUSSIONS_URL },
+  { kind: "discuti", label: "Discussions e Issues", href: GITHUB_DISCUSSIONS_URL },
   { kind: "telegram", label: TELEGRAM_HANDLE, href: TELEGRAM_URL },
   { kind: "scrivi a", label: AUTHOR_NAME, href: `mailto:${AUTHOR_EMAIL}` },
   { kind: "community", label: "Gruppo Facebook", href: FACEBOOK_GROUP_URL },
 ];
 
 const CollaboratePage = () => (
-  <section className="bg-[radial-gradient(110%_60%_at_50%_0%,rgba(52,211,153,0.06),transparent_55%)] px-6 pb-28 pt-[74px]">
-    {/* Intro */}
-    <div className="mx-auto max-w-[820px] text-center">
-      <div className="mb-6 flex justify-center">
-        <span className="animate-flame-flicker text-[30px] text-favella-amber">✦</span>
-      </div>
-      <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-emerald">Collabora</p>
-      <h1 className="mb-6 font-serif text-[clamp(36px,5.4vw,62px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-        Un progetto concluso,<br />aperto a <span className="italic text-ink-accent">chiunque</span>.
-      </h1>
-      <p className="mx-auto max-w-[680px] font-serif text-[20px] leading-[1.62] text-favella-text-secondary">
-        FAVELLA 1 è finito: la 1.4.2 è la versione definitiva e non verrà più modificata. Ma è interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.
-      </p>
-    </div>
+  <>
+    <PageHero
+      tone="emerald"
+      eyebrow="Collabora"
+      title={
+        <>
+          Un progetto concluso, aperto a <Ink>chiunque.</Ink>
+        </>
+      }
+      lead={`FAVELLA 1 è finito: la ${VERSION} è la versione definitiva e non verrà più modificata. Ma è interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.`}
+    >
+      <Btn href={GITHUB_URL} size="lg">
+        Apri il repository
+      </Btn>
+    </PageHero>
 
     {/* Modi per contribuire */}
-    <div className="mx-auto mt-[54px] grid max-w-[1000px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {WAYS.map((w) => (
-        <div key={w.n} className="rounded-2xl border border-favella-cyan/12 bg-gradient-to-b from-favella-surface/50 to-favella-panel/30 p-6">
-          <div className="mb-2.5 font-mono text-[12px] text-favella-cyan">{w.n}</div>
-          <h3 className="mb-2 font-display text-[17px] font-semibold text-favella-text-primary">{w.title}</h3>
-          <p className="m-0 text-[14px] leading-[1.6] text-favella-text-secondary">{w.body}</p>
-        </div>
-      ))}
-    </div>
+    <section className="px-6 pb-20">
+      <div className="mx-auto grid max-w-[1180px] gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {WAYS.map((w, i) => (
+          <Reveal key={w.n} delay={i * 80}>
+            <Spot className="h-full p-7">
+              <div className="mb-4 font-display text-[44px] font-bold leading-none tracking-[-0.05em] text-ink-accent">{w.n}</div>
+              <h3 className="mb-2 font-display text-[19px] font-bold tracking-[-0.02em] text-favella-text-primary">{w.title}</h3>
+              <p className="m-0 text-[14.5px] leading-[1.65] text-favella-text-secondary">{w.body}</p>
+            </Spot>
+          </Reveal>
+        ))}
+      </div>
+    </section>
 
     {/* Dove sta cosa nel repository */}
-    <div className="mx-auto mt-[54px] max-w-[1000px]">
-      <p className="mb-2 text-center font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">
-        Dove sta cosa
-      </p>
-      <p className="mx-auto mb-7 max-w-[640px] text-center text-[15px] leading-[1.6] text-favella-text-secondary">
-        Motore, sito, IDE, manuale, avventure, marchio: dall'agosto 2026 stanno tutti nello stesso
-        repository. Prima erano sparsi fra tre posti diversi, e qualcuno non era pubblico affatto.
-      </p>
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {CARTELLE.map((c) => (
-          <a
-            key={c.path}
-            href={c.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-[13px] border border-favella-cyan/16 bg-favella-panel p-5 transition-colors hover:border-favella-cyan/40"
-          >
-            <div className="mb-1.5 font-mono text-[11px] text-favella-cyan">{c.path}</div>
-            <div className="mb-1.5 font-display text-[15px] font-semibold text-favella-text-primary">{c.title}</div>
-            <p className="m-0 text-[13.5px] leading-[1.55] text-favella-text-secondary">{c.body}</p>
-          </a>
-        ))}
+    <section className="px-6 pb-20">
+      <div className="mx-auto max-w-[1180px]">
+        <SectionHead
+          eyebrow="Dove sta cosa"
+          title={
+            <>
+              Un repository, <Ink>tutto dentro.</Ink>
+            </>
+          }
+          lead="Motore, sito, Studio, manuale, avventure, marchio: dall'agosto 2026 stanno tutti nello stesso repository. Prima erano sparsi fra tre posti diversi, e qualcuno non era pubblico affatto."
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {CARTELLE.map((c, i) => (
+            <Reveal key={c.path} delay={(i % 3) * 70}>
+              <Spot as="a" href={c.href} target="_blank" rel="noopener noreferrer" className="group block h-full p-6">
+                <div className="mb-2 font-mono text-[12px] text-favella-cyan">{c.path}</div>
+                <div className="mb-2 flex items-center justify-between font-display text-[18px] font-bold tracking-[-0.02em] text-favella-text-primary">
+                  {c.title}
+                  <span className="text-favella-text-muted transition-transform group-hover:translate-x-1 group-hover:text-favella-cyan">↗</span>
+                </div>
+                <p className="m-0 text-[14px] leading-[1.6] text-favella-text-secondary">{c.body}</p>
+              </Spot>
+            </Reveal>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
 
     {/* Appello maintainer */}
-    <div className="mx-auto mt-10 max-w-[820px] rounded-[20px] border border-favella-amber/20 bg-gradient-to-b from-[rgba(40,30,12,0.35)] to-[rgba(20,15,8,0.2)] px-9 py-10 text-center">
-      <p className="m-0 font-serif text-[19px] leading-[1.6] text-favella-text-primary">
-        E se qualcuno volesse <strong className="font-semibold text-favella-cyan">dare una mano sul serio</strong> — o
-        addirittura <strong className="font-semibold text-favella-emerald">prendere in carico il progetto</strong> e
-        portarlo avanti — sarebbe la cosa più bella che possa capitargli.
-      </p>
-    </div>
+    <section className="px-6 pb-20">
+      <Reveal>
+        <div className="mx-auto max-w-[900px] rounded-[32px] border border-favella-amber/25 bg-[radial-gradient(80%_120%_at_50%_0%,rgba(245,158,11,0.13),transparent_60%),linear-gradient(180deg,#14100a,#0a0806)] px-8 py-12 text-center md:px-14">
+          <p className="m-0 font-serif text-[clamp(19px,2.2vw,24px)] leading-[1.6] text-favella-text-primary">
+            E se qualcuno volesse <strong className="font-semibold text-favella-cyan">dare una mano sul serio</strong> — o addirittura{" "}
+            <strong className="font-semibold text-favella-emerald">prendere in carico il progetto</strong> e portarlo avanti — sarebbe la cosa più bella che possa capitargli.
+          </p>
+        </div>
+      </Reveal>
+    </section>
 
     {/* Contatti */}
-    <div className="mx-auto mt-[46px] max-w-[820px]">
-      <p className="mb-5 text-center font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">
-        Mettiti in contatto
-      </p>
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {CONTACTS.map((c) => (
-          <a
-            key={c.kind}
-            href={c.href}
-            target={c.href.startsWith("mailto:") ? undefined : "_blank"}
-            rel={c.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
-            className="block rounded-[13px] border border-favella-cyan/16 bg-favella-panel p-5 transition-colors hover:border-favella-cyan/40"
-          >
-            <div className="mb-1.5 font-mono text-[11px] text-favella-text-muted">{c.kind}</div>
-            <div className="font-display text-[15px] font-semibold text-favella-text-primary">{c.label}</div>
-          </a>
-        ))}
+    <section className="px-6 pb-8">
+      <div className="mx-auto max-w-[1180px]">
+        <Eyebrow tone="emerald" className="mb-6">
+          Mettiti in contatto
+        </Eyebrow>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {CONTACTS.map((c) => (
+            <Spot
+              as="a"
+              key={c.kind}
+              href={c.href}
+              target={c.href.startsWith("mailto:") ? undefined : "_blank"}
+              rel={c.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+              className="block p-5"
+            >
+              <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-favella-text-muted">{c.kind}</div>
+              <div className="font-display text-[15px] font-semibold text-favella-text-primary">{c.label}</div>
+            </Spot>
+          ))}
+        </div>
       </div>
-      <div className="mt-9 text-center">
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block rounded-xl bg-brand-gradient px-8 py-[15px] font-display text-[15px] font-bold text-favella-void shadow-[0_16px_44px_-16px_rgba(34,211,238,0.6)] transition-transform duration-300 hover:-translate-y-0.5"
-        >
-          Apri il repository
-        </a>
-      </div>
-    </div>
-  </section>
+    </section>
+  </>
 );
 
 export default CollaboratePage;

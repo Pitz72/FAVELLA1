@@ -233,7 +233,7 @@ async function caricaRuntime(onStatus: OnStatus): Promise<any> {
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
     // Versione PINNATA = quella della .venv con cui il motore è sviluppato e
-    // testato (681 test). Senza pin, una futura lark incompatibile su PyPI
+    // testato (1166 test). Senza pin, una futura lark incompatibile su PyPI
     // romperebbe il sito da sola, senza alcun deploy.
     await micropip.install("lark==1.3.1");
 

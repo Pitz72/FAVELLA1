@@ -1,5 +1,6 @@
 import React from "react";
-import { PROJECT_TEXT, AUTHOR_NAME } from "../constants";
+import { PROJECT_TEXT, AUTHOR_NAME, STATS_NUMERI } from "../constants";
+import { Counter, Eyebrow, Ink, PageHero, Reveal, SectionHead, Spot } from "../ui/primitives";
 
 // Converte l'emfasi markdown «*testo*» in <em> (l'unica nel PROJECT_TEXT).
 const emph = (text: string): React.ReactNode =>
@@ -14,82 +15,96 @@ const emph = (text: string): React.ReactNode =>
   );
 
 const ENGINEERING = [
-  { tag: "parser", title: "LALR(1) non ambiguo", body: "Grammatica formale Lark/EBNF, deterministica per costruzione." },
-  { tag: "compilatore", title: "Due passate", body: "L'ordine delle frasi non conta: il mondo si risolve a fine compilazione." },
-  { tag: "symbol-table", title: "Token «chiusi»", body: "Stanze e oggetti diventano simboli: l'italiano resta naturale." },
-  { tag: "qualità", title: "681 + 43 test", body: "Una rete di sicurezza che cresce a ogni costrutto del linguaggio." },
+  { tag: "parser", big: "LALR(1)", title: "Non ambiguo", body: "Grammatica formale Lark/EBNF, deterministica per costruzione." },
+  { tag: "compilatore", big: "2", title: "Passate", body: "L'ordine delle frasi non conta: il mondo si risolve a fine compilazione." },
+  { tag: "symbol-table", big: "«»", title: "Token chiusi", body: "Stanze e oggetti diventano simboli: l'italiano resta naturale." },
+  { tag: "qualità", big: null, title: "Test verdi", body: `Più ${STATS_NUMERI.collaudo} di collaudo: una rete di sicurezza che cresce a ogni costrutto.` },
 ];
 
 const ProjectPage = () => {
   const paragraphs = PROJECT_TEXT.split("\n\n");
 
   return (
-    <section className="bg-[radial-gradient(100%_55%_at_50%_0%,rgba(34,211,238,0.05),transparent_55%)] px-6 pb-28 pt-[74px]">
-      {/* Intro */}
-      <div className="mx-auto max-w-[760px]">
-        <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.26em] text-favella-cyan">Il Progetto</p>
-        <h1 className="mb-6 font-serif text-[clamp(36px,5.4vw,64px)] font-medium leading-[1.08] tracking-[-0.02em] text-favella-text-primary">
-          Un sogno nel cassetto,<br />diventato <span className="italic text-ink-accent">linguaggio</span>.
-        </h1>
-        <p className="font-serif text-[clamp(18px,2.1vw,22px)] leading-[1.6] text-favella-text-secondary">
-          Da Zork e Inform 7 a un'idea radicale: e se l'italiano, invece di{" "}
-          <em className="italic text-favella-cyan">commentare</em> il codice,{" "}
-          <em className="italic text-favella-text-primary">fosse</em> il codice?
-        </p>
+    <>
+      <PageHero
+        eyebrow="Il progetto"
+        title={
+          <>
+            Un sogno nel cassetto, diventato <Ink>linguaggio.</Ink>
+          </>
+        }
+        lead={
+          <>
+            Da Zork e Inform 7 a un'idea radicale: e se l'italiano, invece di <em className="text-favella-cyan">commentare</em> il codice,{" "}
+            <em className="text-favella-text-primary">fosse</em> il codice?
+          </>
+        }
+      />
 
-        {/* Divider */}
-        <div className="my-12 flex items-center gap-3.5">
-          <span className="h-[7px] w-[7px] rotate-45 bg-favella-amber shadow-[0_0_12px_rgba(245,158,11,0.7)]" />
-          <span className="h-px flex-1 bg-gradient-to-r from-favella-text-secondary/30 to-transparent" />
+      {/* ═════════ LA STORIA ═════════ */}
+      <section className="px-6 pb-24">
+        <div className="mx-auto grid max-w-[1180px] gap-14 lg:grid-cols-[0.8fr_1.2fr]">
+          <aside className="lg:sticky lg:top-32 lg:self-start">
+            <Reveal>
+              <blockquote className="relative border-l-2 border-favella-cyan pl-7 [border-image:linear-gradient(180deg,#22d3ee,#34d399,#f59e0b)_1]">
+                <p className="m-0 font-serif text-[clamp(24px,2.8vw,34px)] font-medium italic leading-[1.35] text-favella-text-primary">
+                  «E se l'italiano non fosse usato per commentare il codice, ma fosse il codice stesso?»
+                </p>
+              </blockquote>
+              <p className="mt-8 font-mono text-[11.5px] uppercase tracking-[0.2em] text-favella-text-muted">
+                Un progetto di {AUTHOR_NAME}
+                <br />
+                scritto in dialogo con l'IA
+              </p>
+            </Reveal>
+          </aside>
+
+          <div className="font-serif text-[19px] leading-[1.82] text-[#c4d3e2]">
+            {paragraphs.map((p, i) => (
+              <Reveal key={i} className="mb-7" delay={0}>
+                {i === 0 ? (
+                  <p className="m-0">
+                    <span className="float-left bg-[linear-gradient(135deg,#22d3ee,#34d399)] bg-clip-text pr-4 pt-2 font-display text-[88px] font-bold leading-[0.74] tracking-[-0.05em] text-transparent">
+                      {p.charAt(0)}
+                    </span>
+                    {emph(p.slice(1))}
+                  </p>
+                ) : (
+                  <p className="m-0">{emph(p)}</p>
+                )}
+              </Reveal>
+            ))}
+          </div>
         </div>
+      </section>
 
-        {/* Prose, coi paragrafi canonici da PROJECT_TEXT */}
-        <div className="font-serif text-[18px] leading-[1.8] text-[#c4d3e2]">
-          {/* §1 con capolettera */}
-          <p className="mb-7">
-            <span className="float-left bg-[linear-gradient(135deg,#22d3ee,#34d399)] bg-clip-text pr-3.5 pt-1.5 font-serif text-[64px] font-semibold leading-[0.78] text-transparent">
-              {paragraphs[0].charAt(0)}
-            </span>
-            {emph(paragraphs[0].slice(1))}
-          </p>
-          {/* §2 */}
-          {paragraphs[1] && <p className="mb-7">{emph(paragraphs[1])}</p>}
-
-          {/* Pull-quote */}
-          <blockquote className="my-11 border-l-2 border-favella-cyan pl-7 [border-image:linear-gradient(180deg,#22d3ee,#f59e0b)_1]">
-            <p className="m-0 font-serif text-[clamp(22px,3vw,30px)] font-medium italic leading-[1.4] text-favella-text-primary">
-              «E se l'italiano non fosse usato per commentare il codice, ma fosse il codice stesso?»
-            </p>
-          </blockquote>
-
-          {/* §3+ */}
-          {paragraphs.slice(2).map((p, i) => (
-            <p key={i} className={i === paragraphs.slice(2).length - 1 ? "mb-0" : "mb-7"}>
-              {emph(p)}
-            </p>
-          ))}
+      {/* ═════════ INGEGNERIA VERA ═════════ */}
+      <section className="px-6 pb-24">
+        <div className="mx-auto max-w-[1180px]">
+          <SectionHead eyebrow="Sotto la prosa" tone="emerald" title={<>Ingegneria <Ink>vera.</Ink></>} />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {ENGINEERING.map((e, i) => (
+              <Reveal key={e.tag} delay={i * 90}>
+                <Spot className="h-full p-7">
+                  <Eyebrow tone="emerald" className="mb-6">
+                    {e.tag}
+                  </Eyebrow>
+                  <div className="font-display text-[48px] font-bold leading-none tracking-[-0.05em] text-ink-accent">
+                    {e.big === null ? <Counter value={STATS_NUMERI.test} /> : e.big}
+                  </div>
+                  <h3 className="mb-2 mt-3 font-display text-[19px] font-bold text-favella-text-primary">{e.title}</h3>
+                  <p className="text-[14.5px] leading-[1.6] text-favella-text-secondary">{e.body}</p>
+                </Spot>
+              </Reveal>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Ingegneria vera */}
-      <div className="mx-auto mt-20 max-w-[1000px] rounded-[20px] border border-favella-cyan/14 bg-gradient-to-b from-favella-surface/50 to-favella-panel/35 px-9 py-10">
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.24em] text-favella-emerald">Sotto la prosa</p>
-        <h2 className="mb-7 font-serif text-[clamp(24px,3vw,32px)] font-medium text-favella-text-primary">Ingegneria vera</h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {ENGINEERING.map((e) => (
-            <div key={e.tag}>
-              <div className="mb-1.5 font-mono text-[12px] text-favella-cyan">{e.tag}</div>
-              <h3 className="mb-1.5 font-display text-[16px] font-semibold text-favella-text-primary">{e.title}</h3>
-              <p className="m-0 text-[13.5px] leading-[1.6] text-favella-text-secondary">{e.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <p className="mx-auto mt-12 text-center font-mono text-[12px] tracking-[0.1em] text-favella-text-muted">
+      <p className="px-6 pb-4 text-center font-mono text-[12px] tracking-[0.1em] text-favella-text-muted">
         Un progetto di {AUTHOR_NAME} · scritto in dialogo con l'IA · favella.eu
       </p>
-    </section>
+    </>
   );
 };
 

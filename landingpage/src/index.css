@@ -176,3 +176,153 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .vb-passo, .vb-alone, .vb-polvere { animation: none; }
 }
+
+/* ====================================================================
+   Design 2026 — «Nottetempo». Stessa palette del marchio (navy, ciano,
+   smeraldo, ambra), linguaggio nuovo: titoli enormi, vetro, luce che segue
+   il puntatore, grana fine. Le primitive React sono in src/ui/.
+   ==================================================================== */
+
+/* Grana fine sopra tutto: toglie la piattezza del nero senza pesare. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Griglia sottile con dissolvenza radiale, per lo sfondo delle testate. */
+.grid-lines {
+  background-size: 64px 64px;
+  background-image:
+    linear-gradient(to right, rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 20%, transparent 78%);
+          mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 20%, transparent 78%);
+}
+
+/* Scheda: vetro scuro, bordo sfumato ciano → ambra, luce dal puntatore. */
+.spot {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(15, 32, 50, 0.78), rgba(8, 17, 29, 0.82)) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.42), rgba(52, 211, 153, 0.08) 38%, rgba(245, 158, 11, 0.34)) border-box;
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.4s ease;
+}
+.spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(34, 211, 238, 0.16), transparent 62%);
+}
+.spot:hover::before { opacity: 1; }
+.spot:hover { transform: translateY(-3px); box-shadow: 0 40px 90px -40px rgba(34, 211, 238, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.07); }
+
+/* Bottone: un lampo di luce lo attraversa all'hover. */
+.btn-shine { overflow: hidden; }
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: -60%;
+  width: 40%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transition: left 0.7s ease;
+}
+.btn-shine:hover::after { left: 130%; }
+
+/* Strisce che scorrono. Ogni copia si sposta della propria larghezza: il giro è senza cuciture. */
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+.marquee-track { animation: marquee-x linear infinite; }
+@keyframes marquee-x { to { transform: translateX(-100%); } }
+
+/* Graffe e scintille che fluttuano. */
+.glyph {
+  font-family: "Sora", sans-serif;
+  font-weight: 300;
+  line-height: 1;
+  animation: glyph-float 14s ease-in-out infinite;
+}
+@keyframes glyph-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-22px) rotate(3deg); }
+}
+
+/* Alone di fondo della testata della Home: tre luci che respirano. */
+.hero-aurora::before, .hero-aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  will-change: transform;
+}
+.hero-aurora::before {
+  width: 56vw; height: 56vw; max-width: 900px; max-height: 900px;
+  left: -14vw; top: -22vw;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.30), transparent 68%);
+  animation: drift1 24s ease-in-out infinite;
+}
+.hero-aurora::after {
+  width: 46vw; height: 46vw; max-width: 760px; max-height: 760px;
+  right: -12vw; bottom: -16vw;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.24), transparent 68%);
+  animation: drift3 30s ease-in-out infinite;
+}
+
+/* Testo con solo il contorno (per le scritte giganti di sfondo). */
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(147, 197, 224, 0.18);
+}
+
+/* Cursore lampeggiante del terminale. */
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.16em;
+  background: #22d3ee;
+  animation: caret-blink 1s step-end infinite;
+}
+@keyframes caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* Il volume del manuale cartaceo, in 3D vero (facce posizionate nello spazio). */
+.book-stage { perspective: 1800px; }
+.book {
+  --w: 270px; --h: 380px; --d: 34px;
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 6deg)) rotateY(var(--ry, -28deg));
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.book.is-live { transition: transform 0.12s linear; }
+.book > * { position: absolute; backface-visibility: hidden; }
+.book-front  { inset: 0; transform: translateZ(calc(var(--d) / 2)); border-radius: 3px 8px 8px 3px; overflow: hidden; }
+.book-back   { inset: 0; transform: translateZ(calc(var(--d) / -2)) rotateY(180deg); background: #07121f; border-radius: 8px 3px 3px 8px; }
+.book-spine  { top: 0; left: 0; width: var(--d); height: 100%; transform: translateX(calc(var(--d) / -2)) rotateY(-90deg); transform-origin: center; background: linear-gradient(90deg, #04101c, #0b2236 55%, #071624); border-radius: 3px 0 0 3px; }
+.book-pages  { top: 3px; right: 0; width: var(--d); height: calc(100% - 6px); transform: translateX(calc(var(--d) / 2)) rotateY(90deg); background: repeating-linear-gradient(90deg, #eef3f8 0 1px, #b8c6d4 1px 2px, #eef3f8 2px 4px); }
+.book-top    { left: 3px; top: 0; width: calc(100% - 6px); height: var(--d); transform: translateY(calc(var(--d) / -2)) rotateX(90deg); background: repeating-linear-gradient(0deg, #eef3f8 0 1px, #b8c6d4 1px 2px, #eef3f8 2px 4px); }
+.book-bottom { left: 3px; bottom: 0; width: calc(100% - 6px); height: var(--d); transform: translateY(calc(var(--d) / 2)) rotateX(-90deg); background: #8ea1b4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track, .glyph, .hero-aurora::before, .hero-aurora::after { animation: none !important; }
+}
