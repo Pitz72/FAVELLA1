@@ -172,6 +172,7 @@ interface StudioState {
 
   // Azioni
   openProject: () => Promise<void>
+  openStory: () => Promise<void>
   newProject: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (node: FileNode) => Promise<void>
@@ -501,6 +502,15 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (!res) return
     set({ projectRoot: res.root, tree: res.tree, destinazioneNuovi: null, inclusioniDisco: {} })
     void get().aggiornaInclusioni()
+  },
+
+  openStory: async () => {
+    const res = await window.favella.openStoryFile()
+    if (!res) return
+    set({ projectRoot: res.root, tree: res.tree, destinazioneNuovi: null, inclusioniDisco: {} })
+    void get().aggiornaInclusioni()
+    const name = res.openPath.split(/[\/]/).pop() ?? 'storia.fav'
+    await get().openFile({ name, path: res.openPath, type: 'file' })
   },
 
   newProject: async () => {

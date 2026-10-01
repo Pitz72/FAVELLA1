@@ -47,6 +47,7 @@ export default function Explorer(): JSX.Element {
   const projectRoot = useStudio((s) => s.projectRoot)
   const tree = useStudio((s) => s.tree)
   const openProject = useStudio((s) => s.openProject)
+  const openStory = useStudio((s) => s.openStory)
   const newProject = useStudio((s) => s.newProject)
   const refreshTree = useStudio((s) => s.refreshTree)
 
@@ -63,6 +64,9 @@ export default function Explorer(): JSX.Element {
           <button className="icon-btn" title="Nuovo progetto" onClick={() => void newProject()}>
             ✚
           </button>
+          <button className="icon-btn" title="Apri una storia (.fav)" onClick={() => void openStory()}>
+            📄
+          </button>
           <button className="icon-btn" title="Apri cartella" onClick={openProject}>
             🗁
           </button>
@@ -72,6 +76,7 @@ export default function Explorer(): JSX.Element {
         <div className="explorer-empty">
           <p>Nessun progetto aperto.</p>
           <button onClick={() => void newProject()}>Nuovo progetto…</button>
+          <button onClick={() => void openStory()}>Apri una storia (.fav)…</button>
           <button className="ghost" onClick={openProject}>
             Apri cartella…
           </button>

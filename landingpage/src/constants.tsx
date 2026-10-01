@@ -62,7 +62,7 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.1.0";
+export const STUDIO_VERSION = "1.1.1";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;

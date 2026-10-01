@@ -249,7 +249,8 @@ export default function TopBar(): JSX.Element {
           <div className="menu menu-right" role="menu">
             <div className="menu-title">Progetto</div>
             {voce('Nuovo progetto…', () => void newProject())}
-            {voce('Apri una cartella…', () => void openProject(), { scorciatoia: 'Ctrl+O' })}
+            {voce('Apri una storia (.fav)…', () => void st().openStory(), { scorciatoia: 'Ctrl+O' })}
+            {voce('Apri una cartella…', () => void openProject())}
             {projectRoot && (
               <>
                 {voce('Salva con nome…', () => void st().salvaConNome(), {

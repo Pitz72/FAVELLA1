@@ -42,8 +42,13 @@ export function prepPlace(target: PosTarget): { prep: string; place: string } {
     // place = nome completo: la prep articolata gli toglie l'articolo lato sidecar.
     return { prep: base[art], place: target.name }
   }
-  const nuda = target.kind === 'supporto' ? 'su' : 'in'
-  return { prep: nuda, place: nucleo(target.name) }
+  // Nome senza articolo («Tavolino basso»): «su» da solo NON è una preposizione di luogo
+  // valida, quindi si sceglie comunque l'articolata, indovinando dal nome (la
+  // concordanza non cambia come compila).
+  const n = nucleo(target.name)
+  const genere = /^[aeiouàèéìòù]/i.test(n) ? "l'" : /a\s*$/i.test(n.split(/\s+/)[0]) ? 'la' : 'il'
+  const tab = target.kind === 'supporto' ? PREP_SU : PREP_IN
+  return { prep: tab[genere], place: n }
 }
 
 /** Spec della frase di posizione di `objName` verso un bersaglio. */

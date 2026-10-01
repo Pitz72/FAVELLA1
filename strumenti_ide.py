@@ -1482,6 +1482,8 @@ def _frase_posizione(nome: str, prep: str, luogo: str) -> str:
     tavolo»; nell' «l'ingresso» → «nell'ingresso»). Le preposizioni nude (in/su/a)
     conservano l'articolo del luogo, con uno spazio."""
     p = (prep or "").strip()
+    if p.lower() == "su":  # «su» nudo non è una preposizione di luogo valida: «sul»
+        p = "sul"
     nuda = p.lower() in ("in", "su", "a", "con", "per", "tra", "fra", "di", "da")
     if not nuda:
         _art, nucleo = _scomponi_articolo(luogo)

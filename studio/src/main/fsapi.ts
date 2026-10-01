@@ -83,6 +83,28 @@ export function registraFileSystemIPC(): void {
     return { root, tree: await costruisciAlbero(root) }
   })
 
+  // Apri una storia: il selettore di CARTELLE non mostra i file, quindi qui si sceglie
+  // direttamente un .fav; la sua cartella diventa il progetto e il file si apre.
+  ipcMain.handle(
+    'project:openFile',
+    async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+      const res = await dialog.showOpenDialog(win!, {
+        title: 'Apri una storia FAVELLA',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Storia FAVELLA', extensions: ['fav'] },
+          { name: 'Tutti i file', extensions: ['*'] }
+        ]
+      })
+      if (res.canceled || res.filePaths.length === 0) return null
+      const file = res.filePaths[0]
+      const root = dirname(file)
+      projectRoot = root
+      return { root, tree: await costruisciAlbero(root), openPath: file }
+    }
+  )
+
   // Nuovo progetto: l'utente sceglie cartella e nome (dialogo «Salva con nome»,
   // che permette anche di creare una cartella nuova), si crea un .fav VUOTO da
   // riempire da zero e si apre la sua cartella come progetto.

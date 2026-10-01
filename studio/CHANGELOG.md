@@ -4,6 +4,16 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [1.1.1] — 2026-10-02 — Due correzioni dall'uso
+
+### Corretto
+- Un oggetto messo su un supporto il cui nome non ha l'articolo («Tavolino basso») veniva scritto
+  «è su Tavolino basso.», frase che il compilatore rifiuta. Ora si scrive «è sul Tavolino basso.»
+  (anche se un vecchio file ha ancora «su», il sidecar lo corregge in «sul»).
+- «Apri una cartella» non mostrava i file .fav (il selettore di cartelle di Windows non li elenca):
+  ora c'è «Apri una storia (.fav)» (Ctrl+O, schermata iniziale, Esplora, menu) che apre il file e
+  usa la sua cartella come progetto.
+
 ## [1.1.0] — 2026-10-02 — Tutto si può creare e cambiare dai pannelli
 
 Dopo l'uso vero della 1.0: ciò che c'era solo nel testo ora c'è anche nei pannelli, le storie

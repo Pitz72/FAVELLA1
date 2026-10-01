@@ -26,6 +26,7 @@ export default function App(): JSX.Element {
   const salvaConNome = useStudio((s) => s.salvaConNome)
   const riordinaStoria = useStudio((s) => s.riordinaStoria)
   const openProject = useStudio((s) => s.openProject)
+  const openStory = useStudio((s) => s.openStory)
   const compileActive = useStudio((s) => s.compileActive)
   const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
@@ -153,7 +154,7 @@ export default function App(): JSX.Element {
       }
       if (ctrl && e.key.toLowerCase() === 'o') {
         e.preventDefault()
-        void openProject()
+        void openStory()
       }
       if (e.key === 'F5') {
         e.preventDefault()
@@ -180,7 +181,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveAll, salvaConNome, riordinaStoria, openProject, startGame, setSezione, setZoom])
+  }, [saveAll, salvaConNome, riordinaStoria, openStory, startGame, setSezione, setZoom])
 
   const projectRoot = useStudio((s) => s.projectRoot)
   const sezione = sezioneDi(rightTab)

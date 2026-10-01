@@ -229,6 +229,10 @@ const api = {
   openProject(): Promise<OpenedProject | null> {
     return ipcRenderer.invoke('project:open')
   },
+  /** Apre una storia (.fav): la sua cartella diventa il progetto. */
+  openStoryFile(): Promise<(OpenedProject & { openPath: string }) | null> {
+    return ipcRenderer.invoke('project:openFile')
+  },
   /** Crea un nuovo progetto: cartella + nome scelti dall'utente, .fav vuoto, e lo apre. */
   newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
     return ipcRenderer.invoke('project:new')
