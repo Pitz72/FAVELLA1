@@ -22,7 +22,7 @@ export default function StateInspector(): JSX.Element {
   if (!snap) {
     return (
       <div className="insp-empty">
-        Avvia una partita (▶ Gioca) per ispezionare lo stato del mondo in tempo reale.
+        Avvia la prova della storia (F5) per vedere qui lo stato del mondo, turno per turno.
       </div>
     )
   }

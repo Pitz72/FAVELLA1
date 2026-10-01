@@ -259,11 +259,8 @@ export default function ObjectsEditor(): JSX.Element {
           Oggetti<span className="debug-count"> · {objects.length}</span>
         </span>
         <div>
-          <button className="icon-btn" title="Nuovo oggetto" onClick={() => setCreando((v) => !v)}>
-            ➕
-          </button>
-          <button className="icon-btn" title="Aggiorna" onClick={() => void loadOutline()}>
-            ⟳
+          <button className="btn-testo" title="Aggiungi un oggetto alla storia" onClick={() => setCreando((v) => !v)}>
+            + Nuovo oggetto
           </button>
         </div>
       </div>
@@ -298,7 +295,7 @@ export default function ObjectsEditor(): JSX.Element {
       <div className="objed-body">
         <div className="objed-list">
           {objects.length === 0 ? (
-            <p className="insp-none">nessun oggetto — usa ➕ per crearne uno</p>
+            <p className="insp-none">nessun oggetto: creane uno con «Nuovo oggetto»</p>
           ) : (
             objects.map((o) => (
               <div
@@ -314,6 +311,7 @@ export default function ObjectsEditor(): JSX.Element {
           )}
         </div>
 
+        {!sel && <div className="vuoto-scegli">Scegli un oggetto dall’elenco per modificarlo.</div>}
         {sel && (
           <div className="objed-form">
             <div className="objed-field">

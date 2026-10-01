@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import type {
   EngineEvent,
   SidecarStatus,
@@ -23,6 +23,10 @@ import type {
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
 // Node o al processo figlio: tutto passa per IPC verso il main.
 const api = {
+  /** [Studio 0.10] Grandezza di tutta l'interfaccia (1 = 100%). */
+  setZoom(fattore: number): void {
+    webFrame.setZoomFactor(fattore)
+  },
   /** Chiama un metodo RPC del motore FAVELLA via sidecar. */
   rpc<T = unknown>(method: string, params?: unknown): Promise<T> {
     return ipcRenderer.invoke('rpc', method, params)

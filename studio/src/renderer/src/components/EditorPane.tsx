@@ -179,9 +179,13 @@ export default function EditorPane(): JSX.Element {
       onMount={handleMount}
       onChange={(v) => updateContent(active.path, v ?? '')}
       options={{
-        fontSize: 14,
-        fontFamily: "'Cascadia Code', 'Consolas', monospace",
-        minimap: { enabled: true },
+        fontSize: 15,
+        lineHeight: 24,
+        fontFamily: "'Source Code Pro', 'Cascadia Code', Consolas, monospace",
+        minimap: { enabled: false },
+        padding: { top: 14, bottom: 14 },
+        renderLineHighlight: 'line',
+        cursorBlinking: 'smooth',
         lineNumbers: 'on',
         renderWhitespace: 'selection',
         tabSize: 2,

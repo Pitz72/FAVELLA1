@@ -48,12 +48,12 @@ try:
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
-    from gioco import elabora_comando, mostra_stanza, intestazione
+    from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti
     from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.9.12"  # v1.4.0: + eventi del motore ('events') accanto al testo
+VERSIONE_SIDECAR = "0.10.0"  # v1.4.2: + pulsanti-verbo ('buttons') accanto a testo ed eventi
 
 
 # ==============================================================================
@@ -174,6 +174,16 @@ def _stato_partita(mondo):
     }
 
 
+def _pulsanti(mondo):
+    """[Studio 0.10 / motore 1.4] Ciò che un'interfaccia a pulsanti può proporre
+    adesso (gioco.pulsanti), pronto per JSON. Non cambia niente del mondo. Se per
+    qualunque motivo non si può calcolare, la partita va avanti senza pulsanti."""
+    try:
+        return pulsanti(mondo)
+    except Exception:  # pragma: no cover - i pulsanti sono un di più, mai un guasto
+        return None
+
+
 def _intro(mondo):
     """Apertura della console: banner + descrizione della stanza iniziale, come
     raccolta di eventi (vedi favella_utils.raccogli_uscita)."""
@@ -220,7 +230,8 @@ def rpc_session_start(params):
     _registra_turno(_SESSIONE, None)  # [Fase 5] stato iniziale nella history
     uscita = _intro(mondo)
     return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
-            "running": True, "state": _stato_partita(mondo)}
+            "running": True, "state": _stato_partita(mondo),
+            "buttons": _pulsanti(mondo)}
 
 
 def rpc_session_send(params):
@@ -235,7 +246,8 @@ def rpc_session_send(params):
     _SESSIONE.running = bool(continua)
     _registra_turno(_SESSIONE, comando)  # [Fase 5] snapshot post-comando
     return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
-            "running": _SESSIONE.running, "state": _stato_partita(_SESSIONE.mondo)}
+            "running": _SESSIONE.running, "state": _stato_partita(_SESSIONE.mondo),
+            "buttons": _pulsanti(_SESSIONE.mondo)}
 
 
 def rpc_session_reset(_params):
@@ -289,7 +301,7 @@ def rpc_session_load(params):
         pezzi.append(f"\n> {cmd}\n{uscita.testo()}")
 
     return {"ok": True, "output": "".join(pezzi), "running": _SESSIONE.running,
-            "state": _stato_partita(_SESSIONE.mondo)}
+            "state": _stato_partita(_SESSIONE.mondo), "buttons": _pulsanti(_SESSIONE.mondo)}
 
 
 # ==============================================================================

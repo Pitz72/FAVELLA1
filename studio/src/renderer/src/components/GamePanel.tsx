@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store'
 import type { Outcome } from '../../../shared/protocol'
+import PulsantiGioco from './PulsantiGioco'
 
 const BANNER: Record<Outcome, { label: string; cls: string }> = {
   vinta: { label: '★ HAI VINTO', cls: 'win' },
@@ -17,6 +18,7 @@ export default function GamePanel(): JSX.Element {
   const startGame = useStudio((s) => s.startGame)
   const sendCommand = useStudio((s) => s.sendGameCommand)
   const resetGame = useStudio((s) => s.resetGame)
+  const buttons = useStudio((s) => s.gameButtons)
 
   const [input, setInput] = useState('')
   const consoleRef = useRef<HTMLDivElement | null>(null)
@@ -59,17 +61,34 @@ export default function GamePanel(): JSX.Element {
       <div className="game-console" ref={consoleRef}>
         {error && <div className="game-error">{error}</div>}
         {!error && lines.length === 0 && !busy && (
-          <div className="game-hint">Premi ▶ Gioca per compilare e avviare l’avventura.</div>
+          <div className="game-hint">Premi «Prova la storia» (F5) per compilare e avviare l’avventura.</div>
         )}
-        {lines.map((l, i) => (
-          <div key={i} className={'game-line' + (l.startsWith('>') ? ' echo' : '')}>
-            {l === '' ? ' ' : l}
-          </div>
-        ))}
+        {lines.map((l, i) => {
+          // «--- L'ingresso ---»: il titolo di una stanza, come titolo.
+          const titolo = /^---\s*(.+?)\s*---$/.exec(l)
+          if (titolo) {
+            return (
+              <div key={i} className="game-room-title">
+                {titolo[1]}
+              </div>
+            )
+          }
+          return (
+            <div key={i} className={'game-line' + (l.startsWith('>') ? ' echo' : '')}>
+              {l === '' ? ' ' : l}
+            </div>
+          )
+        })}
         {busy && <div className="game-line busy">…</div>}
 
         {banner && <div className={'game-banner ' + banner.cls}>{banner.label}</div>}
       </div>
+
+      {running && !gameOver && buttons && buttons.modo !== 'testo' && !inDialogue && (
+        <div className="game-buttons">
+          <PulsantiGioco p={buttons} onComando={(c) => void sendCommand(c)} disabilitato={busy} />
+        </div>
+      )}
 
       {inDialogue && (
         <div className="game-options">
@@ -107,7 +126,7 @@ export default function GamePanel(): JSX.Element {
           </>
         ) : (
           <button className="game-restart" onClick={() => void startGame()} disabled={busy}>
-            {gameOver ? '▶ Rigioca' : '▶ Avvia'}
+            {gameOver ? 'Rigioca' : 'Avvia la prova'}
           </button>
         )}
       </div>

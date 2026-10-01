@@ -1,6 +1,6 @@
 {
   "name": "favella-studio",
-  "version": "0.9.29",
+  "version": "0.10.0",
   "description": "Favella Studio — IDE desktop ufficiale per il linguaggio FAVELLA",
   "author": "Simone (Pitz72)",
   "license": "MIT",
@@ -11,7 +11,9 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "predist": "node -e \"const p=process.platform==='win32'?'../dist/favella_engine.exe':'../dist/favella_engine';if(!require('fs').existsSync(p)){console.error('ERRORE: manca '+p+' - congela prima il sidecar con PyInstaller (vedi PACKAGING.md, Passo 1)');process.exit(1)}\"",
-    "dist": "electron-vite build && electron-builder"
+    "dist": "electron-vite build && electron-builder",
+    "dev:web": "vite --config vite.web.config.ts",
+    "ponte": "node dev-web/bridge.mjs"
   },
   "build": {
     "appId": "it.pizzi.favellastudio",

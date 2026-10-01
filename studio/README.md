@@ -20,6 +20,14 @@ TypeScript, con il motore FAVELLA (Python) eseguito come *sidecar* via JSON-RPC 
 > Sostituisce il vecchio `favella_studio.py` (PySide6). Il motore (compilatore Lark, runtime,
 > linter, moduli, dialoghi) resta **interamente in Python**, riusato senza riscritture.
 
+## L'interfaccia (0.10)
+
+Cinque sezioni, nell'ordine in cui si scrive una storia: **Storia** (il testo), **Mondo**
+(stanze, oggetti, mappa), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati),
+**Prova** (la partita, con i pulsanti-verbo del motore). `F5` prova la storia; `Ctrl+1…5` cambia
+sezione; `Ctrl +/−/0` regola la grandezza. I pannelli visuali scrivono nel testo, e il testo si
+può affiancare con un interruttore. Dettagli in [CHANGELOG.md](CHANGELOG.md).
+
 ## Architettura
 
 ```
@@ -46,6 +54,15 @@ React/Electron (renderer)  ──IPC contextBridge──▶  Electron main  ─�
 npm install        # una volta
 npm run dev        # avvia Vite (HMR) + Electron; fa spawn del sidecar dalla .venv
 ```
+
+**Senza Electron** (per ritoccare l'interfaccia in un browser, col motore Python vero):
+
+```bash
+npm run ponte      # il motore su :5301 (apre una cartella di esempio)
+npm run dev:web    # l'interfaccia su :5310
+```
+
+Vedi `dev-web/LEGGIMI.md`.
 
 In dev il sidecar è lanciato da `../.venv/Scripts/python.exe ../favella_server.py`.
 

@@ -14,9 +14,11 @@ import type {
   SerializeSpec,
   WorldRules,
   WorldVariables,
-  WorldDialogues
+  WorldDialogues,
+  Pulsantiera
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
+import { SEZIONI, type Sezione } from './sezioni'
 
 /** Vista attiva del dock destro (null = dock chiuso). */
 export type RightTab =
@@ -120,6 +122,7 @@ interface StudioState {
   // Gioco (Fase 3)
   gameLines: string[]
   gameState: GameState | null
+  gameButtons: Pulsantiera | null
   gameRunning: boolean
   gameBusy: boolean
   gameError: string | null
@@ -151,8 +154,14 @@ interface StudioState {
   dialogues: WorldDialogues | null
   dialoguesLoading: boolean
   pendingEdit: PendingEdit | null
-  // Larghezza del dock destro (px), ridimensionabile dall'utente
-  dockWidth: number
+  // [Studio 0.10] Interfaccia a sezioni: il testo si può affiancare ai pannelli
+  // visuali; la Prova ha una colonna a lato (partita / mappa / debug); la
+  // leggibilità (zoom) e i pannelli ripiegabili si ricordano fra le sessioni.
+  affiancaTesto: boolean
+  provaLato: 'stato' | 'mappa' | 'debug'
+  zoom: number
+  esploraAperto: boolean
+  problemiAperti: boolean
 
   // Azioni
   openProject: () => Promise<void>
@@ -174,6 +183,12 @@ interface StudioState {
   // Dock destro
   setRightTab: (tab: RightTab) => void
   closeDock: () => void
+  setSezione: (sezione: Sezione) => void
+  setAffiancaTesto: (v: boolean) => void
+  setProvaLato: (lato: 'stato' | 'mappa' | 'debug') => void
+  setZoom: (z: number) => void
+  setEsploraAperto: (v: boolean) => void
+  setProblemiAperti: (v: boolean) => void
   // Gioco (Fase 3)
   startGame: () => Promise<void>
   startGameWith: (path: string, source?: string) => Promise<void>
@@ -200,7 +215,6 @@ interface StudioState {
   loadVariables: () => Promise<void>
   // Editor dialoghi/NPC (Fase 6b)
   loadDialogues: () => Promise<void>
-  setDockWidth: (px: number) => void
   mapAddConnection: (
     fromId: string,
     direction: string,
@@ -266,18 +280,31 @@ function messaggioErrore(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
-// [UX T7] Larghezza del dock destro: persistita fra le sessioni (prima ripartiva
-// sempre da 440). Clamp [320, 900] come setDockWidth.
-const DOCK_WIDTH_KEY = 'favella.dockWidth'
-function loadDockWidth(): number {
+// [Studio 0.10] Preferenze d'interfaccia: persistite, best-effort.
+function leggiPref<T>(chiave: string, def: T, valida: (v: unknown) => v is T): T {
   try {
-    const v = parseInt(localStorage.getItem(DOCK_WIDTH_KEY) || '', 10)
-    if (Number.isFinite(v)) return Math.max(320, Math.min(900, v))
+    const grezzo = localStorage.getItem('favella.' + chiave)
+    if (grezzo !== null) {
+      const v = JSON.parse(grezzo)
+      if (valida(v)) return v
+    }
   } catch {
-    /* localStorage non disponibile: usa il default */
+    /* ignora: si usa il default */
   }
-  return 440
+  return def
 }
+function salvaPref(chiave: string, valore: unknown): void {
+  try {
+    localStorage.setItem('favella.' + chiave, JSON.stringify(valore))
+  } catch {
+    /* persistenza best-effort */
+  }
+}
+const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
+const isZoom = (v: unknown): v is number => typeof v === 'number' && v >= 0.8 && v <= 2
+const isLato = (v: unknown): v is 'stato' | 'mappa' | 'debug' => v === 'stato' || v === 'mappa' || v === 'debug'
+// L'ultima sotto-scheda aperta in ogni sezione (si riparte da dove si era).
+const ultimaSotto: Partial<Record<Sezione, Exclude<RightTab, null>>> = {}
 
 export const useStudio = create<StudioState>((set, get) => ({
   projectRoot: null,
@@ -295,6 +322,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   rightTab: null,
   gameLines: [],
   gameState: null,
+  gameButtons: null,
   gameRunning: false,
   gameBusy: false,
   gameError: null,
@@ -315,7 +343,11 @@ export const useStudio = create<StudioState>((set, get) => ({
   dialogues: null,
   dialoguesLoading: false,
   pendingEdit: null,
-  dockWidth: loadDockWidth(),
+  affiancaTesto: leggiPref('affiancaTesto', false, isBool),
+  provaLato: leggiPref('provaLato', 'stato', isLato),
+  zoom: leggiPref('zoom', 1.1, isZoom),
+  esploraAperto: leggiPref('esploraAperto', true, isBool),
+  problemiAperti: leggiPref('problemiAperti', false, isBool),
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -445,12 +477,55 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 
   requestReveal: (path, line, col) =>
-    set((s) => ({ reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 } })),
+    // Un problema si corregge nel testo: se non è affiancato si torna alla Storia.
+    set((s) => ({
+      reveal: { path, line, col, nonce: (s.reveal?.nonce ?? 0) + 1 },
+      rightTab: s.affiancaTesto ? s.rightTab : null
+    })),
 
   // --- Dock destro ----------------------------------------------------------
 
   setRightTab: (tab) => set({ rightTab: tab }),
   closeDock: () => set({ rightTab: null }),
+
+  // [Studio 0.10] Cambia sezione: la Storia è il testo (nessun pannello); le altre
+  // riaprono l'ultima sotto-scheda usata, o la prima.
+  setSezione: (sezione) => {
+    const attuale = get().rightTab
+    if (attuale) {
+      const sezAttuale = SEZIONI.find((d) => d.sotto.some((x) => x.tab === attuale))
+      if (sezAttuale) ultimaSotto[sezAttuale.id] = attuale
+    }
+    if (sezione === 'storia') {
+      set({ rightTab: null })
+      return
+    }
+    const def = SEZIONI.find((d) => d.id === sezione)
+    const prima = def?.sotto[0]?.tab ?? null
+    const salvata = ultimaSotto[sezione]
+    set({ rightTab: salvata ?? prima })
+  },
+  setAffiancaTesto: (v) => {
+    salvaPref('affiancaTesto', v)
+    set({ affiancaTesto: v })
+  },
+  setProvaLato: (lato) => {
+    salvaPref('provaLato', lato)
+    set({ provaLato: lato })
+  },
+  setZoom: (z) => {
+    const v = Math.max(0.8, Math.min(2, Math.round(z * 100) / 100))
+    salvaPref('zoom', v)
+    set({ zoom: v })
+  },
+  setEsploraAperto: (v) => {
+    salvaPref('esploraAperto', v)
+    set({ esploraAperto: v })
+  },
+  setProblemiAperti: (v) => {
+    salvaPref('problemiAperti', v)
+    set({ problemiAperti: v })
+  },
 
   // --- Gioco (Fase 3) -------------------------------------------------------
 
@@ -465,6 +540,7 @@ export const useStudio = create<StudioState>((set, get) => ({
           gameBusy: false,
           gameRunning: false,
           gameState: null,
+          gameButtons: null,
           gameLines: [],
           gameError: res.errors?.[0]?.message ?? 'Compilazione fallita: correggi gli errori e riprova.',
           worldSnapshot: null
@@ -476,6 +552,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameError: null,
         gameLines: righeConsole(res.output),
         gameState: res.state,
+        gameButtons: res.buttons ?? null,
         gameRunning: res.running
       })
       void get().loadWorldGraph()
@@ -495,6 +572,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameBusy: false,
         gameRunning: false,
         gameState: null,
+        gameButtons: null,
         gameLines: [],
         gameError: 'Apri un file .fav nell’editor per avviare il gioco.'
       })
@@ -526,6 +604,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameBusy: false,
         gameLines: [...s.gameLines, ...righeConsole(res.output)],
         gameState: res.state,
+        gameButtons: res.buttons ?? null,
         gameRunning: res.running
       }))
       // Aggiorna lo stato live (inspector + evidenziazione stanza sulla mappa).
@@ -557,6 +636,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameError: null,
         gameLines: righeConsole(res.output),
         gameState: res.state,
+        gameButtons: res.buttons ?? null,
         gameRunning: res.running
       })
       void get().loadWorldGraph()
@@ -606,6 +686,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         gameNotice: `Partita caricata (turno ${save.turn}).`,
         gameLines: righeConsole(res.output),
         gameState: res.state,
+        gameButtons: res.buttons ?? null,
         gameRunning: res.running
       })
       void get().loadWorldGraph()
@@ -745,16 +826,6 @@ export const useStudio = create<StudioState>((set, get) => ({
     } catch {
       set({ dialoguesLoading: false })
     }
-  },
-
-  setDockWidth: (px) => {
-    const w = Math.max(320, Math.min(900, Math.round(px)))
-    try {
-      localStorage.setItem(DOCK_WIDTH_KEY, String(w))
-    } catch {
-      /* ignora: persistenza best-effort */
-    }
-    set({ dockWidth: w })
   },
 
   // mapAddConnection/mapDeleteConnection applicano un edit al file ATTIVO:

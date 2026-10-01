@@ -118,9 +118,46 @@ export interface EngineOutputEvent {
   dati?: Record<string, unknown>
 }
 
+// [sidecar 0.10.0 / motore 1.4] I pulsanti-verbo proponibili adesso (gioco.pulsanti).
+// Il comando si compone come verbo + ' ' + primo.testo [+ ' ' + secondo.testo].
+export interface VoceComando {
+  etichetta: string
+  comando: string
+}
+export interface PrimoPulsante {
+  id: string
+  testo: string
+}
+export interface SecondoPulsante {
+  id?: string
+  etichetta: string
+  testo: string
+}
+export interface VerboPulsante {
+  verbo: string
+  etichetta: string
+  oggetto: boolean
+  da_solo: boolean
+  primi: PrimoPulsante[]
+  secondo: 'no' | 'facoltativo' | 'obbligatorio'
+  secondi?: SecondoPulsante[]
+  secondi_per?: Record<string, SecondoPulsante[]>
+}
+export interface Pulsantiera {
+  modo: 'entrambi' | 'pulsanti' | 'testo'
+  fase: 'gioco' | 'dialogo' | 'conferma' | 'scelta' | 'fine'
+  scelte: VoceComando[]
+  oggetti: { id: string; etichetta: string; con_te: boolean }[]
+  verbi: VerboPulsante[]
+  uscite: { comando: string; etichetta: string; stanza: string | null }[]
+  servizio: VoceComando[]
+}
+
 export interface SessionResult {
   ok: boolean
   output: string
+  // [sidecar 0.10.0] I pulsanti-verbo di questo momento (null se non calcolabili).
+  buttons?: Pulsantiera | null
   // [sidecar 0.9.12] Lo stesso output come eventi tipizzati (per stilizzarlo).
   events?: EngineOutputEvent[]
   running: boolean

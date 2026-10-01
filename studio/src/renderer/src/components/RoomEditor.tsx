@@ -91,17 +91,14 @@ export default function RoomEditor(): JSX.Element {
         </span>
         <div>
           <button
-            className="icon-btn"
-            title="Nuova stanza"
+            className="btn-testo"
+            title="Aggiungi una stanza alla storia"
             onClick={() => {
               setCreando((v) => !v)
               setNuovoNome('')
             }}
           >
-            ➕
-          </button>
-          <button className="icon-btn" title="Aggiorna" onClick={() => void loadOutline()}>
-            ⟳
+            + Nuova stanza
           </button>
         </div>
       </div>
@@ -128,7 +125,7 @@ export default function RoomEditor(): JSX.Element {
       <div className="objed-body">
         <div className="objed-list">
           {rooms.length === 0 ? (
-            <p className="insp-none">nessuna stanza — creane una col ➕ qui sopra (o dalla Mappa)</p>
+            <p className="insp-none">nessuna stanza: creane una con «Nuova stanza» (o dalla Mappa)</p>
           ) : (
             rooms.map((r) => (
               <div
@@ -144,6 +141,7 @@ export default function RoomEditor(): JSX.Element {
           )}
         </div>
 
+        {!sel && <div className="vuoto-scegli">Scegli una stanza dall’elenco per modificarla.</div>}
         {sel && (
           <div className="objed-form">
             <div className="objed-field">

@@ -7147,6 +7147,12 @@ def test_sidecar_restituisce_gli_eventi():
            and "--- La cucina ---" in avvio["output"], "session.start: testo ed eventi")
     _check(turno["events"] == [{"tipo": "testo", "testo": "Preso: la mela."}]
            and turno["output"] == "Preso: la mela.\n", "session.send: testo ed eventi")
+    # [Studio 0.10 / sidecar 0.10.0] I pulsanti-verbo accompagnano ogni risposta.
+    for nome, risposta in (("session.start", avvio), ("session.send", turno)):
+        pulsanti = risposta.get("buttons")
+        _check(isinstance(pulsanti, dict) and pulsanti.get("fase") == "gioco"
+               and any(v["verbo"] == "esamina" for v in pulsanti.get("verbi", [])),
+               f"{nome}: i pulsanti-verbo (fase «gioco», con «esamina»)")
 
 
 

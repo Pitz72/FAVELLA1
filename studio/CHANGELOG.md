@@ -4,8 +4,55 @@
 > Vedi l'avviso in testa a [README.md](README.md).
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (attualmente **v1.0.1**).
+da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
+
+## [0.10.0] — 2026-10-01 — Un'interfaccia ripensata (e allineata al motore 1.4.2)
+
+Il motore e i pannelli (editor di stanze, oggetti, dialoghi, regole, stati, mappa) sono
+gli stessi; cambia **tutto ciò che sta intorno**, perché l'interfaccia era una copia di
+VS Code con una fila di dodici pulsanti minuscoli e un pannello stretto a lato.
+
+### Cambiato
+- **Cinque sezioni al posto di dodici pulsanti**, nell'ordine in cui si scrive una storia:
+  **Storia** (il testo), **Mondo** (Stanze · Oggetti · Mappa), **Personaggi** (Dialoghi),
+  **Regole** (Regole ed eventi · Stati e contatori), **Prova** (la partita). Barra a sinistra
+  con icona *e* nome scritto; Ctrl+1…5 per cambiare. Il testo si può **affiancare** a
+  qualunque pannello visuale con un interruttore.
+- **Area di lavoro larga**: i pannelli visuali non stanno più in una colonna di 440 px a
+  destra, ma al centro, con l'elenco a sinistra e il modulo a lato.
+- **Barra in alto essenziale**: dove sei (cartella › file, con selettore dei file), **Salva**,
+  **Prova la storia** (F5) e un menu «⋯» con le azioni rare (riordina, esporta, finestra a
+  parte, leggibilità).
+- **Accoglienza** per chi comincia (Nuova storia / Apri una cartella) e **scelta del file**
+  quando la cartella è aperta ma nessun file lo è.
+- **Problemi** nella barra di stato («2 errori · 1 avviso»): cliccando si leggono e si saltano
+  alla riga.
+- **Tema di marca** (navy, ciano, smeraldo, ambra) con i font del manuale — Inter, Sora,
+  Source Code Pro — **inclusi nel pacchetto** (nessuna rete). L'editor di testo usa gli
+  stessi colori del manuale: parole del linguaggio in ciano, testi in smeraldo, i **punti in
+  ambra**.
+- **Leggibilità regolabile**: grandezza dell'interfaccia 80–200 % (Ctrl +/−/0, o dal menu),
+  ricordata; bersagli più grandi, anelli di focus visibili, etichette di campo leggibili,
+  movimento ridotto rispettato.
+- **Campi e moduli** con uno stile solo (prima erano bianchi e grezzi); stati vuoti che dicono
+  cosa fare («Scegli una stanza dall'elenco…»).
+
+### Aggiunto
+- **Pulsanti-verbo nella Prova** (motore 1.4): si compone la frase toccando un verbo, un
+  oggetto e, se serve, un secondo, come nella pagina esportata. Il sidecar li calcola con
+  `gioco.pulsanti` e li accompagna a testo ed eventi (`buttons`, **sidecar 0.10.0**); la
+  scelta d'autore `I comandi si scrivono.` li nasconde.
+- **Prova a due colonne**: la partita a sinistra, a destra **Partita** (stato), **Mappa** e
+  **Passo passo**. «Prova la storia» compila e gioca dentro la finestra; la finestra a parte
+  resta nel menu.
+- **Banco di prova nel browser** (`npm run ponte` + `npm run dev:web`, vedi `dev-web/`):
+  l'interfaccia si sviluppa e si prova in un browser con il motore Python vero.
+
+### Rimosso
+- La colonna destra ridimensionabile (`dockWidth`) e gli stili della vecchia barra.
+
+---
 
 ## [0.9.29] — 2026-08-10 — L'IDE diventa pubblico (e resta un esperimento)
 

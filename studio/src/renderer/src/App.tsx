@@ -6,7 +6,11 @@ import TabBar from './components/TabBar'
 import EditorPane from './components/EditorPane'
 import ProblemsPanel from './components/ProblemsPanel'
 import StatusBar from './components/StatusBar'
-import RightDock from './components/RightDock'
+import TopBar from './components/TopBar'
+import Rail from './components/Rail'
+import Workspace from './components/Workspace'
+import { Benvenuto, ScegliStoria } from './components/Accoglienza'
+import { sezioneDi, SEZIONI } from './sezioni'
 import UnsavedDialog from './components/UnsavedDialog'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
@@ -22,16 +26,8 @@ export default function App(): JSX.Element {
   const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
   const compileActive = useStudio((s) => s.compileActive)
-  const launchGameWindow = useStudio((s) => s.launchGameWindow)
-  const setRightTab = useStudio((s) => s.setRightTab)
-  const closeDock = useStudio((s) => s.closeDock)
   const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
-  const isFav = !!activePath?.toLowerCase().endsWith('.fav')
-  const dirty = useStudio((s) => {
-    const f = s.openFiles.find((x) => x.path === s.activePath)
-    return !!f && f.content !== f.savedContent
-  })
   const activeContent = useStudio((s) =>
     s.openFiles.find((f) => f.path === s.activePath)?.content
   )
@@ -132,155 +128,116 @@ export default function App(): JSX.Element {
     const unsub = window.favella.onGameAdvanced(() => {
       const s = useStudio.getState()
       void s.loadWorldSnapshot()
-      if (s.rightTab === 'debug') void s.loadDebugHistory()
+      if (s.rightTab === 'debug' || (s.rightTab === 'gioca' && s.provaLato === 'debug')) void s.loadDebugHistory()
     })
     return unsub
   }, [])
 
-  // Scorciatoie globali: Ctrl+S salva il file attivo, Ctrl+Shift+S salva tutto.
+  // Scorciatoie globali: Ctrl+S salva, Ctrl+Maiusc+S salva tutto, Ctrl+O apre una cartella,
+  // F5 prova la storia, Ctrl+1…5 cambia sezione, Ctrl +/−/0 la grandezza dell'interfaccia.
+  const startGame = useStudio((s) => s.startGame)
+  const setSezione = useStudio((s) => s.setSezione)
+  const setZoom = useStudio((s) => s.setZoom)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      const ctrl = e.ctrlKey || e.metaKey
+      if (ctrl && e.key.toLowerCase() === 's') {
         e.preventDefault()
         if (e.shiftKey) void saveAll()
         else void saveActive()
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+      if (ctrl && e.key.toLowerCase() === 'o') {
         e.preventDefault()
         void openProject()
       }
-      // F5: apre la finestra di gioco dedicata sul file .fav attivo.
       if (e.key === 'F5') {
         e.preventDefault()
-        launchGameWindow()
+        if (useStudio.getState().activePath?.toLowerCase().endsWith('.fav')) void startGame()
+      }
+      if (ctrl && !e.shiftKey && !e.altKey) {
+        const sez = SEZIONI.find((d) => d.tasto === e.key)
+        if (sez && useStudio.getState().projectRoot) {
+          e.preventDefault()
+          setSezione(sez.id)
+        }
+        const z = useStudio.getState().zoom
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault()
+          setZoom(z + 0.1)
+        } else if (e.key === '-') {
+          e.preventDefault()
+          setZoom(z - 0.1)
+        } else if (e.key === '0') {
+          e.preventDefault()
+          setZoom(1.1)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveActive, saveAll, openProject, launchGameWindow])
+  }, [saveActive, saveAll, openProject, startGame, setSezione, setZoom])
+
+  const projectRoot = useStudio((s) => s.projectRoot)
+  const sezione = sezioneDi(rightTab)
+  const zoom = useStudio((s) => s.zoom)
+  const problemiAperti = useStudio((s) => s.problemiAperti)
+  const esploraAperto = useStudio((s) => s.esploraAperto)
+  const setEsploraAperto = useStudio((s) => s.setEsploraAperto)
+  const haFile = useStudio((s) => s.openFiles.length > 0)
+
+  // Leggibilità: lo zoom scelto vale per tutta l'interfaccia e si ricorda.
+  useEffect(() => {
+    window.favella.setZoom(zoom)
+  }, [zoom])
 
   return (
     <div className="app">
-      <header className="titlebar">
-        <span className="logo">✦ Favella Studio</span>
-        <div className="titlebar-right">
-          <button
-            className={'tool-btn save-btn' + (dirty ? ' dirty' : '')}
-            title="Salva il file attivo (Ctrl+S)"
-            onClick={() => void saveActive()}
-            disabled={!dirty}
-          >
-            {dirty ? '● Salva' : '✓ Salvato'}
-          </button>
-          <button
-            className="tool-btn"
-            title="Riordina il sorgente in un ordine canonico (file singoli, senza Includi)"
-            onClick={() => void useStudio.getState().reorderActive()}
-            disabled={!isFav}
-          >
-            ↕ Riordina
-          </button>
-          <button
-            className="tool-btn"
-            title="Esporta il gioco come HTML autoportante (giocabile nel browser, senza installare nulla)"
-            onClick={() => void useStudio.getState().exportGame()}
-            disabled={!isFav}
-          >
-            📦 Esporta
-          </button>
-          <span className="titlebar-sep" />
-          {/* Gruppo «Costruisci il mondo»: gli editor del sorgente, in ordine dal
-              concreto (spazio, oggetti, personaggi) all'astratto (stati, logica). */}
-          <button
-            className={'tool-btn' + (rightTab === 'mappa' ? ' active' : '')}
-            title="Mappa del mondo (editabile)"
-            onClick={() => (rightTab === 'mappa' ? closeDock() : setRightTab('mappa'))}
-            disabled={!isFav}
-          >
-            🗺 Mappa
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'stanze' ? ' active' : '')}
-            title="Editor stanze (descrizione, posizione iniziale)"
-            onClick={() => (rightTab === 'stanze' ? closeDock() : setRightTab('stanze'))}
-            disabled={!isFav}
-          >
-            🏠 Stanze
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'oggetti' ? ' active' : '')}
-            title="Editor oggetti (crea e modifica)"
-            onClick={() => (rightTab === 'oggetti' ? closeDock() : setRightTab('oggetti'))}
-            disabled={!isFav}
-          >
-            📦 Oggetti
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'dialoghi' ? ' active' : '')}
-            title="Editor di dialoghi e personaggi (NPC, nodi, opzioni)"
-            onClick={() => (rightTab === 'dialoghi' ? closeDock() : setRightTab('dialoghi'))}
-            disabled={!isFav}
-          >
-            💬 Dialoghi
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'stati' ? ' active' : '')}
-            title="Stati e contatori (parametri di stato del mondo)"
-            onClick={() => (rightTab === 'stati' ? closeDock() : setRightTab('stati'))}
-            disabled={!isFav}
-          >
-            ⚖ Stati
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'regole' ? ' active' : '')}
-            title="Editor di regole ed eventi (logica senza codice)"
-            onClick={() => (rightTab === 'regole' ? closeDock() : setRightTab('regole'))}
-            disabled={!isFav}
-          >
-            ⚙ Regole
-          </button>
-          <span className="titlebar-sep" />
-          {/* Gruppo «Prova e osserva»: esegui la partita e ispezionane lo stato. */}
-          <button
-            className="play-btn"
-            title="Apri il gioco in una finestra dedicata (F5)"
-            onClick={launchGameWindow}
-            disabled={!isFav}
-          >
-            ▶ Gioca
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'stato' ? ' active' : '')}
-            title="Istantanea della partita in corso (stanza, turno, inventario, stati)"
-            onClick={() => (rightTab === 'stato' ? closeDock() : setRightTab('stato'))}
-          >
-            🔎 Partita
-          </button>
-          <button
-            className={'tool-btn' + (rightTab === 'debug' ? ' active' : '')}
-            title="Debugger passo-passo (timeline dei turni)"
-            onClick={() => (rightTab === 'debug' ? closeDock() : setRightTab('debug'))}
-          >
-            🐞 Debug
-          </button>
-        </div>
-      </header>
+      <TopBar />
 
-      <div className="workbench">
-        <Explorer />
-        <main className="editor-area">
-          <TabBar />
-          <div className="editor-host">
-            <EditorPane />
-          </div>
-          <ProblemsPanel />
-        </main>
-        <RightDock />
-      </div>
+      {!projectRoot ? (
+        <Benvenuto />
+      ) : (
+        <div className="body">
+          <Rail />
+          {sezione === 'storia' ? (
+            <div className="storia">
+              {esploraAperto ? (
+                <div className="storia-lato">
+                  <Explorer />
+                  <button
+                    className="lato-chiudi"
+                    onClick={() => setEsploraAperto(false)}
+                    title="Nascondi l'elenco dei file"
+                    aria-label="Nascondi l'elenco dei file"
+                  >
+                    ‹
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="lato-apri"
+                  onClick={() => setEsploraAperto(true)}
+                  title="Mostra l'elenco dei file"
+                  aria-label="Mostra l'elenco dei file"
+                >
+                  ›
+                </button>
+              )}
+              <main className="editor-area">
+                <TabBar />
+                <div className="editor-host">{haFile ? <EditorPane /> : <ScegliStoria />}</div>
+                {problemiAperti && <ProblemsPanel />}
+              </main>
+            </div>
+          ) : (
+            <Workspace />
+          )}
+        </div>
+      )}
 
       <StatusBar />
 
-      <div className="toasts">
+      <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className="toast">
             {t.text}

@@ -86,28 +86,32 @@ export function registraLinguaFavella(monaco: Monaco, lexicon: EngineLexicon): v
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '6a737d', fontStyle: 'italic' },
-      { token: 'string', foreground: 'c3e88d' },
-      { token: 'string.quote', foreground: 'c3e88d' },
-      { token: 'string.escape', foreground: 'f78c6c' },
-      { token: 'variable', foreground: 'f78c6c' },
-      { token: 'keyword', foreground: '4e9aec', fontStyle: 'bold' },
-      { token: 'type', foreground: 'c792ea' },
-      { token: 'constant', foreground: 'ffcb6b' },
-      { token: 'number', foreground: 'ffcb6b' },
-      { token: 'identifier', foreground: 'e1e1e6' },
-      { token: 'delimiter', foreground: '89ddff' }
+      // Palette di marca (la stessa del manuale): ciano per le parole del linguaggio,
+      // smeraldo per i testi, ambra per numeri e punti, fiamma per le [interpolazioni].
+      { token: 'comment', foreground: '6f8aa3', fontStyle: 'italic' },
+      { token: 'string', foreground: '34d399' },
+      { token: 'string.quote', foreground: '34d399' },
+      { token: 'string.escape', foreground: 'fb923c' },
+      { token: 'variable', foreground: 'fb923c' },
+      { token: 'keyword', foreground: '5cf3ff', fontStyle: 'bold' },
+      { token: 'type', foreground: 'a78bfa' },
+      { token: 'constant', foreground: 'f59e0b' },
+      { token: 'number', foreground: 'f59e0b' },
+      { token: 'identifier', foreground: 'e8f0f8' },
+      { token: 'delimiter', foreground: 'f59e0b', fontStyle: 'bold' }
     ],
     colors: {
-      'editor.background': '#1a1a1e',
-      'editor.foreground': '#e1e1e6',
-      'editorLineNumber.foreground': '#4b4b55',
-      'editorLineNumber.activeForeground': '#9ca3af',
-      'editor.selectionBackground': '#2d4a6b',
-      'editor.lineHighlightBackground': '#24242b',
-      'editorCursor.foreground': '#4e9aec',
-      'editorWidget.background': '#24242b',
-      'editorWidget.border': '#34343d'
+      'editor.background': '#060c17',
+      'editor.foreground': '#e8f0f8',
+      'editorLineNumber.foreground': '#3d5873',
+      'editorLineNumber.activeForeground': '#93a9bf',
+      'editor.selectionBackground': '#16466a',
+      'editor.lineHighlightBackground': '#0a1422',
+      'editorCursor.foreground': '#22d3ee',
+      'editorWidget.background': '#0f1e33',
+      'editorWidget.border': '#1b3149',
+      'editorIndentGuide.background1': '#13263c',
+      'scrollbarSlider.background': '#1b314966'
     }
   })
 }
