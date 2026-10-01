@@ -5,3 +5,6 @@
 *.sh            text eol=lf
 *.desktop       text eol=lf
 packaging/linux/AppRun text eol=lf
+
+# Gli script di shell devono restare LF anche su Windows (altrimenti su Mac/Linux non partono).
+*.sh text eol=lf
