@@ -56,7 +56,8 @@ export const SEZIONI: DefSezione[] = [
     tasto: '4',
     sotto: [
       { tab: 'regole', titolo: 'Regole ed eventi', aiuto: 'Invece di…, ogni turno…' },
-      { tab: 'stati', titolo: 'Stati e contatori', aiuto: 'Ciò che il mondo ricorda' }
+      { tab: 'stati', titolo: 'Stati e contatori', aiuto: 'Ciò che il mondo ricorda' },
+      { tab: 'parole', titolo: 'Parole e comandi', aiuto: 'Verbi inventati, sinonimi, come comanda chi gioca' }
     ]
   },
   {

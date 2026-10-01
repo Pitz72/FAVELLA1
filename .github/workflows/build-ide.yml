@@ -1,42 +1,54 @@
-name: Build IDE — Favella Studio (Windows / macOS / Linux)
+name: Favella Studio — build e pubblicazione (Windows / Linux)
 
 # AVVIO SOLO MANUALE: nessun trigger automatico (niente push/PR/tag).
-# Si lancia da GitHub → Actions → "Build IDE — Favella Studio" → Run workflow.
+# GitHub → Actions → «Favella Studio — build e pubblicazione» → Run workflow.
 #
-# NB: Favella Studio è un ESPERIMENTO in fase primordiale (vedi studio/README.md).
-# Questo workflow produce installer NON FIRMATI, scaricabili come artefatti: non
-# crea Release e non pubblica niente.
+#   «Pubblicare la Release?» vuota  → solo gli installer, come artefatti scaricabili
+#                                      dalla pagina dell'esecuzione (build di prova);
+#   spuntata                        → in più crea la Release «studio-v<versione>»
+#                                      (versione = studio/package.json) con gli installer
+#                                      allegati. NON è mai marcata «Latest»: quella resta
+#                                      alla Release del linguaggio FAVELLA 1.
 #
-# STORIA: viveva in .github/workflows/ del repo privato Ecosystem-Runtime/
-# favella-studio e faceva DUE checkout (il motore pubblico in root, l'IDE in
-# studio/). Dal 2026-08-10 motore e IDE stanno nello stesso repo, quindi basta un
-# checkout solo. Il file originale resta in studio/.github/ come cronaca: lì
-# GitHub non lo esegue, perché registra solo i workflow in .github/workflows/
-# alla RADICE del repository.
+# macOS: volutamente NON costruito qui. Gli installer macOS non firmati e non
+# notarizzati danno più grane che aiuto (Gatekeeper), e chi usa un Mac può costruirsi
+# il proprio in cinque minuti: vedi studio/BUILD-MACOS.md e studio/scripts/build-locale.sh.
+# La configurazione di electron-builder per macOS (studio/package.json → build.mac) è
+# già pronta e testata a mano.
+#
+# Gli installer sono NON FIRMATI (SmartScreen su Windows avviserà al primo avvio).
 
 on:
   workflow_dispatch:
+    inputs:
+      pubblica:
+        description: "Pubblicare la Release su GitHub? (vuota = solo build di prova)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: Build ${{ matrix.etichetta }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            sep: ";"      # separatore --add-data di PyInstaller su Windows
-          - os: macos-latest
-            sep: ":"
+            etichetta: Windows
+            artefatti: studio/release/*.exe
           - os: ubuntu-latest
-            sep: ":"
+            etichetta: Linux
+            artefatti: studio/release/*.AppImage
 
     steps:
       # Un solo checkout: motore in radice + IDE in studio/, già nel layout giusto.
       - uses: actions/checkout@v4
 
-      # --- Sidecar Python congelato con PyInstaller ---------------------------
+      # --- Il motore Python, congelato con PyInstaller ----------------------
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -49,46 +61,78 @@ jobs:
           python test_linguaggio.py
           python test_collaudo.py
 
-      - name: Congela il sidecar (PyInstaller, dalla radice)
-        shell: bash
-        run: |
-          python -m PyInstaller --onefile --name favella_engine --collect-all lark \
-            --add-data "favella_utils.py${{ matrix.sep }}." \
-            --add-data "strutture.py${{ matrix.sep }}." \
-            --add-data "libreria_azioni.py${{ matrix.sep }}." \
-            --add-data "compilatore.py${{ matrix.sep }}." \
-            --add-data "gioco.py${{ matrix.sep }}." \
-            favella_server.py
-          ls -la dist
+      - name: Congela il motore (favella_engine.spec)
+        run: python -m PyInstaller --noconfirm favella_engine.spec
 
-      - name: Permessi di esecuzione al sidecar (macOS/Linux)
-        if: runner.os != 'Windows'
-        run: chmod +x "dist/favella_engine"
+      - name: Prova il motore congelato (compila, gioca, esporta)
+        run: python studio/scripts/smoke-sidecar.py
 
-      # --- Installer Electron -------------------------------------------------
+      # --- L'installer Electron -------------------------------------------
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Installa dipendenze IDE
+      - name: Installa le dipendenze dell'IDE
         working-directory: studio
         run: npm ci
 
-      - name: Build installer (electron-builder)
+      - name: Controllo dei tipi
+        working-directory: studio
+        run: npm run typecheck
+
+      - name: Costruisci l'installer (electron-builder)
         working-directory: studio
         env:
-          # Niente firma in CI: build non firmati (SmartScreen/Gatekeeper avviseranno).
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"   # niente firma in CI
         run: npm run dist
 
-      - name: Carica gli artefatti
+      - name: Carica gli installer
         uses: actions/upload-artifact@v4
         with:
-          name: favella-studio-${{ runner.os }}
-          if-no-files-found: warn
-          path: |
-            studio/release/*.exe
-            studio/release/*.dmg
-            studio/release/*.zip
-            studio/release/*.AppImage
+          name: favella-studio-${{ matrix.etichetta }}
+          if-no-files-found: error
+          path: ${{ matrix.artefatti }}
+
+  pubblica:
+    name: Pubblica la Release
+    needs: build
+    if: ${{ inputs.pubblica }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: installer
+
+      - name: Ricava versione e note
+        id: ver
+        run: |
+          VER=$(node -p "require('./studio/package.json').version")
+          echo "versione=$VER" >> "$GITHUB_OUTPUT"
+          # Le note: la sezione di questa versione in studio/CHANGELOG.md + come si usa.
+          python3 - "$VER" > note.md <<'PYEOF'
+          import re, sys
+          ver = sys.argv[1]
+          testo = open("studio/CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"## \[" + re.escape(ver) + r"\][^\n]*\n(.*?)\n---", testo, re.S)
+          print("**Favella Studio** — l'ambiente di scrittura visuale per il linguaggio FAVELLA 1.\n")
+          print("| Sistema | File |\n|---|---|")
+          print("| Windows | `FavellaStudio-Setup-" + ver + ".exe` |")
+          print("| Linux | `FavellaStudio-" + ver + ".AppImage` (`chmod +x` e doppio clic) |")
+          print("| macOS | si costruisce da sé: vedi `studio/BUILD-MACOS.md` |\n")
+          print("Gli installer non sono firmati: Windows può mostrare un avviso SmartScreen («Maggiori informazioni» → «Esegui comunque»).\n")
+          if m:
+              print("## Novità\n" + m.group(1).strip())
+          PYEOF
+
+      - name: Crea la Release (mai «Latest»)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${{ steps.ver.outputs.versione }}"
+          gh release create "studio-v$VER" \
+            --title "Favella Studio $VER" \
+            --notes-file note.md \
+            --latest=false \
+            installer/*/*

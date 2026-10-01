@@ -15,6 +15,7 @@ import type {
   WorldRules,
   WorldVariables,
   WorldDialogues,
+  WorldWords,
   Pulsantiera
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
@@ -31,6 +32,7 @@ export type RightTab =
   | 'regole'
   | 'stati'
   | 'dialoghi'
+  | 'parole'
   | null
 
 /** Confronto di percorsi tollerante (Windows: case-insensitive, slash misti). */
@@ -153,6 +155,8 @@ interface StudioState {
   // Editor dialoghi/NPC (Fase 6b)
   dialogues: WorldDialogues | null
   dialoguesLoading: boolean
+  words: WorldWords | null
+  wordsLoading: boolean
   pendingEdit: PendingEdit | null
   // [Studio 0.10] Interfaccia a sezioni: il testo si può affiancare ai pannelli
   // visuali; la Prova ha una colonna a lato (partita / mappa / debug); la
@@ -215,6 +219,7 @@ interface StudioState {
   loadVariables: () => Promise<void>
   // Editor dialoghi/NPC (Fase 6b)
   loadDialogues: () => Promise<void>
+  loadWords: () => Promise<void>
   mapAddConnection: (
     fromId: string,
     direction: string,
@@ -342,6 +347,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   variablesLoading: false,
   dialogues: null,
   dialoguesLoading: false,
+  words: null,
+  wordsLoading: false,
   pendingEdit: null,
   affiancaTesto: leggiPref('affiancaTesto', false, isBool),
   provaLato: leggiPref('provaLato', 'stato', isLato),
@@ -812,6 +819,22 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
   },
 
+  loadWords: async () => {
+    const { activePath, openFiles } = get()
+    if (!activePath?.toLowerCase().endsWith('.fav')) {
+      set({ words: null })
+      return
+    }
+    const file = openFiles.find((f) => f.path === activePath)
+    set({ wordsLoading: true })
+    try {
+      const w = await window.favella.worldWords(activePath, file?.content)
+      set({ wordsLoading: false, words: w })
+    } catch {
+      set({ wordsLoading: false })
+    }
+  },
+
   loadDialogues: async () => {
     const { activePath, openFiles } = get()
     if (!activePath?.toLowerCase().endsWith('.fav')) {
@@ -1013,6 +1036,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().loadRules()
     await get().loadVariables()
     await get().loadDialogues()
+    await get().loadWords()
   },
 
   deleteStatement: async (span) => {
@@ -1036,6 +1060,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().loadRules()
     await get().loadVariables()
     await get().loadDialogues()
+    await get().loadWords()
   },
 
   // Serializza N spec e le appende in fondo al file attivo come UN UNICO blocco
@@ -1074,6 +1099,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().loadRules()
     await get().loadVariables()
     await get().loadDialogues()
+    await get().loadWords()
   },
 
   reorderActive: async () => {
@@ -1209,6 +1235,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().loadRules()
     await get().loadVariables()
     await get().loadDialogues()
+    await get().loadWords()
   },
 
   deleteDialogueNode: async (label) => {
@@ -1246,5 +1273,6 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().loadRules()
     await get().loadVariables()
     await get().loadDialogues()
+    await get().loadWords()
   }
 }))

@@ -24,7 +24,6 @@
   }, 300)
   const avanzato = new Set()
   const relaunch = new Set()
-  let lancio = null
   window.favella = {
     setZoom: (z) => { document.documentElement.style.zoom = String(z) },
     rpc,
@@ -41,6 +40,7 @@
     worldOutline: (path, source) => rpc('world.outline', path ? { path, source } : {}),
     worldRules: (path, source) => rpc('world.rules', path ? { path, source } : {}),
     worldVariables: (path, source) => rpc('world.variables', path ? { path, source } : {}),
+    worldWords: (path, source) => rpc('world.words', path ? { path, source } : {}),
     worldDialogues: (path, source) => rpc('world.dialogues', path ? { path, source } : {}),
     serializeStatement: (spec) => rpc('outline.serialize', spec),
     reorderSource: (path, source) => rpc('source.reorder', { path, source }),
@@ -50,8 +50,9 @@
     gameLoad: (save) => rpc('session.load', { save }),
     writeSaveFile: async () => ({ ok: false }),
     readSaveFile: async () => null,
-    openGameWindow: async (path, source) => { lancio = { path, source }; window.open('#game', '_blank') },
-    gameLaunchPayload: async () => lancio,
+    // La finestra a parte è un'altra scheda: il payload passa da localStorage.
+    openGameWindow: async (path, source) => { localStorage.setItem('dev.lancio', JSON.stringify({ path, source })); window.open('/#game', '_blank') },
+    gameLaunchPayload: async () => JSON.parse(localStorage.getItem('dev.lancio') || 'null'),
     onGameRelaunch: (cb) => { relaunch.add(cb); return () => relaunch.delete(cb) },
     confirmClose: async () => {},
     onRequestClose: () => () => {},

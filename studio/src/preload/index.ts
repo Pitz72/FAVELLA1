@@ -17,7 +17,8 @@ import type {
   ExportResult,
   WorldRules,
   WorldVariables,
-  WorldDialogues
+  WorldDialogues,
+  WorldWords
 } from '../shared/protocol'
 
 // Superficie minima e tipizzata esposta al renderer. Nessun accesso diretto a
@@ -106,6 +107,10 @@ const api = {
   /** [Fase 6b] Modello editabile di NPC/dialoghi con span sorgente. */
   worldDialogues(path?: string, source?: string): Promise<WorldDialogues> {
     return ipcRenderer.invoke('rpc', 'world.dialogues', path ? { path, source } : {})
+  },
+  /** [Studio 1.0] Parole e comandi: verbi d'autore, sinonimi, modo dei comandi. */
+  worldWords(path?: string, source?: string): Promise<WorldWords> {
+    return ipcRenderer.invoke('rpc', 'world.words', path ? { path, source } : {})
   },
   /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
   serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {

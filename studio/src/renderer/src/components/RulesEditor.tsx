@@ -79,7 +79,11 @@ function condRepresentable(c: RuleCondition | null): boolean {
 }
 
 function ruleRepresentable(r: Rule): boolean {
-  return condRepresentable(r.condition) && r.consequences.every(conseqRepresentable)
+  return (
+    condRepresentable(r.condition) &&
+    r.consequences.every(conseqRepresentable) &&
+    (!r.otherwise || r.otherwise.consequences.every(conseqRepresentable))
+  )
 }
 
 // Un evento è sempre riapribile nella modale se le sue conseguenze sono note
@@ -208,6 +212,9 @@ export default function RulesEditor(): JSX.Element {
         {regole.map((r, i) => (
           <div key={'r' + i} className="rule-card">
             <div className="rule-head">
+              {r.phase && r.phase !== 'invece' && (
+                <span className="rule-phase">{r.phase === 'prima' ? 'prima di' : 'dopo di'}</span>
+              )}
               <span className="rule-verb">{r.verb}</span>
               {r.target ? (
                 <span className="rule-target">
@@ -256,6 +263,21 @@ export default function RulesEditor(): JSX.Element {
                     {conseqText(c)}
                   </span>
                 ))}
+              </div>
+            )}
+            {r.otherwise && (
+              <div className="rule-else">
+                <div className="rule-when">altrimenti</div>
+                <div className="rule-say">di’ “{r.otherwise.response}”</div>
+                {r.otherwise.consequences.length > 0 && (
+                  <div className="rule-then">
+                    {r.otherwise.consequences.map((c, j) => (
+                      <span key={j} className="rule-chip">
+                        {conseqText(c)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

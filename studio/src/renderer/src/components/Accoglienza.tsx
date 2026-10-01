@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { FileNode } from '../../../shared/protocol'
 import { useStudio } from '../store'
+import logoStudio from '../assets/favella-studio-logo.svg'
 import { IconaCartella, IconaPiu } from './Icone'
 
 function fileFav(nodi: FileNode[]): FileNode[] {
@@ -19,9 +20,7 @@ export function Benvenuto(): JSX.Element {
   return (
     <div className="accoglienza">
       <div className="acc-card">
-        <div className="acc-mark" aria-hidden="true">
-          ✦
-        </div>
+        <img className="acc-logo" src={logoStudio} alt="Favella Studio" width={132} height={132} />
         <h1>Scrivi la tua avventura, in italiano.</h1>
         <p className="acc-sotto">
           In FAVELLA il codice è una frase col punto in fondo: <code>La cucina è una stanza.</code> Qui la scrivi, la

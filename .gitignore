@@ -39,6 +39,9 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# Le ricette PyInstaller del progetto vanno nel repo (la regola sopra è del template Python):
+!favella1.spec
+!favella_engine.spec
 # favella1.spec è lo spec di distribuzione: sorgente versionato, non generato
 !favella1.spec
 

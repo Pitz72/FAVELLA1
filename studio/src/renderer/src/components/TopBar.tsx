@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FileNode } from '../../../shared/protocol'
 import { useStudio } from '../store'
+import logoStudio from '../assets/favella-studio-logo.svg'
 import { IconaCartella, IconaFreccia, IconaMenu, IconaPlay, IconaSalva } from './Icone'
 
 function nomeCartella(root: string | null): string {
@@ -120,9 +121,7 @@ export default function TopBar(): JSX.Element {
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark" aria-hidden="true">
-          ✦
-        </span>
+        <img className="brand-logo" src={logoStudio} alt="" width={34} height={34} />
         <span className="brand-name">Favella Studio</span>
       </div>
 

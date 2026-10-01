@@ -6,6 +6,7 @@ import type {
   Demon,
   RuleCondition,
   RuleConsequence,
+  RulePhase,
   RulesMenu,
   SerializeRuleTarget,
   OutlineSpan
@@ -84,6 +85,14 @@ export default function RuleForm({
     rule?.condition ?? demon?.condition ?? null
   )
   const [addKind, setAddKind] = useState<ConsKind>('prop')
+  // [motore 1.3] «Invece di / Prima di / Dopo di» e il ramo «altrimenti».
+  const [phase, setPhase] = useState<RulePhase>(rule?.phase ?? 'invece')
+  const [altr, setAltr] = useState<{ response: string; cons: RuleConsequence[] } | null>(
+    rule?.otherwise
+      ? { response: rule.otherwise.response, cons: arricchisciCons(rule.otherwise.consequences, menu) }
+      : null
+  )
+  const [altrAddKind, setAltrAddKind] = useState<ConsKind>('prop')
 
   // Esc chiude la modale.
   useEffect(() => {
@@ -120,7 +129,9 @@ export default function RuleForm({
       ? response.trim().length > 0 && Number.isInteger(evN) && evN >= 1
       : kind === 'demon'
         ? response.trim().length > 0 && condition !== null
-        : verb.trim().length > 0 && response.trim().length > 0
+        : verb.trim().length > 0 &&
+          response.trim().length > 0 &&
+          (!altr || (condition !== null && altr.response.trim().length > 0))
 
   const salva = async (): Promise<void> => {
     if (!valido) return
@@ -170,6 +181,8 @@ export default function RuleForm({
     await applyStatement(
       {
         op: 'rule',
+        phase,
+        otherwise: altr && condition ? { response: altr.response.trim(), consequences: altr.cons } : null,
         verb: verb.trim(),
         target,
         condition: condition ?? null,
@@ -308,7 +321,21 @@ export default function RuleForm({
                 </select>
               </div>
             )}
-            {VERBI_CON_EFFETTO.has(verb) && (
+            <div className="objed-field">
+              <label>Quando scatta</label>
+              <div className="objed-seg">
+                <button className={phase === 'invece' ? 'on' : ''} onClick={() => setPhase('invece')} title="La regola prende il posto dell'azione normale">
+                  Invece di (al posto)
+                </button>
+                <button className={phase === 'prima' ? 'on' : ''} onClick={() => setPhase('prima')} title="Scatta, poi l'azione prosegue">
+                  Prima di (poi prosegue)
+                </button>
+                <button className={phase === 'dopo' ? 'on' : ''} onClick={() => setPhase('dopo')} title="Scatta a cose fatte">
+                  Dopo di (a cose fatte)
+                </button>
+              </div>
+            </div>
+            {phase === 'invece' && VERBI_CON_EFFETTO.has(verb) && (
               <p className="ruleform-warn">
                 ⚠️ «Invece di {verb}» <b>sostituisce</b> l'azione normale: la regola viene
                 eseguita <i>al posto</i> di «{verb}». Se vuoi che l'effetto avvenga comunque
@@ -378,6 +405,60 @@ export default function RuleForm({
               </button>
             </div>
           </div>
+
+          {kind === 'rule' && condition !== null && (
+            <div className="objed-field">
+              <label>Altrimenti (se la condizione NON è vera)</label>
+              {altr === null ? (
+                <button className="modal-btn ghost" onClick={() => setAltr({ response: '', cons: [] })}>
+                  + aggiungi un «altrimenti»
+                </button>
+              ) : (
+                <>
+                  <textarea
+                    rows={2}
+                    placeholder="es. La porta non si muove."
+                    value={altr.response}
+                    onChange={(e) => setAltr({ ...altr, response: e.target.value })}
+                  />
+                  {altr.cons.map((c, i) => (
+                    <ConsRow
+                      key={i}
+                      c={c}
+                      menu={menu}
+                      onChange={(nc) => setAltr({ ...altr, cons: altr.cons.map((x, j) => (j === i ? nc : x)) })}
+                      onRemove={() => setAltr({ ...altr, cons: altr.cons.filter((_, j) => j !== i) })}
+                    />
+                  ))}
+                  <div className="objed-add">
+                    <select value={altrAddKind} onChange={(e) => setAltrAddKind(e.target.value as ConsKind)}>
+                      {CONS_GROUPS.map((g) => (
+                        <optgroup key={g.label} label={g.label}>
+                          {g.kinds.map((k) => (
+                            <option key={k} value={k}>
+                              {CONS_LABEL[k]}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <button
+                      className="modal-btn ghost"
+                      onClick={() => {
+                        const c = defaultCons(altrAddKind, menu)
+                        if (c) setAltr({ ...altr, cons: [...altr.cons, c] })
+                      }}
+                    >
+                      + conseguenza
+                    </button>
+                    <button className="modal-btn ghost" onClick={() => setAltr(null)}>
+                      Togli l'«altrimenti»
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div className="modal-actions">
           <button className="modal-btn ghost" onClick={onDone}>

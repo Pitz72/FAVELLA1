@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStudio } from './store'
 import MapView from './components/MapView'
+import PulsantiGioco from './components/PulsantiGioco'
+import logoStudio from './assets/favella-studio-logo.svg'
 import type { Outcome } from '../../shared/protocol'
 
 const BANNER: Record<Outcome, { label: string; cls: string }> = {
@@ -27,6 +29,9 @@ export default function GameWindow(): JSX.Element {
   const resetGame = useStudio((s) => s.resetGame)
   const saveGame = useStudio((s) => s.saveGame)
   const loadGame = useStudio((s) => s.loadGame)
+  const buttons = useStudio((s) => s.gameButtons)
+  const zoom = useStudio((s) => s.zoom)
+  const setZoom = useStudio((s) => s.setZoom)
   const notice = useStudio((s) => s.gameNotice)
   const clearNotice = useStudio((s) => s.clearGameNotice)
 
@@ -49,6 +54,24 @@ export default function GameWindow(): JSX.Element {
       unsub()
     }
   }, [startGameWith])
+
+  // Leggibilità: stesso zoom dell'IDE, e Ctrl +/−/0 anche qui.
+  useEffect(() => {
+    window.favella.setZoom(zoom)
+  }, [zoom])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const z = useStudio.getState().zoom
+      if (e.key === '+' || e.key === '=') setZoom(z + 0.1)
+      else if (e.key === '-') setZoom(z - 0.1)
+      else if (e.key === '0') setZoom(1.1)
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setZoom])
 
   // Auto-scroll del blocco Storia all'ultima riga.
   useEffect(() => {
@@ -83,19 +106,20 @@ export default function GameWindow(): JSX.Element {
   return (
     <div className="gamewin">
       <header className="gw-header">
-        <span className="gw-title">✦ Favella · Gioco</span>
+        <img className="gw-logo" src={logoStudio} alt="" width={30} height={30} />
+        <span className="gw-title">Favella · Prova del gioco</span>
         <span className="gw-place">{state?.room ?? '—'}</span>
         {notice && <span className="gw-notice">{notice}</span>}
         <span className="gw-spacer" />
         {state && !gameOver && <span className="gw-turn">turno {state.turn}</span>}
         <button className="gw-tool" title="Salva la partita" onClick={() => void saveGame()} disabled={busy || !state}>
-          💾 Salva
+          Salva
         </button>
         <button className="gw-tool" title="Carica una partita" onClick={() => void loadGame()} disabled={busy}>
-          📂 Carica
+          Carica
         </button>
         <button className="gw-restart-btn" onClick={() => void resetGame()} disabled={busy || !state}>
-          ↻ Riavvia
+          Ricomincia
         </button>
       </header>
 
@@ -103,16 +127,31 @@ export default function GameWindow(): JSX.Element {
         <main className="gw-main">
           <div className="gw-storia" ref={storiaRef}>
             {error && <div className="gw-error">{error}</div>}
-            {lines.map((l, i) => (
-              <div key={i} className={'gw-line' + (l.startsWith('>') ? ' echo' : '')}>
-                {l === '' ? ' ' : l}
-              </div>
-            ))}
+            {lines.map((l, i) => {
+              const titolo = /^---\s*(.+?)\s*---$/.exec(l)
+              if (titolo) {
+                return (
+                  <div key={i} className="game-room-title">
+                    {titolo[1]}
+                  </div>
+                )
+              }
+              return (
+                <div key={i} className={'gw-line' + (l.startsWith('>') ? ' echo' : '')}>
+                  {l === '' ? ' ' : l}
+                </div>
+              )
+            })}
             {busy && <div className="gw-line busy">…</div>}
             {banner && <div className={'game-banner ' + banner.cls}>{banner.label}</div>}
           </div>
 
           <div className="gw-parser">
+            {running && !gameOver && !inDialogue && buttons && buttons.modo !== 'testo' && (
+              <div className="gw-buttons">
+                <PulsantiGioco p={buttons} onComando={(c) => void sendCommand(c)} disabilitato={busy} />
+              </div>
+            )}
             {inDialogue && (
               <div className="gw-options">
                 {state!.dialogueOptions.map((opt) => (
@@ -148,7 +187,7 @@ export default function GameWindow(): JSX.Element {
                 </>
               ) : (
                 <button className="gw-replay" onClick={() => void resetGame()} disabled={busy || !state}>
-                  ▶ Rigioca
+                  Rigioca
                 </button>
               )}
             </div>

@@ -903,6 +903,94 @@ def analizza_variabili(percorso_file, sorgente=None):
     return {"ok": True, "states": states, "counters": counters, "errors": []}
 
 
+def analizza_parole(percorso_file, sorgente=None):
+    """[Favella Studio 1.0 / motore 1.4] Modello editabile delle PAROLE e dei COMANDI
+    del giocatore, con lo span sorgente di ogni frase. Ritorna:
+      {ok,
+       mode 'entrambi'|'testo'|'pulsanti', modeSpan|None,
+       verbs[{word, noObject, span}],            # '"lancia" è un comando.'
+       synonyms[{word, target, voluto, span}],   # '"ghermisci" è come prendi (voluto).'
+       errors[]}
+    Difensiva: su errore ritorna ok=False, non solleva."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "mode": "entrambi", "modeSpan": None, "verbs": [],
+                "synonyms": [], "errors": diag.get("errors", [])}
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi)
+        tree = parser.parse(testo)
+    except Exception:
+        return {"ok": False, "mode": "entrambi", "modeSpan": None, "verbs": [],
+                "synonyms": [], "errors": diag.get("errors", [])}
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1]
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp=None):
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
+
+    def _tutti_i_dati(nodo):
+        dati = [nodo.data]
+        for figlio in nodo.children:
+            if isinstance(figlio, Tree):
+                dati.extend(_tutti_i_dati(figlio))
+        return dati
+
+    mode, mode_span = "entrambi", None
+    verbs, synonyms = [], []
+    for nodo in tree.children:
+        if not isinstance(nodo, Tree):
+            continue
+        meta = getattr(nodo, "meta", None)
+        line = getattr(meta, "line", None) if meta else None
+        end = getattr(meta, "end_line", line) if meta else None
+        span = _span(line, end)
+        dati = _tutti_i_dati(nodo)
+        tok = _tokens_per_tipo(nodo)
+        if nodo.data in ("verbo_con_oggetto", "verbo_senza_oggetto"):
+            quotati = tok.get("TESTO_QUOTATO", [])
+            if quotati:
+                verbs.append({"word": _spoglia_quotato(str(quotati[0])),
+                              "noObject": nodo.data == "verbo_senza_oggetto", "span": span})
+        elif nodo.data == "def_sinonimo":
+            quotati = tok.get("TESTO_QUOTATO", [])
+            verbo = tok.get("VERBO", [])
+            if quotati:
+                if len(quotati) > 1:
+                    target = _spoglia_quotato(str(quotati[1]))
+                elif verbo:
+                    target = str(verbo[0])
+                else:
+                    continue
+                synonyms.append({"word": _spoglia_quotato(str(quotati[0])), "target": target,
+                                 "voluto": "voluto" in dati, "span": span})
+        elif nodo.data == "def_comandi":
+            if "modo_pulsanti" in dati:
+                mode = "pulsanti"
+            elif "modo_entrambi" in dati:
+                mode = "entrambi"
+            else:
+                mode = "testo"
+            mode_span = span
+    return {"ok": True, "mode": mode, "modeSpan": mode_span, "verbs": verbs,
+            "synonyms": synonyms, "errors": []}
+
+
 def analizza_dialoghi(percorso_file, sorgente=None):
     """[Favella Studio / Fase 6b] Modello editabile di NPC e DIALOGHI con lo span
     sorgente di ogni frase, per l'editor visuale dei dialoghi (round-trip
@@ -1642,6 +1730,9 @@ def serializza_frase(spec):
       state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
+      verb_decl      {word, noObject?}       → '"w" è un comando [senza oggetto].'
+      synonym        {word, target, voluto?} → '"w" è come t [(voluto)].'
+      commands_mode  {mode:'testo'|'pulsanti'|'entrambi'} → 'I comandi si scrivono…'
       npc_decl       {name}                  → 'X è un personaggio.'
       dialogue_start {name, node}            → 'Il dialogo di X comincia con "n".'
       node_line      {speaker, node, line}   → 'X al nodo "n" dice "battuta".'
@@ -1653,6 +1744,22 @@ def serializza_frase(spec):
         op = (spec or {}).get("op")
         if op == "room_def":
             return {"ok": True, "text": f"{spec['name']} è una stanza."}
+        if op == "verb_decl":
+            parola = str(spec["word"]).strip()
+            coda = " senza oggetto" if spec.get("noObject") else ""
+            return {"ok": True, "text": f"{_quota(parola)} è un comando{coda}."}
+        if op == "synonym":
+            parola = str(spec["word"]).strip()
+            bersaglio = str(spec["target"]).strip()
+            if " " in bersaglio:
+                bersaglio = _quota(bersaglio)   # un comando di più parole va fra virgolette
+            voluto = " (voluto)" if spec.get("voluto") else ""
+            return {"ok": True, "text": f"{_quota(parola)} è come {bersaglio}{voluto}."}
+        if op == "commands_mode":
+            frasi = {"testo": "I comandi si scrivono.",
+                     "pulsanti": "I comandi si scelgono con i pulsanti.",
+                     "entrambi": "I comandi si scrivono oppure si scelgono con i pulsanti."}
+            return {"ok": True, "text": frasi.get(spec.get("mode"), frasi["entrambi"])}
         if op == "object_def":
             kind = spec.get("kind", "oggetto")
             coda = _DEF_KIND_TESTO.get(kind, "una cosa")

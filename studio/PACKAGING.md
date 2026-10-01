@@ -1,104 +1,68 @@
-> ℹ️ **Build automatico**: il workflow vivo è `/.github/workflows/build-ide.yml`
-> nella radice del repository (Actions → «Build IDE — Favella Studio» → Run
-> workflow, avvio manuale). Quello in `studio/.github/` è storico e non viene
-> eseguito: GitHub legge solo i workflow nella radice.
+# Packaging — Favella Studio
 
-# Packaging — Favella Studio (Fase 7)
+> Il workflow vivo è `/.github/workflows/build-ide.yml` (nella radice del repository).
+> Quello in `studio/.github/` è storico e non viene eseguito.
 
-Due artefatti distribuibili:
+Favella Studio ha due parti da impacchettare insieme:
 
-1. **Gioco** → `📦 Esporta` nell'IDE produce **un singolo `.html`** autoportante che
-   gira nel browser via Pyodide (zero installazioni per il giocatore). Nessun build
-   necessario: è già pronto nell'IDE.
-2. **IDE** → installer di Favella Studio per **Windows (NSIS)**, **macOS (dmg + zip)** e
-   **Linux (AppImage)**. Due modi:
-   - **Automatico (consigliato):** la GitHub Action **`Build IDE (Windows / macOS / Linux)`**
-     costruisce i tre OS in parallelo e pubblica gli artefatti. Avvio **solo manuale**
-     (`workflow_dispatch`). Vedi la sezione in fondo.
-   - **Manuale locale:** i due passi qui sotto (PyInstaller + electron-builder), eseguiti
-     sull'OS che si vuole impacchettare (con la `.venv` del progetto attiva).
+1. **L'IDE** (Electron + React), costruito con electron-builder.
+2. **Il motore** (il «sidecar» Python, `favella_server.py`), **congelato** con PyInstaller in
+   un solo eseguibile, che l'installer porta dentro (`resources/engine/`). Così chi lo installa
+   non ha bisogno di Python.
 
-## Prerequisiti
-- La `.venv` del repo FAVELLA1 con `lark` installato (come per lo sviluppo del sidecar).
-- `pip install pyinstaller` nella stessa `.venv`.
-- Node + dipendenze dell'IDE installate (`cd studio && npm install`).
+Installer ufficiali: **Windows** (NSIS, `.exe`) e **Linux** (`.AppImage`). **macOS** non ha un
+installer ufficiale: ognuno si costruisce il proprio — vedi [BUILD-MACOS.md](BUILD-MACOS.md).
 
-## Passo 1 — Congelare il sidecar (PyInstaller)
-Dalla **root del repo FAVELLA1** (con la `.venv` attiva):
+## Il modo automatico (consigliato)
 
-```powershell
-pyinstaller --onefile --name favella_engine --collect-all lark `
-  --add-data "utils.py;." --add-data "strutture.py;." `
-  --add-data "libreria_azioni.py;." --add-data "compilatore.py;." `
-  --add-data "gioco.py;." favella_server.py
+GitHub → **Actions** → «Favella Studio — build e pubblicazione» → **Run workflow**.
+
+- «Pubblicare la Release?» **vuota**: costruisce Windows e Linux e lascia gli installer come
+  artefatti dell'esecuzione (build di prova).
+- **Spuntata**: in più crea la Release `studio-v<versione>` (la versione sta in
+  `studio/package.json`) con gli installer allegati. Non è mai «Latest».
+
+Prima di impacchettare, il workflow esegue la suite del motore, congela il motore e lo **prova**
+(`studio/scripts/smoke-sidecar.py`: lo lancia, compila una storia, la gioca, esporta la pagina):
+se il motore congelato non funziona, l'installer non nasce.
+
+## Il modo locale (sul computer che vuoi impacchettare)
+
+Un comando solo, dalla radice del repository:
+
+| Sistema | Comando |
+|---|---|
+| Windows | `.\studio\scripts\build-locale.ps1` |
+| Linux, macOS | `./studio/scripts/build-locale.sh` |
+
+Oppure a mano, in tre passi:
+
+```bash
+# 1. Il motore congelato → dist/favella_engine[.exe]   (dalla radice, con lark e pyinstaller)
+python -m PyInstaller --noconfirm favella_engine.spec
+
+# 2. (consigliato) prova che risponda
+python studio/scripts/smoke-sidecar.py
+
+# 3. L'app → studio/release/
+cd studio && npm ci && npm run dist:win     # oppure dist:linux | dist:mac
 ```
 
-Note:
-- Il separatore di `--add-data` è **`;`** su Windows (su Linux/Mac è `:`).
-- `--collect-all lark` è indispensabile: Lark costruisce la grammatica a runtime e
-  carica risorse proprie; senza, l'exe congelato fallisce al primo parse.
-- I 5 `.py` del motore sono inclusi come *datas* perché **`esporta_html`** li rilegge
-  da disco per incorporarli nell'HTML del gioco (in un bundle PyInstaller li trova in
-  `sys._MEIPASS`, gestito già da `compilatore.esporta_html`).
-- Output: **`dist/favella_engine.exe`** (nella root FAVELLA1).
+`npm run dist:*` si ferma con un messaggio chiaro se il passo 1 non è stato fatto
+(`scripts/verifica-motore.cjs`).
 
-## Passo 2 — Build dell'installer IDE (electron-builder)
-Da **`studio/`**:
+## Dettagli
 
-```powershell
-npm run dist
-```
-
-Questo esegue `electron-vite build` (renderer/preload/main in `out/`) e poi
-`electron-builder`, che:
-- impacchetta `out/**` + `package.json`;
-- copia **`../dist/favella_engine.exe`** in `resources/engine/favella_engine.exe`
-  (campo `build.extraResources` in `package.json`);
-- produce **`studio/release/FavellaStudio-Setup-<versione>.exe`** (target NSIS,
-  installer con scelta cartella).
-
-In produzione il main (`src/main/sidecar.ts`) lancia
-`process.resourcesPath/engine/favella_engine.exe` invece del Python della `.venv`
-(vedi `resolveCommand`), quindi il path combacia con l'`extraResources` qui sopra.
-
-## Passo 3 — Smoke test dell'installer
-1. Installa con `FavellaStudio-Setup-<versione>.exe`.
-2. Avvia: la barra di stato deve mostrare **«Motore pronto»** (il sidecar congelato
-   parte). Se resta su «starting/crashed», controlla la console (`--collect-all lark`).
-3. Apri un `.fav`, compila, **▶ Gioca**, e prova **📦 Esporta** (l'HTML del gioco usa i
-   `.py` bundlati).
-
-## Caveat noti
-- **Firma**: l'installer non è firmato → SmartScreen mostrerà un avviso. Per la
-  distribuzione pubblica aggiungere un certificato di code-signing alla config
-  `build.win` (es. `certificateFile`/`certificatePassword` o un signing via env).
-- **Dimensione**: l'exe del sidecar include Python + Lark (~15–25 MB); l'installer
-  complessivo include anche Electron (~80–120 MB). Normale per un'app Electron+Python.
-- **Aggiornare il motore nell'installer**: il sidecar è una COPIA congelata del motore
-  della repo pubblica al momento del build. Ri-esegui il Passo 1 quando il motore cambia.
-- Versione di PyInstaller: testato come ricetta standard (PyInstaller 6.x). Se l'API
-  dello spec cambia, la riga `pyinstaller …` qui sopra resta il riferimento canonico.
-
-## Build automatica multipiattaforma (GitHub Actions)
-
-Workflow: **`.github/workflows/build.yml`** nel repo PRIVATO `favella-studio`.
-
-- **Avvio SOLO MANUALE**: GitHub → *Actions* → *Build IDE (Windows / macOS / Linux)* →
-  *Run workflow* (input opzionale `ref_motore` = branch/tag del motore pubblico, default
-  `main`). Nessun trigger automatico su push/PR/tag.
-- **Cosa fa**, per ognuno di `windows-latest` / `macos-latest` / `ubuntu-latest`:
-  1. fa il checkout del motore pubblico `Pitz72/FAVELLA1` nella **root** e di questo repo in
-     **`studio/`** (ricrea il layout root + studio richiesto dal packaging);
-  2. installa `lark` + `pyinstaller` e **congela il sidecar** col separatore `--add-data`
-     giusto per OS (`;` su Windows, `:` altrove) → `dist/favella_engine[.exe]` (+`chmod +x`
-     su mac/linux);
-  3. `npm ci` in `studio/` e `npm run dist` → **electron-builder** produce l'installer
-     nativo (NSIS / dmg+zip / AppImage), con il binario del sidecar copiato negli
-     `extraResources` (nome per-OS, vedi `package.json`) e le **icone di marca** da
-     `branding/icone/`;
-  4. carica gli **artefatti** scaricabili (`favella-studio-Windows/macOS/Linux`).
-- **Build NON firmati** (`CSC_IDENTITY_AUTO_DISCOVERY=false`): SmartScreen/Gatekeeper
-  avviseranno. Per la firma aggiungere i certificati come *secrets* e la relativa config
-  `build.win`/`build.mac`.
-- Il sidecar resta una **copia congelata** del motore al `ref_motore` scelto: per aggiornarlo
-  basta rilanciare il workflow.
+- **`favella_engine.spec`** elenca i moduli del motore (compresi `strumenti_ide` ed
+  `esportazione`, nati nella 1.4.0) e include `lark` con `collect_all`: Lark costruisce la
+  grammatica a runtime e carica risorse proprie, senza non funziona. I cinque moduli del motore
+  sono inclusi anche come file, perché l'esportazione di una storia in pagina web li rilegge.
+- **electron-builder** (`studio/package.json` → `build`): copia il motore congelato in
+  `resources/engine/` (`extraResources`), usa le icone di `branding/icone/` e produce
+  `FavellaStudio-Setup-<versione>.exe` (Windows) e `FavellaStudio-<versione>.AppImage` (Linux).
+- In produzione `src/main/sidecar.ts` lancia il motore da `resources/engine/`; in sviluppo usa
+  `../.venv` e `../favella_server.py`.
+- **Niente firma**: gli installer non sono firmati (Windows può mostrare un avviso SmartScreen:
+  «Maggiori informazioni» → «Esegui comunque»).
+- Le **storie** si possono dare anche senza installare niente: «Esporta come pagina web
+  giocabile» produce un solo `.html` che gira in qualunque browser.

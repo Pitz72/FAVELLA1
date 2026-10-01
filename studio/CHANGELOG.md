@@ -1,13 +1,37 @@
 # Changelog — Favella Studio
 
-> ⚠️ **Favella Studio è un esperimento in fase primordiale**, pubblicato così com'è.
-> Vedi l'avviso in testa a [README.md](README.md).
-
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
 da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
-## [0.10.0] — 2026-10-01 — Un'interfaccia ripensata (e allineata al motore 1.4.2)
+## [1.0.0] — 2026-10-01 — La prima versione ufficiale
+
+Favella Studio esce dallo stato di esperimento. Un'interfaccia ripensata da cima a fondo,
+allineata al motore **1.4.2**, con i suoi installer per Windows e Linux.
+
+### Aggiunto (rispetto alla 0.10, mai uscita)
+- **Il marchio di Favella Studio** (il libro fra le graffe, con la fiamma ▶) nell'app: barra
+  in alto, accoglienza, finestra di gioco e icona delle finestre.
+- **Finestra di gioco a parte**, rifatta come una vera demo: pagina da libro col titolo di
+  ogni stanza, i **pulsanti-verbo** del motore, inventario, stato e mappa a lato, salva/carica
+  partita, stessa leggibilità regolabile dell'IDE. Si apre da «⋯ → Apri il gioco in una finestra a parte».
+- **Regole complete**: l'editor ora conosce **«Prima di»** e **«Dopo di»** (oltre a «Invece di»)
+  e il ramo **«altrimenti»** delle regole con condizione, in lettura e in scrittura.
+- **Parole e comandi** (Regole → terza scheda): i **verbi inventati** dall'autore, i
+  **sinonimi** (con la casella «voluto» per `(voluto)`) e **come comanda il giocatore**
+  (`I comandi si scrivono.` / `… si scelgono con i pulsanti.` / tutti e due). Nuovo RPC
+  `world.words` (sidecar 0.10.0) e frasi canoniche `verb_decl`, `synonym`, `commands_mode`.
+- **Build ufficiale per Windows e Linux** (`.github/workflows/build-ide.yml`): suite del motore,
+  motore congelato (`favella_engine.spec`) con prova di funzionamento
+  (`scripts/smoke-sidecar.py`), installer NSIS e AppImage, Release «studio-v<versione>».
+- **macOS: lo costruisci tu** (`BUILD-MACOS.md`, `scripts/build-locale.sh`): un comando, cinque minuti.
+
+### Cambiato
+- Niente più avviso «esperimento»: Favella Studio è un programma, con un numero di versione 1.0.
+- Il motore congelato non dipende più da una lista di moduli scritta a mano nel workflow:
+  c'è una ricetta (`favella_engine.spec`) e un test che la tiene allineata.
+
+### L'interfaccia (come nella 0.10)
 
 Il motore e i pannelli (editor di stanze, oggetti, dialoghi, regole, stati, mappa) sono
 gli stessi; cambia **tutto ciò che sta intorno**, perché l'interfaccia era una copia di

@@ -1,18 +1,15 @@
 # Favella Studio
 
-> ## ⚠️ ESPERIMENTO IN FASE PRIMORDIALE
->
-> Favella Studio è un **tentativo** di dare un ambiente di sviluppo visuale al linguaggio
-> FAVELLA. Non è un prodotto finito, non è supportato, non ha una data di uscita: è un
-> cantiere fermo a metà. La versione dice `0.9.x` e lo dice sul serio.
->
-> Nasceva come progetto separato e a pagamento; dal **10 agosto 2026** è pubblicato in
-> chiaro dentro il repository di FAVELLA 1, **così com'è**. Se a qualcuno interessa — per
-> usarlo, studiarlo, forkarlo, riprenderlo in mano o portarlo altrove — **è a
-> disposizione**, con licenza MIT. Aspettatevi spigoli.
->
-> Il **linguaggio** FAVELLA 1, invece, è completo, stabile e testato: quello vive nella
-> radice del repository e non c'entra con lo stato di questo IDE.
+<p align="center"><img src="branding/favella-studio-logo-256.png" width="128" alt="Favella Studio"></p>
+
+**L'ambiente di scrittura visuale per il linguaggio FAVELLA 1.** Scrivi la tua avventura in
+italiano, vedi le stanze diventare una mappa, componi dialoghi e regole senza scrivere una
+riga, e prova la storia — con i pulsanti-verbo, come la giocherebbe chi la riceve.
+
+- **Windows** e **Linux**: gli installer sono nella pagina
+  [Releases](https://github.com/Pitz72/FAVELLA1/releases) (cerca «Favella Studio»).
+- **macOS**: si costruisce in cinque minuti sul proprio Mac: [BUILD-MACOS.md](BUILD-MACOS.md).
+- Licenza **MIT**. Il progetto è concluso e stabile: vedi [CHANGELOG.md](CHANGELOG.md).
 
 Ambiente di sviluppo desktop per il linguaggio **FAVELLA** — Electron + React + Vite +
 TypeScript, con il motore FAVELLA (Python) eseguito come *sidecar* via JSON-RPC su NDJSON.
@@ -20,7 +17,7 @@ TypeScript, con il motore FAVELLA (Python) eseguito come *sidecar* via JSON-RPC 
 > Sostituisce il vecchio `favella_studio.py` (PySide6). Il motore (compilatore Lark, runtime,
 > linter, moduli, dialoghi) resta **interamente in Python**, riusato senza riscritture.
 
-## L'interfaccia (0.10)
+## L'interfaccia
 
 Cinque sezioni, nell'ordine in cui si scrive una storia: **Storia** (il testo), **Mondo**
 (stanze, oggetti, mappa), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati),

@@ -44,7 +44,8 @@ try:
     # [1.4.0 / L-7] Gli strumenti per gli editor visuali e l'esportazione hanno
     # moduli propri, fuori dal nucleo del compilatore.
     from strumenti_ide import (analizza_outline, analizza_regole, analizza_variabili,
-                               analizza_dialoghi, riordina_sorgente, serializza_frase)
+                               analizza_dialoghi, analizza_parole, riordina_sorgente,
+                               serializza_frase)
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
@@ -492,6 +493,24 @@ def rpc_world_dialogues(params):
     return analizza_dialoghi(percorso, sorgente)
 
 
+def rpc_world_words(params):
+    """[Studio 1.0 / motore 1.4] Modello editabile di PAROLE e COMANDI: verbi
+    d'autore, sinonimi (con «(voluto)») e modo dei comandi del giocatore, ciascuno
+    con lo span sorgente. Stessa risoluzione di world.outline."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    if not percorso:
+        return {"ok": False, "mode": "entrambi", "modeSpan": None, "verbs": [],
+                "synonyms": [],
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return analizza_parole(percorso, sorgente)
+
+
 def rpc_source_reorder(params):
     """[Autoformat / blocco C] Riordino canonico del sorgente di un file singolo.
     Richiede 'path' (+ 'source' per il buffer live). Ritorna {ok, text} o
@@ -544,6 +563,7 @@ _METODI = {
     "world.rules": rpc_world_rules,
     "world.variables": rpc_world_variables,
     "world.dialogues": rpc_world_dialogues,
+    "world.words": rpc_world_words,
     "source.reorder": rpc_source_reorder,
     "game.exportHtml": rpc_game_export_html,
     "outline.serialize": rpc_outline_serialize,

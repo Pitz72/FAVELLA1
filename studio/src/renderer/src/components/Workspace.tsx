@@ -10,6 +10,7 @@ import RoomEditor from './RoomEditor'
 import RulesEditor from './RulesEditor'
 import VariablesEditor from './VariablesEditor'
 import DialoguesEditor from './DialoguesEditor'
+import WordsEditor from './WordsEditor'
 import EditorPane from './EditorPane'
 
 // L'area di lavoro delle sezioni visuali (Mondo, Personaggi, Regole, Prova). Prima
@@ -71,6 +72,7 @@ export default function Workspace(): JSX.Element | null {
   const loadRules = useStudio((s) => s.loadRules)
   const loadVariables = useStudio((s) => s.loadVariables)
   const loadDialogues = useStudio((s) => s.loadDialogues)
+  const loadWords = useStudio((s) => s.loadWords)
   const gameRunning = useStudio((s) => s.gameRunning)
   const activeContent = useStudio((s) => s.openFiles.find((f) => f.path === s.activePath)?.content)
 
@@ -85,12 +87,13 @@ export default function Workspace(): JSX.Element | null {
     if (tab === 'regole') void loadRules()
     if (tab === 'stati') void loadVariables()
     if (tab === 'dialoghi') void loadDialogues()
+    if (tab === 'parole') void loadWords()
     if (tab === 'gioca' || tab === 'stato' || tab === 'debug') {
       if (latoProva === 'stato') void loadSnapshot()
       if (latoProva === 'mappa') void loadGraph()
       if (latoProva === 'debug') void loadDebug()
     }
-  }, [tab, latoProva, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables, loadDialogues])
+  }, [tab, latoProva, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables, loadDialogues, loadWords])
 
   // Auto-refresh della Mappa MENTRE SI DIGITA (debounce): la topologia segue il
   // testo senza dover riaprire la scheda. Solo in anteprima (nessuna partita in corso).
@@ -170,6 +173,7 @@ export default function Workspace(): JSX.Element | null {
               {tab === 'regole' && <RulesEditor />}
               {tab === 'stati' && <VariablesEditor />}
               {tab === 'dialoghi' && <DialoguesEditor />}
+              {tab === 'parole' && <WordsEditor />}
             </>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron'
 import { readFile } from 'fs/promises'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { Sidecar } from './sidecar'
 import { registraFileSystemIPC, scriviFileAtomico } from './fsapi'
@@ -14,6 +15,13 @@ let gameLaunch: { path: string; source?: string } | null = null
 // finché il renderer non conferma (eventuale salvataggio o scarto). Vedi createWindow.
 let allowClose = false
 
+// Icona della finestra (Linux e sviluppo; su Windows/macOS la dà il pacchetto).
+// In produzione il file può non esserci: allora si lascia quella del sistema.
+function iconaFinestra(): string | undefined {
+  const percorso = join(__dirname, '../../branding/icone/icon.png')
+  return existsSync(percorso) ? percorso : undefined
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -23,6 +31,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: '#1a1a1e',
     title: 'Favella Studio',
+    icon: iconaFinestra(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -73,6 +82,7 @@ function createGameWindow(): void {
     show: false,
     backgroundColor: '#15151a',
     title: 'Favella — Gioco',
+    icon: iconaFinestra(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

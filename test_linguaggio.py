@@ -5813,6 +5813,52 @@ def test_usare_una_cosa_su_un_altra_a_modo_proprio():
     _check("non ha alcun effetto" in out, "una coppia senza regola dice sempre che non succede nulla")
 
 
+def test_parole_e_comandi_per_lo_studio():
+    print("[Studio 1.0: analizza_parole e le frasi di verbi, sinonimi e modo dei comandi]")
+    import favella_server
+    from strumenti_ide import serializza_frase, analizza_parole
+    src = ('La casa è una stanza.\n"getta" è un comando.\n"accelera" è un comando senza oggetto.\n'
+           '"lancia" è come getta.\n"colpisci" è come attacca (voluto).\n"butta via il cibo" è come "getta il cibo".\n'
+           '"attacca" è un comando.\nI comandi si scrivono oppure si scelgono con i pulsanti.\n')
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "p.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write(src)
+        parole = analizza_parole(percorso)
+        via_rpc = favella_server.rpc_world_words({"path": percorso})
+    _check(parole["ok"] and via_rpc == parole, "analizza_parole risponde, anche via world.words")
+    _check([v["word"] for v in parole["verbs"]] == ["getta", "accelera", "attacca"]
+           and parole["verbs"][1]["noObject"] is True, "verbi d'autore, con «senza oggetto»")
+    sin = {s["word"]: s for s in parole["synonyms"]}
+    _check(sin["lancia"]["target"] == "getta" and not sin["lancia"]["voluto"], "un sinonimo semplice")
+    _check(sin["colpisci"]["target"] == "attacca" and sin["colpisci"]["voluto"], "un sinonimo «(voluto)»")
+    _check(sin["butta via il cibo"]["target"] == "getta il cibo", "un sinonimo di più parole")
+    _check(parole["mode"] == "entrambi" and parole["modeSpan"]["line"] == 8, "il modo dei comandi, con la sua riga")
+    for spec, atteso in (
+            ({"op": "verb_decl", "word": "getta"}, '"getta" è un comando.'),
+            ({"op": "verb_decl", "word": "accelera", "noObject": True}, '"accelera" è un comando senza oggetto.'),
+            ({"op": "synonym", "word": "lancia", "target": "getta"}, '"lancia" è come getta.'),
+            ({"op": "synonym", "word": "colpisci", "target": "attacca", "voluto": True}, '"colpisci" è come attacca (voluto).'),
+            ({"op": "synonym", "word": "butta via il cibo", "target": "getta il cibo"}, '"butta via il cibo" è come "getta il cibo".'),
+            ({"op": "commands_mode", "mode": "testo"}, "I comandi si scrivono."),
+            ({"op": "commands_mode", "mode": "pulsanti"}, "I comandi si scelgono con i pulsanti."),
+            ({"op": "commands_mode", "mode": "entrambi"}, "I comandi si scrivono oppure si scelgono con i pulsanti.")):
+        _check(serializza_frase(spec) == {"ok": True, "text": atteso}, f"frase: {atteso}")
+    # andata e ritorno: ciò che si scrive si rilegge uguale
+    righe = [serializza_frase(s)["text"] for s in (
+        {"op": "verb_decl", "word": "getta"}, {"op": "synonym", "word": "lancia", "target": "getta"},
+        {"op": "synonym", "word": "colpisci", "target": "attacca", "voluto": True},
+        {"op": "verb_decl", "word": "attacca"}, {"op": "commands_mode", "mode": "pulsanti"})]
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "q.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write("La casa è una stanza.\n" + "\n".join(righe) + "\n")
+        ritorno = analizza_parole(percorso)
+    _check(ritorno["ok"] and ritorno["mode"] == "pulsanti"
+           and {s["word"] for s in ritorno["synonyms"]} == {"lancia", "colpisci"},
+           "le frasi scritte dall'editor si rileggono uguali")
+
+
 def test_esci_chiede_conferma():
     print("[1.3.0 G-8: 'esci' chiede conferma prima di chiudere la partita]")
     from gioco import elabora_comando
@@ -7650,6 +7696,7 @@ def main():
         test_pulsanti_verbo_frasi_capite,
         test_pagina_esportata_con_pulsanti,
         test_sidecar_restituisce_gli_eventi,
+        test_parole_e_comandi_per_lo_studio,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
     ]

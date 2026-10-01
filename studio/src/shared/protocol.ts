@@ -344,8 +344,13 @@ export type SerializeSpec =
   | { op: 'start'; name: string }
   | { op: 'direction_decl'; a: string; b: string }
   | { op: 'opposite_decl'; a: string; b: string }
+  | { op: 'verb_decl'; word: string; noObject?: boolean }
+  | { op: 'synonym'; word: string; target: string; voluto?: boolean }
+  | { op: 'commands_mode'; mode: CommandsMode }
   | {
       op: 'rule'
+      phase?: RulePhase
+      otherwise?: { response: string; consequences: RuleConsequence[] } | null
       verb: string
       target: SerializeRuleTarget | null
       condition?: RuleCondition | null
@@ -490,8 +495,41 @@ export interface SerializeRuleTarget {
   secondaryName: string | null
 }
 
+// --- [Studio 1.0 / motore 1.4] Parole e comandi -----------------------------------
+export interface WordsVerb {
+  word: string
+  noObject: boolean
+  span: OutlineSpan | null
+}
+export interface WordsSynonym {
+  word: string
+  target: string
+  voluto: boolean
+  span: OutlineSpan | null
+}
+export type CommandsMode = 'entrambi' | 'testo' | 'pulsanti'
+export interface WorldWords {
+  ok: boolean
+  mode: CommandsMode
+  modeSpan: OutlineSpan | null
+  verbs: WordsVerb[]
+  synonyms: WordsSynonym[]
+  errors: Diagnostic[]
+}
+
+export type RulePhase = 'invece' | 'prima' | 'dopo'
+
+// [motore 1.3] Il ramo «altrimenti» di una regola con condizione.
+export interface RuleOtherwise {
+  response: string
+  consequences: RuleConsequence[]
+}
+
 export interface Rule {
   span: OutlineSpan | null
+  // [motore 1.3] 'invece' (default), 'prima' (poi l'azione prosegue), 'dopo'.
+  phase?: RulePhase
+  otherwise?: RuleOtherwise | null
   verb: string
   target: RuleTarget | null
   condition: RuleCondition | null
