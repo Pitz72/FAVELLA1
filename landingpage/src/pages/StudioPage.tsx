@@ -97,12 +97,12 @@ const SCHERMATE = [
 
 // Che cosa si può fare dai pannelli, oltre al testo.
 const NOVITA = [
+  ["Aggiornamenti automatici", "Favella Studio controlla e scarica le nuove versioni in background da GitHub Releases, con avanzamento e installazione guidata."],
+  ["Template nuovo progetto", "Ogni nuovo progetto parte con stanza iniziale e giocatore già pronti, così tutti i pannelli visuali sono subito attivi."],
   ["Personaggi da zero", "Nome, stanza e descrizione in un gesto; poi lo sposti, lo rinomini, scrivi il suo dialogo."],
   ["Rinomina, elimina", "Il nome cambia in tutte le frasi che lo citano, anche negli altri file. Prima di eliminare, vedi che cosa se ne va."],
   ["Uscite dalla mappa", "Cambi direzione o destinazione con un clic: dalla stanza o dalla mappa, è lo stesso editor."],
   ["Storie a più file", "Un file principale e i moduli che include: li crei, li includi, li togli. Provare e riordinare lavorano sulla storia intera."],
-  ["Riordina", "Stanze, oggetti, regole e dialoghi ognuno al suo posto, senza perdere un commento. Un pulsante, o Ctrl+Alt+R."],
-  ["Salva con nome", "Copia il file, o tutto il progetto in una cartella nuova. Il pulsante Salva dice quanti file sono cambiati."],
 ] as const;
 
 const SEZIONI = [
@@ -295,8 +295,8 @@ const StudioPage = () => {
                 Non serve installare Python né altro: il motore è dentro l'app.
               </p>
               <div className="mt-9 flex flex-col gap-3">
-                <Scarica href={DOWNLOAD_STUDIO_WINDOWS} os="Windows 10 / 11" nota="installer a 64 bit" ext="↓ .exe" primary />
-                <Scarica href={DOWNLOAD_STUDIO_LINUX} os="Linux" nota="qualunque distribuzione, x86_64" ext="↓ .AppImage" primary />
+                <Scarica href={DOWNLOAD_STUDIO_WINDOWS} os="Windows 10 / 11" nota="installer a 64 bit" ext="↓ .exe" primary ext_link />
+                <Scarica href={DOWNLOAD_STUDIO_LINUX} os="Linux" nota="qualunque distribuzione, x86_64" ext="↓ .AppImage" primary ext_link />
                 <Scarica href={STUDIO_MAC_URL} os="macOS — costruiscilo tu" nota="un comando, cinque minuti: l'app che ne esce è tua, e il Mac si fida" ext="istruzioni ↗" ext_link />
               </div>
               <div className="mt-9 grid gap-6 text-[14px] leading-[1.7] text-favella-text-secondary sm:grid-cols-2">

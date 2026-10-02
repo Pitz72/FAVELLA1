@@ -194,7 +194,7 @@ const LivingBook = ({ className = "" }: { className?: string }) => {
             </span>
             <span className="ml-auto font-mono text-[10.5px] uppercase tracking-[0.2em] text-favella-text-muted">si scrive così</span>
           </div>
-          <pre className="m-0 min-h-[236px] whitespace-pre-wrap px-5 pb-12 pt-5 font-mono text-[12.5px] leading-[1.9] text-favella-text-primary sm:text-[13px]">
+          <pre className="m-0 h-[280px] overflow-hidden whitespace-pre-wrap px-5 pb-12 pt-5 font-mono text-[12.5px] leading-[1.9] text-favella-text-primary sm:text-[13px]">
             {righe.map((r, i) => (
               <div key={i} className={scrivendo && i === righe.length - 1 ? "caret" : ""}>
                 {evidenzia(r)}
@@ -210,7 +210,7 @@ const LivingBook = ({ className = "" }: { className?: string }) => {
             <span className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-favella-text-muted">e si gioca così</span>
             <span className="ml-auto h-2 w-2 rounded-full bg-favella-emerald shadow-[0_0_12px_#34d399]" />
           </div>
-          <div className="min-h-[148px] space-y-2 p-5 text-[13.5px] leading-[1.7]">
+          <div className="h-[250px] overflow-hidden space-y-2 p-5 text-[13.5px] leading-[1.7]">
             {giocate.map((g, i) => (
               <div key={i}>
                 <div className="font-mono text-favella-text-muted">› {g.cmd}</div>

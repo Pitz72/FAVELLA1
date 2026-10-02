@@ -13,6 +13,8 @@ import {
   DOWNLOAD_WINDOWS,
   DOWNLOAD_MACOS,
   DOWNLOAD_LINUX,
+  DOWNLOAD_STUDIO_WINDOWS,
+  DOWNLOAD_STUDIO_LINUX,
 } from "../constants";
 
 // Download diretto di un eseguibile per sistema operativo.
@@ -80,15 +82,15 @@ const DownloadsPage = () => (
           </Spot>
         </Reveal>
 
-        {/* 2 — App desktop */}
+        {/* 2 — Motore CLI */}
         <Reveal delay={100}>
           <Spot className="flex h-full flex-col p-8">
             <Eyebrow tone="emerald" className="mb-5">
               Senza installare Python
             </Eyebrow>
-            <h2 className="mb-3 font-display text-[28px] font-bold tracking-[-0.03em] text-favella-text-primary">App desktop</h2>
+            <h2 className="mb-3 font-display text-[28px] font-bold tracking-[-0.03em] text-favella-text-primary">Motore CLI</h2>
             <p className="mb-5 font-serif text-[16px] leading-[1.65] text-favella-text-secondary">
-              L'eseguibile pronto all'uso per il tuo sistema (release {VERSION}). Niente prerequisiti: scarichi e avvii.{" "}
+              L'eseguibile standalone da riga di comando per il tuo sistema (release {VERSION}): gioca, compila ed esporta senza Python.{" "}
               <a href="#avvio" className="text-favella-emerald underline-offset-2 hover:underline">
                 Note di avvio ↓
               </a>
@@ -128,21 +130,40 @@ const DownloadsPage = () => (
     <section className="px-6 pb-12">
       <div className="mx-auto max-w-[1240px]">
         <Reveal>
-          <Spot
-            as={Link}
-            to="/studio"
-            className="group flex flex-col items-start gap-6 p-7 sm:flex-row sm:items-center md:p-9"
-          >
-            <img src="/studio/favella-studio-logo-256.png" alt="" width={84} height={84} className="rounded-[22px] shadow-[0_20px_50px_-16px_rgba(34,211,238,0.5)]" />
-            <span className="flex-1">
+          <Spot className="flex flex-col items-start gap-6 p-7 sm:flex-row sm:items-center md:p-9">
+            <img src="/studio/favella-studio-logo-256.png" alt="Favella Studio" width={84} height={84} className="rounded-[22px] shadow-[0_20px_50px_-16px_rgba(34,211,238,0.5)]" />
+            <div className="flex-1">
               <span className="block font-display text-[24px] font-bold tracking-[-0.03em] text-favella-text-primary">
-                Cerchi un ambiente per scrivere? Favella Studio {STUDIO_VERSION}
+                Cerchi l'ambiente visuale per scrivere? Favella Studio {STUDIO_VERSION}
               </span>
               <span className="mt-1.5 block font-serif text-[16px] leading-snug text-favella-text-secondary">
-                Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola. Windows e Linux; su Mac te la costruisci da te.
+                Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app desktop completa. Auto-updater integrato per Windows e Linux.
               </span>
-            </span>
-            <span className="font-display text-[15px] font-semibold text-favella-emerald transition-transform group-hover:translate-x-1">Scopri →</span>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <a
+                  href={DOWNLOAD_STUDIO_WINDOWS}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-favella-emerald/40 bg-favella-emerald/10 px-4 py-2 font-display text-[13.5px] font-semibold text-favella-emerald transition-all hover:bg-favella-emerald/20"
+                >
+                  Scarica per Windows (.exe) ↓
+                </a>
+                <a
+                  href={DOWNLOAD_STUDIO_LINUX}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-favella-cyan/30 bg-favella-cyan/10 px-4 py-2 font-display text-[13.5px] font-semibold text-favella-cyan transition-all hover:bg-favella-cyan/20"
+                >
+                  Scarica per Linux (.AppImage) ↓
+                </a>
+                <Link
+                  to="/studio"
+                  className="inline-flex items-center gap-1.5 font-display text-[14px] font-semibold text-favella-text-secondary transition-colors hover:text-favella-text-primary"
+                >
+                  Scopri tutte le funzioni di Studio →
+                </Link>
+              </div>
+            </div>
           </Spot>
         </Reveal>
       </div>

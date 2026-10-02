@@ -117,10 +117,22 @@ type BtnProps = {
   variant?: "primary" | "ghost" | "amber";
   className?: string;
   size?: "md" | "lg";
+  target?: string;
+  rel?: string;
 };
 
 /** Bottone (o link) con tre varianti: pieno col gradiente, trasparente, ambra. */
-export const Btn = ({ children, to, href, onClick, variant = "primary", className = "", size = "md" }: BtnProps) => {
+export const Btn = ({
+  children,
+  to,
+  href,
+  onClick,
+  variant = "primary",
+  className = "",
+  size = "md",
+  target,
+  rel,
+}: BtnProps) => {
   const pad = size === "lg" ? "px-8 py-4 text-[16px]" : "px-6 py-3.5 text-[15px]";
   const base = `btn-shine group relative inline-flex items-center justify-center gap-2.5 rounded-full font-display font-bold transition-all duration-300 ${pad}`;
   const look = {
@@ -133,12 +145,17 @@ export const Btn = ({ children, to, href, onClick, variant = "primary", classNam
   }[variant];
   const cls = `${base} ${look} ${className}`;
   if (to) return <Link to={to} className={cls}>{children}</Link>;
-  if (href)
+  if (href) {
+    const isAnchor = href.startsWith("#");
+    const isExternal = /^https?:\/\//.test(href);
+    const computedTarget = target ?? (isAnchor ? undefined : isExternal ? "_blank" : undefined);
+    const computedRel = rel ?? (computedTarget === "_blank" ? "noopener noreferrer" : undefined);
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
+      <a href={href} target={computedTarget} rel={computedRel} className={cls}>
         {children}
       </a>
     );
+  }
   return (
     <button onClick={onClick} className={cls}>
       {children}

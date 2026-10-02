@@ -38,7 +38,10 @@ export const SITE_URL = "https://favella.eu";
 // · 2.8.0 = redesign totale del sito («Nottetempo»: stessa palette, linguaggio visivo
 //   nuovo), banner del manuale cartaceo ridisegnato, Favella Studio 1.1, link, numeri e
 //   informazioni controllati uno per uno.
-export const SITE_VERSION = "2.8.0";
+// · 2.8.1 = fix layout shift e altezze stabili su LivingBook in Home, navigazione ad ancore
+//   interne senza nuova scheda in Btn (StudioPage), download diretti di Favella Studio 1.1.3
+//   e distinzione netta tra motore CLI e IDE desktop su /download, link e note allineati.
+export const SITE_VERSION = "2.8.1";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -182,8 +185,8 @@ export const NEWS: NewsItem[] = [
     tag: "Studio",
     date: "Ottobre 2026",
     emphasis: "primary",
-    title: "Favella Studio 1.1: tutto si crea e si cambia dai pannelli",
-    body: "Dopo i primi giorni d'uso sono arrivate le richieste giuste, e la 1.1 le fa tutte. I personaggi ora si creano da zero, con nome, stanza e descrizione, senza passare dagli oggetti. Stanze, oggetti e personaggi si rinominano (il nome cambia in tutte le frasi che lo citano, anche negli altri file, e le preposizioni si adattano: «nella cucina» diventa «nel tinello») e si eliminano, dopo aver visto che cosa se ne va con loro. Le uscite delle stanze si cambiano sia dal pannello sia dalla mappa: un clic su una freccia o su una stanza, e cambi direzione e destinazione; il ritorno si riscrive da solo. Le storie a più file sono finalmente chiare: un pannello mostra il file principale e i moduli, «Nuovo file» ne crea uno e lo include, e provare, esportare e riordinare lavorano sempre sulla storia intera, anche sui testi non ancora salvati. Riordina, il comando che rimette stanze, oggetti, regole e dialoghi ognuno al suo posto senza perdere un commento, è ora un pulsante in barra e funziona su più file. Ci sono «Salva con nome» e «Salva il progetto come…», e la barra dei menu dell'app, che non serviva a niente, è sparita.",
+    title: "Favella Studio 1.1.3: auto-updater e nuovi progetti",
+    body: "L'ambiente di scrittura visuale per FAVELLA 1 si arricchisce con la versione 1.1.3: aggiornamento automatico integrato direttamente da GitHub Releases con download e avanzamento a video, template di partenza (stanza e giocatore pronti) per abilitare subito tutti i pannelli visivi anche su progetti nuovi, e ripristino dell'apertura completa a cartella per le storie a più file.",
     cta: { label: "Scopri Favella Studio", href: "/studio" },
   },
   {
