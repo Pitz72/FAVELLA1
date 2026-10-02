@@ -701,3 +701,34 @@ export interface OpenedProject {
   root: string
   tree: FileNode[]
 }
+
+// --- Auto-updater (GitHub Releases) ---
+
+export type UpdaterStatus =
+  | { type: 'idle' }
+  | { type: 'checking'; manual?: boolean }
+  | { type: 'not-available'; manual?: boolean; currentVersion: string }
+  | {
+      type: 'available'
+      currentVersion: string
+      version: string
+      releaseNotes: string
+      releaseUrl: string
+      assetName?: string
+      assetSize?: number
+      canAutoInstall: boolean
+    }
+  | {
+      type: 'downloading'
+      version: string
+      percent: number
+      transferred: number
+      total: number
+    }
+  | {
+      type: 'ready'
+      version: string
+      installerPath?: string
+      canAutoInstall: boolean
+    }
+  | { type: 'error'; message: string; manual?: boolean }

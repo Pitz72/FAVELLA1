@@ -21,7 +21,8 @@ import type {
   WorldWords,
   StoryReorderResult,
   RenameResult,
-  ReferencesResult
+  ReferencesResult,
+  UpdaterStatus
 } from '../shared/protocol'
 
 /** I buffer non salvati degli altri file della storia (percorso → testo). */
@@ -229,10 +230,6 @@ const api = {
   openProject(): Promise<OpenedProject | null> {
     return ipcRenderer.invoke('project:open')
   },
-  /** Apre una storia (.fav): la sua cartella diventa il progetto. */
-  openStoryFile(): Promise<(OpenedProject & { openPath: string }) | null> {
-    return ipcRenderer.invoke('project:openFile')
-  },
   /** Crea un nuovo progetto: cartella + nome scelti dall'utente, .fav vuoto, e lo apre. */
   newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
     return ipcRenderer.invoke('project:new')
@@ -265,6 +262,34 @@ const api = {
   /** Scrive il contenuto testuale di un file. */
   writeFile(path: string, content: string): Promise<void> {
     return ipcRenderer.invoke('fs:write', path, content)
+  },
+
+  // --- Auto-updater ---
+  /** Controlla se sono disponibili aggiornamenti su GitHub Releases. */
+  checkForUpdates(manual = false): Promise<void> {
+    return ipcRenderer.invoke('updater:check', manual)
+  },
+  /** Avvia il download dell'aggiornamento. */
+  downloadUpdate(): Promise<void> {
+    return ipcRenderer.invoke('updater:download')
+  },
+  /** Riavvia l'applicazione e avvia l'installazione. */
+  installUpdate(): Promise<void> {
+    return ipcRenderer.invoke('updater:install')
+  },
+  /** Restituisce lo stato corrente dell'updater. */
+  getUpdaterStatus(): Promise<UpdaterStatus> {
+    return ipcRenderer.invoke('updater:getStatus')
+  },
+  /** Ascolta i cambi di stato dell'updater (available, downloading, ready, ecc.). */
+  onUpdaterStatus(callback: (status: UpdaterStatus) => void): () => void {
+    const handler = (_e: Electron.IpcRendererEvent, status: UpdaterStatus): void => {
+      callback(status)
+    }
+    ipcRenderer.on('updater:status', handler)
+    return () => {
+      ipcRenderer.removeListener('updater:status', handler)
+    }
   }
 }
 

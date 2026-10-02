@@ -4,6 +4,7 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import { Sidecar } from './sidecar'
 import { registraFileSystemIPC, scriviFileAtomico } from './fsapi'
+import { initUpdater } from './updater'
 import type { EngineEvent, Savegame } from '../shared/protocol'
 
 let mainWindow: BrowserWindow | null = null
@@ -235,6 +236,7 @@ app.whenReady().then(() => {
 
   startSidecar()
   createWindow()
+  initUpdater(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

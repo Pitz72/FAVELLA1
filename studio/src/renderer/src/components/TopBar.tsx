@@ -126,6 +126,8 @@ export default function TopBar(): JSX.Element {
   const setZoom = useStudio((s) => s.setZoom)
   const startGame = useStudio((s) => s.startGame)
   const busy = useStudio((s) => s.gameBusy)
+  const updaterStatus = useStudio((s) => s.updaterStatus)
+  const setUpdateModalOpen = useStudio((s) => s.setUpdateModalOpen)
   const [menu, setMenu] = useState(false)
   const refMenu = useChiudiFuori(menu, () => setMenu(false))
   const [salvaMenu, setSalvaMenu] = useState(false)
@@ -234,6 +236,36 @@ export default function TopBar(): JSX.Element {
         </>
       )}
 
+      {updaterStatus.type === 'available' && (
+        <button
+          className="btn-update-pill"
+          onClick={() => setUpdateModalOpen(true)}
+          title={`Nuova versione ${updaterStatus.version} disponibile`}
+        >
+          <span className="update-dot" />
+          Aggiornamento v{updaterStatus.version}
+        </button>
+      )}
+      {updaterStatus.type === 'downloading' && (
+        <button
+          className="btn-update-pill downloading"
+          onClick={() => setUpdateModalOpen(true)}
+          title={`Scaricamento: ${updaterStatus.percent}%`}
+        >
+          Download {updaterStatus.percent}%
+        </button>
+      )}
+      {updaterStatus.type === 'ready' && (
+        <button
+          className="btn-update-pill ready"
+          onClick={() => setUpdateModalOpen(true)}
+          title="Aggiornamento pronto: clicca per riavviare"
+        >
+          <span className="update-dot ready" />
+          Riavvia per aggiornare
+        </button>
+      )}
+
       <div className="menu-wrap" ref={refMenu}>
         <button
           className="btn-icon"
@@ -249,8 +281,7 @@ export default function TopBar(): JSX.Element {
           <div className="menu menu-right" role="menu">
             <div className="menu-title">Progetto</div>
             {voce('Nuovo progetto…', () => void newProject())}
-            {voce('Apri una storia (.fav)…', () => void st().openStory(), { scorciatoia: 'Ctrl+O' })}
-            {voce('Apri una cartella…', () => void openProject())}
+            {voce('Apri una cartella…', () => void openProject(), { scorciatoia: 'Ctrl+O' })}
             {projectRoot && (
               <>
                 {voce('Salva con nome…', () => void st().salvaConNome(), {
@@ -282,6 +313,11 @@ export default function TopBar(): JSX.Element {
                 Reimposta
               </button>
             </div>
+            <div className="menu-title">Applicazione</div>
+            {voce('Controlla aggiornamenti…', () => {
+              setUpdateModalOpen(true)
+              void window.favella.checkForUpdates(true)
+            })}
           </div>
         )}
       </div>

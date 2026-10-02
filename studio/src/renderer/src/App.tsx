@@ -12,6 +12,7 @@ import Workspace from './components/Workspace'
 import { Benvenuto, ScegliStoria } from './components/Accoglienza'
 import { sezioneDi, SEZIONI } from './sezioni'
 import UnsavedDialog from './components/UnsavedDialog'
+import UpdateDialog from './components/UpdateDialog'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
 interface Toast {
@@ -26,13 +27,13 @@ export default function App(): JSX.Element {
   const salvaConNome = useStudio((s) => s.salvaConNome)
   const riordinaStoria = useStudio((s) => s.riordinaStoria)
   const openProject = useStudio((s) => s.openProject)
-  const openStory = useStudio((s) => s.openStory)
   const compileActive = useStudio((s) => s.compileActive)
   const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
   // Sale a ogni cambio del testo (digitato o fatto da un pannello, in qualunque file della storia).
   const revisione = useStudio((s) => s.revisione)
   const sidecarStatus = useStudio((s) => s.sidecarStatus)
+  const setUpdaterStatus = useStudio((s) => s.setUpdaterStatus)
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const pushToast = useCallback((text: string) => {
@@ -92,6 +93,20 @@ export default function App(): JSX.Element {
     void loadLexicon()
     return unsub
   }, [loadLexicon, pushToast, setSidecarStatus])
+
+  // Auto-updater: ascolta gli aggiornamenti in background e all'avvio
+  useEffect(() => {
+    const unsub = window.favella.onUpdaterStatus((status) => {
+      setUpdaterStatus(status)
+      if (status.type === 'available') {
+        pushToast(`È disponibile Favella Studio v${status.version}`)
+      } else if (status.type === 'ready') {
+        pushToast(`Favella Studio v${status.version} pronto per l'installazione`)
+      }
+    })
+    void window.favella.getUpdaterStatus().then(setUpdaterStatus)
+    return unsub
+  }, [setUpdaterStatus, pushToast])
 
   // Auto-compile (Fase 2): compila la storia (il file principale coi suoi moduli, sui
   // buffer aperti) all'apertura, a ogni modifica (debounced) e quando il motore diventa
@@ -154,7 +169,7 @@ export default function App(): JSX.Element {
       }
       if (ctrl && e.key.toLowerCase() === 'o') {
         e.preventDefault()
-        void openStory()
+        void openProject()
       }
       if (e.key === 'F5') {
         e.preventDefault()
@@ -181,7 +196,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveAll, salvaConNome, riordinaStoria, openStory, startGame, setSezione, setZoom])
+  }, [saveAll, salvaConNome, riordinaStoria, openProject, startGame, setSezione, setZoom])
 
   const projectRoot = useStudio((s) => s.projectRoot)
   const sezione = sezioneDi(rightTab)
@@ -252,6 +267,7 @@ export default function App(): JSX.Element {
       </div>
 
       <UnsavedDialog />
+      <UpdateDialog />
     </div>
   )
 }

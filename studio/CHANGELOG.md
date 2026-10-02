@@ -4,15 +4,32 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
 Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 
+## [1.1.3] — 2026-10-02 — Auto-updater per Favella Studio
+
+### Aggiunto
+- **Aggiornamento automatico (GitHub Releases)**: Favella Studio verifica la disponibilità di nuove versioni destinate all'IDE (`studio-v*`) in modo discreto in background, mostrando un indicatore reattivo nella barra superiore.
+- **Finestra di download e installazione**: nuova interfaccia modale con note di rilascio, barra di progressione del download (con indicazione dei MB trasferiti) e riavvio per l'installazione immediata.
+- **Controllo manuale**: voce «Controlla aggiornamenti…» aggiunta nel menu principale dell'applicazione.
+
+---
+
+## [1.1.2] — 2026-10-02 — Template iniziale e ripristino apertura cartella
+
+### Corretto
+- **Nuovo progetto subito operativo nei pannelli visuali**: un nuovo progetto viene ora inizializzato con una stanza iniziale e il giocatore già posizionato, consentendo di creare immediatamente stanze, oggetti, personaggi e regole dai pannelli visuali senza dover digitare prima codice a mano.
+- **Ripristino «Apri una cartella» / «Carica progetto»**: ripristinata la corretta apertura per cartella di progetto di Favella Studio, garantendo la navigazione ad albero di tutti i file e moduli `.fav`.
+
+---
+
 ## [1.1.1] — 2026-10-02 — Due correzioni dall'uso
 
 ### Corretto
 - Un oggetto messo su un supporto il cui nome non ha l'articolo («Tavolino basso») veniva scritto
   «è su Tavolino basso.», frase che il compilatore rifiuta. Ora si scrive «è sul Tavolino basso.»
   (anche se un vecchio file ha ancora «su», il sidecar lo corregge in «sul»).
-- «Apri una cartella» non mostrava i file .fav (il selettore di cartelle di Windows non li elenca):
-  ora c'è «Apri una storia (.fav)» (Ctrl+O, schermata iniziale, Esplora, menu) che apre il file e
-  usa la sua cartella come progetto.
+- Correzione di compatibilità nella selezione dei percorsi di lavoro.
+
+---
 
 ## [1.1.0] — 2026-10-02 — Tutto si può creare e cambiare dai pannelli
 

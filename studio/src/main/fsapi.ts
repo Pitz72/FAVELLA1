@@ -83,31 +83,26 @@ export function registraFileSystemIPC(): void {
     return { root, tree: await costruisciAlbero(root) }
   })
 
-  // Apri una storia: il selettore di CARTELLE non mostra i file, quindi qui si sceglie
-  // direttamente un .fav; la sua cartella diventa il progetto e il file si apre.
-  ipcMain.handle(
-    'project:openFile',
-    async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
-      const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
-      const res = await dialog.showOpenDialog(win!, {
-        title: 'Apri una storia FAVELLA',
-        properties: ['openFile'],
-        filters: [
-          { name: 'Storia FAVELLA', extensions: ['fav'] },
-          { name: 'Tutti i file', extensions: ['*'] }
-        ]
-      })
-      if (res.canceled || res.filePaths.length === 0) return null
-      const file = res.filePaths[0]
-      const root = dirname(file)
-      projectRoot = root
-      return { root, tree: await costruisciAlbero(root), openPath: file }
-    }
-  )
+
+/**
+ * Modello iniziale per una nuova storia FAVELLA. Crea una prima stanza
+ * valida con descrizione, così il mondo è subito compilabile e tutti i pannelli
+ * visuali (Mondo, Personaggi, Regole, Mappa, Prova) sono immediatamente operativi.
+ */
+function generaTemplateStoria(percorsoFile: string): string {
+  const base = basename(percorsoFile).replace(/\.fav$/i, '').replace(/[-_]/g, ' ')
+  const titolo = base ? base.charAt(0).toUpperCase() + base.slice(1) : 'La mia storia'
+  return `# ${titolo}
+# Scrivi qui la tua storia o usa i pannelli visuali (Mondo, Personaggi, Regole).
+
+La piazza è una stanza.
+La descrizione della piazza è "Ti trovi al centro di una grande piazza silenziosa.".
+`
+}
 
   // Nuovo progetto: l'utente sceglie cartella e nome (dialogo «Salva con nome»,
-  // che permette anche di creare una cartella nuova), si crea un .fav VUOTO da
-  // riempire da zero e si apre la sua cartella come progetto.
+  // che permette anche di creare una cartella nuova), si crea un .fav col modello
+  // di partenza e si apre la sua cartella come progetto.
   ipcMain.handle(
     'project:new',
     async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
@@ -120,11 +115,11 @@ export function registraFileSystemIPC(): void {
       if (res.canceled || !res.filePath) return null
       let file = res.filePath
       if (!file.toLowerCase().endsWith('.fav')) file += '.fav'
-      // Crea il file VUOTO solo se non esiste già (non sovrascrivere nulla).
+      // Crea il file col modello iniziale solo se non esiste già (non sovrascrivere nulla).
       try {
         await stat(file)
       } catch {
-        await writeFile(file, '', 'utf-8')
+        await scriviFileAtomico(file, generaTemplateStoria(file))
       }
       const root = dirname(file)
       projectRoot = root

@@ -16,7 +16,6 @@ function fileFav(nodi: FileNode[]): FileNode[] {
 /** Prima schermata: nessun progetto aperto. */
 export function Benvenuto(): JSX.Element {
   const openProject = useStudio((s) => s.openProject)
-  const openStory = useStudio((s) => s.openStory)
   const newProject = useStudio((s) => s.newProject)
   return (
     <div className="accoglienza">
@@ -31,10 +30,6 @@ export function Benvenuto(): JSX.Element {
           <button className="btn-grande primario" onClick={() => void newProject()}>
             <IconaPiu size={18} />
             Nuova storia
-          </button>
-          <button className="btn-grande" onClick={() => void openStory()}>
-            <IconaCartella size={18} />
-            Apri una storia (.fav)
           </button>
           <button className="btn-grande" onClick={() => void openProject()}>
             <IconaCartella size={18} />

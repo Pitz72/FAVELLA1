@@ -18,7 +18,8 @@ import type {
   WorldWords,
   Pulsantiera,
   OutlineExit,
-  ReferencesResult
+  ReferencesResult,
+  UpdaterStatus
 } from '../../shared/protocol'
 import { FAVELLA_LANG_ID } from './monaco/favella-language'
 import { SEZIONI, type Sezione } from './sezioni'
@@ -169,10 +170,14 @@ interface StudioState {
   zoom: number
   esploraAperto: boolean
   problemiAperti: boolean
+  // Auto-updater
+  updaterStatus: UpdaterStatus
+  updateModalOpen: boolean
 
   // Azioni
+  setUpdaterStatus: (s: UpdaterStatus) => void
+  setUpdateModalOpen: (v: boolean) => void
   openProject: () => Promise<void>
-  openStory: () => Promise<void>
   newProject: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (node: FileNode) => Promise<void>
@@ -496,6 +501,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   zoom: leggiPref('zoom', 1.1, isZoom),
   esploraAperto: leggiPref('esploraAperto', true, isBool),
   problemiAperti: leggiPref('problemiAperti', false, isBool),
+  updaterStatus: { type: 'idle' },
+  updateModalOpen: false,
 
   openProject: async () => {
     const res = await window.favella.openProject()
@@ -504,14 +511,6 @@ export const useStudio = create<StudioState>((set, get) => ({
     void get().aggiornaInclusioni()
   },
 
-  openStory: async () => {
-    const res = await window.favella.openStoryFile()
-    if (!res) return
-    set({ projectRoot: res.root, tree: res.tree, destinazioneNuovi: null, inclusioniDisco: {} })
-    void get().aggiornaInclusioni()
-    const name = res.openPath.split(/[\/]/).pop() ?? 'storia.fav'
-    await get().openFile({ name, path: res.openPath, type: 'file' })
-  },
 
   newProject: async () => {
     const res = await window.favella.newProject()
@@ -694,6 +693,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     salvaPref('problemiAperti', v)
     set({ problemiAperti: v })
   },
+  setUpdaterStatus: (updaterStatus) => set({ updaterStatus }),
+  setUpdateModalOpen: (updateModalOpen) => set({ updateModalOpen }),
 
   // --- Gioco (Fase 3) -------------------------------------------------------
 

@@ -175,6 +175,63 @@ kbd {
   border-color: var(--border);
 }
 
+.btn-update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-update-pill:hover {
+  background: var(--accent);
+  color: #0c1116;
+}
+
+.btn-update-pill.downloading {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--fav);
+  border-color: var(--fav);
+}
+
+.btn-update-pill.downloading:hover {
+  background: var(--fav);
+  color: #1a1100;
+}
+
+.btn-update-pill.ready {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.btn-update-pill.ready:hover {
+  background: var(--ok);
+  color: #04251a;
+}
+
+.update-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.update-dot.ready {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
 /* --- Menu a comparsa ---------------------------------------------------- */
 .menu-wrap {
   position: relative;
@@ -1808,4 +1865,94 @@ input[type='radio'] {
 .modal-btn,
 .objed-add button {
   white-space: nowrap;
+}
+
+/* --- Modal Aggiornamento Favella Studio --- */
+.update-modal {
+  width: 500px;
+  max-width: calc(100vw - 48px);
+}
+
+.update-version-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.update-version-tag {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.update-current-tag {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.update-notes-container {
+  margin: 12px 0 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.update-notes-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.update-notes-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.update-progress-wrap {
+  margin: 16px 0 8px;
+}
+
+.update-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.update-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--ok));
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.update-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.update-progress-pct {
+  font-weight: 600;
+  color: var(--accent);
+  font-family: var(--font-code);
+}
+
+.update-error-msg {
+  color: #f07178;
 }
