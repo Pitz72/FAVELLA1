@@ -48,7 +48,8 @@ export const SITE_URL = "https://favella.eu";
 //   all'uso in PDF: download sulla pagina /studio, notizie.
 // · 2.8.5 = manuale, terza edizione cartacea (96 pagine, 12,99 €) inviata ad Amazon KDP:
 //   banner e notizia «in uscita». Da fare quando Amazon la pubblica: vedi PAPERBACK.
-export const SITE_VERSION = "2.8.5";
+// · 2.8.6 = Favella Studio 1.2.2 (la scritta del demone dice la verità; guida rivista).
+export const SITE_VERSION = "2.8.6";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -72,7 +73,7 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.2.1";
+export const STUDIO_VERSION = "1.2.2";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -193,6 +194,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Favella Studio 1.2.2: una scritta più onesta, e la guida rivista",
+    body: "Una correzione piccola. Nel pannello dei demoni, la scelta «appena la condizione diventa vera» diceva «(una volta)», ma il motore fa scattare il demone a ogni passaggio da falsa a vera: ora la scritta dice «(ogni volta che lo diventa)». Il comportamento non cambia, cambia ciò che l'app ne dice. Anche la guida all'uso è stata riletta contro l'app, riga per riga, e ritoccata in tre punti.",
+    cta: { label: "Scopri Favella Studio", href: "/studio" },
+  },
   {
     tag: "Manuale",
     date: "Ottobre 2026",
