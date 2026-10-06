@@ -4,6 +4,29 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.4.4] - 2026-10-06
+### 🎯 Gli errori indicano la riga giusta
+Trovato scrivendo la guida di Favella Studio. Nessuna frase nuova, grammatica e
+comportamento del gioco invariati: cambia solo **dove** il motore dice che sta un
+errore.
+
+Alcuni errori (per esempio una proprietà data a una stanza, `La soffitta è sopra.`)
+nascono dopo l'analisi della frase e non portano la riga con sé: il motore la cerca
+nel testo, partendo dai nomi citati nel messaggio. Prima vinceva la **prima riga che
+conteneva il primo nome, anche dentro un'altra parola o in un commento**:
+«Proprietà 'sopra' per oggetto inesistente: 'La soffitta'» finiva sul «**Sopra**bito di
+Adele» della descrizione dell'ingresso, centinaia di righe prima. Nel terminale si
+leggeva la riga sbagliata; in Favella Studio il clic sul problema portava nel posto
+sbagliato.
+
+Ora i nomi contano solo come **parole intere**, i commenti non contano, vince la riga
+che cita **più nomi** del messaggio e, a parità, quella che **comincia** con uno di loro
+(la frase sbagliata comincia col suo soggetto).
+
+**Test.** `test_linguaggio.py`: 1 test nuovo (1180 asserzioni); collaudo 50.
+
+---
+
 ## [1.4.3] - 2026-10-06
 ### 🔍 Tre difetti trovati da una verifica completa del motore
 Una verifica a tappeto della 1.4.2: tutte le suite, un fuzz di 1520 comandi (ogni

@@ -95,7 +95,7 @@ export function DialogueNodeForm({
             <label>Chi parla (personaggio)</label>
             {menu.objects.length === 0 ? (
               <span className="nota-riquadro">
-                crea prima un oggetto/personaggio (scheda 📦 Oggetti)
+                crea prima un personaggio (sezione «Personaggi»)
               </span>
             ) : inModifica ? (
               <input type="text" value={speakerName} disabled />

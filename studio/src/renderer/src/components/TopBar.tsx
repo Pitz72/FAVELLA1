@@ -3,6 +3,7 @@ import type { FileNode } from '../../../shared/protocol'
 import { useStudio, infoStoria } from '../store'
 import logoStudio from '../assets/favella-studio-logo.svg'
 import {
+  IconaAiuto,
   IconaAnnulla,
   IconaCartella,
   IconaChevron,
@@ -13,6 +14,7 @@ import {
   IconaPlay,
   IconaRiordina,
   IconaSalva,
+  IconaStanza,
   IconaTesto
 } from './Icone'
 import { stessoFile } from '../utils/progetto'
@@ -116,6 +118,8 @@ export default function TopBar(): JSX.Element {
   const openProject = useStudio((s) => s.openProject)
   const openStory = useStudio((s) => s.openStory)
   const newProject = useStudio((s) => s.newProject)
+  const openExample = useStudio((s) => s.openExample)
+  const openGuide = useStudio((s) => s.openGuide)
   const zoom = useStudio((s) => s.zoom)
   const setZoom = useStudio((s) => s.setZoom)
   const aspetto = useStudio((s) => s.aspetto)
@@ -280,6 +284,9 @@ export default function TopBar(): JSX.Element {
             <VoceMenu icona={<IconaCartella />} onClick={fai(() => void openProject())} scorciatoia="Ctrl+Maiusc+O">
               Apri una cartella…
             </VoceMenu>
+            <VoceMenu icona={<IconaStanza />} onClick={fai(() => void openExample())}>
+              Apri la storia d’esempio
+            </VoceMenu>
             {projectRoot && (
               <>
                 <VoceMenu onClick={fai(() => void st().salvaConNome())} disabled={!isFav} scorciatoia="Ctrl+Maiusc+S">
@@ -330,6 +337,9 @@ export default function TopBar(): JSX.Element {
             </VoceMenu>
 
             <div className="menu-titolo">Applicazione</div>
+            <VoceMenu icona={<IconaAiuto />} onClick={fai(() => void openGuide())}>
+              Guida di Favella Studio (PDF)
+            </VoceMenu>
             <VoceMenu
               onClick={fai(() => {
                 setUpdateModalOpen(true)

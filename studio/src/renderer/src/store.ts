@@ -225,6 +225,10 @@ interface StudioState {
   openProject: () => Promise<void>
   openStory: () => Promise<void>
   newProject: () => Promise<void>
+  /** [1.2.1] La storia d'esempio della guida. */
+  openExample: () => Promise<void>
+  /** [1.2.1] La guida in PDF. */
+  openGuide: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (node: FileNode) => Promise<void>
   closeFile: (path: string) => void
@@ -811,6 +815,26 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().aggiornaInclusioni()
     // Apre subito la storia appena creata.
     await get().openFile({ name: nomeFile(res.openPath), path: res.openPath, type: 'file' })
+  },
+
+  openExample: async () => {
+    if (!(await get().guardiaNonSalvati())) return
+    let res
+    try {
+      res = await window.favella.openExample()
+    } catch (e) {
+      get().avvisa('Non riesco ad aprire la storia d’esempio: ' + messaggioErrore(e), { tipo: 'errore' })
+      return
+    }
+    if (!res) return
+    set({ ...PROGETTO_VUOTO, projectRoot: res.root, tree: res.tree })
+    await get().aggiornaInclusioni()
+    await get().openFile({ name: nomeFile(res.openPath), path: res.openPath, type: 'file' })
+  },
+
+  openGuide: async () => {
+    const r = await window.favella.openGuide()
+    if (!r.ok) get().avvisa(r.message ?? 'Non riesco ad aprire la guida.', { tipo: 'errore' })
   },
 
   refreshTree: async () => {

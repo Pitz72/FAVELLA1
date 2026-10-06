@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.4.3)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.4.4)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 #
 # [1.4.0 / L-7] Questo è il NUCLEO del compilatore: parole riservate, scanner
@@ -3758,18 +3758,34 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
 
     def _risolvi_semantica(messaggio):
         """Best-effort: estrai i nomi citati nel messaggio, cercali nel sorgente
-        espanso, mappa la prima occorrenza a (file, riga, imprecise=False). Se
-        nulla combacia: (file radice, 1, imprecise=True)."""
+        espanso e mappa a (file, riga, imprecise=False) la PRIMA riga che ne cita
+        di più. Se nulla combacia: (file radice, 1, imprecise=True).
+        [1.4.4] Prima vinceva la prima riga che conteneva il primo nome, anche
+        dentro un'altra parola e nei commenti: «Proprietà 'sopra' per oggetto
+        inesistente: 'La soffitta'» finiva sul «Soprabito» di una descrizione.
+        Ora i nomi valgono solo come parole intere, i commenti non contano, una
+        riga che li cita tutti batte una che ne cita uno e, a pari nomi, vince
+        quella che COMINCIA con uno di loro (la frase sbagliata comincia col
+        suo soggetto: «La soffitta è sopra.», non «La camera collega sopra a la
+        soffitta.»)."""
         citati = re.findall(r"'([^']+)'|«([^»]+)»|\"([^\"]+)\"", messaggio)
-        nomi = [n for tup in citati for n in tup if n]
-        righe = testo.split("\n")
-        for nome in nomi:
-            ago = nome.lower()
-            for i, linea in enumerate(righe, 1):
-                if ago in linea.lower():
-                    f_o, r_o = _posizione_da_linea_espansa(i)
-                    return f_o, r_o, False
-        return percorso_file, 1, True
+        nomi = list(dict.fromkeys(n for tup in citati for n in tup if n))
+        modelli = [re.compile(r"(?<!\w)" + re.escape(n.lower()) + r"(?!\w)") for n in nomi]
+        migliore, punti_migliori = None, 0
+        for i, linea in enumerate(testo.split("\n"), 1):
+            minuscola = linea.strip().lower()
+            if minuscola.startswith("#"):
+                continue
+            trovati = [m.search(minuscola) for m in modelli]
+            punti = 2 * sum(1 for t in trovati if t)
+            if any(t and t.start() == 0 for t in trovati):
+                punti += 1
+            if punti > punti_migliori:
+                migliore, punti_migliori = i, punti
+        if migliore is None:
+            return percorso_file, 1, True
+        f_o, r_o = _posizione_da_linea_espansa(migliore)
+        return f_o, r_o, False
 
     try:
         # PASSATA 0 — espansione Includi (da disco o da buffer in memoria).

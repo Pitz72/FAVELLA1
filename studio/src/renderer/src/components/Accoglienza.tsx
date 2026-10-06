@@ -3,7 +3,7 @@ import type { FileNode } from '../../../shared/protocol'
 import { useStudio } from '../store'
 import logoStudio from '../assets/favella-studio-logo.svg'
 import { chiave } from '../utils/progetto'
-import { IconaCartella, IconaPiu, IconaTesto } from './Icone'
+import { IconaAiuto, IconaCartella, IconaPiu, IconaStanza, IconaTesto } from './Icone'
 
 function fileFav(nodi: FileNode[]): FileNode[] {
   const out: FileNode[] = []
@@ -19,6 +19,8 @@ export function Benvenuto(): JSX.Element {
   const openProject = useStudio((s) => s.openProject)
   const openStory = useStudio((s) => s.openStory)
   const newProject = useStudio((s) => s.newProject)
+  const openExample = useStudio((s) => s.openExample)
+  const openGuide = useStudio((s) => s.openGuide)
   return (
     <main className="accoglienza" id="area-principale" tabIndex={-1}>
       <div className="accoglienza-carta">
@@ -48,6 +50,16 @@ export function Benvenuto(): JSX.Element {
           <br />
           <kbd>Ctrl</kbd>+<kbd>O</kbd> apre una storia, <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>O</kbd> una cartella.
         </p>
+        <div className="accoglienza-aiuti">
+          <button className="btn btn-quieto" onClick={() => void openExample()}>
+            <IconaStanza size={16} />
+            Prova con la storia d’esempio
+          </button>
+          <button className="btn btn-quieto" onClick={() => void openGuide()}>
+            <IconaAiuto size={16} />
+            Leggi la guida
+          </button>
+        </div>
       </div>
     </main>
   )

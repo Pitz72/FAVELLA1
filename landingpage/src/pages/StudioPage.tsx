@@ -8,6 +8,8 @@ import {
   STUDIO_RELEASE_URL,
   STUDIO_MAC_URL,
   STUDIO_SOURCE_URL,
+  STUDIO_GUIDE_URL,
+  STUDIO_GUIDE_PAGES,
 } from "../constants";
 
 // Le schermate dell'app (rifatte dal banco di prova con scripts/foto-studio.mjs),
@@ -298,6 +300,7 @@ const StudioPage = () => {
                 <Scarica href={DOWNLOAD_STUDIO_WINDOWS} os="Windows 10 / 11" nota="installer a 64 bit" ext="↓ .exe" primary ext_link />
                 <Scarica href={DOWNLOAD_STUDIO_LINUX} os="Linux" nota="qualunque distribuzione, x86_64" ext="↓ .AppImage" primary ext_link />
                 <Scarica href={STUDIO_MAC_URL} os="macOS — costruiscilo tu" nota="un comando, cinque minuti: l'app che ne esce è tua, e il Mac si fida" ext="istruzioni ↗" ext_link />
+                <Scarica href={STUDIO_GUIDE_URL} os="La guida all'uso" nota={`${STUDIO_GUIDE_PAGES} pagine con le schermate vere, PDF accessibile; è anche dentro l'app`} ext="↓ .pdf" ext_link />
               </div>
               <div className="mt-9 grid gap-6 text-[14px] leading-[1.7] text-favella-text-secondary sm:grid-cols-2">
                 <p>

@@ -119,13 +119,16 @@ export function EliminaElemento({
   for (const i of dati?.items ?? []) gruppi.set(i.category, [...(gruppi.get(i.category) ?? []), i])
   const ha = (c: string): boolean => gruppi.has(c)
   const articolo = tipo === 'stanza' ? 'la stanza' : tipo === 'personaggio' ? 'il personaggio' : 'l’oggetto'
+  // [1.2.1] «Insieme alla stanza … perché la citano» (prima: «a la stanza … lo citano»).
+  const insieme = tipo === 'stanza' ? 'alla stanza' : tipo === 'personaggio' ? 'al personaggio' : 'all’oggetto'
+  const pronome = tipo === 'stanza' ? 'la' : 'lo'
 
   return (
     <>
       <section className="riquadro riquadro-pericolo">
         <div className="riga-pericolo">
           <p>
-            Eliminare {articolo} toglie dal testo anche le frasi che lo citano. Dopo, puoi annullare con «Annulla».
+            Eliminare {articolo} toglie dal testo anche le frasi che {pronome} citano. Dopo, puoi annullare con «Annulla».
           </p>
           <button className="btn btn-pericolo" onClick={() => void apri()}>
             <IconaCestino />
@@ -161,8 +164,8 @@ export function EliminaElemento({
           {dati?.ok && (
             <>
               <p>
-                Insieme a {articolo} vanno via {dati.items.length === 1 ? 'questa frase' : `queste ${dati.items.length} frasi`},
-                perché lo citano:
+                Insieme {insieme} vanno via {dati.items.length === 1 ? 'questa frase' : `queste ${dati.items.length} frasi`},
+                perché {pronome} citano:
               </p>
               <div className="elenco-frasi">
                 {[...gruppi.entries()].map(([cat, voci]) => (
@@ -180,8 +183,8 @@ export function EliminaElemento({
                 ))}
               </div>
               <ul className="note-elenco">
-                {ha('regola') && <li>Le regole e gli eventi che lo citano vengono tolti per intero.</li>}
-                {ha('dialogo') && <li>I dialoghi che lo citano vengono tolti: controlla che nessun nodo resti orfano.</li>}
+                {ha('regola') && <li>Le regole e gli eventi che {pronome} citano vengono tolti per intero.</li>}
+                {ha('dialogo') && <li>I dialoghi che {pronome} citano vengono tolti: controlla che nessun nodo resti orfano.</li>}
                 {ha('posizione') && <li>Ciò che stava «dentro» o «sopra» resta senza posizione: va rimesso da qualche parte.</li>}
                 {ha('partenza') && <li>Era il punto di partenza: la partita comincerà dalla prima stanza.</li>}
                 <li>Se nei testi (descrizioni, risposte) compare ancora il suo nome, lì resta scritto.</li>

@@ -1689,3 +1689,23 @@ La grammatica non cambia. Cambiano tre comportamenti del motore, che erano difet
 - **Un salvataggio di un'altra versione del motore** che, ricaricato, non dà la
   stessa impronta: `carica_da_dati` lo dice nominando la versione salvata
   (`dati["motore"]`), invece di attribuire la differenza alla storia.
+
+
+## 27. La riga degli errori (1.4.4)
+
+La grammatica e il gioco non cambiano. Cambia la riga che il compilatore indica per gli
+errori **semantici**, quelli che nascono dopo l'analisi della frase e non portano con sé
+la posizione (per esempio una proprietà data a una stanza, `La soffitta è sopra.`).
+
+`analizza_file_strutturato` cerca nel testo i nomi citati nel messaggio (fra apici, «»
+o virgolette). Fino alla 1.4.3 vinceva la prima riga che conteneva il primo nome, anche
+come pezzo di un'altra parola e anche in un commento. Dalla 1.4.4:
+
+- un nome conta solo come **parola intera** (`(?<!\w)nome(?!\w)`, senza distinguere
+  maiuscole e minuscole);
+- le righe di **commento** (`#`) non contano;
+- vince la riga che cita **più nomi** del messaggio; a parità, quella che **comincia**
+  con uno di loro (la frase sbagliata comincia col suo soggetto); a parità ancora, la
+  prima.
+
+Gli errori di sintassi avevano già la posizione esatta dal parser e non cambiano.

@@ -1,5 +1,5 @@
-import { dialog, ipcMain, BrowserWindow } from 'electron'
-import { readdir, readFile, writeFile, rename, stat } from 'fs/promises'
+import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron'
+import { readdir, readFile, writeFile, rename, stat, mkdir, copyFile } from 'fs/promises'
 import { join, basename, dirname, resolve, sep } from 'path'
 import type { FileNode, OpenedProject } from '../shared/protocol'
 import { copiaProgetto, cartellaVuota, staDentro } from './copia'
@@ -88,8 +88,51 @@ export function modelloStoria(percorsoFile: string): string {
   ].join('\n')
 }
 
+// [1.2.1] Le risorse che viaggiano con l'app: nel pacchetto stanno in resources/, in
+// sviluppo nel repository (la guida in studio/guida/, la storia d'esempio in esempi/).
+function risorsa(nelPacchetto: string, inSviluppo: string): string {
+  return app.isPackaged ? join(process.resourcesPath, nelPacchetto) : resolve(app.getAppPath(), inSviluppo)
+}
+const GUIDA_PDF = (): string => risorsa(join('guida', 'guida-favella-studio.pdf'), join('guida', 'guida-favella-studio.pdf'))
+const ESEMPIO = (): string => risorsa(join('esempi', 'la-casa-di-via-stradivari'), join('..', 'esempi', 'materiale-didattico'))
+
 /** Registra gli handler IPC per il file system. Da chiamare a app.whenReady(). */
 export function registraFileSystemIPC(): void {
+  // [1.2.1] «Guida di Favella Studio»: il PDF incluso nell'app, nel lettore del sistema.
+  ipcMain.handle('help:openGuide', async (): Promise<{ ok: boolean; message?: string }> => {
+    const pdf = GUIDA_PDF()
+    try {
+      await stat(pdf)
+    } catch {
+      return { ok: false, message: 'Non trovo la guida in questa installazione: si scarica anche da www.favella.eu/studio.' }
+    }
+    const errore = await shell.openPath(pdf)
+    return errore ? { ok: false, message: 'Non riesco ad aprire la guida: ' + errore } : { ok: true }
+  })
+
+  // [1.2.1] «Apri la storia d'esempio»: «La Casa di Via Stradivari», quella della guida.
+  // Le risorse dell'app non si possono modificare: la prima volta la si copia nei
+  // Documenti (Favella Studio/La Casa di Via Stradivari); le volte dopo si riapre la
+  // copia, con le modifiche che ci hai fatto.
+  ipcMain.handle('project:openExample', async (): Promise<(OpenedProject & { openPath: string }) | null> => {
+    const dest = join(app.getPath('documents'), 'Favella Studio', 'La Casa di Via Stradivari')
+    let esiste = true
+    try {
+      await stat(join(dest, 'storia.fav'))
+    } catch {
+      esiste = false
+    }
+    if (!esiste) {
+      const sorgente = ESEMPIO()
+      await mkdir(dest, { recursive: true })
+      for (const nome of await readdir(sorgente)) {
+        if (nome.toLowerCase().endsWith('.fav')) await copyFile(join(sorgente, nome), join(dest, nome))
+      }
+    }
+    projectRoot = dest
+    return { root: dest, tree: await costruisciAlbero(dest), openPath: join(dest, 'storia.fav') }
+  })
+
   ipcMain.handle('project:open', async (e): Promise<OpenedProject | null> => {
     const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
     const res = await dialog.showOpenDialog(win!, {
@@ -134,7 +177,7 @@ export function registraFileSystemIPC(): void {
     async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
       const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
       const res = await dialog.showSaveDialog(win!, {
-        title: 'Nuovo progetto FAVELLA — scegli cartella e nome',
+        title: 'Nuova storia — scegli la cartella e il nome del file',
         defaultPath: 'storia.fav',
         filters: [{ name: 'Storia FAVELLA', extensions: ['fav'] }]
       })

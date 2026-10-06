@@ -1,8 +1,39 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.0 c'è il motore **v1.4.3**).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.1 c'è il motore **v1.4.4**).
 Schema: [SemVer](https://semver.org/lang/it/).
+
+## [1.2.1] — 2026-10-06 — La guida all'uso, e quello che è venuto fuori scrivendola
+
+### Aggiunto
+- **La guida all'uso**, in PDF dentro l'app: menu ··· › **Guida di Favella Studio (PDF)**,
+  o **Leggi la guida** nella prima schermata. Quarantacinque pagine con le schermate vere,
+  un capitolo per sezione, le scorciatoie, la leggibilità; un PDF accessibile (PDF/UA), che
+  i lettori di schermo leggono con la sua struttura. Si scarica anche da favella.eu/studio.
+- **Apri la storia d'esempio** (menu ···, e **Prova con la storia d'esempio** nella prima
+  schermata): «La Casa di Via Stradivari», la storia del manuale e della guida. La prima
+  volta Studio la copia in Documenti › Favella Studio; le volte dopo riapre quella copia.
+
+### Corretto
+- **Il menu dei file nella barra in alto** (il clic sul nome del file) dalla 1.2.0 si apriva
+  invisibile: la barra, per stringersi, tagliava anche lui.
+- I menu lunghi (···) nascondevano l'ultima voce, «Controlla da solo a ogni avvio»: ora
+  usano tutta l'altezza sotto la barra.
+- Eliminando una stanza: «Insieme **alla** stanza vanno via … perché **la** citano» (era
+  «a la stanza … lo citano»).
+- Una regola nuova partiva dal verbo «?» (che vuol dire «aiuto»): ora parte da «esamina», e
+  «?» non è più nel menu dei verbi.
+- Nei dialoghi, senza personaggi, il suggerimento citava una scheda «📦 Oggetti» che non c'è
+  più: ora rimanda alla sezione Personaggi.
+- La finestra di sistema per una storia nuova si chiama «Nuova storia», come il pulsante.
+
+### Motore
+- **FAVELLA 1.4.4**: gli errori indicano la riga giusta. Prima un errore poteva finire su
+  una parola simile molte righe prima («sopra» dentro «Soprabito»), e il clic sul problema
+  portava nel posto sbagliato.
+
+---
 
 ## [1.2.0] — 2026-10-06 — Revisione completa e ridisegno «Scrittoio»
 

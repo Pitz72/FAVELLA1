@@ -1,7 +1,7 @@
 # FAVELLA 1
 
 <p align="center">
-  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.4.3 — L'italiano è il linguaggio di programmazione" width="880">
+  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.4.4 — L'italiano è il linguaggio di programmazione" width="880">
 </p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
@@ -10,8 +10,8 @@
 
 > ### 🏁 Progetto concluso
 >
-> **FAVELLA 1 è finito.** La versione **1.4.3** è la definitiva e **non verrà più modificata**:
-> linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.2.0** è
+> **FAVELLA 1 è finito.** La versione **1.4.4** è la definitiva e **non verrà più modificata**:
+> linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.2.1** è
 > la sua casa di scrittura. Il repository resta aperto, con licenza MIT, come **riferimento** per
 > chi voglia imparare, riprendere il lavoro o portarlo altrove. Le storie scritte oggi funzioneranno
 > uguali fra dieci anni.
@@ -78,7 +78,14 @@ a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.4.
 
 ---
 
-## 🏁 Stato Attuale: v1.4.3 — tre difetti chiusi dopo una verifica completa
+## 🏁 Stato Attuale: v1.4.4 — gli errori indicano la riga giusta
+
+La **1.4.4** cambia solo *dove* il motore dice che sta un errore. Alcuni errori nascono
+dopo l'analisi della frase e la riga va cercata nel testo: prima vinceva la prima riga
+che conteneva il primo nome citato, anche dentro un'altra parola («sopra» in
+«Soprabito») o in un commento, e in Favella Studio il clic sul problema portava nel
+posto sbagliato. Ora contano le parole intere e la riga che cita più nomi del messaggio.
+Trovato scrivendo la guida di Favella Studio. Dettagli nel [CHANGELOG](CHANGELOG.md).
 
 La **1.4.3** corregge tre difetti trovati da una verifica a tappeto del motore (fuzz
 di 1520 comandi, le undici suite di *Il Viaggiatore*): una regola `Prima di vai
@@ -157,9 +164,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1177
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1180
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-424 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
+425 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -189,17 +196,17 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.4.3** | header di modulo |
-| Compilatore, nucleo (`compilatore.py`) | **1.4.3** | header di modulo |
-| Strumenti per l'IDE (`strumenti_ide.py`) | **1.4.3** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Esportazione HTML (`esportazione.py`) | **1.4.3** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Strutture dati (`strutture.py`) | **1.4.3** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.4.3** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.4.3** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.4.3** | nuovo nella 1.2.0 |
-| Specifica formale della grammatica | **1.4.3** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23) + i quattro difetti della 1.4.1 (§24) + «usa X su Y» della 1.4.2 (§25); la 1.4.3 non tocca la grammatica* |
-| Suite di test | **1.4.3** | 1177 asserzioni linguaggio + 50 collaudo (pytest 424) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.3 | protocollo 0.11.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1) |
+| Motore / interprete (`gioco.py`) | **1.4.4** | header di modulo |
+| Compilatore, nucleo (`compilatore.py`) | **1.4.4** | header di modulo |
+| Strumenti per l'IDE (`strumenti_ide.py`) | **1.4.4** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Esportazione HTML (`esportazione.py`) | **1.4.4** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Strutture dati (`strutture.py`) | **1.4.4** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.4.4** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.4.4** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.4.4** | nuovo nella 1.2.0 |
+| Specifica formale della grammatica | **1.4.4** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23) + i quattro difetti della 1.4.1 (§24) + «usa X su Y» della 1.4.2 (§25); la 1.4.3 e la 1.4.4 non toccano la grammatica (§26, §27)* |
+| Suite di test | **1.4.4** | 1180 asserzioni linguaggio + 50 collaudo (pytest 425) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.4 | protocollo 0.11.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1) |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
@@ -345,19 +352,20 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 ## ✦ Favella Studio — l'ambiente di scrittura
 
 <p align="center">
-  <img src="branding/materiale/banner-favella-studio-v1.2.0.png" alt="Favella Studio 1.2.0 — l'ambiente di scrittura per FAVELLA 1" width="880">
+  <img src="branding/materiale/banner-favella-studio-v1.2.1.png" alt="Favella Studio 1.2.1 — l'ambiente di scrittura per FAVELLA 1" width="880">
 </p>
 
-In [`studio/`](studio/) c'è **Favella Studio 1.2.0**: l'ambiente di scrittura visuale per FAVELLA.
+In [`studio/`](studio/) c'è **Favella Studio 1.2.1**: l'ambiente di scrittura visuale per FAVELLA.
 Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
 oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
 comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra di gioco a parte per
-provare la storia come la vedrebbe chi la riceve. Il motore Python (1.4.3) è dentro l'app: non
+provare la storia come la vedrebbe chi la riceve. Il motore Python (1.4.4) è dentro l'app: non
 serve installarlo. Si legge in tema notte o carta, anche a contrasto alto, e si usa tutto da
 tastiera.
 
-- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.0).
+- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.1).
 - **macOS**: si costruisce in cinque minuti sul proprio Mac, con un comando: [`studio/BUILD-MACOS.md`](studio/BUILD-MACOS.md).
+- **La guida all'uso** (45 pagine, PDF accessibile): [`studio/guida/guida-favella-studio.pdf`](studio/guida/guida-favella-studio.pdf), anche dentro l'app.
 - Presentazione e schermate: [favella.eu/studio](https://www.favella.eu/studio). Licenza MIT.
 
 Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).

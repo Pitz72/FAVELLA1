@@ -71,7 +71,10 @@ export default function RuleForm({
   const [demonMode, setDemonMode] = useState<'ogni' | 'quando'>(demon?.mode ?? 'quando')
 
   const t0 = initTarget(rule)
-  const [verb, setVerb] = useState(rule?.verb ?? menu.verbs[0] ?? '')
+  // [1.2.1] Nel menu solo i verbi veri: «?» (che vuol dire «aiuto») finiva primo e una
+  // regola nuova partiva da lì. Una regola già scritta su un verbo così lo mostra comunque.
+  const verbi = menu.verbs.filter((v) => /^\p{L}/u.test(v) || v === rule?.verb)
+  const [verb, setVerb] = useState(rule?.verb ?? (verbi.includes('esamina') ? 'esamina' : verbi[0]) ?? '')
   const [targetSel, setTargetSel] = useState(t0.sel) // '' = globale, 'o:<id>', 'd:<dir>'
   const [secPrep, setSecPrep] = useState(t0.prep)
   const [secObj, setSecObj] = useState(t0.obj)
@@ -282,7 +285,7 @@ export default function RuleForm({
             <label>Quando il giocatore…</label>
             <div className="ruleform-when">
               <select value={verb} onChange={(e) => setVerb(e.target.value)}>
-                {menu.verbs.map((v) => (
+                {verbi.map((v) => (
                   <option key={v} value={v}>
                     {v}
                   </option>

@@ -250,6 +250,14 @@ const api = {
   newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
     return ipcRenderer.invoke('project:new')
   },
+  /** [1.2.1] La storia d'esempio della guida, copiata nei Documenti la prima volta. */
+  openExample(): Promise<(OpenedProject & { openPath: string }) | null> {
+    return ipcRenderer.invoke('project:openExample')
+  },
+  /** [1.2.1] La guida in PDF, nel lettore del sistema. */
+  openGuide(): Promise<{ ok: boolean; message?: string }> {
+    return ipcRenderer.invoke('help:openGuide')
+  },
   /** [Studio 1.1] «Salva con nome»: il dialogo di sistema, dentro la cartella del progetto. */
   chooseSavePath(defaultName: string): Promise<string | null> {
     return ipcRenderer.invoke('dialog:savePath', defaultName)

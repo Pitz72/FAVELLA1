@@ -1749,6 +1749,31 @@ def test_guardia_nome_con_parola_chiave_disambiguato():
            "l'oggetto 'cosa preziosa' è risolto correttamente")
 
 
+def test_riga_degli_errori_semantici():
+    print("[1.4.4: un errore semantico va sulla riga della frase sbagliata, non su una parola simile]")
+    # Una proprietà data a una stanza: errore semantico, senza riga dal parser.
+    src = ("L'ingresso è una stanza.\n"
+           "La descrizione dell'ingresso è \"Un soprabito appeso.\".\n"   # «sopra» dentro «soprabito»
+           "# La soffitta è sopra: un commento non conta.\n"
+           "La soffitta è una stanza.\n"
+           "Il giocatore comincia nell'ingresso.\n"
+           "La soffitta è sopra.\n")
+    r = strutturato(src)
+    err = next((e for e in r["errors"] if "'sopra'" in e.get("message", "")), {})
+    _check(err.get("code") == "semantica", "è l'errore semantico (non uno di sintassi)")
+    _check(err.get("line") == 6 and not err.get("imprecise"),
+           f"l'errore cade sulla riga 6, quella che lo causa (era {err.get('line')})")
+    src2 = ("La camera è una stanza.\n"
+            "La soffitta è una stanza.\n"
+            "La descrizione della camera è \"Una scala, e sopra la soffitta.\".\n"
+            "Il giocatore comincia nella camera.\n"
+            "La soffitta è sopra.\n")
+    r2 = strutturato(src2)
+    err2 = next((e for e in r2["errors"] if "'sopra'" in e.get("message", "")), {})
+    _check(err2.get("line") == 5,
+           f"a pari nomi citati vince la frase che comincia col soggetto (riga {err2.get('line')})")
+
+
 # --- Test: Cassetto A [0.30.0] — A1 nomi non validi, A3 'dire' opzionale, A4 idioma direzione
 
 def test_a1_nome_con_carattere_non_valido_errore():
@@ -7915,9 +7940,11 @@ def main():
         test_riordino_di_un_file_singolo_come_prima,
         # Robustezza console (debito R8 — fix cp1252)
         test_robustezza_console_cp1252_non_crasha,
+        # [1.4.4] riga degli errori semantici
+        test_riga_degli_errori_semantici,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.3)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.4)")
     print("=" * 60)
     for t in tests:
         t()

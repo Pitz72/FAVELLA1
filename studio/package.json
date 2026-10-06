@@ -1,6 +1,6 @@
 {
   "name": "favella-studio",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Favella Studio — l’ambiente di scrittura visuale per il linguaggio FAVELLA 1",
   "author": "Simone (Pitz72)",
   "license": "MIT",
@@ -42,6 +42,17 @@
         {
           "from": "../dist/favella_engine.exe",
           "to": "engine/favella_engine.exe"
+        },
+        {
+          "from": "guida/guida-favella-studio.pdf",
+          "to": "guida/guida-favella-studio.pdf"
+        },
+        {
+          "from": "../esempi/materiale-didattico",
+          "to": "esempi/la-casa-di-via-stradivari",
+          "filter": [
+            "*.fav"
+          ]
         }
       ]
     },
@@ -61,6 +72,17 @@
         {
           "from": "../dist/favella_engine",
           "to": "engine/favella_engine"
+        },
+        {
+          "from": "guida/guida-favella-studio.pdf",
+          "to": "guida/guida-favella-studio.pdf"
+        },
+        {
+          "from": "../esempi/materiale-didattico",
+          "to": "esempi/la-casa-di-via-stradivari",
+          "filter": [
+            "*.fav"
+          ]
         }
       ],
       "identity": null
@@ -76,6 +98,17 @@
         {
           "from": "../dist/favella_engine",
           "to": "engine/favella_engine"
+        },
+        {
+          "from": "guida/guida-favella-studio.pdf",
+          "to": "guida/guida-favella-studio.pdf"
+        },
+        {
+          "from": "../esempi/materiale-didattico",
+          "to": "esempi/la-casa-di-via-stradivari",
+          "filter": [
+            "*.fav"
+          ]
         }
       ]
     }

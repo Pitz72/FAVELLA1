@@ -4,7 +4,7 @@ Sorgente del manuale d'autore in **PDF tipografico**, generato con
 [Typst](https://typst.app). Focalizzato *esclusivamente sul linguaggio*; ogni
 costrutto è illustrato con esempi reali tratti dalla storia guida **«La Casa di Via
 Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Terza
-edizione · 2026**, allineata al motore **v1.4.3** (il linguaggio è completo e
+edizione · 2026**, allineata al motore **v1.4.4** (il linguaggio è completo e
 definitivo: vedi il [CHANGELOG](../../CHANGELOG.md)).
 
 ## Come compilare

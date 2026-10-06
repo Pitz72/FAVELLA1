@@ -1,6 +1,6 @@
 # Favella Studio
 
-<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.2.0 — l'ambiente di scrittura per FAVELLA 1"></p>
+<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.2.1 — l'ambiente di scrittura per FAVELLA 1"></p>
 
 **L'ambiente di scrittura visuale per il linguaggio FAVELLA 1.** Scrivi la tua avventura in
 italiano, vedi le stanze diventare una mappa, componi dialoghi e regole senza scrivere una
@@ -9,6 +9,9 @@ riga, e prova la storia — con i pulsanti-verbo, come la giocherebbe chi la ric
 - **Windows** e **Linux**: gli installer sono nella pagina
   [Releases](https://github.com/Pitz72/FAVELLA1/releases) (cerca «Favella Studio»).
 - **macOS**: si costruisce in cinque minuti sul proprio Mac: [BUILD-MACOS.md](BUILD-MACOS.md).
+- **La guida all'uso** (45 pagine, PDF accessibile): [guida/guida-favella-studio.pdf](guida/guida-favella-studio.pdf).
+  È anche dentro l'app (menu ··· › *Guida di Favella Studio*), con la storia d'esempio
+  della guida (*Apri la storia d'esempio*).
 - Licenza **MIT**. Il progetto è concluso e stabile: vedi [CHANGELOG.md](CHANGELOG.md).
 
 Ambiente di sviluppo desktop per il linguaggio **FAVELLA** — Electron + React + Vite +

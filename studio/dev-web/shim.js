@@ -89,6 +89,13 @@
       const fav = (r.tree || []).find((n) => n.type === 'file' && /\.fav$/i.test(n.name))
       return fav ? { ...r, openPath: fav.path } : null
     },
+    // [1.2.1] La storia d'esempio: nel browser è la cartella del ponte; la guida è il PDF del repository.
+    openExample: async () => {
+      const r = await post('/open')
+      const fav = (r.tree || []).find((n) => n.type === 'file' && /^storia\.fav$/i.test(n.name))
+      return fav ? { ...r, openPath: fav.path } : null
+    },
+    openGuide: async () => ({ ok: false, message: 'Nel browser la guida non si apre: è in studio/guida/.' }),
     // Una partita sola: nel browser le due schede non si parlano.
     claimGame: () => {},
     onGameOwner: () => () => {},

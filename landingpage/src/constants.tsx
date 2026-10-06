@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.3)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.4)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.4.3";
-export const VERSION_LABEL = "v1.4.3 — Scrivi o tocca";
+export const VERSION = "1.4.4";
+export const VERSION_LABEL = "v1.4.4 — Scrivi o tocca";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.4.3";
+export const ENGINE_VERSION = "1.4.4";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -44,7 +44,9 @@ export const SITE_URL = "https://favella.eu";
 // · 2.8.2 = motore 1.4.3: tre difetti chiusi dopo una verifica completa del motore.
 // · 2.8.3 = Favella Studio 1.2.0 (revisione completa e ridisegno «Scrittoio»): pagina
 //   /studio, schermate rifatte, notizia.
-export const SITE_VERSION = "2.8.3";
+// · 2.8.4 = motore 1.4.4 (la riga degli errori) e Favella Studio 1.2.1 con la guida
+//   all'uso in PDF: download sulla pagina /studio, notizie.
+export const SITE_VERSION = "2.8.4";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -53,10 +55,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.3";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.3-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.3-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.3-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.4";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.4-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.4-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.4-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -68,13 +70,16 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.2.0";
+export const STUDIO_VERSION = "1.2.1";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
 export const STUDIO_RELEASE_URL = `https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v${STUDIO_VERSION}`;
 export const STUDIO_MAC_URL = "https://github.com/Pitz72/FAVELLA1/blob/main/studio/BUILD-MACOS.md";
 export const STUDIO_SOURCE_URL = "https://github.com/Pitz72/FAVELLA1/tree/main/studio";
+// La guida all'uso di Studio (PDF accessibile): sempre l'ultima, dal repository.
+export const STUDIO_GUIDE_URL = "https://github.com/Pitz72/FAVELLA1/raw/main/studio/guida/guida-favella-studio.pdf";
+export const STUDIO_GUIDE_PAGES = 45;
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
 export const GITHUB_MANUALE_URL = `${_REPO}/documentazione/manuale`;
@@ -99,7 +104,7 @@ export const PAPERBACK = {
   edition: "Seconda edizione",
   version: "1.0.0",
   pages: 84,
-  next: { edition: "Terza edizione", version: "1.4.3", pages: 96 } as { edition: string; version: string; pages: number } | null,
+  next: { edition: "Terza edizione", version: "1.4.4", pages: 96 } as { edition: string; version: string; pages: number } | null,
 };
 
 export const AUTHOR_NAME = "Simone Pizzi";
@@ -118,7 +123,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1177, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1180, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -188,6 +193,14 @@ export const NEWS: NewsItem[] = [
     tag: "Studio",
     date: "Ottobre 2026",
     emphasis: "primary",
+    title: "Favella Studio ha la sua guida",
+    body: "Quarantacinque pagine con le schermate vere, un capitolo per ogni parte dell'app: la finestra, il testo, le stanze e la mappa, gli oggetti, i personaggi e i dialoghi, le regole, la prova, le reti di sicurezza, la leggibilità e tutte le scorciatoie. Gli esempi sono quelli del manuale, «La Casa di Via Stradivari», che Studio 1.2.1 apre con un clic. È un PDF accessibile, che i lettori di schermo leggono con i suoi titoli e le descrizioni delle figure; sta anche dentro l'app, nel menu. Scrivendola sono venuti fuori alcuni difetti, ora corretti: in Studio il menu dei file nella barra in alto, e nel motore (FAVELLA 1.4.4) la riga indicata per certi errori.",
+    cta: { label: "Scarica la guida (PDF)", href: STUDIO_GUIDE_URL },
+  },
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "normal",
     title: "Favella Studio 1.2: rivisto da cima a fondo, e ridisegnato per leggere bene",
     body: "Una revisione completa dell'ambiente di scrittura, riga per riga. Corregge i difetti trovati (il più grave lasciava la finestra vuota aprendo certe regole) e ridisegna l'interfaccia per chi ci vede poco: tema notte o carta, contrasto alto per entrambi, ogni testo misurato ad almeno 4,5:1, tutto raggiungibile da tastiera, finestre e racconto della partita letti dai lettori di schermo. Le modifiche fatte dai pannelli si annullano; «Apri una storia» è tornato; l'aggiornamento automatico chiede il permesso e controlla l'impronta del file prima di installarlo. Dentro c'è il motore FAVELLA 1.4.3.",
     cta: { label: "Scopri Favella Studio", href: "/studio" },
@@ -204,9 +217,9 @@ export const NEWS: NewsItem[] = [
     tag: "Linguaggio",
     date: "Ottobre 2026",
     emphasis: "primary",
-    title: "FAVELLA 1 è finito: la 1.4.3 è la versione definitiva",
-    body: "Dopo la 1.0 il linguaggio è cresciuto soltanto aggiungendo, una storia vera dopo l'altra: i salvataggi, il collaudo che gioca, le regole «Prima di» e «Dopo di», i pulsanti-verbo. Adesso non manca più niente. La 1.4.3 è l'ultima versione di FAVELLA 1 e non verrà più toccata: il linguaggio, il motore, il manuale (nella sua terza edizione, anche cartacea) e il sito restano com'è. Le storie che scrivi oggi funzioneranno uguali fra dieci anni. Il repository resta aperto, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.",
-    cta: { label: "Scarica FAVELLA 1.4.3", href: "/download" },
+    title: "FAVELLA 1 è finito: la 1.4.4 è la versione definitiva",
+    body: "Dopo la 1.0 il linguaggio è cresciuto soltanto aggiungendo, una storia vera dopo l'altra: i salvataggi, il collaudo che gioca, le regole «Prima di» e «Dopo di», i pulsanti-verbo. Adesso non manca più niente. La 1.4.4 è l'ultima versione di FAVELLA 1 e non verrà più toccata: il linguaggio, il motore, il manuale (nella sua terza edizione, anche cartacea) e il sito restano com'è. Le storie che scrivi oggi funzioneranno uguali fra dieci anni. Il repository resta aperto, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.",
+    cta: { label: "Scarica FAVELLA 1.4.4", href: "/download" },
   },
   {
     tag: "Linguaggio",
@@ -384,7 +397,7 @@ export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
     title: "Il lavoro è finito",
-    body: "FAVELLA 1 è completo: la 1.4.3 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
+    body: "FAVELLA 1 è completo: la 1.4.4 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
     area: "ecosistema",
@@ -404,7 +417,7 @@ Con l'avvento dei Large Language Models quel sogno è diventato un progetto conc
 
 Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, FAVELLA 1 è concluso: la 1.4.3 è la versione definitiva e non verrà più modificata. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, FAVELLA 1 è concluso: la 1.4.4 è la versione definitiva e non verrà più modificata. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -416,6 +429,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.4.4",
+    title: "Gli errori indicano la riga giusta",
+    content: "Trovato scrivendo la guida di Favella Studio. Alcuni errori nascono dopo l'analisi della frase e il motore deve cercarne la riga nel testo: prima vinceva la prima riga che conteneva il primo nome del messaggio, anche dentro un'altra parola (« sopra » in « Soprabito ») o in un commento, e in Favella Studio il clic sul problema portava nel posto sbagliato. Adesso contano le parole intere, i commenti no, e vince la riga che cita più nomi. Nessuna frase nuova, il gioco non cambia.",
+  },
   {
     version: "1.4.3",
     title: "Tre difetti chiusi — la versione definitiva",
@@ -563,7 +581,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.4.3**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.4.4**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -696,7 +714,7 @@ Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.3**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.4**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
