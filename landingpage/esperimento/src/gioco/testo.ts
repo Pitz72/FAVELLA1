@@ -85,6 +85,23 @@ export const VOCI: Record<string, string> = {
   "del bluff": "che al casello hai puntato una pistola scarica",
 };
 
+/** Che cosa hai fatto a chi, sotto la fiducia, a lato dello schermo. Le chiavi sono «persona:gesto»,
+ *  come le espone il ponte (ponte.py, _GESTI); la riga è detta a chi gioca, al passato: sono gesti
+ *  compiuti, non conti. La soglia della generosità e quante persone servono restano nascoste.
+ *  collaudo/testo.py verifica che il ponte e questa tabella coincidano. */
+export const GESTI: Record<string, string> = {
+  "Saverio:cibo": "gli hai lasciato da mangiare",
+  "Iole:dono": "le hai lasciato qualcosa del tuo",
+  "Iole:pompa": "le hai legato il filtro alla pompa",
+  "Vito:pagato": "gli hai pagato il passaggio",
+  "Vito:bluff": "gli hai puntato una pistola scarica",
+  "Vito:terra": "l'hai lasciato a terra",
+  "Rosaria:acqua": "le hai lasciato dell'acqua",
+  "Onofrio:ricordo": "gli hai mostrato qualcosa di tuo",
+  "Imma:cibo": "l'hai fatta mangiare",
+  "Pasquale:cura": "l'hai curato con le tue medicine",
+};
+
 /** Testo di una descrizione: MAIUSCOLE (oggetti notevoli), parentesi (suggerimenti), «dialoghi». */
 export type Pezzo = { k: "t" | "chiave" | "aiuto"; s: string };
 

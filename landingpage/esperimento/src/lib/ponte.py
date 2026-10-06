@@ -460,6 +460,35 @@ def fav_carica(entry, comandi_json, impronta_attesa="", ultimo=None):
     }, ensure_ascii=False)
 
 
+def _intero(v, nome):
+    x = v.get(nome)
+    return x if isinstance(x, int) and not isinstance(x, bool) else None
+
+
+def _almeno(v, nome, soglia):
+    x = _intero(v, nome)
+    return x is not None and x >= soglia
+
+
+# I gesti: quello che hai fatto a chi, sotto la fiducia (a lato dello schermo). Ogni riga è
+# (persona, gesto, fatto): il fatto legge le variabili del mondo e dice se è accaduto. L'interfaccia
+# ha la riga di ciascuna coppia «persona:gesto» (app/src/gioco/testo.ts, GESTI); collaudo/testo.py
+# verifica che le due tabelle coincidano. Sono gesti, non conti: la soglia della generosità, e quante
+# persone servono, restano nascoste (pre-produzione/06-ramificazione.md §3.9).
+_GESTI = (
+    ("Saverio", "cibo", lambda v: _almeno(v, "fiducia di saverio", 3)),
+    ("Iole", "dono", lambda v: _almeno(v, "fiducia di iole", 3)),
+    ("Iole", "pompa", lambda v: v.get("stato della pompa") == "attiva"),
+    ("Vito", "pagato", lambda v: _almeno(v, "fiducia di vito", 2)),
+    ("Vito", "bluff", lambda v: v.get("stato del bluff") == "fatto"),
+    ("Vito", "terra", lambda v: _intero(v, "vita di vito") is not None and _intero(v, "vita di vito") <= 0),
+    ("Rosaria", "acqua", lambda v: v.get("stato della brocca") == "piena"),
+    ("Onofrio", "ricordo", lambda v: _almeno(v, "fiducia di onofrio", 3)),
+    ("Imma", "cibo", lambda v: v.get("stato di imma") in ("nutrita", "arrivata")),
+    ("Pasquale", "cura", lambda v: v.get("stato di pasquale") == "curato"),
+)
+
+
 def fav_stato():
     # Istantanea del mondo per le schede laterali della UI: inventario (nomi
     # visualizzati), contatori (le variabili a valore INTERO), stanza corrente,
@@ -509,7 +538,15 @@ def fav_stato():
     # Il nome (senza «stato della voce ») è la chiave; l'interfaccia ha la riga per ciascuna.
     voci = [k[len("stato della voce "):] for k, v in _mondo.variabili.items()
             if k.startswith("stato della voce ") and v == "udita"]
-    return json.dumps({"inventory": inv, "counters": counters, "voci": voci,
+    # Che cosa hai fatto a chi: {persona: [gesto, …]}, solo per chi ha un gesto da mostrare.
+    gesti = {}
+    for chi, gesto, fatto in _GESTI:
+        try:
+            if fatto(_mondo.variabili):
+                gesti.setdefault(chi, []).append(gesto)
+        except Exception:
+            pass
+    return json.dumps({"inventory": inv, "counters": counters, "voci": voci, "gesti": gesti,
                        "room": room, "roomId": _mondo.posizione_giocatore,
                        "exits": uscite, "present": presenti, "dialog": dialogo,
                        "capacity": capienza, "turn": getattr(_mondo, "turno_corrente", 0),

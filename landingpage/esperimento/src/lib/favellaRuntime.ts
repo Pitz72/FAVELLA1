@@ -135,6 +135,8 @@ export interface StatoMondo {
   conferma?: string | null;
   /** le voci che corrono su di te e che qualcuno ti ha riferito: «del sangue», «del bluff»… */
   voci?: string[];
+  /** che cosa hai fatto a chi: {persona: [gesto, …]}, solo per chi ha un gesto da mostrare */
+  gesti?: Record<string, string[]>;
 }
 
 /** Che cosa farebbe un comando, senza farlo (vedi fav_anteprima in ponte.py). */

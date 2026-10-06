@@ -193,7 +193,7 @@ const ViaggiatoreBanner = () => (
         </a>
       </div>
       <p className="m-0 font-mono text-[10.5px] tracking-[0.08em] text-[#d9cfc2]/55">
-        Gratis e open source · trailer e colonna sonora originali · salvataggi
+        Gratis e open source · trailer e colonna sonora originali · salvataggi · concluso con la 1.12.0
       </p>
     </div>
   </div>

@@ -103,7 +103,8 @@
 .vg-oggetto:hover:not(:disabled) { border-color: var(--acc); }
 .vg-oggetto:disabled { cursor: default; opacity: .7; }
 .vg-fiducie { list-style: none; margin: 0; padding: 0; }
-.vg-fiducie li { display: flex; align-items: center; justify-content: space-between; margin: 5px 0; font-size: 14px; color: #e3dccf; }
+.vg-fiducie li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 5px 0; font-size: 14px; color: #e3dccf; }
+.vg-gesti { flex: 0 0 100%; margin-top: 1px; font-style: italic; font-size: 12px; line-height: 1.35; color: rgba(230,223,210,.6); }
 .vg-voci { list-style: none; margin: 0; padding: 0; }
 .vg-voci li { margin: 5px 0; font-style: italic; font-size: 13px; line-height: 1.35; color: rgba(230,223,210,.7); }
 .vg-voci li::before { content: "«"; margin-right: 3px; opacity: .5; }

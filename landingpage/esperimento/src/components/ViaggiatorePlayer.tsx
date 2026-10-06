@@ -29,7 +29,7 @@ import PannelloScorta from "../gioco/PannelloScorta";
 import { bersagliDelUso, chipDiContesto, senzaArticolo, serveAnteprima, valutaConferma, vociDelMenu, type Conferma as DatiConferma, type Cosa } from "../gioco/azioni";
 import { componi, dataLeggibile, nomePosto, scrivi, type Posto, type Riassunto, type Salvataggio } from "../lib/salvataggi";
 import { annota } from "../lib/desktop";
-import { analizza, spezza, VOCI, type Blocco } from "../gioco/testo";
+import { analizza, spezza, VOCI, GESTI, type Blocco } from "../gioco/testo";
 import "../gioco/gioco.css";
 
 const VUOTO: StatoMondo = { inventory: [], counters: {}, room: null, roomId: null };
@@ -295,7 +295,15 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   const zi = ZORDER.indexOf(zona);
   const capienzaAcqua = mondo.inventory.some((o) => /damigiana/i.test(o)) ? 20 : 10;
   const capienza = mondo.capacity ?? 7;
-  const fiducie = MAGGIORI.filter((n) => incontrati.includes(n)).map((n) => ({ n, v: num("fiducia di " + n.toLowerCase()) }));
+  // Chi hai incontrato: la fiducia dei cinque maggiori e, sotto, che cosa hai fatto a chi. Chi non
+  // ha la fiducia (Imma, Pasquale) compare solo se c'è un gesto da mostrare.
+  const gesti = mondo.gesti ?? {};
+  const righeGesti = (n: string) => (gesti[n] ?? []).map((g) => GESTI[`${n}:${g}`]).filter(Boolean);
+  const fiducie: { n: string; v: number | null }[] = [
+    ...MAGGIORI.filter((n) => incontrati.includes(n) || righeGesti(n).length > 0)
+      .map((n) => ({ n, v: num("fiducia di " + n.toLowerCase()) })),
+    ...Object.keys(gesti).filter((n) => !MAGGIORI.includes(n) && righeGesti(n).length > 0).map((n) => ({ n, v: null })),
+  ];
   const ultima = voci.length - 1;
   const stile = useMemo(() => ({ ["--acc" as string]: accento }) as React.CSSProperties, [accento]);
 
@@ -604,12 +612,13 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
           </ul>
 
           {fiducie.length > 0 && (<>
-            <p className="vg-sezione">fiducia</p>
+            <p className="vg-sezione">chi hai incontrato</p>
             <ul className="vg-fiducie">
               {fiducie.map((f) => (
                 <li key={f.n}>
                   <span>{f.n}</span>
-                  <span className="vg-pip">{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= f.v ? "on" : ""} />)}</span>
+                  {f.v !== null && <span className="vg-pip" role="img" aria-label={`fiducia ${f.v} su 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= f.v! ? "on" : ""} />)}</span>}
+                  {righeGesti(f.n).length > 0 && <small className="vg-gesti">{righeGesti(f.n).join(" · ")}</small>}
                 </li>
               ))}
             </ul>

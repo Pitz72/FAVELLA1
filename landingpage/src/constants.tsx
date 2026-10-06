@@ -50,7 +50,9 @@ export const SITE_URL = "https://favella.eu";
 //   banner e notizia «in uscita». Da fare quando Amazon la pubblica: vedi PAPERBACK.
 // · 2.8.6 = Favella Studio 1.2.2 (la scritta del demone dice la verità; guida rivista).
 // · 2.8.7 = Il Viaggiatore 1.11.1 (col motore FAVELLA 1.4.4, al posto della 1.4.1).
-export const SITE_VERSION = "2.8.7";
+// · 2.8.8 = Il Viaggiatore 1.12.0, la versione definitiva: le chiusure raccolgono il viaggio, «chi hai
+//   incontrato», il gioco concluso.
+export const SITE_VERSION = "2.8.8";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -69,7 +71,7 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: il gioco si aggiorna (1.11.1 col motore FAVELLA 1.4.4).
+// Sempre l'ultima release: il gioco si aggiorna (1.12.0, la versione definitiva, col motore FAVELLA 1.4.4).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
@@ -195,6 +197,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Il Viaggiatore è concluso: la 1.12.0, e le chiusure raccolgono il viaggio",
+    body: "La 1.12.0 è l'ultima versione de Il Viaggiatore e chiude il lavoro. Porta due rifiniture. Alla soglia di casa le sei chiusure ora raccolgono il viaggio: dopo la scena, una riga per ciò che hai lasciato per strada, e solo per ciò che hai fatto davvero (il cibo a Saverio, la pompa della diga col tuo filtro, Vito, Imma, Rosaria, Pasquale, la fede venduta a Ciro). E a lato dello schermo la fiducia diventa «chi hai incontrato»: sotto ogni nome, che cosa gli hai fatto. Sono gesti, non conti: non dicono quanto manca. Con questa versione il gioco è concluso: la storia, l'app e i collaudi restano come sono, e il repository resta aperto come riferimento. Le partite salvate si ricostruiscono e il gioco lo dice; chi ha già il gioco installato lo riceve da solo.",
+    cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
+  },
   {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
