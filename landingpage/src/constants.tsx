@@ -116,7 +116,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1176, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1177, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },

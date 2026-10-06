@@ -1686,3 +1686,6 @@ La grammatica non cambia. Cambiano tre comportamenti del motore, che erano difet
 - **«Con cosa vuoi usarla?» non è un turno**, come «Cosa vuoi esaminare?»: l'azione
   si compie, e il turno passa, quando arriva la risposta. Nella sequenza salvabile entra
   il comando completo, col nome in minuscolo (`usa la chiave su botola`).
+- **Un salvataggio di un'altra versione del motore** che, ricaricato, non dà la
+  stessa impronta: `carica_da_dati` lo dice nominando la versione salvata
+  (`dati["motore"]`), invece di attribuire la differenza alla storia.

@@ -28,12 +28,17 @@ della 1.4.2 girano identiche, tranne nei tre punti qui sotto, che erano difetti.
    d'acqua in più) e ANNULLA disfaceva metà del gesto. La risposta entra nella
    sequenza salvabile come comando intero, in minuscolo.
 
+**Salvataggi delle versioni precedenti.** Si caricano come sempre. Se contengono uno
+di questi comandi, la partita ricaricata può avere un turno di differenza: il messaggio
+lo dice e nomina la versione del motore con cui era stata salvata (prima avrebbe dato
+la colpa alla storia, «la storia è cambiata dopo il salvataggio»).
+
 **Strumenti.** `test_linguaggio.py` e `test_collaudo.py` non si interrompono più su
 Windows quando l'uscita è rediretta su file (console cp1252). `strumenti_ide.py`
 (cresciuto con Favella Studio 1.0–1.1 dopo la 1.4.2) torna alla stessa versione di
 quello pubblicato.
 
-**Test.** `test_linguaggio.py`: 3 test nuovi (1176 asserzioni); pytest 424.
+**Test.** `test_linguaggio.py`: 3 test nuovi (1177 asserzioni); pytest 424.
 
 ---
 

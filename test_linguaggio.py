@@ -5880,6 +5880,23 @@ def test_la_domanda_di_usa_non_consuma_turni():
     _check("chiusa" in mondo.oggetti["botola"].proprieta and mondo.turno_corrente == 1,
            "ANNULLA disfa l'azione intera")
 
+    # Un salvataggio della 1.4.2, dove la domanda costava un turno: si carica, e il
+    # motore dice che la differenza viene dalla versione, non dalla storia.
+    from gioco import dati_salvataggio, carica_da_dati
+    vecchio = runtime(_SRC_USA)
+    for c in ("prendi la chiave", "usa la chiave", "botola"):
+        esegui(vecchio, c)
+    dati = dati_salvataggio(vecchio)
+    dati["comandi"] = ["prendi la chiave", "usa la chiave", "usa La chiave della botola su botola"]
+    dati["turno"], dati["motore"] = 3, "1.4.2"
+    dati["impronta"] = "impronta della 1.4.2"
+    nuovo = runtime(_SRC_USA)
+    with contextlib.redirect_stdout(io.StringIO()):
+        ok, msg = carica_da_dati(nuovo, dati)
+    _check(ok and "aperta" in nuovo.oggetti["botola"].proprieta and "FAVELLA 1.4.2" in msg
+           and "la storia è cambiata" not in msg,
+           "un salvataggio della 1.4.2 si carica, e il messaggio nomina il motore")
+
 
 def test_parole_e_comandi_per_lo_studio():
     print("[Studio 1.0: analizza_parole e le frasi di verbi, sinonimi e modo dei comandi]")

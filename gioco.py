@@ -994,6 +994,16 @@ def carica_da_dati(mondo: Mondo, dati: dict):
                       f"{mondo.turno_corrente}): la storia è cambiata dopo il salvataggio, "
                       f"controlla che tutto sia come lo ricordi.")
     if dati.get("impronta") and mondo.impronta_stato() != dati["impronta"]:
+        # [1.4.3] Se è cambiato il motore, non la storia, lo si dice: fra due versioni
+        # un comando può contare il tempo in modo diverso (la 1.4.3 non fa passare un
+        # turno per «Con cosa vuoi usarla?», e lo fa per una regola 'Prima di vai').
+        from strutture import VERSIONE_MOTORE
+        salvato_con = dati.get("motore")
+        if salvato_con and salvato_con != VERSIONE_MOTORE:
+            return True, (f"Partita caricata (turno {mondo.turno_corrente}), ma non è identica "
+                          f"a quella salvata: è stata salvata con FAVELLA {salvato_con}, e "
+                          f"in questa versione ({VERSIONE_MOTORE}) qualche comando conta il "
+                          f"tempo in modo diverso. Controlla che tutto sia come lo ricordi.")
         return True, ("Partita caricata, ma non è identica a quella salvata: "
                       "la storia è cambiata dopo il salvataggio.")
     return True, f"Partita caricata: turno {mondo.turno_corrente}."
