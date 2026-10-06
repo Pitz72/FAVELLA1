@@ -75,5 +75,11 @@
     refreshTree: (root) => post('/tree', { root }),
     readFile: (path) => post('/read', { path }),
     writeFile: (path, content) => post('/write', { path, content }),
+    // Aggiornamenti: nel browser non ce ne sono.
+    checkForUpdates: async () => {},
+    downloadUpdate: async () => {},
+    installUpdate: async () => {},
+    getUpdaterStatus: async () => ({ type: 'idle' }),
+    onUpdaterStatus: () => () => {},
   }
 })()
