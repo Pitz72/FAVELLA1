@@ -7,7 +7,7 @@
 // l'app.
 // =============================================================================
 
-#let STUDIO = "1.2.1"
+#let STUDIO = "1.2.2"
 #let MOTORE = "1.4.4"
 #let EDIZIONE = "Prima edizione · ottobre 2026"
 

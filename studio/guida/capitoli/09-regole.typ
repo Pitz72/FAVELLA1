@@ -15,8 +15,9 @@ ma ognuna diventa una frase del testo, come questa.
 
 - Una *regola* risponde a un'azione del giocatore: «quando apre il cassettone…».
 - Un *evento* scatta col tempo: al turno 10, oppure ogni 5 turni.
-- Un *demone* sorveglia il mondo: scatta quando una condizione diventa vera (una volta
-  sola), oppure a ogni turno in cui è vera.
+- Un *demone* sorveglia il mondo: scatta nel momento in cui una condizione diventa vera
+  (e di nuovo, se torna falsa e poi vera un'altra volta), oppure a ogni turno in cui è
+  vera.
 
 #schermata("regole.png",
   alt: "La linguetta Regole ed eventi: in alto Regole 30, Eventi 3, Demoni 3 e il pulsante Nuova regola; sotto, le schede delle regole, la prima «invece di apri Il cassettone».",
@@ -112,9 +113,11 @@ conferma, e la regola compare nella sua scheda e nel testo.
   didascalia: [Un evento (a sinistra) e un demone (a destra).])
 
 Per un *evento* scegli #ui[al turno (una volta sola)] o #ui[ogni N turni (ripetuto)] e il
-numero. Per un *demone* scegli #ui[appena la condizione diventa vera (una volta)] o #ui[ogni
-turno in cui è vera (ripetuto)], e poi la condizione. Il resto — il testo, le
-conseguenze — è come per le regole.
+numero. Per un *demone* scegli #ui[appena la condizione diventa vera (ogni volta che lo diventa)]
+o #ui[ogni turno in cui è vera (ripetuto)], e poi la condizione. Il primo scatta nel
+momento in cui la condizione passa da falsa a vera, e non mentre resta vera; se poi
+torna falsa e di nuovo vera, scatta ancora. Il resto — il testo, le conseguenze — è
+come per le regole.
 
 #consiglio[
   Prova spesso (#tasto("F5")). Il riquadro #ui[Passo passo] della Prova (capitolo 11)

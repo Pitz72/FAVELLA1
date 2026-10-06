@@ -1,6 +1,6 @@
 # Favella Studio
 
-<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.2.1 — l'ambiente di scrittura per FAVELLA 1"></p>
+<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.2.2 — l'ambiente di scrittura per FAVELLA 1"></p>
 
 **L'ambiente di scrittura visuale per il linguaggio FAVELLA 1.** Scrivi la tua avventura in
 italiano, vedi le stanze diventare una mappa, componi dialoghi e regole senza scrivere una

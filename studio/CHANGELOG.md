@@ -1,8 +1,22 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.1 c'è il motore **v1.4.4**).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.2 c'è il motore **v1.4.4**).
 Schema: [SemVer](https://semver.org/lang/it/).
+
+## [1.2.2] — 2026-10-06 — Una scritta più onesta, e la guida rivista
+
+Patch: nessuna funzione nuova, il motore resta la **1.4.4**.
+
+### Corretto
+- **«Quando scatta» di un demone.** La scelta «appena la condizione diventa vera» diceva
+  «(una volta)», ma il motore fa scattare il demone a ogni passaggio da falsa a vera: se la
+  condizione torna falsa e poi di nuovo vera, scatta ancora. Ora la scritta dice «(ogni volta
+  che lo diventa)». Il comportamento non cambia, cambia solo ciò che l'app ne dice.
+- **La guida.** Il capitolo sui demoni lo spiega; il capitolo sulle stanze non presenta più
+  `alto`, `basso`, `sopra`, `sotto` fra le direzioni di serie (le dichiara la storia, come fa
+  la Casa di Via Stradivari); «quasi trenta oggetti» al posto di «una ventina».
+
 
 ## [1.2.1] — 2026-10-06 — La guida all'uso, e quello che è venuto fuori scrivendola
 

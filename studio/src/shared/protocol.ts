@@ -577,7 +577,7 @@ export interface GameEvent {
 }
 
 // [Livello 8] Demone (sentinella): sorveglia una condizione a ogni turno e scatta
-// da solo. 'ogni' = ogni turno in cui è vera; 'quando' = appena diventa vera (una volta).
+// da solo. 'ogni' = ogni turno in cui è vera; 'quando' = appena diventa vera (a ogni passaggio da falsa a vera).
 export interface Demon {
   span: OutlineSpan | null
   mode: 'ogni' | 'quando'

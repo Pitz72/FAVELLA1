@@ -81,10 +81,11 @@ nell'ultima riga e poi #ui[Aggiungi l'uscita].
 Il ritorno si scrive da solo: se dall'ingresso vai a nord nel salotto, dal salotto torni
 a sud nell'ingresso. Un'uscita scritta dall'altra parte ha il segno #ui[ritorno].
 
-Oltre alle direzioni di sempre (nord, sud, est, ovest, le diagonali, su, giù, alto,
-basso, sopra, sotto) puoi inventarne una: nel menu della direzione scegli #ui[nuova
-direzione…] e scrivi la parola per andare e la sua opposta per tornare, per esempio
-«botola» e «scala».
+Le direzioni di sempre sono nord, sud, est, ovest, le diagonali, su e giù. Se ne vuoi
+un'altra puoi inventarla (la Casa ha due coppie sue, «alto» e «basso», «sopra» e
+«sotto», ed è per questo che le trovi nel menu): nel menu della direzione scegli
+#ui[nuova direzione…] e scrivi la parola per andare e la sua opposta per tornare,
+per esempio «botola» e «scala».
 
 == Eliminare una stanza
 

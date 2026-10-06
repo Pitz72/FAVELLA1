@@ -247,7 +247,7 @@ export default function RuleForm({
                   className={demonMode === 'quando' ? 'on' : ''}
                   onClick={() => setDemonMode('quando')}
                 >
-                  appena la condizione diventa vera (una volta)
+                  appena la condizione diventa vera (ogni volta che lo diventa)
                 </button>
                 <button
                   className={demonMode === 'ogni' ? 'on' : ''}

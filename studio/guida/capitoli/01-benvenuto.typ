@@ -38,7 +38,7 @@ il testo vicino a qualunque pannello, così vedi nascere le frasi mentre lavori.
 
 Gli esempi di questa guida usano «La Casa di Via Stradivari», la stessa storia del
 manuale: tua zia Adele è morta da tre giorni, sei venuto per firmare e chiudere, ma la
-casa ha ancora qualcosa da dire. Ha otto stanze, una ventina di oggetti, due personaggi
+casa ha ancora qualcosa da dire. Ha otto stanze, quasi trenta oggetti, due personaggi
 con i loro dialoghi, regole, eventi e tre finali.
 
 Per seguire la guida passo per passo, aprila anche tu:

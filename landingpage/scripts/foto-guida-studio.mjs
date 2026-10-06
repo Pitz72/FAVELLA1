@@ -13,6 +13,7 @@
 //  Prima:   node studio/dev-web/bridge.mjs <copia>/materiale-didattico   (:5301)
 //           npm --prefix studio run dev:web                              (:5310)
 //  Poi:     node scripts/foto-guida-studio.mjs [http://localhost:5310]
+//  (FAVELLA_FOTO_OUT=<cartella> scrive altrove, per rifare una sola schermata.)
 // ====================================================================
 import puppeteer from "puppeteer";
 import { dirname, join, resolve } from "node:path";
@@ -20,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const qui = dirname(fileURLToPath(import.meta.url));
-const OUT = resolve(qui, "..", "..", "studio", "guida", "immagini");
+const OUT = process.env.FAVELLA_FOTO_OUT ? resolve(process.env.FAVELLA_FOTO_OUT) : resolve(qui, "..", "..", "studio", "guida", "immagini");
 mkdirSync(OUT, { recursive: true });
 const URL = process.argv[2] ?? "http://localhost:5310";
 const W = 1440;
