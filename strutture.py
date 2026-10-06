@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.4.2"
+VERSIONE_MOTORE = "1.4.3"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -964,6 +964,9 @@ class Mondo:
         self._ambiguita: Optional[dict] = None
         # [1.4.2] L'oggetto di «Con cosa vuoi usarlo?», in attesa del secondo.
         self._usa_in_sospeso: Optional[str] = None
+        # [1.4.3] Nel comando in corso è scattata una regola dell'autore: il turno
+        # non può più essere «libero» (vedi gioco._senza_turno).
+        self._regola_scattata: bool = False
         self.posizione_giocatore: str | None = None
         # ID della stanza di partenza dichiarata esplicitamente dall'autore
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
@@ -1200,6 +1203,7 @@ class Mondo:
                        # [1.3.0] sessione del comando in corso
                        "_turno_libero", "_in_conferma", "_uscita_richiesta",
                        "_azione_riuscita", "_ambiguita", "_usa_in_sospeso",
+                       "_regola_scattata",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",

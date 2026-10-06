@@ -4,6 +4,39 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.4.3] - 2026-10-06
+### 🔍 Tre difetti trovati da una verifica completa del motore
+Una verifica a tappeto della 1.4.2: tutte le suite, un fuzz di 1520 comandi (ogni
+verbo della libreria con direzioni e argomenti strani), le undici suite di *Il
+Viaggiatore* sul motore nuovo. Nessuna frase nuova, grammatica invariata: le storie
+della 1.4.2 girano identiche, tranne nei tre punti qui sotto, che erano difetti.
+
+1. **Grave: una regola `Prima di vai` verso un'uscita che non c'è ora fa un turno
+   vero.** Dalla 1.4.1 una mossa a vuoto non fa passare il tempo. Ma se prima era
+   scattata una regola come `Prima di vai nord: … e adesso la lanterna è spenta.`, il
+   mondo cambiava e il turno restava «libero»: ANNULLA rispondeva «Non c'è niente da
+   annullare», e SALVA/CARICA perdeva l'effetto della regola (e diceva che «la storia
+   è cambiata»). Ora una regola scattata conta sempre come turno, come nella 1.4.0;
+   senza regole, la mossa a vuoto resta senza turno.
+2. **`usa la chiave su nord`, `usa nord sulla chiave`** (e `usa la chiave per aprire
+   nord`, `usa la chiave ed apri su`…) rispondono «Non vedi nulla del genere qui.»
+   invece di un «[ERRORE CRITICO]». La 1.4.1 lo aveva corretto per `apri`, `chiudi`,
+   `accendi`, `spegni`, `mangia`, `bevi`, non per `usa`. E questi comandi, come un
+   oggetto che non c'è, non fanno più passare il tempo.
+3. **«Con cosa vuoi usarla?» non consuma un turno**, come «Cosa vuoi esaminare?».
+   Prima `usa la chiave` + `botola` costava due turni (nelle storie a tempo, un sorso
+   d'acqua in più) e ANNULLA disfaceva metà del gesto. La risposta entra nella
+   sequenza salvabile come comando intero, in minuscolo.
+
+**Strumenti.** `test_linguaggio.py` e `test_collaudo.py` non si interrompono più su
+Windows quando l'uscita è rediretta su file (console cp1252). `strumenti_ide.py`
+(cresciuto con Favella Studio 1.0–1.1 dopo la 1.4.2) torna alla stessa versione di
+quello pubblicato.
+
+**Test.** `test_linguaggio.py`: 3 test nuovi (1176 asserzioni); pytest 424.
+
+---
+
 ## [1.4.2] - 2026-10-01
 ### 🧭 «Usa X su Y» si può dire in più modi
 Dalla partita di Matthia a *Il Faro Spento* (2026-06-19): bloccato davanti alla

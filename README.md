@@ -1,7 +1,7 @@
 # FAVELLA 1
 
 <p align="center">
-  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.4.2 — L'italiano è il linguaggio di programmazione" width="880">
+  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.4.3 — L'italiano è il linguaggio di programmazione" width="880">
 </p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
@@ -10,7 +10,7 @@
 
 > ### 🏁 Progetto concluso
 >
-> **FAVELLA 1 è finito.** La versione **1.4.2** è la definitiva e **non verrà più modificata**:
+> **FAVELLA 1 è finito.** La versione **1.4.3** è la definitiva e **non verrà più modificata**:
 > linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.1.3** è
 > la sua casa di scrittura. Il repository resta aperto, con licenza MIT, come **riferimento** per
 > chi voglia imparare, riprendere il lavoro o portarlo altrove. Le storie scritte oggi funzioneranno
@@ -78,7 +78,15 @@ a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.4.
 
 ---
 
-## 🏁 Stato Attuale: v1.4.2 — «usa X su Y» in più modi
+## 🏁 Stato Attuale: v1.4.3 — tre difetti chiusi dopo una verifica completa
+
+La **1.4.3** corregge tre difetti trovati da una verifica a tappeto del motore (fuzz
+di 1520 comandi, le undici suite di *Il Viaggiatore*): una regola `Prima di vai
+nord` che cambia il mondo, quando a nord non c'è un'uscita, ora fa un turno vero
+(prima ANNULLA non la disfaceva e SALVA/CARICA la perdeva); `usa la chiave su nord`
+risponde «Non vedi nulla del genere qui.» invece di un errore interno; la domanda
+«Con cosa vuoi usarla?» non consuma più un turno. Nessuna frase nuova: le storie
+della 1.4.2 girano identiche. Dettagli nel [CHANGELOG](CHANGELOG.md).
 
 La **1.4.2** nasce dalla partita di un giocatore che non riusciva ad aprire una
 botola con la chiave. Adesso `usa la chiave per aprire la botola`, `usa la chiave
@@ -87,9 +95,7 @@ botola` e trovano la regola dell'autore; dopo `usa la chiave` basta rispondere
 `la botola` a «Con cosa vuoi usarla?»; `look` è come `guarda`. Tutto additivo: le
 storie della 1.4.1 girano identiche. Dettagli nel [CHANGELOG](CHANGELOG.md).
 
-La **1.4.1** era una patch di quattro difetti del motore trovati giocando *Il Viaggiatore*.
-
-La **1.4.1** è una patch di quattro difetti del motore trovati giocando *Il
+La **1.4.1** era una patch di quattro difetti del motore trovati giocando *Il
 Viaggiatore*: una mossa verso un'uscita che non c'è non fa più passare il tempo,
 `lascia` non ristampa la stanza, `accendi su` / `apri nord` rispondono «Non vedi
 nulla del genere qui.» invece di un errore interno, e l'avviso di un verbo del
@@ -151,9 +157,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1143
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1176
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-419 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
+424 passati). Spec tecnica: [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -183,17 +189,17 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.4.2** | header di modulo |
-| Compilatore, nucleo (`compilatore.py`) | **1.4.2** | header di modulo |
-| Strumenti per l'IDE (`strumenti_ide.py`) | **1.4.2** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Esportazione HTML (`esportazione.py`) | **1.4.2** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Strutture dati (`strutture.py`) | **1.4.2** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.4.2** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.4.2** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.4.2** | nuovo nella 1.2.0 |
-| Specifica formale della grammatica | **1.4.2** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23) + i quattro difetti della 1.4.1 (§24)* |
-| Suite di test | **1.4.2** | 1143 asserzioni linguaggio + 50 collaudo (pytest 419) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.2 | protocollo 0.10.0 (+ eventi, + pulsanti-verbo) |
+| Motore / interprete (`gioco.py`) | **1.4.3** | header di modulo |
+| Compilatore, nucleo (`compilatore.py`) | **1.4.3** | header di modulo |
+| Strumenti per l'IDE (`strumenti_ide.py`) | **1.4.3** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Esportazione HTML (`esportazione.py`) | **1.4.3** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Strutture dati (`strutture.py`) | **1.4.3** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.4.3** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.4.3** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.4.3** | nuovo nella 1.2.0 |
+| Specifica formale della grammatica | **1.4.3** | [`documentazione/grammatica-1.4.0.md`](documentazione/grammatica-1.4.0.md) — *1.3.0 + la frase dei comandi e l'architettura (§23) + i quattro difetti della 1.4.1 (§24) + «usa X su Y» della 1.4.2 (§25); la 1.4.3 non tocca la grammatica* |
+| Suite di test | **1.4.3** | 1176 asserzioni linguaggio + 50 collaudo (pytest 424) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.4.3 | protocollo 0.11.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1) |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 95 pagine, allineato al linguaggio 1.4.0** (novità anche nella spec, §22 e §23). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 

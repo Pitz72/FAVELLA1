@@ -5813,6 +5813,74 @@ def test_usare_una_cosa_su_un_altra_a_modo_proprio():
     _check("non ha alcun effetto" in out, "una coppia senza regola dice sempre che non succede nulla")
 
 
+_SRC_PRIMA_DI_VAI = (
+    "L'atrio è una stanza.\n"
+    "Il giocatore comincia in atrio.\n"
+    "La sala è una stanza.\n"
+    "L'atrio collega est a la sala.\n"
+    "La lanterna è una cosa.\n"
+    "La lanterna è in atrio.\n"
+    "La lanterna è accesa.\n"
+    "Prima di vai nord: dire \"Il vento spegne la lanterna.\" e adesso la lanterna è spenta.\n")
+
+
+def test_prima_di_vai_senza_uscita_e_un_turno_vero():
+    print("[1.4.3: una regola «Prima di vai» che scatta verso un'uscita che non c'è fa un turno]")
+    with tempfile.TemporaryDirectory() as cartella:
+        corrente = os.getcwd()
+        os.chdir(cartella)
+        try:
+            mondo = runtime(_SRC_PRIMA_DI_VAI)
+            out = esegui(mondo, "nord")
+            _check("Il vento spegne la lanterna." in out and "Non puoi andare" in out,
+                   "la regola scatta, poi il motore dice che di là non si va")
+            _check(mondo.turno_corrente == 1 and mondo._registro_comandi == ["nord"],
+                   "il mondo è cambiato: il turno passa ed entra nella sequenza salvabile")
+            esegui(mondo, "salva prova")
+            ricaricato = runtime(_SRC_PRIMA_DI_VAI)
+            out = esegui(ricaricato, "carica prova")
+            _check("non è identica" not in out and "spenta" in ricaricato.oggetti["lanterna"].proprieta,
+                   "SALVA e CARICA ritrovano la lanterna spenta")
+            esegui(mondo, "annulla")
+            _check("accesa" in mondo.oggetti["lanterna"].proprieta and mondo.turno_corrente == 0,
+                   "ANNULLA riaccende la lanterna")
+            esegui(mondo, "sud")
+            _check(mondo.turno_corrente == 0, "senza regole, una mossa a vuoto resta senza turno")
+        finally:
+            os.chdir(corrente)
+
+
+def test_usa_con_una_direzione_non_e_un_errore():
+    print("[1.4.3: «usa la chiave su nord», «usa nord sulla chiave»… non sollevano un errore interno]")
+    guasti = []
+    for comando in ("usa la chiave su nord", "usa nord sulla chiave", "usa su con la chiave",
+                    "usa la chiave per aprire nord", "usa la chiave ed apri su", "usa nord"):
+        mondo = runtime(_SRC_USA)
+        esegui(mondo, "prendi la chiave")
+        out = esegui(mondo, comando)
+        if "ERRORE" in out or "Non vedi nulla del genere qui." not in out or mondo.turno_corrente != 1:
+            guasti.append((comando, out.strip()[:60], mondo.turno_corrente))
+    _check(not guasti, f"sei frasi rispondono «Non vedi nulla del genere qui.», senza turno ({guasti})")
+
+
+def test_la_domanda_di_usa_non_consuma_turni():
+    print("[1.4.3: «Con cosa vuoi usarla?» non fa passare il tempo; la risposta sì]")
+    mondo = runtime(_SRC_USA)
+    esegui(mondo, "prendi la chiave")
+    out = esegui(mondo, "usa la chiave")
+    _check("Con cosa vuoi usarla?" in out and mondo.turno_corrente == 1
+           and mondo._registro_comandi == ["prendi la chiave"],
+           "la domanda non è un turno, come «Cosa vuoi esaminare?»")
+    out = esegui(mondo, "sulla botola")
+    _check("Scatta." in out and mondo.turno_corrente == 2,
+           "la risposta compie l'azione in un turno solo")
+    _check(mondo._registro_comandi[-1] == "usa la chiave della botola su botola",
+           "e nella sequenza salvabile c'è il comando intero, in minuscolo")
+    esegui(mondo, "annulla")
+    _check("chiusa" in mondo.oggetti["botola"].proprieta and mondo.turno_corrente == 1,
+           "ANNULLA disfa l'azione intera")
+
+
 def test_parole_e_comandi_per_lo_studio():
     print("[Studio 1.0: analizza_parole e le frasi di verbi, sinonimi e modo dei comandi]")
     import favella_server
@@ -7343,6 +7411,10 @@ def test_copie_del_motore_nel_sito_allineate():
 
 
 def main():
+    # [1.4.3] Con l'uscita rediretta su file, in Windows la console è cp1252 e le
+    # descrizioni dei test con «→» o simili interrompevano la suite a metà.
+    from favella_utils import assicura_console_utf8
+    assicura_console_utf8()
     tests = [
         test_disambiguazione_definizioni,
         test_nomi_con_parole_quasi_riservate,
@@ -7751,6 +7823,9 @@ def main():
         test_una_direzione_non_e_una_cosa,
         test_avviso_del_sinonimo_dice_il_verbo_vero_e_si_silenzia,
         test_usare_una_cosa_su_un_altra_a_modo_proprio,
+        test_prima_di_vai_senza_uscita_e_un_turno_vero,
+        test_usa_con_una_direzione_non_e_un_errore,
+        test_la_domanda_di_usa_non_consuma_turni,
         test_esci_chiede_conferma,
         test_esci_come_movimento,
         test_dopo_la_fine_si_puo_annullare_e_ricominciare,
@@ -7825,7 +7900,7 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.3)")
     print("=" * 60)
     for t in tests:
         t()

@@ -3,7 +3,7 @@ import { skipMotion, useInView } from "./hooks";
 
 // Il cuore della Home: una frase italiana si scrive da sola e il mondo risponde.
 // Le tre scene sono storie vere di FAVELLA 1: le risposte sono quelle che il motore
-// stampa davvero (provate con favella_server, versione 1.4.2).
+// stampa davvero (provate con favella_server, versione 1.4.3).
 
 interface Passo {
   cmd: string;

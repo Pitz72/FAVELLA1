@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.4.2)
+# Interprete Interattivo per FAVELLA 1 (v1.4.3)
 
 import copy
 import json
@@ -333,7 +333,7 @@ def _completa_usa(mondo: Mondo, id_primo: str, risposta: str) -> str:
     trovato = risolvi_in_silenzio(mondo, testo)[0] if testo else None
     if trovato is None or trovato == id_primo:
         return risposta
-    return f"usa {mondo.oggetti[id_primo].nome_visualizzato} su {testo}"
+    return f"usa {nome_in_frase(mondo.oggetti[id_primo].nome_visualizzato)} su {testo}"
 
 
 def _dividi_argomenti(mondo: Mondo, parole_arg):
@@ -470,8 +470,11 @@ def _risolvi_anafora(mondo: Mondo, verbo: str, argomento: str):
 
 def _senza_turno(mondo: Mondo):
     """[1.3.0] Il comando in corso non fa passare il tempo (errore del parser o
-    comando fuori dal mondo, come AIUTO): vedi elabora_comando."""
-    mondo._turno_libero = True
+    comando fuori dal mondo, come AIUTO): vedi elabora_comando.
+    [1.4.3] Non vale se nel comando è già scattata una regola dell'autore (una
+    'Prima di …' che cambia il mondo): quel turno deve entrare in ANNULLA e in SALVA."""
+    if not getattr(mondo, "_regola_scattata", False):
+        mondo._turno_libero = True
 
 
 def _stampa_annunci(mondo: Mondo):
@@ -1277,6 +1280,7 @@ def _applica_regola(mondo: Mondo, regola, altrimenti: bool, mostra: bool = True)
     """Mostra la risposta della regola (o del suo ramo 'altrimenti'), ne esegue
     le conseguenze, annuncia i movimenti; se il giocatore si è spostato mostra
     la nuova stanza. Restituisce False se la partita è finita."""
+    mondo._regola_scattata = True   # [1.4.3] il comando ha agito: niente turno libero
     risposta = regola.risposta_di(altrimenti)
     if risposta:   # [0.30.0/A3] regola muta: niente riga vuota
         scrivi(mondo, rendi_testo(mondo, risposta))
@@ -1337,6 +1341,7 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
     senza gestire l'avanzamento dei turni. Restituisce True per continuare.
     [1.3.0] ristampa=False: comando di un elenco ('prendi tutto'), la stanza si
     ristampa una volta sola alla fine."""
+    mondo._regola_scattata = False   # [1.4.3] vedi _senza_turno
     try:
         comando_pulito = comando_grezzo.strip().lower()
         if not comando_pulito:

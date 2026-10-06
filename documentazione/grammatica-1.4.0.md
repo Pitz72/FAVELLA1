@@ -1667,3 +1667,22 @@ alla frase a due oggetti (§22), in modo additivo.
   domanda non resta in sospeso oltre il comando successivo.
 - `look` è un nome dell'azione «guarda».
 
+
+## 26. Tre difetti chiusi (1.4.3)
+
+La grammatica non cambia. Cambiano tre comportamenti del motore, che erano difetti.
+
+- **Una regola scattata fa sempre un turno.** Il «turno libero» (un comando non
+  capito, §22; una mossa senza uscita, §24.2) non vale più se nello stesso comando è
+  scattata una regola dell'autore (`Mondo._regola_scattata`, impostato da
+  `gioco._applica_regola`, letto da `gioco._senza_turno` e da
+  `libreria_azioni._tempo_fermo`). Caso tipico: `Prima di vai nord: … e adesso …` verso
+  un nord che non c'è. Nella 1.4.1 e nella 1.4.2 la regola cambiava il mondo, ma il
+  turno era libero: ANNULLA non la disfaceva e SALVA/CARICA ne perdeva l'effetto.
+- **`usa` con una direzione** (`usa la chiave su nord`, `usa nord sulla chiave`, e le
+  forme della §25 che ci arrivano) dà «Non vedi nulla del genere qui.», come gli altri
+  verbi della §24.2, invece di un errore interno. Come un oggetto che non c'è, non fa
+  passare il tempo; lo stesso vale ora per `apri nord`, `accendi su`…
+- **«Con cosa vuoi usarla?» non è un turno**, come «Cosa vuoi esaminare?»: l'azione
+  si compie, e il turno passa, quando arriva la risposta. Nella sequenza salvabile entra
+  il comando completo, col nome in minuscolo (`usa la chiave su botola`).

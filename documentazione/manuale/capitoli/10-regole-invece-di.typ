@@ -294,7 +294,9 @@ nessuna ambiguità.
   motore è riuscita (la piuma è stata presa davvero); se non riesce, tace.
 
 Così non serve riscrivere una presa solo per aggiungerle una frase: la capienza, il
-buio e il messaggio «Preso» restano quelli del motore.
+buio e il messaggio «Preso» restano quelli del motore. Una regola `Prima di` che
+scatta fa sempre passare un turno, anche se poi l'azione non riesce (`vai nord`
+dove a nord non si va): ANNULLA la disfa e SALVA la ricorda.
 
 Una regola con `se` può avere un ramo per quando la condizione è falsa:
 

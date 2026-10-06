@@ -55,7 +55,7 @@ const ICONS = {
 
 // Definizione delle anteprime: chiave file, nome grande, occhiello, icona, accento.
 const PAGES = [
-  { key: "home", eyebrow: "Il linguaggio è completo · v1.4.2", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
+  { key: "home", eyebrow: "Il linguaggio è completo · v1.4.3", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
   { key: "progetto", eyebrow: "Il progetto", title: "L'italiano è\nil codice", icon: "progetto", accent: C.teal },
   { key: "aggiornamenti", eyebrow: "Novità & Roadmap", title: "A che punto\nsiamo", icon: "aggiornamenti", accent: C.amber },
   { key: "manuale", eyebrow: "Guida rapida", title: "Impara a\nscrivere storie", icon: "manuale", accent: C.cyan },

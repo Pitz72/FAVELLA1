@@ -262,6 +262,8 @@ def test_scorte_con_ricarica_non_segnalate():
 
 
 def main():
+    from favella_utils import assicura_console_utf8   # [1.4.3] uscita rediretta in cp1252
+    assicura_console_utf8()
     tests = [
         test_catena_vittoria_vincibile,
         test_storia_rotta_rilevamenti,

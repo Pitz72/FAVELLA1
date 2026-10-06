@@ -1,5 +1,5 @@
 # libreria_azioni.py
-# Libreria Standard delle Azioni per FAVELLA 1 (v1.4.2)
+# Libreria Standard delle Azioni per FAVELLA 1 (v1.4.3)
 
 from strutture import Mondo, Azione, ConseguenzaProprieta
 from favella_utils import (rendi_testo, frase_indeterminativa, prima_maiuscola, nome_in_frase,
@@ -12,12 +12,23 @@ def _riuscita(mondo: Mondo):
     mondo._azione_riuscita = True
 
 
+def _tempo_fermo(mondo: Mondo):
+    """[1.4.3] Il comando non fa passare il tempo (come gioco._senza_turno), a meno
+    che in questo stesso comando non sia già scattata una regola dell'autore: una
+    regola 'Prima di' che ha cambiato il mondo fa un turno vero, che ANNULLA deve
+    poter disfare e SALVA deve ricordare (vedi Mondo._regola_scattata)."""
+    if not getattr(mondo, "_regola_scattata", False):
+        mondo._turno_libero = True
+
+
 def _manca(mondo: Mondo, oggetto) -> bool:
     """[1.4.1] Il nome indicato non è una cosa del mondo: è una direzione ('accendi
     su', 'apri nord'), che il parser riconosce ma che non ha proprietà. Prima di
-    questo controllo l'azione di default sollevava un errore interno."""
+    questo controllo l'azione di default sollevava un errore interno.
+    [1.4.3] Come per un oggetto che non c'è, il tempo non passa."""
     if oggetto is None:
         scrivi(mondo, "Non vedi nulla del genere qui.")
+        _tempo_fermo(mondo)
         return True
     return False
 
@@ -234,7 +245,8 @@ def muovi_logica_default(mondo: Mondo, direzione: str):
         scrivi(mondo, messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
         # [1.4.1] Una mossa verso un'uscita che non c'è non fa passare il tempo, come
         # un comando non capito (1.3.0): non si è mossa nessuna cosa del mondo.
-        mondo._turno_libero = True
+        # [1.4.3] Salvo che una regola 'Prima di vai …' non sia già scattata.
+        _tempo_fermo(mondo)
 
 def guarda_logica_default(mondo: Mondo):
     """Logica di default per l'azione GUARDA: ristampa la stanza corrente.
@@ -262,15 +274,25 @@ def aiuto_logica_default(mondo: Mondo):
 
 def usare_con_logica_default(mondo: Mondo, id_oggetto1: str, id_oggetto2: str = None):
     """Logica di default per l'azione USARE [ogg1] CON [ogg2]."""
+    oggetto = mondo.trova_oggetto(id_oggetto1)
+    # [1.4.3] 'usa nord sulla chiave', 'usa la chiave su nord': una direzione non è
+    # una cosa. Prima l'azione sollevava un errore interno (la 1.4.1 lo aveva tolto
+    # ad apri, chiudi, accendi, spegni, mangia e bevi, non a usa).
+    if _manca(mondo, oggetto):
+        return
     if id_oggetto2:
-        scrivi(mondo, f"Usare {_nome(mondo.trova_oggetto(id_oggetto1))} con "
-                      f"{_nome(mondo.trova_oggetto(id_oggetto2))} non ha alcun effetto particolare.")
+        secondo = mondo.trova_oggetto(id_oggetto2)
+        if _manca(mondo, secondo):
+            return
+        scrivi(mondo, f"Usare {_nome(oggetto)} con {_nome(secondo)} non ha alcun effetto particolare.")
     else:
-        oggetto = mondo.trova_oggetto(id_oggetto1)
-        pron = pronome_oggetto(oggetto.nome_visualizzato) if oggetto else "lo"
+        pron = pronome_oggetto(oggetto.nome_visualizzato)
         scrivi(mondo, f"Con cosa vuoi usar{pron}?", "domanda")
         # [1.4.2] La risposta («la botola», «sulla botola») completa il comando.
         mondo._usa_in_sospeso = id_oggetto1
+        # [1.4.3] La domanda non fa passare il tempo, come «Cosa vuoi esaminare?»:
+        # l'azione si compie (e il turno passa) quando arriva la risposta.
+        _tempo_fermo(mondo)
 
 
 # --- [1.3.0 / G-4] Azioni con una logica propria -------------------------------
