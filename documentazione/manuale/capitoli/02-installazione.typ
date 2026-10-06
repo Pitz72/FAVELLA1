@@ -56,6 +56,9 @@ nella cartella dove tieni le tue storie.
   [#cmd[favella1 esplora storia.fav]], [Gioca molte partite a caso e segnala dove la storia si rompe.],
   [#cmd[favella1 playground]], [Apre il laboratorio nel browser: scrivi e provi sul posto.],
   [#cmd[favella1 esporta storia.fav]], [Crea un singolo file `.html` giocabile, da regalare a chi vuoi (si gioca scrivendo o toccando i pulsanti-verbo).],
+  [#cmd[favella1 libreria]], [Elenca i moduli `.fav` riusabili della libreria standard; `favella1 libreria copia verbi` ne copia uno accanto alla tua storia.],
+  [#cmd[favella1 galleria]], [Elenca le storie brevi di esempio; `favella1 galleria gioca il-faro` ne fa partire una.],
+  [#cmd[favella1 versione]], [Stampa la versione del motore.],
 )
 
 `esplora` e `collaudo --finali` sono arrivati con la versione 1.2. Giocano come

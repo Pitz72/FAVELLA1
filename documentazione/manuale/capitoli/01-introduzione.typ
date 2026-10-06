@@ -37,8 +37,8 @@ quello che gli serve intorno.
 
 == La storia che faremo insieme
 
-Per non spiegare il linguaggio a vuoto, ogni esempio di questo manuale viene da
-un'unica avventura giocabile: *La Casa di Via Stradivari*. Conviene conoscerne la
+Per non spiegare il linguaggio a vuoto, quasi ogni esempio di questo manuale viene
+da un'unica avventura giocabile: *La Casa di Via Stradivari*. Conviene conoscerne la
 premessa fin da subito, perché torneremo nelle sue stanze a ogni capitolo.
 
 #nota[
@@ -50,9 +50,12 @@ premessa fin da subito, perché torneremo nelle sue stanze a ogni capitolo.
   con i mezzi del linguaggio.
 ]
 
-Il testo completo dell'avventura è in `esempi/materiale-didattico/`. Ti invito a
-tenerlo aperto accanto al manuale: gli esempi che leggerai qui sono presi da lì
-parola per parola, e vederli al loro posto, dentro una storia che funziona, vale
+Il testo completo dell'avventura è nella cartella `esempi/materiale-didattico/` del
+progetto, che trovi su GitHub (github.com/Pitz72/FAVELLA1): tre file di testo, da
+scaricare e aprire con qualunque editor. Ti invito a
+tenerlo aperto accanto al manuale: gli esempi che leggerai qui sono, in gran parte, presi da lì
+parola per parola (qualche esempio di altri generi, dove la Casa non arriva, è
+segnato come «forma disponibile» o «un esempio»), e vederli al loro posto, dentro una storia che funziona, vale
 più di mille definizioni.
 
 == Come leggere gli esempi
@@ -67,7 +70,7 @@ tempo:
 
 #esempio[
 #fav(```
-# Un frammento di codice .fav, sempre tratto da «La Casa».
+# Un frammento di codice .fav, di norma tratto da «La Casa».
 La torcia è una cosa.
 La torcia è prendibile.
 ```)

@@ -4,6 +4,27 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Manuale] - 2026-10-06
+### Revisione di aderenza alla 1.4.4 (prima della stampa su KDP)
+Solo testo del manuale (`documentazione/manuale/`): nessun cambio al motore né alla
+grammatica. Verificati contro il motore 1.4.4 tutti gli esempi `.fav`, le forme del
+riepilogo e i comportamenti descritti; corretti sette punti imprecisi:
+
+- rimando numerico sbagliato («capitolo sei» → sette) e «tabella in appendice» (non c'è
+  appendice: sta nel capitolo «Riepilogo del linguaggio»);
+- trascrizione dei pronomi: il motore risponde «Preso: la torcia.»; descritto il vero
+  comportamento quando il genere non torna;
+- numeri della Casa (otto stanze, una trentina di oggetti) e «quasi tutti» gli esempi
+  vengono dalla Casa, non «tutti»;
+- dove trovare la storia guida (GitHub: non è inclusa negli installer);
+- «avviso di capienza dalla 1.1» → 1.2 (la 1.1.0 non fu rilasciata);
+- nota sulle direzioni `basso`/`sopra` nella pianta, e comandi `libreria`, `galleria`,
+  `versione` aggiunti alla tabella del comando `favella1`.
+
+Ebook 95 pagine, interno KDP 96 pagine, copertina invariata.
+
+---
+
 ## [1.4.4] - 2026-10-06
 ### 🎯 Gli errori indicano la riga giusta
 Trovato scrivendo la guida di Favella Studio. Nessuna frase nuova, grammatica e

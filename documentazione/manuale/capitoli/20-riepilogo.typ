@@ -199,8 +199,9 @@ li racconta per esteso; qui sono raccolti per consultazione.
 
 == La storia guida
 
-Tutti gli esempi di questo manuale vengono da *La Casa di Via Stradivari*, che
-trovi per intero in `esempi/materiale-didattico/`, divisa nei suoi tre file:
+La maggior parte degli esempi di questo manuale viene da *La Casa di Via
+Stradivari*, che trovi per intero in `esempi/materiale-didattico/` del progetto su
+GitHub (github.com/Pitz72/FAVELLA1), divisa nei suoi tre file:
 `storia.fav` (stanze, stati, eventi, demoni, regole), `oggetti.fav` (oggetti,
 proprietà, alias, verbi) e `dialoghi.fav` (i due personaggi). È un'avventura
 completa e vincibile: leggerla intera, ora che conosci il linguaggio, è il modo

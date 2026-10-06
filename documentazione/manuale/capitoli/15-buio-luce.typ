@@ -64,7 +64,7 @@ a terra in una cantina buia la rischiara comunque.
 
 Una torcia che `illumina` e basta è *sempre* accesa: comoda, ma poco interessante.
 Per darle un interruttore, combina la capacità con una coppia di stati opposti —
-proprio le proprietà a due valori del capitolo sei. Una fonte che illumina ma è
+proprio le proprietà a due valori del capitolo sette. Una fonte che illumina ma è
 `spenta` non fa luce; accendila, e torna a illuminare.
 
 #esempio[

@@ -2,7 +2,7 @@
 
 = Muoversi tra le stanze
 
-Sette stanze isolate non fanno una casa. Servono le porte: i collegamenti che
+Otto stanze isolate non fanno una casa. Servono le porte: i collegamenti che
 permettono al giocatore di passare da un luogo all'altro. In FAVELLA si tracciano
 con una parola, `collega`, e con una direzione.
 
@@ -17,7 +17,9 @@ Le direzioni di base sono `nord`, `sud`, `est`, `ovest` (con le abbreviazioni
 solo: se l'ingresso porta a nord nel salotto, dal salotto si torna a sud
 nell'ingresso senza che tu debba scriverlo.
 
-Ecco la pianta completa della Casa:
+Ecco la pianta completa della Casa. Vi compaiono `basso` e `sopra`: sono due
+direzioni *tue*, che la Casa dichiara più avanti (la sezione «Direzioni tue»); per
+ora leggile come parole qualunque.
 
 #esempio[
 #fav(```

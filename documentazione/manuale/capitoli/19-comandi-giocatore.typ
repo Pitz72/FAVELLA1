@@ -88,15 +88,17 @@ puoi usarli staccati: `prendi quella`, `usa lo`.
 Una torcia pesante, di gomma nera.
 
 > prendila
-Hai preso la torcia.
+Preso: la torcia.
 ```)
 ]
 
 Il riferimento è all'ultima cosa di cui ci si è occupati: l'oggetto dell'ultima
 azione, oppure l'ultimo nominato — anche solo perché comparso nell'elenco di quel
 che c'è nella stanza. Se il genere non torna (un «prendilo» dove l'ultima cosa era
-femminile) FAVELLA non indovina a caso: ti dice che non sa a cosa ti riferisci. E
-se la cosa nel frattempo è sparita dalla portata, risponde che non la vedi più.
+femminile) FAVELLA non lo forza: cerca fra le cose nominate di recente una che
+concordi e, se non ne trova, non indovina a caso e ti chiede a cosa ti riferisci
+(«Cosa vuoi prendere?»). E se la cosa nel frattempo è sparita dalla portata,
+risponde che non la vedi più.
 
 == Tornare sui propri passi
 

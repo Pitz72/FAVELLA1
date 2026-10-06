@@ -71,7 +71,7 @@ portava oggetti senza limite, e una chiave messa lì dentro non apriva nulla.
 #tranello[
   Il limite ferma il giocatore che *prende*, non le tue regole. Una conseguenza
   come `e adesso la borraccia è in inventario` mette l'oggetto nelle tasche anche
-  se sono già piene. Dalla versione 1.1 FAVELLA te lo segnala con un avviso. Se
+  se sono già piene. Dalla versione 1.2 FAVELLA te lo segnala con un avviso. Se
   la cosa conta, metti la regola sotto condizione, oppure fai lasciare qualcosa
   al giocatore prima di dargli l'oggetto.
 ]

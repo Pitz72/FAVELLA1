@@ -124,7 +124,7 @@
       #v(4.5mm)
       #block(width: 80%)[Sito ufficiale: #link("https://www.favella.eu")[www.favella.eu] — download, spiegazioni, manuale interattivo, galleria di demo, libreria di moduli e i link per collaborare su GitHub.]
       #v(4.5mm)
-      #block(width: 80%)[Composto con #link("https://typst.app")[Typst]. Titoli in Sora, testo in Inter, codice in Source Code Pro. Gli esempi sono tratti da «La Casa di Via Stradivari».]
+      #block(width: 80%)[Composto con #link("https://typst.app")[Typst]. Titoli in Sora, testo in Inter, codice in Source Code Pro. Gli esempi sono tratti in gran parte da «La Casa di Via Stradivari».]
     ]
     #v(1fr)
   ]

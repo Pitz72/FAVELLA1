@@ -2,8 +2,8 @@
 
 = Organizzare un progetto: i moduli
 
-Una storia piccola sta in un file solo. Ma «La Casa di Via Stradivari» ha sette
-stanze, una cinquantina di oggetti, due personaggi con i loro dialoghi: tutto in un
+Una storia piccola sta in un file solo. Ma «La Casa di Via Stradivari» ha otto
+stanze, una trentina di oggetti, due personaggi con i loro dialoghi: tutto in un
 unico file diventerebbe un muro difficile da leggere. Per questo FAVELLA permette
 di spezzare un progetto in più file e ricucirli con una riga.
 

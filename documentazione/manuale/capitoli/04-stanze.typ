@@ -13,7 +13,7 @@ stanza.
   `[Nome della stanza] è una stanza.`
 ]
 
-Una riga, e il luogo esiste. La Casa ne ha sette, una per frase:
+Una riga, e il luogo esiste. La Casa ne ha otto; ecco le prime sette, una per frase (il giardino arriva più avanti):
 
 #esempio[
 #fav(```

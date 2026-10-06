@@ -105,7 +105,7 @@ Le principali parole riservate sono `è` e `sono`; gli articoli; le preposizioni
 `cosa`, `contenitore`, `supporto`, `personaggio`, `stato`, `contatore`,
 `prendibile`; `collega` e le direzioni; `giocatore`, `comincia`; `Invece`, `se`,
 `dire`, `adesso`, `oppure`, `non`, `ha`; `Al`, `turno`, `Ogni`, `Quando`. La
-tabella completa è in appendice.
+tabella completa è nell'ultimo capitolo, «Riepilogo del linguaggio».
 
 #tranello[
   La lettera `e` è insieme la congiunzione «e» e l'abbreviazione di «est»; la `o`
