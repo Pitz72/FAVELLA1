@@ -14,10 +14,54 @@ import VariablesEditor from './VariablesEditor'
 import DialoguesEditor from './DialoguesEditor'
 import WordsEditor from './WordsEditor'
 import EditorPane from './EditorPane'
+import Riparo from './Riparo'
+import { IconaAvviso, IconaChiudi } from './Icone'
 
-// L'area di lavoro delle sezioni visuali (Mondo, Personaggi, Regole, Prova). Prima
-// questi pannelli stavano in una colonna stretta a destra del testo; ora occupano
-// il centro, e il testo si può AFFIANCARE quando serve vederlo.
+// L'area di lavoro delle sezioni visuali (Mondo, Personaggi, Regole, Prova). Ogni sezione
+// ha la stessa intestazione: il titolo e che cosa si fa qui, le sue parti (linguette), e a
+// destra dove vanno le cose nuove e l'interruttore per avere il testo accanto.
+
+/** Le linguette di una sezione: role=tablist, frecce sinistra/destra per spostarsi. */
+function Linguette<T extends string>({
+  voci,
+  attiva,
+  onScegli,
+  etichetta
+}: {
+  voci: { id: T; titolo: string; aiuto?: string }[]
+  attiva: T
+  onScegli: (id: T) => void
+  etichetta: string
+}): JSX.Element {
+  const sposta = (i: number, e: React.KeyboardEvent<HTMLButtonElement>): void => {
+    const j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null
+    if (j === null) return
+    e.preventDefault()
+    const v = voci[(j + voci.length) % voci.length]
+    onScegli(v.id)
+    const lista = e.currentTarget.parentElement
+    requestAnimationFrame(() => lista?.querySelector<HTMLButtonElement>(`[data-id="${v.id}"]`)?.focus())
+  }
+  return (
+    <div className="linguette" role="tablist" aria-label={etichetta}>
+      {voci.map((v, i) => (
+        <button
+          key={v.id}
+          data-id={v.id}
+          role="tab"
+          aria-selected={attiva === v.id}
+          tabIndex={attiva === v.id ? 0 : -1}
+          className={'linguetta' + (attiva === v.id ? ' attiva' : '')}
+          onClick={() => onScegli(v.id)}
+          onKeyDown={(e) => sposta(i, e)}
+          title={v.aiuto}
+        >
+          {v.titolo}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function LatoProva(): JSX.Element {
   const rightTab = useStudio((s) => s.rightTab)
@@ -30,32 +74,25 @@ function LatoProva(): JSX.Element {
     useStudio.getState().setRightTab('gioca')
   }
   return (
-    <div className="prova-lato">
-      <div className="segmented" role="tablist" aria-label="Che cosa guardare">
-        {(
-          [
-            ['stato', 'Partita'],
-            ['mappa', 'Mappa'],
-            ['debug', 'Passo passo']
-          ] as const
-        ).map(([id, nome]) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={lato === id}
-            className={'seg' + (lato === id ? ' active' : '')}
-            onClick={() => scegli(id)}
-          >
-            {nome}
-          </button>
-        ))}
+    <aside className="prova-lato" aria-label="Lo stato della partita">
+      <Linguette
+        etichetta="Che cosa guardare"
+        attiva={lato}
+        onScegli={scegli}
+        voci={[
+          { id: 'stato', titolo: 'Partita', aiuto: 'Dove sei, che cosa porti, gli stati e i contatori' },
+          { id: 'mappa', titolo: 'Mappa', aiuto: 'Le stanze, e dove sei adesso' },
+          { id: 'debug', titolo: 'Passo passo', aiuto: 'Che cosa è cambiato a ogni turno' }
+        ]}
+      />
+      <div className="prova-lato-corpo">
+        <Riparo livello="pannello" chiave={'prova-' + lato}>
+          {lato === 'stato' && <StateInspector />}
+          {lato === 'mappa' && <MapView compact />}
+          {lato === 'debug' && <DebugPanel />}
+        </Riparo>
       </div>
-      <div className="prova-lato-body">
-        {lato === 'stato' && <StateInspector />}
-        {lato === 'mappa' && <MapView compact />}
-        {lato === 'debug' && <DebugPanel />}
-      </div>
-    </div>
+    </aside>
   )
 }
 
@@ -99,7 +136,10 @@ export default function Workspace(): JSX.Element | null {
   // All'apertura di ogni vista aggiorna i dati: Mappa → topologia, Partita →
   // snapshot live, Passo passo → history dei turni, gli editor → il loro modello.
   useEffect(() => {
-    if (tab === 'mappa') void loadGraph()
+    if (tab === 'mappa') {
+      void loadGraph()
+      void loadOutline()
+    }
     if (tab === 'oggetti' || tab === 'stanze') void loadOutline()
     if (tab === 'personaggi') {
       void loadOutline()
@@ -116,8 +156,7 @@ export default function Workspace(): JSX.Element | null {
     }
   }, [tab, latoProva, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables, loadDialogues, loadWords])
 
-  // Auto-refresh della Mappa MENTRE SI DIGITA (debounce): la topologia segue il
-  // testo senza dover riaprire la scheda. Solo in anteprima (nessuna partita in corso).
+  // La Mappa segue il testo mentre si scrive (solo in anteprima, senza partita in corso).
   useEffect(() => {
     if (tab !== 'mappa' || gameRunning) return
     const t = setTimeout(() => {
@@ -132,94 +171,90 @@ export default function Workspace(): JSX.Element | null {
   const inProva = sezione.id === 'prova'
 
   return (
-    <section className={'workspace sezione-' + sezione.id}>
-      <header className="ws-head">
-        <div className="ws-title">
-          <h1>{sezione.titolo}</h1>
+    <section className={'lavoro lavoro-' + sezione.id} aria-labelledby="lavoro-titolo">
+      <header className="lavoro-testa">
+        <div className="lavoro-titolo">
+          <h1 id="lavoro-titolo">{sezione.titolo}</h1>
           <p>{sezione.descrizione}</p>
         </div>
 
-        {sezione.sotto.length > 1 && (
-          <div className="segmented" role="tablist" aria-label={`Parti di ${sezione.titolo}`}>
-            {sezione.sotto.map((x) => (
-              <button
-                key={x.tab}
-                role="tab"
-                aria-selected={tab === x.tab}
-                className={'seg' + (tab === x.tab ? ' active' : '')}
-                onClick={() => setRightTab(x.tab)}
-                title={x.aiuto}
-              >
-                {x.titolo}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="ws-spacer" />
-
-        {/* Con una storia a più file: dove vanno le cose nuove. */}
-        {!inProva && storia && storia.m.length > 1 && (
-          <label
-            className="ws-dove"
-            title="Le stanze, gli oggetti e le frasi nuove si scrivono in questo file. Quelle già scritte si cambiano nel file in cui stanno."
-          >
-            <span>Le cose nuove vanno in</span>
-            <select value={nuoviIn} onChange={(e) => impostaDestinazione(e.target.value)}>
-              {storia.m.map((m) => (
-                <option key={m} value={m}>
-                  {nomeFile(m)}
-                  {m === storia.r ? ' (principale)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
         {!inProva && (
-          <label className="switch" title="Mostra il testo della storia accanto a questo pannello">
-            <input type="checkbox" checked={affianca} onChange={(e) => setAffianca(e.target.checked)} />
-            <span className="switch-track" aria-hidden="true" />
-            <span className="switch-label">Mostra il testo accanto</span>
-          </label>
+          <div className="lavoro-controlli">
+            {/* Con una storia a più file: dove vanno le cose nuove. */}
+            {storia && storia.m.length > 1 && (
+              <label
+                className="campo-in-linea"
+                title="Le stanze, gli oggetti e le frasi nuove si scrivono in questo file. Quelle già scritte si cambiano nel file in cui stanno."
+              >
+                <span>Le cose nuove vanno in</span>
+                <select aria-label="Il file dove vanno le cose nuove" value={nuoviIn} onChange={(e) => impostaDestinazione(e.target.value)}>
+                  {storia.m.map((m) => (
+                    <option key={m} value={m}>
+                      {nomeFile(m)}
+                      {m === storia.r ? ' (principale)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="interruttore" title="Mostra il testo della storia accanto a questo pannello">
+              <input type="checkbox" role="switch" checked={affianca} onChange={(e) => setAffianca(e.target.checked)} />
+              <span className="interruttore-binario" aria-hidden="true" />
+              <span>Testo accanto</span>
+            </label>
+          </div>
         )}
       </header>
 
+      {sezione.sotto.length > 1 && (
+        <Linguette
+          etichetta={`Parti di ${sezione.titolo}`}
+          attiva={tab as (typeof sezione.sotto)[number]['tab']}
+          onScegli={(id) => setRightTab(id)}
+          voci={sezione.sotto.map((x) => ({ id: x.tab, titolo: x.titolo, aiuto: x.aiuto }))}
+        />
+      )}
+
       {/* Errore dell'ultima azione di un editor, mostrato qui dove l'azione è nata. */}
       {editError && !inProva && (
-        <div className="ws-error" role="alert">
-          <span>⚠ {editError}</span>
-          <button className="icon-btn" title="Nascondi" onClick={clearEditError}>
-            ✕
+        <div className="striscia striscia-errore" role="alert">
+          <IconaAvviso size={18} />
+          <span>{editError}</span>
+          <button className="btn-icona" title="Nascondi" aria-label="Nascondi il messaggio" onClick={clearEditError}>
+            <IconaChiudi size={16} />
           </button>
         </div>
       )}
 
-      <div className={'ws-body' + (affianca && !inProva ? ' con-testo' : '')}>
-        <div className="ws-panel">
-          {inProva ? (
-            <div className="prova">
-              <div className="prova-gioco">
-                <GamePanel />
+      <div className={'lavoro-corpo' + (affianca && !inProva ? ' con-testo' : '')}>
+        <div className="lavoro-pannello">
+          <Riparo livello="pannello" chiave={tab}>
+            {inProva ? (
+              <div className="prova">
+                <div className="prova-gioco">
+                  <GamePanel />
+                </div>
+                <LatoProva />
               </div>
-              <LatoProva />
-            </div>
-          ) : (
-            <>
-              {tab === 'mappa' && <MapView editable />}
-              {tab === 'oggetti' && <ObjectsEditor />}
-              {tab === 'personaggi' && <CharactersEditor />}
-              {tab === 'stanze' && <RoomEditor />}
-              {tab === 'regole' && <RulesEditor />}
-              {tab === 'stati' && <VariablesEditor />}
-              {tab === 'dialoghi' && <DialoguesEditor />}
-              {tab === 'parole' && <WordsEditor />}
-            </>
-          )}
+            ) : (
+              <>
+                {tab === 'mappa' && <MapView editable />}
+                {tab === 'oggetti' && <ObjectsEditor />}
+                {tab === 'personaggi' && <CharactersEditor />}
+                {tab === 'stanze' && <RoomEditor />}
+                {tab === 'regole' && <RulesEditor />}
+                {tab === 'stati' && <VariablesEditor />}
+                {tab === 'dialoghi' && <DialoguesEditor />}
+                {tab === 'parole' && <WordsEditor />}
+              </>
+            )}
+          </Riparo>
         </div>
         {affianca && !inProva && (
-          <div className="ws-text" aria-label="Testo della storia">
-            <EditorPane />
+          <div className="lavoro-testo" aria-label="Il testo della storia">
+            <Riparo livello="pannello" chiave="testo-accanto">
+              <EditorPane />
+            </Riparo>
           </div>
         )}
       </div>

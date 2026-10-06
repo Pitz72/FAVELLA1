@@ -1,197 +1,195 @@
-import { useEffect } from 'react'
 import { useStudio } from '../store'
+import Finestra from './Finestra'
+
+// La finestra degli aggiornamenti. L'installazione parte solo dopo la guardia «modifiche
+// non salvate» (prima della 1.2 l'installer partiva e Studio si chiudeva a metà domanda).
+
+/** Le note di rilascio di GitHub sono Markdown: qui bastano titoli, elenchi e paragrafi. */
+function Note({ testo }: { testo: string }): JSX.Element {
+  const blocchi: JSX.Element[] = []
+  let elenco: string[] = []
+  const chiudiElenco = (): void => {
+    if (elenco.length) {
+      blocchi.push(
+        <ul key={'u' + blocchi.length}>
+          {elenco.map((v, i) => (
+            <li key={i}>{v}</li>
+          ))}
+        </ul>
+      )
+      elenco = []
+    }
+  }
+  const pulisci = (r: string): string => r.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`(.+?)`/g, '$1').trim()
+  for (const riga of testo.replace(/\r/g, '').split('\n')) {
+    const r = riga.trim()
+    if (!r || r === '---') {
+      chiudiElenco()
+      continue
+    }
+    const titolo = /^#{1,6}\s+(.*)$/.exec(r)
+    const voce = /^[-*]\s+(.*)$/.exec(r)
+    if (titolo) {
+      chiudiElenco()
+      blocchi.push(<h3 key={'h' + blocchi.length}>{pulisci(titolo[1])}</h3>)
+    } else if (voce) {
+      elenco.push(pulisci(voce[1]))
+    } else {
+      chiudiElenco()
+      blocchi.push(<p key={'p' + blocchi.length}>{pulisci(r)}</p>)
+    }
+  }
+  chiudiElenco()
+  return <div className="note-rilascio">{blocchi}</div>
+}
+
+const MB = (n: number): string => (n / (1024 * 1024)).toFixed(1).replace('.', ',')
 
 export default function UpdateDialog(): JSX.Element | null {
   const status = useStudio((s) => s.updaterStatus)
   const open = useStudio((s) => s.updateModalOpen)
   const setOpen = useStudio((s) => s.setUpdateModalOpen)
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setOpen(false)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, setOpen])
-
+  const avvisa = useStudio((s) => s.avvisa)
   if (!open) return null
 
-  const handleDownload = (): void => {
-    void window.favella.downloadUpdate()
+  const chiudi = (): void => setOpen(false)
+  const controlla = (): void => void window.favella.checkForUpdates(true)
+  const installa = async (): Promise<void> => {
+    // Prima i file non salvati: Studio si chiude subito dopo.
+    if (!(await useStudio.getState().guardiaNonSalvati())) return
+    const r = await window.favella.installUpdate()
+    if (!r.ok && r.message) avvisa(r.message, { tipo: 'errore' })
   }
 
-  const handleInstall = (): void => {
-    void window.favella.installUpdate()
-  }
-
-  const handleCheck = (): void => {
-    void window.favella.checkForUpdates(true)
-  }
-
-  const chiudi = (): void => {
-    setOpen(false)
-  }
-
-  return (
-    <div className="modal-backdrop" onClick={chiudi}>
-      <div
-        className="modal update-modal"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {status.type === 'checking' && (
-          <>
-            <h2 className="modal-title">Controllo aggiornamenti</h2>
-            <p className="modal-body">
-              Verifica della disponibilità di nuove versioni su GitHub in corso…
-            </p>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={chiudi}>
-                Annulla
-              </button>
-            </div>
-          </>
-        )}
-
-        {status.type === 'not-available' && (
-          <>
-            <h2 className="modal-title">Nessun aggiornamento</h2>
-            <p className="modal-body">
-              Favella Studio è già aggiornato alla versione più recente (v{status.currentVersion}).
-            </p>
-            <div className="modal-actions">
-              <button className="modal-btn primary" onClick={chiudi}>
-                OK
-              </button>
-            </div>
-          </>
-        )}
-
-        {status.type === 'available' && (
-          <>
-            <h2 className="modal-title">Aggiornamento disponibile</h2>
-            <div className="update-version-row">
-              <span className="update-version-tag">Nuova versione: v{status.version}</span>
-              <span className="update-current-tag">(versione attuale: v{status.currentVersion})</span>
-            </div>
-
-            {status.releaseNotes ? (
-              <div className="update-notes-container">
-                <div className="update-notes-title">Novità della versione:</div>
-                <div className="update-notes-content">{status.releaseNotes}</div>
-              </div>
-            ) : (
-              <p className="modal-body">
-                È disponibile una nuova versione di Favella Studio.
-              </p>
-            )}
-
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={chiudi}>
+  switch (status.type) {
+    case 'checking':
+      return (
+        <Finestra
+          titolo="Controllo gli aggiornamenti…"
+          sottotitolo="Chiedo a GitHub qual è l’ultima versione di Favella Studio."
+          onChiudi={chiudi}
+          azioni={
+            <button className="btn btn-quieto" onClick={chiudi}>
+              Chiudi
+            </button>
+          }
+        >
+          <div className="barra-attesa" aria-hidden="true" />
+        </Finestra>
+      )
+    case 'not-available':
+      return (
+        <Finestra
+          titolo="Sei già aggiornato"
+          sottotitolo={`Favella Studio ${status.currentVersion} è l’ultima versione.`}
+          onChiudi={chiudi}
+          azioni={
+            <button className="btn btn-primario" onClick={chiudi}>
+              Bene
+            </button>
+          }
+        />
+      )
+    case 'available':
+      return (
+        <Finestra
+          titolo={`Favella Studio ${status.version}`}
+          sottotitolo={`Hai la ${status.currentVersion}.${status.assetSize ? ` Il file pesa ${MB(status.assetSize)} MB.` : ''}`}
+          onChiudi={chiudi}
+          larga
+          azioni={
+            <>
+              <button className="btn btn-quieto" onClick={chiudi}>
                 Più tardi
               </button>
-              <button className="modal-btn primary" onClick={handleDownload}>
-                Scarica e aggiorna
+              <button className="btn btn-primario" onClick={() => void window.favella.downloadUpdate()}>
+                {status.canAutoInstall ? 'Scarica e aggiorna' : 'Apri la pagina della versione'}
               </button>
-            </div>
-          </>
-        )}
-
-        {status.type === 'downloading' && (
-          <>
-            <h2 className="modal-title">Download in corso…</h2>
-            <p className="modal-body">
-              Download della versione v{status.version} di Favella Studio.
+            </>
+          }
+        >
+          {status.releaseNotes ? <Note testo={status.releaseNotes} /> : <p>Nessuna nota per questa versione.</p>}
+          {!status.canAutoInstall && (
+            <p className="nota-piccola">
+              Su questo sistema l’aggiornamento si scarica e si installa a mano dalla pagina della versione.
             </p>
-            <div className="update-progress-wrap">
-              <div className="update-progress-track">
-                <div
-                  className="update-progress-bar"
-                  style={{ width: `${Math.min(100, Math.max(0, status.percent))}%` }}
-                />
-              </div>
-              <div className="update-progress-meta">
-                <span>
-                  {(status.transferred / (1024 * 1024)).toFixed(1)} MB di{' '}
-                  {(status.total / (1024 * 1024)).toFixed(1)} MB
-                </span>
-                <span className="update-progress-pct">{status.percent}%</span>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={chiudi}>
-                Nascondi in background
-              </button>
-            </div>
-          </>
-        )}
-
-        {status.type === 'ready' && (
-          <>
-            <h2 className="modal-title">Aggiornamento pronto</h2>
-            <p className="modal-body">
-              La versione v{status.version} è stata scaricata con successo.
-              <br />
-              {status.canAutoInstall ? (
-                <span className="modal-hint">
-                  Riavvia l'applicazione per applicare l'aggiornamento. Le modifiche non salvate
-                  ti verranno richieste prima della chiusura.
-                </span>
-              ) : (
-                <span className="modal-hint">
-                  L'eseguibile è pronto nella cartella temporanea: {status.installerPath}
-                </span>
-              )}
-            </p>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={chiudi}>
+          )}
+        </Finestra>
+      )
+    case 'downloading':
+      return (
+        <Finestra
+          titolo={`Scarico la versione ${status.version}…`}
+          sottotitolo="Puoi continuare a lavorare: ti avviso quando è pronta."
+          onChiudi={chiudi}
+          azioni={
+            <button className="btn btn-quieto" onClick={chiudi}>
+              Continua a lavorare
+            </button>
+          }
+        >
+          <div className="avanzamento" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={status.percent}>
+            <div className="avanzamento-barra" style={{ width: `${Math.min(100, Math.max(0, status.percent))}%` }} />
+          </div>
+          <p className="avanzamento-meta">
+            <span>
+              {MB(status.transferred)} MB di {MB(status.total)} MB
+            </span>
+            <strong>{status.percent}%</strong>
+          </p>
+        </Finestra>
+      )
+    case 'ready':
+      return (
+        <Finestra
+          titolo="L’aggiornamento è pronto"
+          sottotitolo={`La versione ${status.version} è scaricata e controllata (l’impronta coincide con quella pubblicata).`}
+          onChiudi={chiudi}
+          azioni={
+            <>
+              <button className="btn btn-quieto" onClick={chiudi}>
                 Più tardi
               </button>
-              {status.canAutoInstall ? (
-                <button className="modal-btn primary" onClick={handleInstall}>
-                  Riavvia e installa ora
-                </button>
-              ) : (
-                <button className="modal-btn primary" onClick={chiudi}>
-                  Chiudi
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {status.type === 'error' && (
-          <>
-            <h2 className="modal-title">Errore di aggiornamento</h2>
-            <p className="modal-body update-error-msg">{status.message}</p>
-            <div className="modal-actions">
-              <button className="modal-btn ghost" onClick={chiudi}>
+              <button className="btn btn-primario" onClick={() => void installa()}>
+                Chiudi Studio e aggiorna
+              </button>
+            </>
+          }
+        >
+          <p>Prima di chiudere, Studio ti chiede dei file che non hai salvato.</p>
+        </Finestra>
+      )
+    case 'error':
+      return (
+        <Finestra
+          titolo="L’aggiornamento non è riuscito"
+          onChiudi={chiudi}
+          azioni={
+            <>
+              <button className="btn btn-quieto" onClick={chiudi}>
                 Chiudi
               </button>
-              <button className="modal-btn primary" onClick={handleCheck}>
+              <button className="btn btn-primario" onClick={controlla}>
                 Riprova
               </button>
-            </div>
-          </>
-        )}
-
-        {status.type === 'idle' && (
-          <>
-            <h2 className="modal-title">Aggiornamenti</h2>
-            <p className="modal-body">Nessuna operazione in corso.</p>
-            <div className="modal-actions">
-              <button className="modal-btn primary" onClick={handleCheck}>
-                Controlla aggiornamenti
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
+            </>
+          }
+        >
+          <p className="testo-errore">{status.message}</p>
+        </Finestra>
+      )
+    default:
+      return (
+        <Finestra
+          titolo="Aggiornamenti"
+          sottotitolo="Controlla se c’è una versione nuova di Favella Studio su GitHub."
+          onChiudi={chiudi}
+          azioni={
+            <button className="btn btn-primario" onClick={controlla}>
+              Controlla adesso
+            </button>
+          }
+        />
+      )
+  }
 }

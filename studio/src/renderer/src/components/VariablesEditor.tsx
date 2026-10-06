@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
-import type { VarState, VarCounter, OutlineSpan } from '../../../shared/protocol'
+import type { VarState, VarCounter, OutlineSpan, SerializeSpec } from '../../../shared/protocol'
+import Finestra from './Finestra'
+import { NonPronto, Vuoto } from './Elenco'
+import { IconaAggiorna, IconaChiudi, IconaPiu, IconaStella } from './Icone'
 
 // Pannello «Stati & Contatori» (parametri di stato del mondo). Idioma dell'IDE:
 // la LISTA nel dock modifica i campi con applicazione IMMEDIATA (un'operazione =
@@ -13,34 +16,13 @@ export default function VariablesEditor(): JSX.Element {
   const loadVariables = useStudio((s) => s.loadVariables)
   const applyStatement = useStudio((s) => s.applyStatement)
   const deleteStatement = useStudio((s) => s.deleteStatement)
+  const eliminaFrasi = useStudio((s) => s.eliminaFrasi)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
   const [creating, setCreating] = useState(false)
 
-  if (!isFav) {
-    return <div className="insp-empty">Apri un file .fav per gestire stati e contatori.</div>
-  }
-  if (!variables) {
-    return (
-      <div className="insp-empty">
-        {loading ? 'Carico stati e contatori…' : 'Niente caricato.'}
-        {!loading && (
-          <button className="map-reload" onClick={() => void loadVariables()}>
-            ⟳ Carica
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (!variables.ok) {
-    return (
-      <div className="insp-empty">
-        Il file contiene errori: correggili per gestire stati e contatori.
-        <button className="map-reload" onClick={() => void loadVariables()}>
-          ⟳ Riprova
-        </button>
-      </div>
-    )
-  }
+  if (!isFav) return <NonPronto cosa="gli stati e i contatori" stato="nessun-file" />
+  if (!variables) return <NonPronto cosa="gli stati e i contatori" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadVariables()} />
+  if (!variables.ok) return <NonPronto cosa="gli stati e i contatori" stato="errori" onRiprova={() => void loadVariables()} />
 
   const { states, counters } = variables
 
@@ -76,40 +58,37 @@ export default function VariablesEditor(): JSX.Element {
     void applyStatement({ op: 'counter_init', name: c.name, value }, c.initialSpan ?? undefined)
   }
 
-  // Elimina lo stato/contatore: rimuove dichiarazione + valore iniziale + commento.
-  // Cancella dal BASSO verso l'ALTO (riga decrescente) così le righe più in alto
-  // non slittano fra una delete e l'altra. NB: eventuali regole che lo citano
-  // restano nel testo (potrebbero diventare 'morte': l'autore le vedrà nei Problemi).
-  const eliminaSpans = async (spans: (OutlineSpan | null | undefined)[]): Promise<void> => {
-    const vivi = spans.filter((x): x is OutlineSpan => !!x)
-    vivi.sort((a, b) => b.line - a.line)
-    for (const sp of vivi) await deleteStatement(sp)
+  // Elimina lo stato/contatore: dichiarazione + valore iniziale + commento, in un passo
+  // solo (e annullabile). Le regole che lo citano restano nel testo: se diventano
+  // sbagliate, compaiono nei Problemi.
+  const eliminaSpans = async (spans: (OutlineSpan | null | undefined)[], etichetta: string): Promise<void> => {
+    await eliminaFrasi(spans.filter((x): x is OutlineSpan => !!x), etichetta)
   }
 
   return (
     <div className="ruled">
-      <div className="insp-top">
-        <span className="debug-title">
-          Stati<span className="debug-count"> · {states.length}</span> · Contatori
-          <span className="debug-count"> · {counters.length}</span>
-        </span>
-        <div>
-          <button className="icon-btn" title="Nuovo stato o contatore" onClick={() => setCreating(true)}>
-            ➕
-          </button>
-          <button className="icon-btn" title="Aggiorna" onClick={() => void loadVariables()}>
-            ⟳
-          </button>
-        </div>
+      <div className="pannello-testa">
+        <h2 className="pannello-titolo">
+          Stati <span className="elenco-conto">{states.length}</span>
+          <span className="pannello-sep" aria-hidden="true">·</span>
+          Contatori <span className="elenco-conto">{counters.length}</span>
+        </h2>
+        <button className="btn-icona" aria-label="Rileggi" title="Rileggi" onClick={() => void loadVariables()}>
+          <IconaAggiorna />
+        </button>
+        <button className="btn btn-accento btn-piccolo" onClick={() => setCreating(true)}>
+          <IconaPiu size={15} />
+          Nuovo stato o contatore
+        </button>
       </div>
 
       {creating && <VariableForm onDone={() => setCreating(false)} />}
 
       <div className="ruled-body">
         {states.length === 0 && counters.length === 0 && (
-          <p className="insp-none">
-            nessuno stato né contatore — creane uno con ➕ per popolare i menu del builder di regole
-          </p>
+          <Vuoto titolo="Il mondo non ricorda ancora niente">
+            Uno stato ricorda una parola («la porta è socchiusa»), un contatore un numero («fiducia»). Le regole li leggono e li cambiano.
+          </Vuoto>
         )}
 
         {states.map((s) => (
@@ -118,11 +97,12 @@ export default function VariablesEditor(): JSX.Element {
               <span className="rule-verb">stato</span>
               <span className="rule-target">{s.name}</span>
               <button
-                className="rule-del"
+                className="btn-icona"
+                aria-label={`Elimina lo stato ${s.name}`}
                 title="Elimina questo stato"
-                onClick={() => void eliminaSpans([s.declSpan, s.initialSpan, s.valuesComment?.span])}
+                onClick={() => void eliminaSpans([s.declSpan, s.initialSpan, s.valuesComment?.span], `Stato «${s.name}» eliminato`)}
               >
-                ×
+                <IconaChiudi />
               </button>
             </div>
             <StateValues s={s} onSetInitial={setInitial} onSetValues={setValues} />
@@ -135,11 +115,12 @@ export default function VariablesEditor(): JSX.Element {
               <span className="rule-verb">contatore</span>
               <span className="rule-target">{c.name}</span>
               <button
-                className="rule-del"
+                className="btn-icona"
+                aria-label={`Elimina il contatore ${c.name}`}
                 title="Elimina questo contatore"
-                onClick={() => void eliminaSpans([c.declSpan, c.initialSpan])}
+                onClick={() => void eliminaSpans([c.declSpan, c.initialSpan], `Contatore «${c.name}» eliminato`)}
               >
-                ×
+                <IconaChiudi />
               </button>
             </div>
             <CounterInitial c={c} onSet={setCounterInitial} />
@@ -172,25 +153,27 @@ function StateValues({
   return (
     <div className="var-values">
       <div className="objed-chips">
-        {s.values.length === 0 && <span className="insp-none">nessun valore — aggiungine sotto</span>}
+        {s.values.length === 0 && <span className="nota-riquadro">nessun valore — aggiungine sotto</span>}
         {s.values.map((v) => {
           const iniziale = v === s.initial
           return (
             <span key={v} className={'objed-chip' + (iniziale ? ' var-initial' : '')}>
               <button
                 className="var-chipname"
-                title={iniziale ? 'Valore iniziale' : 'Imposta come valore iniziale'}
+                aria-pressed={iniziale}
+                title={iniziale ? 'Il valore iniziale' : 'Fanne il valore iniziale'}
                 onClick={() => !iniziale && onSetInitial(s, v)}
               >
                 {v}
-                {iniziale && ' ★'}
+                {iniziale && <IconaStella size={13} piena />}
               </button>
               {!iniziale && (
                 <button
+                  aria-label={`Togli il valore ${v}`}
                   title="Togli dai valori ammessi"
                   onClick={() => onSetValues(s, s.values.filter((x) => x !== v))}
                 >
-                  ×
+                  <IconaChiudi size={13} />
                 </button>
               )}
             </span>
@@ -198,16 +181,17 @@ function StateValues({
         })}
       </div>
       {s.values.length > 0 && (
-        <p className="var-note">Clicca un valore per renderlo quello iniziale (★).</p>
+        <p className="aiuto">Clicca un valore per farne quello iniziale (la stellina).</p>
       )}
       <div className="objed-add">
         <input
           value={nuovo}
+          aria-label={`Un valore nuovo per ${s.name}`}
           placeholder="aggiungi un valore (es. inquieta)"
           onChange={(e) => setNuovo(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && aggiungi()}
         />
-        <button className="modal-btn ghost" disabled={!nuovo.trim()} onClick={aggiungi}>
+        <button className="btn btn-quieto btn-piccolo" disabled={!nuovo.trim()} onClick={aggiungi}>
           + valore
         </button>
       </div>
@@ -227,7 +211,7 @@ function CounterInitial({
   useEffect(() => setV(String(c.initial)), [c.initial])
   return (
     <div className="var-values var-counter-init">
-      <label className="var-note">parte da</label>
+      <label className="aiuto">parte da</label>
       <input
         type="number"
         value={v}
@@ -238,7 +222,7 @@ function CounterInitial({
           else setV(String(c.initial))
         }}
       />
-      <span className="var-note">· usa aumenta / diminuisci / diventa nelle regole</span>
+      <span className="aiuto">· usa aumenta / diminuisci / diventa nelle regole</span>
     </div>
   )
 }
@@ -246,21 +230,14 @@ function CounterInitial({
 // Modale di CREAZIONE (stato o contatore). Per gli stati: nome + valore iniziale +
 // elenco valori ammessi (scope completo → i dropdown del builder si popolano subito).
 function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
-  const applyStatement = useStudio((s) => s.applyStatement)
+  const appendStatements = useStudio((s) => s.appendStatements)
+  const nomiUsati = useStudio((s) => new Set([...(s.variables?.states ?? []).map((x) => x.name), ...(s.variables?.counters ?? []).map((x) => x.name)]))
   const [tipo, setTipo] = useState<'stato' | 'contatore'>('stato')
   const [nome, setNome] = useState('')
   const [iniziale, setIniziale] = useState('')
   const [inizialeCont, setInizialeCont] = useState('0')
   const [valori, setValori] = useState<string[]>([])
   const [nuovoVal, setNuovoVal] = useState('')
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onDone()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onDone])
 
   const aggiungiVal = (): void => {
     const v = nuovoVal.trim().toLowerCase()
@@ -269,42 +246,49 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
     setNuovoVal('')
   }
 
-  const valido = nome.trim().length > 0
+  const nomeLibero = !nomiUsati.has(nome.trim().toLowerCase())
+  const valido = nome.trim().length > 0 && nomeLibero
 
   const crea = async (): Promise<void> => {
     const name = nome.trim()
     if (!name) return
+    // [Studio 1.2] Tutte le frasi in un passo solo (prima erano fino a tre modifiche
+    // separate: se una falliva, lo stato restava a metà).
+    const specs: SerializeSpec[] = []
     if (tipo === 'contatore') {
-      await applyStatement({ op: 'counter_decl', name })
+      specs.push({ op: 'counter_decl', name })
       const n = parseInt(inizialeCont, 10)
-      if (!Number.isNaN(n) && n !== 0) await applyStatement({ op: 'counter_init', name, value: n })
-      onDone()
-      return
+      if (!Number.isNaN(n) && n !== 0) specs.push({ op: 'counter_init', name, value: n })
+    } else {
+      // Stato: dichiarazione → commento dei valori (se presenti) → valore iniziale.
+      specs.push({ op: 'state_decl', name })
+      const init = iniziale.trim().toLowerCase()
+      const tutti = Array.from(new Set([...valori, ...(init ? [init] : [])]))
+      if (tutti.length > 0) specs.push({ op: 'state_values_comment', name, values: tutti })
+      if (init) specs.push({ op: 'state_init', name, value: init })
     }
-    // Stato: dichiarazione → commento dei valori (se presenti) → valore iniziale.
-    // Tutti append: l'ordine di chiamata è l'ordine nel file.
-    await applyStatement({ op: 'state_decl', name })
-    const init = iniziale.trim().toLowerCase()
-    const tutti = Array.from(new Set([...valori, ...(init ? [init] : [])]))
-    if (tutti.length > 0) {
-      await applyStatement({ op: 'state_values_comment', name, values: tutti })
-    }
-    if (init) {
-      await applyStatement({ op: 'state_init', name, value: init })
-    }
+    await appendStatements(specs)
     onDone()
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onDone()
-      }}
+    <Finestra
+      titolo="Uno stato o un contatore nuovo"
+      sottotitolo="Ciò che il mondo ricorda: una parola che cambia, o un numero che sale e scende."
+      onChiudi={onDone}
+      larga
+      azioni={
+        <>
+          <button className="btn btn-quieto" onClick={onDone}>
+            Annulla
+          </button>
+          <button className="btn btn-primario" disabled={!valido} onClick={() => void crea()}>
+            Crea {tipo === 'stato' ? 'lo stato' : 'il contatore'}
+          </button>
+        </>
+      }
     >
-      <div className="modal rule-modal">
-        <h2 className="modal-title">Nuovo stato o contatore</h2>
-        <div className="rule-modal-body">
+        <div className="modulo">
           <div className="objed-field">
             <label>Tipo</label>
             <div className="objed-seg">
@@ -318,7 +302,7 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
                 Contatore (numero)
               </button>
             </div>
-            <p className="var-hint">
+            <p className="aiuto">
               {tipo === 'stato'
                 ? 'Una variabile che contiene una parola alla volta (es. atmosfera: tranquilla/inquieta/ostile).'
                 : 'Un numero che sale e scende (parte da 0). Es. sospetto, punteggio.'}
@@ -330,9 +314,11 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
             <input
               autoFocus
               value={nome}
+              aria-invalid={!nomeLibero}
               placeholder={tipo === 'stato' ? 'es. atmosfera' : 'es. sospetto'}
               onChange={(e) => setNome(e.target.value)}
             />
+            {!nomeLibero && <p className="errore-campo">Esiste già uno stato o un contatore con questo nome.</p>}
           </div>
 
           {tipo === 'contatore' && (
@@ -360,7 +346,7 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
                 <label>Valori ammessi (oltre all'iniziale)</label>
                 <div className="objed-chips">
                   {valori.length === 0 && (
-                    <span className="insp-none">facoltativo — popolano i menu del builder</span>
+                    <span className="nota-riquadro">facoltativo — popolano i menu del builder</span>
                   )}
                   {valori.map((v) => (
                     <span key={v} className="objed-chip">
@@ -381,7 +367,7 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
                     onChange={(e) => setNuovoVal(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && aggiungiVal()}
                   />
-                  <button className="modal-btn ghost" disabled={!nuovoVal.trim()} onClick={aggiungiVal}>
+                  <button className="btn btn-quieto btn-piccolo" disabled={!nuovoVal.trim()} onClick={aggiungiVal}>
                     + valore
                   </button>
                 </div>
@@ -389,15 +375,6 @@ function VariableForm({ onDone }: { onDone: () => void }): JSX.Element {
             </>
           )}
         </div>
-        <div className="modal-actions">
-          <button className="modal-btn ghost" onClick={onDone}>
-            Annulla
-          </button>
-          <button className="modal-btn primary" disabled={!valido} onClick={() => void crea()}>
-            Crea {tipo}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Finestra>
   )
 }

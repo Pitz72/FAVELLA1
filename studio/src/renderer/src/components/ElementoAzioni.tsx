@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useStudio, infoStoria } from '../store'
 import type { ReferencesResult } from '../../../shared/protocol'
-import { nucleo } from '../utils/posizione'
+import { idDiNome } from '../utils/posizione'
 import { nomeFile } from '../utils/progetto'
+import Finestra from './Finestra'
+import { IconaCestino } from './Icone'
 
 // Rinominare ed eliminare un elemento della storia (stanza, oggetto, personaggio) dal suo
 // pannello. Il nome è quello con l'articolo, com'è scritto nella storia.
 
-/** L'identità di un elemento: il nome senza articolo, in minuscolo (come la calcola il motore). */
-export function idDiNome(nome: string): string {
-  return nucleo(nome).toLowerCase()
-}
+export { idDiNome }
 
-/** Il campo «Nome» di un elemento: si scrive il nome nuovo e «Rinomina» lo cambia ovunque. */
+/** Il nome di un elemento: si scrive il nome nuovo e «Rinomina» lo cambia ovunque. */
 export function RinominaElemento({
   nome,
   onRinominato
@@ -35,28 +34,29 @@ export function RinominaElemento({
   }
 
   return (
-    <div className="objed-field">
-      <label>Nome</label>
-      <div className="rinomina-riga">
-        <input
-          type="text"
-          value={bozza}
-          onChange={(e) => setBozza(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void applica()
-            if (e.key === 'Escape') setBozza(nome)
-          }}
-          aria-label="Nome (con l’articolo)"
-        />
-        <button className="modal-btn primary" disabled={!cambiato || lavoro} onClick={() => void applica()}>
+    <>
+      <div className="riga-campi">
+        <label className="campo campo-largo">
+          <span className="campo-etichetta">Il nome, con l’articolo</span>
+          <input
+            type="text"
+            value={bozza}
+            onChange={(e) => setBozza(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void applica()
+              if (e.key === 'Escape') setBozza(nome)
+            }}
+          />
+        </label>
+        <button className="btn btn-primario campo-pulsante" disabled={!cambiato || lavoro} onClick={() => void applica()}>
           {lavoro ? 'Rinomino…' : 'Rinomina'}
         </button>
       </div>
-      <p className="var-note">
-        Col suo articolo («La cucina», «Il mercante»). Il nome cambia in tutte le frasi che lo citano,
-        anche negli altri file della storia; i testi (descrizioni, risposte) non si toccano.
+      <p className="aiuto">
+        «La cucina», «Il mercante». Il nome cambia in tutte le frasi che lo citano, anche negli altri file della storia;
+        i testi (descrizioni, risposte) non si toccano.
       </p>
-    </div>
+    </>
   )
 }
 
@@ -103,7 +103,11 @@ export function EliminaElemento({
   const conferma = async (): Promise<void> => {
     if (!dati?.ok) return
     setLavoro(true)
-    const ok = await eliminaFrasi(dati.items.map((i) => i.span))
+    const etichetta = `«${nome}» eliminat${tipo === 'stanza' ? 'a' : 'o'}`
+    const ok = await eliminaFrasi(
+      dati.items.map((i) => i.span),
+      etichetta
+    )
     setLavoro(false)
     if (ok) {
       chiudi()
@@ -114,70 +118,77 @@ export function EliminaElemento({
   const gruppi = new Map<string, ReferencesResult['items']>()
   for (const i of dati?.items ?? []) gruppi.set(i.category, [...(gruppi.get(i.category) ?? []), i])
   const ha = (c: string): boolean => gruppi.has(c)
-  const articolo = tipo === 'stanza' ? 'questa stanza' : tipo === 'personaggio' ? 'questo personaggio' : 'questo oggetto'
+  const articolo = tipo === 'stanza' ? 'la stanza' : tipo === 'personaggio' ? 'il personaggio' : 'l’oggetto'
 
   return (
     <>
-      <div className="objed-field elimina-campo">
-        <button className="modal-btn danger" onClick={() => void apri()}>
-          Elimina {tipo === 'stanza' ? 'la stanza' : tipo === 'personaggio' ? 'il personaggio' : 'l’oggetto'}…
-        </button>
-      </div>
+      <section className="riquadro riquadro-pericolo">
+        <div className="riga-pericolo">
+          <p>
+            Eliminare {articolo} toglie dal testo anche le frasi che lo citano. Dopo, puoi annullare con «Annulla».
+          </p>
+          <button className="btn btn-pericolo" onClick={() => void apri()}>
+            <IconaCestino />
+            Elimina {articolo}…
+          </button>
+        </div>
+      </section>
 
       {aperta && (
-        <div className="modal-backdrop" onClick={chiudi}>
-          <div className="modal modal-largo" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">Eliminare «{nome}»?</h2>
-            {!dati && <p className="modal-body">Cerco dove viene citato…</p>}
-            {dati && !dati.ok && <p className="modal-body">{dati.reason ?? 'Non riesco a leggere la storia.'}</p>}
-            {dati?.ok && (
+        <Finestra
+          titolo={`Eliminare «${nome}»?`}
+          onChiudi={chiudi}
+          larga
+          azioni={
+            dati?.ok ? (
               <>
-                <p className="modal-body">
-                  Insieme a {articolo} vanno via {dati.items.length === 1 ? 'questa frase' : `queste ${dati.items.length} frasi`},
-                  perché la citano:
-                </p>
-                <div className="elimina-elenco">
-                  {[...gruppi.entries()].map(([cat, voci]) => (
-                    <div key={cat} className="elimina-gruppo">
-                      <div className="elimina-cat">
-                        {CATEGORIE[cat] ?? cat}
-                        <span className="debug-count"> · {voci.length}</span>
-                      </div>
-                      {voci.map((v, i) => (
-                        <div key={i} className="elimina-voce">
-                          <code>{v.preview}</code>
-                          {multiFile && <span className="elimina-file">{nomeFile(v.span.file)}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-                <ul className="elimina-note">
-                  {ha('regola') && <li>Le regole e gli eventi che la citano vengono tolti per intero.</li>}
-                  {ha('dialogo') && <li>I dialoghi che la citano vengono tolti: controlla che nessun nodo resti orfano.</li>}
-                  {ha('posizione') && <li>Ciò che stava «dentro» o «in» questo elemento resta senza posizione: va rimesso da qualche parte.</li>}
-                  {ha('partenza') && <li>Era il punto di partenza: la partita comincerà dalla prima stanza.</li>}
-                  <li>Se nei testi (descrizioni, risposte) compare ancora il suo nome, lì resta scritto: controllalo.</li>
-                </ul>
-                <div className="modal-actions">
-                  <button className="modal-btn ghost" onClick={chiudi}>
-                    Annulla
-                  </button>
-                  <button className="modal-btn danger" disabled={lavoro} onClick={() => void conferma()}>
-                    {lavoro ? 'Elimino…' : 'Elimina'}
-                  </button>
-                </div>
-              </>
-            )}
-            {!dati?.ok && dati && (
-              <div className="modal-actions">
-                <button className="modal-btn ghost" onClick={chiudi}>
-                  Chiudi
+                <button className="btn btn-quieto" onClick={chiudi}>
+                  Annulla
                 </button>
+                <button className="btn btn-pericolo" disabled={lavoro} onClick={() => void conferma()}>
+                  {lavoro ? 'Elimino…' : `Elimina ${dati.items.length === 1 ? 'la frase' : `${dati.items.length} frasi`}`}
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-quieto" onClick={chiudi}>
+                Chiudi
+              </button>
+            )
+          }
+        >
+          {!dati && <p>Cerco dove viene citato…</p>}
+          {dati && !dati.ok && <p className="testo-errore">{dati.reason ?? 'Non riesco a leggere la storia.'}</p>}
+          {dati?.ok && (
+            <>
+              <p>
+                Insieme a {articolo} vanno via {dati.items.length === 1 ? 'questa frase' : `queste ${dati.items.length} frasi`},
+                perché lo citano:
+              </p>
+              <div className="elenco-frasi">
+                {[...gruppi.entries()].map(([cat, voci]) => (
+                  <div key={cat} className="elenco-frasi-gruppo">
+                    <h3>
+                      {CATEGORIE[cat] ?? cat} <span className="elenco-conto">{voci.length}</span>
+                    </h3>
+                    {voci.map((v, i) => (
+                      <div key={i} className="elenco-frasi-voce">
+                        <code>{v.preview}</code>
+                        {multiFile && <span className="distintivo">{nomeFile(v.span.file)}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
+              <ul className="note-elenco">
+                {ha('regola') && <li>Le regole e gli eventi che lo citano vengono tolti per intero.</li>}
+                {ha('dialogo') && <li>I dialoghi che lo citano vengono tolti: controlla che nessun nodo resti orfano.</li>}
+                {ha('posizione') && <li>Ciò che stava «dentro» o «sopra» resta senza posizione: va rimesso da qualche parte.</li>}
+                {ha('partenza') && <li>Era il punto di partenza: la partita comincerà dalla prima stanza.</li>}
+                <li>Se nei testi (descrizioni, risposte) compare ancora il suo nome, lì resta scritto.</li>
+              </ul>
+            </>
+          )}
+        </Finestra>
       )}
     </>
   )

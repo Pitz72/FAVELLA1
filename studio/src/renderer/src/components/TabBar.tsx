@@ -1,5 +1,8 @@
 import { useStudio } from '../store'
+import { IconaChiudi } from './Icone'
 
+// Le schede dei file aperti: un elenco di schede vere (role=tablist), raggiungibili da
+// tastiera (frecce sinistra/destra, Invio; Canc chiude). Il pallino dice «da salvare».
 export default function TabBar(): JSX.Element | null {
   const openFiles = useStudio((s) => s.openFiles)
   const activePath = useStudio((s) => s.activePath)
@@ -10,44 +13,59 @@ export default function TabBar(): JSX.Element | null {
 
   if (openFiles.length === 0) return null
 
-  // Chiusura guardata: se la scheda ha modifiche non salvate, chiedi conferma
-  // (modal integrato Salva/Non salvare/Annulla) prima di scartare il buffer.
+  // Chiusura guardata: se la scheda ha modifiche non salvate, si chiede prima.
   const chiudiScheda = async (path: string, name: string, dirty: boolean): Promise<void> => {
     if (dirty) {
       const scelta = await askUnsaved([name])
       if (scelta === 'cancel') return
-      if (scelta === 'save') await saveFile(path)
+      if (scelta === 'save' && !(await saveFile(path))) return
     }
     closeFile(path)
   }
 
+  const muovi = (i: number): void => {
+    const f = openFiles[(i + openFiles.length) % openFiles.length]
+    setActive(f.path)
+    requestAnimationFrame(() => document.getElementById('scheda-' + btoa(encodeURIComponent(f.path)))?.focus())
+  }
+
   return (
-    <div className="tabbar">
-      {openFiles.map((f) => {
+    <div className="file-schede" role="tablist" aria-label="File aperti">
+      {openFiles.map((f, i) => {
         const dirty = f.content !== f.savedContent
+        const attiva = activePath === f.path
         return (
-          <div
-            key={f.path}
-            className={`tab ${activePath === f.path ? 'active' : ''}`}
-            onClick={() => setActive(f.path)}
-            title={f.path}
-          >
-            <span className={`tab-name ${f.name.toLowerCase().endsWith('.fav') ? 'fav' : ''}`}>
-              {f.name}
-            </span>
-            <span
-              className={'tab-close' + (dirty ? ' dirty' : '')}
-              title="Chiudi"
-              onClick={(e) => {
-                e.stopPropagation()
-                void chiudiScheda(f.path, f.name, dirty)
+          <div key={f.path} className={'file-scheda' + (attiva ? ' attiva' : '') + (dirty ? ' da-salvare' : '')}>
+            <button
+              id={'scheda-' + btoa(encodeURIComponent(f.path))}
+              role="tab"
+              aria-selected={attiva}
+              tabIndex={attiva ? 0 : -1}
+              className="file-scheda-nome"
+              onClick={() => setActive(f.path)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight') muovi(i + 1)
+                else if (e.key === 'ArrowLeft') muovi(i - 1)
+                else if (e.key === 'Delete') void chiudiScheda(f.path, f.name, dirty)
               }}
+              title={f.path + (dirty ? ' — da salvare' : '')}
             >
-              {/* Sporco: pallino a riposo, × al passaggio del mouse (stile VS Code);
-                  pulito: sempre ×. In ogni caso il click chiude (con guardia). */}
-              <span className="tab-dot">●</span>
-              <span className="tab-x">×</span>
-            </span>
+              <span className={f.name.toLowerCase().endsWith('.fav') ? 'nome-fav' : ''}>{f.name}</span>
+              {dirty && (
+                <span className="file-scheda-pallino" aria-label="da salvare">
+                  ●
+                </span>
+              )}
+            </button>
+            <button
+              className="file-scheda-x"
+              tabIndex={-1}
+              onClick={() => void chiudiScheda(f.path, f.name, dirty)}
+              aria-label={`Chiudi ${f.name}`}
+              title="Chiudi"
+            >
+              <IconaChiudi size={14} />
+            </button>
           </div>
         )
       })}

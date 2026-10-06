@@ -1,18 +1,20 @@
 import { useStudio } from '../store'
 import type { ObjectKind } from '../../../shared/protocol'
+import { Vuoto } from './Elenco'
+import { IconaAggiorna, IconaContenitore, IconaOggetto, IconaPersona, IconaSupporto } from './Icone'
 
 const STATUS_LABEL: Record<string, string> = {
-  in_corso: 'In corso',
-  vinta: 'Vinta ★',
-  persa: 'Persa ☠',
-  terminata: 'Terminata ■'
+  in_corso: 'in corso',
+  vinta: 'vinta',
+  persa: 'persa',
+  terminata: 'finita'
 }
 
-const KIND_ICON: Record<ObjectKind, string> = {
-  oggetto: '•',
-  contenitore: '▣',
-  supporto: '▤',
-  personaggio: '☻'
+const KIND_ICON: Record<ObjectKind, JSX.Element> = {
+  oggetto: <IconaOggetto size={14} />,
+  contenitore: <IconaContenitore size={14} />,
+  supporto: <IconaSupporto size={14} />,
+  personaggio: <IconaPersona size={14} />
 }
 
 export default function StateInspector(): JSX.Element {
@@ -21,9 +23,7 @@ export default function StateInspector(): JSX.Element {
 
   if (!snap) {
     return (
-      <div className="insp-empty">
-        Avvia la prova della storia (F5) per vedere qui lo stato del mondo, turno per turno.
-      </div>
+      <Vuoto titolo="Nessuna partita in corso">Avvia la prova (F5): qui vedrai lo stato del mondo, turno per turno.</Vuoto>
     )
   }
 
@@ -39,8 +39,8 @@ export default function StateInspector(): JSX.Element {
           <span className={'insp-status ' + snap.status}>{STATUS_LABEL[snap.status] ?? snap.status}</span>
           {snap.inDialogue && <span className="insp-dialogue">in dialogo</span>}
         </div>
-        <button className="icon-btn" title="Aggiorna" onClick={() => void reload()}>
-          ⟳
+        <button className="btn-icona" aria-label="Rileggi lo stato" title="Rileggi" onClick={() => void reload()}>
+          <IconaAggiorna />
         </button>
       </div>
 
@@ -48,7 +48,7 @@ export default function StateInspector(): JSX.Element {
         <section className="insp-section">
           <h4>Contatori</h4>
           {contatori.length === 0 ? (
-            <p className="insp-none">nessuno</p>
+            <p className="nota-riquadro">nessuno</p>
           ) : (
             contatori.map((v) => (
               <div key={v.name} className="insp-var">
@@ -62,7 +62,7 @@ export default function StateInspector(): JSX.Element {
         <section className="insp-section">
           <h4>Stati</h4>
           {stati.length === 0 ? (
-            <p className="insp-none">nessuno</p>
+            <p className="nota-riquadro">nessuno</p>
           ) : (
             stati.map((v) => (
               <div key={v.name} className="insp-var">
@@ -79,7 +79,7 @@ export default function StateInspector(): JSX.Element {
             {snap.carryMax !== null ? `/${snap.carryMax}` : ''})
           </h4>
           {snap.inventory.length === 0 ? (
-            <p className="insp-none">vuoto</p>
+            <p className="nota-riquadro">vuoto</p>
           ) : (
             snap.inventory.map((i) => (
               <div key={i.id} className="insp-item">
@@ -93,7 +93,7 @@ export default function StateInspector(): JSX.Element {
           <h4>Oggetti ({snap.objects.length})</h4>
           {snap.objects.map((o) => (
             <div key={o.id} className="insp-obj">
-              <span className="insp-obj-icon" title={o.kind}>
+              <span className="insp-obj-icon" title={o.kind} aria-hidden="true">
                 {KIND_ICON[o.kind]}
               </span>
               <span className="insp-obj-name">{o.name}</span>

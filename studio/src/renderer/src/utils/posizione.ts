@@ -9,6 +9,11 @@ export function nucleo(nome: string): string {
   return nome.replace(/^\s*(l'|un'|uno\s+|una\s+|gli\s+|il\s+|lo\s+|la\s+|le\s+|un\s+|i\s+)/i, '').trim()
 }
 
+/** L'identità di un elemento: il nome senza articolo, in minuscolo (come la calcola il motore). */
+export function idDiNome(nome: string): string {
+  return nucleo(nome).toLowerCase().replace(/ +/g, ' ')
+}
+
 /** Articolo iniziale del nome (normalizzato), o null se assente. */
 export function articoloDi(nome: string): string | null {
   const m = nome.match(/^\s*(l'|un'|uno|una|gli|il|lo|la|le|un|i)\b/i)

@@ -1,0 +1,1021 @@
+/* ============================================================================
+   Favella Studio 1.2 — la scocca: barra in alto, sezioni a sinistra, area di
+   lavoro, barra di stato, accoglienza. I colori vengono da tema.css.
+   ========================================================================== */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--sfondo);
+}
+
+.corpo {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.area {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.area:focus {
+  outline: none;
+}
+
+/* --- Barra in alto ----------------------------------------------------------- */
+.barra {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: 60px;
+  padding: 0 var(--s-4) 0 var(--s-4);
+  background: var(--superficie-1);
+  border-bottom: var(--spessore) solid var(--linea);
+  user-select: none;
+}
+
+.marchio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: var(--s-2);
+}
+.marchio-logo {
+  display: block;
+  border-radius: 8px;
+}
+.marchio-nome {
+  font-family: var(--font-titoli);
+  font-weight: 700;
+  font-size: var(--t-l);
+  letter-spacing: -0.01em;
+  color: var(--testo-titolo);
+  white-space: nowrap;
+}
+
+.dove {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  padding-left: var(--s-4);
+  border-left: var(--spessore) solid var(--linea);
+}
+.dove-progetto {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 220px;
+  color: var(--testo-2);
+  font-weight: 500;
+}
+.dove-progetto span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dove-sep {
+  color: var(--testo-3);
+  font-size: var(--t-l);
+}
+
+.selettore-file {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--h-controllo-piccolo);
+  max-width: 340px;
+  padding: 0 10px;
+  border: var(--spessore) solid var(--linea);
+  border-radius: var(--r-2);
+  background: var(--superficie-2);
+  color: var(--testo);
+  cursor: pointer;
+}
+.selettore-file:hover {
+  border-color: var(--linea-campo);
+}
+.selettore-file-nome {
+  font-family: var(--font-codice);
+  font-weight: 600;
+  font-size: var(--t-s);
+  color: var(--ambra);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barra-spazio {
+  flex: 1 1 auto;
+}
+
+.barra-azioni {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.gruppo-salva {
+  display: inline-flex;
+}
+.btn-salva {
+  border-radius: var(--r-2) 0 0 var(--r-2);
+}
+.btn-salva-freccia {
+  min-width: 34px;
+  padding: 0 8px;
+  border-left-width: 0;
+  border-radius: 0 var(--r-2) var(--r-2) 0;
+}
+.btn-salva.da-salvare {
+  background: var(--ambra-tenue);
+  border-color: var(--ambra);
+  color: var(--ambra);
+}
+.btn-salva.da-salvare:hover:not(:disabled) {
+  background: var(--ambra);
+  border-color: var(--ambra);
+  color: var(--su-ambra);
+}
+.btn-salva:disabled {
+  opacity: 1;
+  color: var(--testo-3);
+  background: transparent;
+  box-shadow: none;
+}
+
+.pillola-aggiornamento {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 32px;
+  padding: 0 var(--s-3);
+  border-radius: var(--r-tondo);
+  border: var(--spessore) solid var(--accento-bordo);
+  background: var(--accento-tenue);
+  color: var(--accento-forte);
+  font-weight: 600;
+  font-size: var(--t-s);
+  cursor: pointer;
+}
+.pillola-aggiornamento.pronta {
+  border-color: var(--smeraldo);
+  color: var(--smeraldo);
+  background: var(--smeraldo-tenue);
+}
+.pillola-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulsa 2s ease-in-out infinite;
+}
+@keyframes pulsa {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* La barra si adatta: con poco spazio (finestra stretta o interfaccia ingrandita) le azioni
+   restano come icone (il nome lo leggono i lettori di schermo, e c'è nel suggerimento). */
+@media (max-width: 1240px) {
+  .marchio-nome {
+    display: none;
+  }
+}
+@media (max-width: 1100px) {
+  .barra-azioni .btn-quieto .etichetta {
+    display: none;
+  }
+  .barra-azioni .btn-quieto {
+    padding: 0 10px;
+  }
+  .dove-progetto {
+    display: none;
+  }
+  .dove-sep {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .barra-azioni .btn .etichetta {
+    display: none;
+  }
+  .barra-azioni .btn {
+    padding: 0 10px;
+  }
+  .selettore-file .distintivo {
+    display: none;
+  }
+  .dove {
+    padding-left: var(--s-2);
+  }
+}
+.dove {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+.selettore-file {
+  min-width: 0;
+}
+
+/* --- Le sezioni (barra a sinistra) --------------------------------------------- */
+.sezioni {
+  flex: 0 0 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s-3) var(--s-2);
+  background: var(--superficie-1);
+  border-right: var(--spessore) solid var(--linea);
+  overflow-y: auto;
+}
+.sezione {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 4px 10px;
+  border: var(--spessore) solid transparent;
+  border-radius: var(--r-3);
+  background: transparent;
+  color: var(--testo-2);
+  cursor: pointer;
+  transition:
+    background var(--durata-breve) var(--curva),
+    color var(--durata-breve) var(--curva);
+}
+.sezione:hover:not(:disabled) {
+  background: var(--superficie-3);
+  color: var(--testo);
+}
+.sezione.attiva {
+  background: var(--accento-tenue);
+  border-color: var(--accento-bordo);
+  color: var(--accento-forte);
+}
+.sezione.attiva::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accento);
+}
+.sezione:disabled {
+  opacity: 0.4;
+}
+.sezione-icona {
+  position: relative;
+  display: inline-flex;
+}
+.sezione-nome {
+  font-size: var(--t-s);
+  font-weight: 600;
+  line-height: 1.1;
+}
+.sezione-segnale {
+  position: absolute;
+  top: -7px;
+  right: -12px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--r-tondo);
+  border: 2px solid var(--superficie-1);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+.sezione-segnale.errore {
+  background: var(--errore);
+  color: var(--superficie-0);
+}
+.sezione-segnale.vivo {
+  min-width: 14px;
+  width: 14px;
+  height: 14px;
+  top: -4px;
+  right: -7px;
+  background: var(--smeraldo);
+  animation: pulsa 2s ease-in-out infinite;
+}
+
+/* --- La Storia: file, schede, editor, problemi ------------------------------------ */
+.storia {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.storia-lato {
+  position: relative;
+  flex: 0 0 290px;
+  display: flex;
+  min-height: 0;
+  border-right: var(--spessore) solid var(--linea);
+  background: var(--superficie-1);
+}
+.lato-chiudi,
+.lato-apri {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--spessore) solid var(--linea);
+  background: var(--superficie-2);
+  color: var(--testo-2);
+  cursor: pointer;
+  z-index: 5;
+}
+.lato-chiudi {
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  width: 28px;
+  height: 44px;
+  border-radius: var(--r-2);
+  transform: translateY(-50%);
+}
+.lato-apri {
+  flex: 0 0 28px;
+  border-width: 0 var(--spessore) 0 0;
+}
+.lato-chiudi:hover,
+.lato-apri:hover {
+  color: var(--accento);
+  background: var(--superficie-3);
+}
+
+.esplora {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.esplora-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  height: 48px;
+  padding: 0 var(--s-2) 0 var(--s-4);
+  border-bottom: var(--spessore) solid var(--linea-tenue);
+}
+.esplora-azioni {
+  display: flex;
+  gap: 2px;
+}
+.esplora-corpo {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: var(--s-4);
+}
+.esplora-radice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--s-4) var(--s-4) var(--s-2);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.albero,
+.albero-figli {
+  list-style: none;
+}
+.albero-riga {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 34px;
+  padding-right: var(--s-3);
+  border: 0;
+  background: transparent;
+  color: var(--testo-2);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--t-s);
+}
+.albero-riga:hover {
+  background: var(--superficie-3);
+  color: var(--testo);
+}
+.albero-riga.fav {
+  color: var(--testo);
+}
+.albero-riga.fav svg {
+  color: var(--ambra);
+}
+.albero-riga.attiva {
+  background: var(--accento-tenue);
+  color: var(--accento-forte);
+  box-shadow: inset 3px 0 0 var(--accento);
+}
+.albero-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La storia come insieme di file (in cima all'esplora) */
+.struttura {
+  margin: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-3);
+  background: var(--superficie-2);
+  border: var(--spessore) solid var(--linea-tenue);
+}
+.struttura-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+  margin-bottom: 6px;
+}
+.struttura-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.struttura-voce {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--r-1);
+}
+.struttura-voce.attivo {
+  background: var(--accento-tenue);
+}
+.struttura-file {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--testo);
+  font-family: var(--font-codice);
+  font-size: var(--t-s);
+  text-align: left;
+  cursor: pointer;
+}
+.struttura-file svg {
+  color: var(--ambra);
+}
+.struttura-file:hover {
+  background: var(--superficie-3);
+}
+.struttura-etichetta {
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ambra);
+}
+.struttura-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--s-2);
+}
+.struttura-azioni select {
+  flex: 1 1 140px;
+  min-height: var(--h-controllo-piccolo);
+  font-size: var(--t-s);
+}
+.struttura-nota {
+  margin-top: var(--s-2);
+  font-size: var(--t-xs);
+  color: var(--testo-3);
+  line-height: 1.5;
+}
+.struttura-guida {
+  margin-top: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: var(--t-s);
+  color: var(--testo-2);
+  line-height: 1.5;
+}
+.struttura-guida pre {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-1);
+  background: var(--superficie-testo);
+  color: var(--smeraldo);
+  font-size: var(--t-s);
+}
+.struttura-guida ol {
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editor-area {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--superficie-testo);
+}
+.editor-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Le schede dei file aperti */
+.file-schede {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 44px;
+  padding: 0 var(--s-2);
+  background: var(--superficie-1);
+  border-bottom: var(--spessore) solid var(--linea);
+  overflow-x: auto;
+}
+.file-scheda {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--r-2) var(--r-2) 0 0;
+  margin-top: 6px;
+  color: var(--testo-2);
+}
+.file-scheda:hover {
+  background: var(--superficie-3);
+}
+.file-scheda.attiva {
+  background: var(--superficie-testo);
+  color: var(--testo);
+  box-shadow:
+    inset 0 2px 0 var(--accento),
+    1px 0 0 var(--linea),
+    -1px 0 0 var(--linea);
+}
+.file-scheda-nome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 4px 0 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-codice);
+  font-size: var(--t-s);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.file-scheda.attiva .nome-fav {
+  color: var(--ambra);
+}
+.file-scheda-pallino {
+  color: var(--ambra);
+  font-size: 12px;
+}
+.file-scheda-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--testo-3);
+  cursor: pointer;
+}
+.file-scheda-x:hover {
+  background: var(--superficie-3);
+  color: var(--testo);
+}
+
+/* I problemi del testo (sotto l'editor) */
+.problemi {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 38%;
+  min-height: 120px;
+  border-top: var(--spessore) solid var(--linea);
+  background: var(--superficie-1);
+}
+.problemi-testa {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: 44px;
+  padding: 0 var(--s-2) 0 var(--s-4);
+  border-bottom: var(--spessore) solid var(--linea-tenue);
+}
+.problemi-conti {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex: 1 1 auto;
+  font-size: var(--t-s);
+}
+.conto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--testo-3);
+}
+.conto-errori {
+  color: var(--errore);
+  font-weight: 700;
+}
+.conto-avvisi {
+  color: var(--avviso);
+  font-weight: 700;
+}
+.problemi-compilo {
+  color: var(--testo-3);
+  font-style: italic;
+}
+.problemi-elenco {
+  list-style: none;
+  overflow-y: auto;
+  padding: 4px;
+}
+.problemi-vuoto {
+  padding: var(--s-3) var(--s-4);
+  color: var(--testo-2);
+}
+.problema {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  width: 100%;
+  padding: 9px var(--s-3);
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--testo);
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.45;
+}
+.problema:hover {
+  background: var(--superficie-3);
+}
+.problema-segno {
+  flex: 0 0 auto;
+  padding-top: 1px;
+}
+.problema-errore .problema-segno {
+  color: var(--errore);
+}
+.problema-avviso .problema-segno {
+  color: var(--avviso);
+}
+.problema-testo {
+  flex: 1 1 auto;
+}
+.problema-dove {
+  flex: 0 0 auto;
+  font-family: var(--font-codice);
+  font-size: var(--t-xs);
+  color: var(--testo-3);
+  padding-top: 2px;
+}
+
+/* --- L'area di lavoro delle sezioni visuali ------------------------------------------ */
+.lavoro {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.lavoro-testa {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-5);
+  padding: var(--s-5) var(--s-6) var(--s-3);
+}
+.lavoro-titolo {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.lavoro-titolo h1 {
+  font-size: var(--t-2xl);
+  font-weight: 700;
+}
+.lavoro-titolo p {
+  margin-top: 2px;
+  color: var(--testo-2);
+}
+.lavoro-controlli {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.linguette {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--s-1);
+  padding: 0 var(--s-5);
+  border-bottom: var(--spessore) solid var(--linea);
+  overflow-x: auto;
+}
+.linguetta {
+  position: relative;
+  min-height: 44px;
+  padding: 0 var(--s-4);
+  border: 0;
+  background: transparent;
+  color: var(--testo-2);
+  font-weight: 600;
+  font-size: var(--t-m);
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: var(--r-2) var(--r-2) 0 0;
+}
+.linguetta:hover {
+  color: var(--testo);
+  background: var(--superficie-3);
+}
+.linguetta.attiva {
+  color: var(--accento-forte);
+}
+.linguetta.attiva::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accento);
+}
+
+.lavoro-corpo {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+.lavoro-pannello {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.lavoro-pannello > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.lavoro-corpo.con-testo .lavoro-pannello {
+  flex: 1 1 55%;
+}
+.lavoro-testo {
+  flex: 1 1 45%;
+  min-width: 320px;
+  border-left: var(--spessore) solid var(--linea);
+  background: var(--superficie-testo);
+  min-height: 0;
+}
+
+/* Con poca altezza (interfaccia molto ingrandita) le intestazioni si fanno basse. */
+@media (max-height: 720px) {
+  .lavoro-titolo p {
+    display: none;
+  }
+  .lavoro-testa {
+    padding-top: var(--s-3);
+    padding-bottom: var(--s-2);
+  }
+  .lavoro-titolo h1 {
+    font-size: var(--t-xl);
+  }
+  .elenco-testa {
+    padding-top: var(--s-3);
+  }
+}
+@media (max-width: 1000px) {
+  .elenco,
+  .colonna-elenco {
+    flex-basis: 240px;
+  }
+  .lavoro-controlli .campo-in-linea > span {
+    display: none;
+  }
+}
+
+/* --- Barra di stato ------------------------------------------------------------- */
+.stato {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  height: 34px;
+  padding: 0 var(--s-4);
+  background: var(--superficie-1);
+  border-top: var(--spessore) solid var(--linea);
+  font-size: var(--t-s);
+  color: var(--testo-2);
+}
+.stato-sinistra,
+.stato-destra {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+}
+.stato-destra {
+  font-variant-numeric: tabular-nums;
+}
+.stato-motore {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.stato-punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--testo-3);
+}
+.stato-ready .stato-punto {
+  background: var(--ok);
+}
+.stato-starting .stato-punto,
+.stato-restarting .stato-punto {
+  background: var(--avviso);
+  animation: pulsa 1.2s ease-in-out infinite;
+}
+.stato-crashed {
+  color: var(--errore);
+  font-weight: 700;
+}
+.stato-crashed .stato-punto {
+  background: var(--errore);
+}
+.stato-problemi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 26px;
+  padding: 0 var(--s-2);
+  border: var(--spessore) solid transparent;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--testo-2);
+  font-size: var(--t-s);
+  cursor: pointer;
+}
+.stato-problemi span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stato-problemi:hover {
+  background: var(--superficie-3);
+  color: var(--testo);
+}
+.stato-problemi.ha-errori {
+  color: var(--errore);
+  font-weight: 700;
+}
+.stato-problemi.ha-avvisi {
+  color: var(--avviso);
+  font-weight: 600;
+}
+.stato-problemi[aria-pressed='true'] {
+  border-color: var(--linea);
+  background: var(--superficie-2);
+}
+
+/* --- Accoglienza --------------------------------------------------------------- */
+.accoglienza {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-7) var(--s-6);
+  overflow-y: auto;
+  background:
+    radial-gradient(900px 480px at 50% -10%, var(--accento-tenue), transparent 70%),
+    radial-gradient(700px 420px at 100% 110%, var(--ambra-tenue), transparent 70%),
+    var(--sfondo);
+}
+.accoglienza:focus {
+  outline: none;
+}
+.accoglienza-interna {
+  background: var(--superficie-testo);
+}
+.accoglienza-carta {
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s-4);
+}
+.accoglienza-logo {
+  filter: drop-shadow(0 18px 40px rgba(34, 211, 238, 0.25));
+}
+.accoglienza-occhiello {
+  font-size: var(--t-s);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accento);
+}
+.accoglienza h1 {
+  font-size: var(--t-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.accoglienza-sotto {
+  font-size: var(--t-l);
+  color: var(--testo-2);
+  max-width: 54ch;
+  line-height: 1.6;
+}
+.accoglienza-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+.accoglienza-nota {
+  margin-top: var(--s-4);
+  font-size: var(--t-s);
+  color: var(--testo-3);
+  line-height: 1.8;
+}
+.accoglienza-lista {
+  list-style: none;
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.accoglienza-file {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: 0 var(--s-4);
+  border: var(--spessore) solid var(--linea);
+  border-radius: var(--r-3);
+  background: var(--superficie-2);
+  color: var(--testo);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--ombra-1);
+  transition:
+    border-color var(--durata-breve) var(--curva),
+    transform var(--durata-breve) var(--curva);
+}
+.accoglienza-file svg {
+  color: var(--ambra);
+}
+.accoglienza-file:hover {
+  border-color: var(--accento-bordo);
+  transform: translateY(-1px);
+}
+.accoglienza-file-nome {
+  flex: 1 1 auto;
+  font-family: var(--font-codice);
+  font-weight: 600;
+}

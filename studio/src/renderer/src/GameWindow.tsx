@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useStudio } from './store'
 import MapView from './components/MapView'
 import PulsantiGioco from './components/PulsantiGioco'
+import { RigheRacconto } from './components/GamePanel'
+import Riparo from './components/Riparo'
+import { applicaAspetto } from './aspetto'
+import { QUESTA_FINESTRA } from './store'
 import logoStudio from './assets/favella-studio-logo.svg'
 import type { Outcome } from '../../shared/protocol'
 
-const BANNER: Record<Outcome, { label: string; cls: string }> = {
-  vinta: { label: '★ HAI VINTO', cls: 'win' },
-  persa: { label: '☠ HAI PERSO', cls: 'lose' },
-  terminata: { label: '■ Partita terminata', cls: 'end' }
+const ESITO: Record<Outcome, { titolo: string; classe: string }> = {
+  vinta: { titolo: 'Hai vinto', classe: 'vinta' },
+  persa: { titolo: 'Hai perso', classe: 'persa' },
+  terminata: { titolo: 'La partita è finita', classe: 'finita' }
 }
 
 /**
@@ -34,6 +38,17 @@ export default function GameWindow(): JSX.Element {
   const setZoom = useStudio((s) => s.setZoom)
   const notice = useStudio((s) => s.gameNotice)
   const clearNotice = useStudio((s) => s.clearGameNotice)
+  const aspetto = useStudio((s) => s.aspetto)
+  const altrove = useStudio((s) => s.partitaAltrove)
+
+  // Stesso aspetto dello Studio (tema, contrasto).
+  useEffect(() => applicaAspetto(aspetto), [aspetto])
+
+  // La partita è una sola: se la riprende lo Studio, qui lo si dice.
+  useEffect(
+    () => window.favella.onGameOwner((chi) => useStudio.getState().setPartitaAltrove(chi !== QUESTA_FINESTRA)),
+    []
+  )
 
   const [input, setInput] = useState('')
   const storiaRef = useRef<HTMLDivElement | null>(null)
@@ -98,12 +113,13 @@ export default function GameWindow(): JSX.Element {
   }
 
   const gameOver = state?.gameOver
-  const banner = gameOver && state?.outcome ? BANNER[state.outcome] : null
+  const esito = gameOver && state?.outcome ? ESITO[state.outcome] : null
   const inDialogue = state?.inDialogue && !gameOver
   const carry =
     snap && snap.carryMax !== null ? ` (${snap.carryUsed}/${snap.carryMax})` : ''
 
   return (
+    <Riparo livello="app">
     <div className="gamewin">
       <header className="gw-header">
         <img className="gw-logo" src={logoStudio} alt="" width={30} height={30} />
@@ -125,35 +141,39 @@ export default function GameWindow(): JSX.Element {
 
       <div className="gw-body">
         <main className="gw-main">
-          <div className="gw-storia" ref={storiaRef}>
-            {error && <div className="gw-error">{error}</div>}
-            {lines.map((l, i) => {
-              const titolo = /^---\s*(.+?)\s*---$/.exec(l)
-              if (titolo) {
-                return (
-                  <div key={i} className="game-room-title">
-                    {titolo[1]}
-                  </div>
-                )
-              }
-              return (
-                <div key={i} className={'gw-line' + (l.startsWith('>') ? ' echo' : '')}>
-                  {l === '' ? ' ' : l}
-                </div>
-              )
-            })}
-            {busy && <div className="gw-line busy">…</div>}
-            {banner && <div className={'game-banner ' + banner.cls}>{banner.label}</div>}
+          {altrove && (
+            <div className="striscia striscia-info" role="status">
+              <span>La partita adesso è nello Studio, nella Prova.</span>
+              <button className="btn btn-piccolo" onClick={() => void resetGame()} disabled={busy}>
+                Riprendi qui
+              </button>
+            </div>
+          )}
+          <div className="gw-storia racconto racconto-libro" ref={storiaRef} role="log" aria-live="polite" aria-label="Il racconto">
+            {error && (
+              <p className="racconto-errore" role="alert">
+                {error}
+              </p>
+            )}
+            <RigheRacconto righe={lines} />
+            {busy && (
+              <p className="racconto-attesa" aria-label="Il motore sta rispondendo">
+                <span />
+                <span />
+                <span />
+              </p>
+            )}
+            {esito && <p className={'racconto-esito ' + esito.classe}>{esito.titolo}</p>}
           </div>
 
           <div className="gw-parser">
-            {running && !gameOver && !inDialogue && buttons && buttons.modo !== 'testo' && (
+            {running && !gameOver && !altrove && !inDialogue && buttons && buttons.modo !== 'testo' && (
               <div className="gw-buttons">
                 <PulsantiGioco p={buttons} onComando={(c) => void sendCommand(c)} disabilitato={busy} />
               </div>
             )}
-            {inDialogue && (
-              <div className="gw-options">
+            {inDialogue && !altrove && (
+              <div className="gw-options" role="group" aria-label="Le tue risposte">
                 {state!.dialogueOptions.map((opt) => (
                   <button
                     key={opt.index}
@@ -168,9 +188,15 @@ export default function GameWindow(): JSX.Element {
               </div>
             )}
             <div className="gw-inputrow">
-              {running && !gameOver ? (
+              {running && !gameOver && !altrove ? (
                 <>
+                  <label className="visivamente-nascosto" htmlFor="comando-finestra">
+                    Il tuo comando
+                  </label>
                   <input
+                    id="comando-finestra"
+                    autoComplete="off"
+                    spellCheck={false}
                     ref={inputRef}
                     className="gw-input"
                     value={input}
@@ -216,7 +242,7 @@ export default function GameWindow(): JSX.Element {
                 {snap.variables.map((v) => (
                   <div key={v.name} className="gw-var">
                     <span className="gw-var-name">{v.name}</span>
-                    <span className={'gw-var-val ' + v.kind}>
+                    <span className={'gw-var-val gw-var-' + v.kind}>
                       {v.value === null ? '∅' : String(v.value)}
                     </span>
                   </div>
@@ -236,5 +262,6 @@ export default function GameWindow(): JSX.Element {
         </aside>
       </div>
     </div>
+    </Riparo>
   )
 }

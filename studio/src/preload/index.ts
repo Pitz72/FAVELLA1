@@ -206,6 +206,18 @@ const api = {
     return () => ipcRenderer.removeListener('app:request-close', handler)
   },
 
+  // --- Una partita sola nel motore: chi la sta usando ---
+  /** Dice al main che questa finestra prende la partita ('studio' = la Prova). */
+  claimGame(chi: 'studio' | 'finestra'): void {
+    ipcRenderer.send('game:claim', chi)
+  },
+  /** La partita è passata a una finestra (questa o l'altra). */
+  onGameOwner(callback: (chi: 'studio' | 'finestra') => void): () => void {
+    const handler = (_e: unknown, chi: 'studio' | 'finestra'): void => callback(chi)
+    ipcRenderer.on('game:owner', handler)
+    return () => ipcRenderer.removeListener('game:owner', handler)
+  },
+
   // --- Sincronizzazione fra finestra di gioco e IDE (Fase 6a) ---
   /** [finestra di gioco] Notifica l'IDE che la partita è avanzata (turno/avvio/reset). */
   notifyGameAdvanced(): void {
@@ -230,7 +242,11 @@ const api = {
   openProject(): Promise<OpenedProject | null> {
     return ipcRenderer.invoke('project:open')
   },
-  /** Crea un nuovo progetto: cartella + nome scelti dall'utente, .fav vuoto, e lo apre. */
+  /** Apre una storia (.fav): la sua cartella diventa il progetto e il file si apre. */
+  openStoryFile(): Promise<(OpenedProject & { openPath: string }) | null> {
+    return ipcRenderer.invoke('project:openFile')
+  },
+  /** Crea un nuovo progetto: cartella + nome scelti dall'utente, una storia di partenza, e lo apre. */
   newProject(): Promise<(OpenedProject & { openPath: string }) | null> {
     return ipcRenderer.invoke('project:new')
   },
@@ -273,9 +289,17 @@ const api = {
   downloadUpdate(): Promise<void> {
     return ipcRenderer.invoke('updater:download')
   },
-  /** Riavvia l'applicazione e avvia l'installazione. */
-  installUpdate(): Promise<void> {
+  /** Avvia l'installazione e chiude Studio (chiamarla DOPO la guardia «non salvato»). */
+  installUpdate(): Promise<{ ok: boolean; message?: string }> {
     return ipcRenderer.invoke('updater:install')
+  },
+  /** Se Studio può controllare da solo gli aggiornamenti (null = non ancora chiesto). */
+  getAutoUpdates(): Promise<boolean | null> {
+    return ipcRenderer.invoke('updater:getAuto')
+  },
+  /** Ricorda la risposta: true = controlla all'avvio, false = mai da solo. */
+  setAutoUpdates(attivi: boolean): Promise<void> {
+    return ipcRenderer.invoke('updater:setAuto', attivi)
   },
   /** Restituisce lo stato corrente dell'updater. */
   getUpdaterStatus(): Promise<UpdaterStatus> {

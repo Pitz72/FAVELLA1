@@ -340,6 +340,23 @@ export function defaultAtom(menu: LogicMenu): RuleCondition | null {
   )
 }
 
+/**
+ * [Studio 1.2] Il costruttore lavora su un GRUPPO (e/oppure) alla radice, ma il motore
+ * dà una condizione semplice così com'è ('se la porta è chiusa' → {op:'prop'}). Prima
+ * della 1.2 il gruppo riceveva l'atomo e l'interfaccia si fermava (finestra vuota) appena
+ * si apriva una regola o una risposta con una condizione sola. Qui la si avvolge.
+ */
+export function comeGruppo(c: RuleCondition): Extract<RuleCondition, { op: 'and' | 'or' }> {
+  return c.op === 'and' || c.op === 'or' ? c : { op: 'and', terms: [c] }
+}
+
+/** Il contrario, al salvataggio: un gruppo radice con un solo termine è quel termine. */
+export function semplifica(c: RuleCondition | null): RuleCondition | null {
+  if (!c) return null
+  if ((c.op === 'and' || c.op === 'or') && c.terms.length === 1) return c.terms[0]
+  return c
+}
+
 // === Costruttore di CONDIZIONI annidate (AND/OR/NOT + parentesi) ===============
 // Un GRUPPO è un nodo and/oppure con N termini; ogni termine è un atomo o un altro
 // gruppo (le parentesi). Vincoli grammaticali: NOT è infisso e vale SOLO su
@@ -358,6 +375,8 @@ export function CondGroup({
   onRemove: () => void
   isRoot?: boolean
 }): JSX.Element {
+  // Difesa: anche se arrivasse un atomo, lo si tratta come un gruppo di un termine.
+  node = comeGruppo(node)
   const setTerm = (i: number, t: RuleCondition): void =>
     onChange({ ...node, terms: node.terms.map((x, j) => (j === i ? t : x)) })
   const removeTerm = (i: number): void => {
@@ -422,10 +441,10 @@ export function CondGroup({
         )}
       </div>
       <div className="objed-add cond-add">
-        <button className="modal-btn ghost" onClick={addAtom}>
+        <button className="btn btn-quieto btn-piccolo" onClick={addAtom}>
           + condizione
         </button>
-        <button className="modal-btn ghost" onClick={addGroup}>
+        <button className="btn btn-quieto btn-piccolo" onClick={addGroup}>
           + gruppo ( )
         </button>
       </div>

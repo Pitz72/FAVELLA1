@@ -69,6 +69,25 @@ async function costruisciAlbero(dir: string): Promise<FileNode[]> {
   return nodi
 }
 
+/**
+ * Il testo di partenza di una storia nuova: una stanza con la sua descrizione e il
+ * giocatore già lì. Così la storia compila subito e i pannelli (Mondo, Personaggi,
+ * Regole, Mappa, Prova) hanno da che cosa partire. Il titolo viene dal nome del file.
+ */
+export function modelloStoria(percorsoFile: string): string {
+  const base = basename(percorsoFile).replace(/\.fav$/i, '').replace(/[-_]+/g, ' ').trim()
+  const titolo = base ? base.charAt(0).toUpperCase() + base.slice(1) : 'La mia storia'
+  return [
+    `# ${titolo}`,
+    '# Scrivi qui la tua storia, oppure usa i pannelli: Mondo, Personaggi, Regole.',
+    '',
+    'La piazza è una stanza.',
+    'La descrizione della piazza è "Sei al centro di una piazza silenziosa.".',
+    'Il giocatore comincia in piazza.',
+    ''
+  ].join('\n')
+}
+
 /** Registra gli handler IPC per il file system. Da chiamare a app.whenReady(). */
 export function registraFileSystemIPC(): void {
   ipcMain.handle('project:open', async (e): Promise<OpenedProject | null> => {
@@ -84,21 +103,28 @@ export function registraFileSystemIPC(): void {
   })
 
 
-/**
- * Modello iniziale per una nuova storia FAVELLA. Crea una prima stanza
- * valida con descrizione, così il mondo è subito compilabile e tutti i pannelli
- * visuali (Mondo, Personaggi, Regole, Mappa, Prova) sono immediatamente operativi.
- */
-function generaTemplateStoria(percorsoFile: string): string {
-  const base = basename(percorsoFile).replace(/\.fav$/i, '').replace(/[-_]/g, ' ')
-  const titolo = base ? base.charAt(0).toUpperCase() + base.slice(1) : 'La mia storia'
-  return `# ${titolo}
-# Scrivi qui la tua storia o usa i pannelli visuali (Mondo, Personaggi, Regole).
-
-La piazza è una stanza.
-La descrizione della piazza è "Ti trovi al centro di una grande piazza silenziosa.".
-`
-}
+  // Apri una storia: il selettore di CARTELLE di Windows non mostra i file, quindi qui si
+  // sceglie direttamente un .fav; la sua cartella diventa il progetto e il file si apre.
+  // (Introdotto nella 1.1.1, tolto per errore nella 1.1.3, ripristinato nella 1.2.0.)
+  ipcMain.handle(
+    'project:openFile',
+    async (e): Promise<(OpenedProject & { openPath: string }) | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+      const res = await dialog.showOpenDialog(win!, {
+        title: 'Apri una storia FAVELLA',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Storia FAVELLA', extensions: ['fav'] },
+          { name: 'Tutti i file', extensions: ['*'] }
+        ]
+      })
+      if (res.canceled || res.filePaths.length === 0) return null
+      const file = res.filePaths[0]
+      const root = dirname(file)
+      projectRoot = root
+      return { root, tree: await costruisciAlbero(root), openPath: file }
+    }
+  )
 
   // Nuovo progetto: l'utente sceglie cartella e nome (dialogo «Salva con nome»,
   // che permette anche di creare una cartella nuova), si crea un .fav col modello
@@ -119,7 +145,7 @@ La descrizione della piazza è "Ti trovi al centro di una grande piazza silenzio
       try {
         await stat(file)
       } catch {
-        await scriviFileAtomico(file, generaTemplateStoria(file))
+        await scriviFileAtomico(file, modelloStoria(file))
       }
       const root = dirname(file)
       projectRoot = root

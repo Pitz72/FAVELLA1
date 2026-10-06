@@ -710,6 +710,8 @@ export type UpdaterStatus =
   | { type: 'not-available'; manual?: boolean; currentVersion: string }
   | {
       type: 'available'
+      /** true se il controllo l'ha chiesto chi usa Studio (dal menu). */
+      manual?: boolean
       currentVersion: string
       version: string
       releaseNotes: string

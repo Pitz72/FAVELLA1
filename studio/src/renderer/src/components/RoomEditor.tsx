@@ -5,11 +5,13 @@ import { nucleo } from '../utils/posizione'
 import { DirezioneSelect } from './UsciteStanza'
 import UsciteStanza from './UsciteStanza'
 import { EliminaElemento, RinominaElemento, idDiNome } from './ElementoAzioni'
+import Elenco, { NonPronto, Riquadro, Vuoto } from './Elenco'
+import { IconaMatita, IconaPartenza, IconaStanza } from './Icone'
 
-// Editor delle STANZE: lista + scheda. Qui si fa tutto quello che si fa su una stanza:
-// la si crea (anche già collegata a un'altra), la si rinomina, se ne cambia la descrizione,
-// le uscite e il fatto di essere il punto di partenza, e la si elimina. Ogni gesto riscrive
-// la frase giusta del testo, in qualunque file della storia stia.
+// Editor delle STANZE: elenco + scheda. Qui si fa tutto quello che si fa su una stanza: la
+// si crea (anche già collegata a un'altra), la si rinomina, se ne cambia la descrizione, le
+// uscite e il fatto di essere il punto di partenza, e la si elimina. Ogni gesto riscrive la
+// frase giusta del testo, in qualunque file della storia stia.
 export default function RoomEditor(): JSX.Element {
   const outline = useStudio((s) => s.outline)
   const loading = useStudio((s) => s.outlineLoading)
@@ -18,11 +20,13 @@ export default function RoomEditor(): JSX.Element {
   const addRoom = useStudio((s) => s.mapAddRoom)
   const addConnection = useStudio((s) => s.mapAddConnection)
   const requestReveal = useStudio((s) => s.requestReveal)
+  const nomeOccupato = useStudio((s) => s.nomeOccupato)
+  const selezione = useStudio((s) => s.selezione)
   const isFav = useStudio((s) => !!s.activePath?.toLowerCase().endsWith('.fav'))
 
   const [selId, setSelId] = useState<string | null>(null)
   const [descBozza, setDescBozza] = useState('')
-  // Creazione in-linea: ➕ apre una riga col nome (con articolo) e, se si vuole, il collegamento.
+  // Creazione: il nome (con l'articolo) e, se si vuole, il collegamento a un'altra stanza.
   const [creando, setCreando] = useState(false)
   const [nuovoNome, setNuovoNome] = useState('')
   const [collegaA, setCollegaA] = useState('')
@@ -36,43 +40,24 @@ export default function RoomEditor(): JSX.Element {
     setDescBozza(sel?.description ?? '')
   }, [selId, sel?.description])
 
-  if (!isFav) {
-    return <div className="insp-empty">Apri un file .fav per modificare le stanze.</div>
-  }
-  if (!outline) {
-    return (
-      <div className="insp-empty">
-        {loading ? 'Carico le stanze…' : 'Nessuna stanza caricata.'}
-        {!loading && (
-          <button className="map-reload" onClick={() => void loadOutline()}>
-            ⟳ Carica
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (!outline.ok) {
-    return (
-      <div className="insp-empty">
-        Il file contiene errori: correggili per usare l’editor stanze.
-        <button className="map-reload" onClick={() => void loadOutline()}>
-          ⟳ Riprova
-        </button>
-      </div>
-    )
-  }
+  // Dalla Mappa («Apri la scheda della stanza»): si apre già sulla stanza giusta.
+  useEffect(() => {
+    if (selezione?.tipo === 'stanza') setSelId(selezione.id)
+  }, [selezione])
+
+  if (!isFav) return <NonPronto cosa="le stanze" stato="nessun-file" />
+  if (!outline) return <NonPronto cosa="le stanze" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadOutline()} />
+  if (!outline.ok) return <NonPronto cosa="le stanze" stato="errori" onRiprova={() => void loadOutline()} />
 
   const rooms = outline.rooms
+  const erroreNome = nuovoNome.trim() ? nomeOccupato(nuovoNome) : null
 
   const salvaDescrizione = async (): Promise<void> => {
     if (!sel) return
     await applyStatement({ op: 'description', name: sel.name, text: descBozza }, sel.descSpan)
   }
 
-  // Imposta questa stanza come posizione iniziale. Scrive «Il giocatore comincia
-  // in <nucleo>.» (nome senza articolo → italiano pulito «in cucina»). Se esiste
-  // già una frase di partenza la SOSTITUISCE (outline.startSpan), altrimenti la
-  // appende. La stanza diventa l'unica isStart al prossimo reload.
+  // La partenza: «Il giocatore comincia in <nucleo>.» (sostituisce quella di prima).
   const impostaIniziale = async (r: OutlineRoom): Promise<void> => {
     await applyStatement({ op: 'start', name: nucleo(r.name) }, outline.startSpan ?? undefined)
   }
@@ -88,7 +73,7 @@ export default function RoomEditor(): JSX.Element {
   // Crea «<Nome> è una stanza.» e, se richiesto, la collega a un'altra stanza.
   const creaStanza = async (): Promise<void> => {
     const nome = nuovoNome.trim()
-    if (!nome) return
+    if (!nome || erroreNome) return
     const da = collegaA
     const dir = direzione
     const opp = opposta
@@ -100,150 +85,155 @@ export default function RoomEditor(): JSX.Element {
   }
 
   return (
-    <div className="objed">
-      <div className="insp-top">
-        <span className="debug-title">
-          Stanze<span className="debug-count"> · {rooms.length}</span>
-        </span>
-        <div>
-          <button
-            className="btn-testo"
-            title="Aggiungi una stanza alla storia"
-            onClick={() => (creando ? chiudiCreazione() : setCreando(true))}
-          >
-            + Nuova stanza
-          </button>
-        </div>
-      </div>
+    <div className="editor-schede">
+      <Elenco
+        titolo="Stanze"
+        voci={rooms.map((r) => ({
+          id: r.id,
+          nome: r.name,
+          icona: r.isStart ? <IconaPartenza /> : <IconaStanza />,
+          nota: r.isStart ? 'partenza' : undefined,
+          titolo: r.isStart ? 'Il giocatore comincia qui' : undefined
+        }))}
+        selezionato={selId}
+        onScegli={setSelId}
+        nuovo={{ etichetta: 'Nuova stanza', onClick: () => (creando ? chiudiCreazione() : setCreando(true)), aperto: creando }}
+        vuoto="Nessuna stanza. Creane una con «Nuova stanza», o dalla Mappa."
+      />
 
-      {creando && (
-        <div className="objed-create objed-create-col">
-          <div className="objed-create-riga">
-            <input
-              type="text"
-              autoFocus
-              placeholder="Nome con l’articolo (es. La cantina)"
-              value={nuovoNome}
-              onChange={(e) => setNuovoNome(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void creaStanza()
-                if (e.key === 'Escape') chiudiCreazione()
-              }}
-            />
-            <button className="modal-btn primary" disabled={!nuovoNome.trim()} onClick={() => void creaStanza()}>
-              Crea
-            </button>
-            <button className="modal-btn ghost" onClick={chiudiCreazione}>
-              Annulla
-            </button>
-          </div>
-          {rooms.length > 0 && (
-            <div className="objed-create-riga">
-              <span className="var-note">Collegala a</span>
-              <select value={collegaA} onChange={(e) => setCollegaA(e.target.value)} aria-label="Collega a">
-                <option value="">— nessuna (per ora) —</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-              {collegaA && (
-                <>
-                  <span className="var-note">verso</span>
-                  <DirezioneSelect
-                    valore={direzione}
-                    direzioni={outline.directions}
-                    usate={rooms.find((r) => r.id === collegaA)?.exits.map((e) => e.direction) ?? []}
-                    vuota="direzione…"
-                    onScegli={(d, o) => {
-                      setDirezione(d)
-                      setOpposta(o)
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="objed-body">
-        <div className="objed-list">
-          {rooms.length === 0 ? (
-            <p className="insp-none">nessuna stanza: creane una con «Nuova stanza» (o dalla Mappa)</p>
-          ) : (
-            rooms.map((r) => (
-              <div
-                key={r.id}
-                className={'objed-row' + (r.id === selId ? ' sel' : '')}
-                onClick={() => setSelId(r.id)}
-                title={r.isStart ? 'Stanza iniziale' : 'Stanza'}
-              >
-                <span className="objed-row-icon">{r.isStart ? '★' : '▢'}</span>
-                <span className="objed-row-name">{r.name}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {!sel && <div className="vuoto-scegli">Scegli una stanza dall’elenco per modificarla.</div>}
-        {sel && (
-          <div className="objed-form">
-            <RinominaElemento nome={sel.name} onRinominato={(n) => setSelId(idDiNome(n))} />
-
-            <div className="objed-field">
-              <label className="objed-check">
+      <div className="dettaglio">
+        {creando && (
+          <Riquadro titolo="Nuova stanza">
+            <div className="riga-campi">
+              <label className="campo campo-largo">
+                <span className="campo-etichetta">Nome, con l’articolo</span>
                 <input
-                  type="checkbox"
-                  checked={sel.isStart}
-                  disabled={sel.isStart}
-                  onChange={() => void impostaIniziale(sel)}
+                  type="text"
+                  autoFocus
+                  placeholder="La cantina"
+                  value={nuovoNome}
+                  aria-invalid={!!erroreNome}
+                  onChange={(e) => setNuovoNome(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void creaStanza()
+                    if (e.key === 'Escape') chiudiCreazione()
+                  }}
                 />
-                Posizione iniziale del giocatore
               </label>
-              {sel.isStart && (
-                <p className="var-note">Il giocatore parte da qui. Spunta un’altra stanza per spostare la partenza.</p>
-              )}
+            </div>
+            {erroreNome && <p className="errore-campo">{erroreNome}</p>}
+            {rooms.length > 0 && (
+              <div className="riga-campi">
+                <label className="campo">
+                  <span className="campo-etichetta">Collegala a</span>
+                  <select value={collegaA} onChange={(e) => setCollegaA(e.target.value)}>
+                    <option value="">nessuna, per ora</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {collegaA && (
+                  <label className="campo">
+                    <span className="campo-etichetta">Da lì, verso</span>
+                    <DirezioneSelect
+                      valore={direzione}
+                      direzioni={outline.directions}
+                      usate={rooms.find((r) => r.id === collegaA)?.exits.map((e) => e.direction) ?? []}
+                      vuota="scegli la direzione"
+                      onScegli={(d, o) => {
+                        setDirezione(d)
+                        setOpposta(o)
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+            <div className="riga-azioni">
+              <button className="btn btn-quieto" onClick={chiudiCreazione}>
+                Annulla
+              </button>
+              <button className="btn btn-primario" disabled={!nuovoNome.trim() || !!erroreNome} onClick={() => void creaStanza()}>
+                Crea la stanza
+              </button>
+            </div>
+          </Riquadro>
+        )}
+
+        {!sel && !creando && (
+          <Vuoto titolo="Scegli una stanza">
+            Dall’elenco a sinistra. Qui ne cambi il nome, la descrizione, le uscite e il punto di partenza.
+          </Vuoto>
+        )}
+
+        {sel && (
+          <div className="scheda" aria-label={`La stanza ${sel.name}`}>
+            <div className="scheda-testa">
+              <span className="scheda-icona" aria-hidden="true">
+                {sel.isStart ? <IconaPartenza size={22} /> : <IconaStanza size={22} />}
+              </span>
+              <h2 className="scheda-nome">{sel.name}</h2>
+              {sel.isStart && <span className="distintivo distintivo-accento">partenza</span>}
             </div>
 
-            <div className="objed-field">
-              <label>Descrizione</label>
+            <Riquadro titolo="Nome">
+              <RinominaElemento nome={sel.name} onRinominato={(n) => setSelId(idDiNome(n))} />
+            </Riquadro>
+
+            <Riquadro
+              titolo="Punto di partenza"
+              aiuto={sel.isStart ? 'Il giocatore comincia qui. Per spostare la partenza, scegli un’altra stanza e spunta la casella.' : undefined}
+            >
+              <label className="spunta">
+                <input type="checkbox" checked={sel.isStart} disabled={sel.isStart} onChange={() => void impostaIniziale(sel)} />
+                <span>Il giocatore comincia in questa stanza</span>
+              </label>
+            </Riquadro>
+
+            <Riquadro titolo="Descrizione" aiuto={sel.descConditional ? undefined : 'Quello che il giocatore legge quando entra.'}>
               {sel.descConditional ? (
-                <p className="insp-none">
-                  Descrizione condizionale: modificala nel testo (l’editor non la riscrive).
+                <div className="nota-riquadro">
+                  <p>Questa stanza ha una descrizione che cambia (con «se…»): si modifica nel testo.</p>
                   {sel.descSpan && (
-                    <button
-                      className="map-reload"
-                      onClick={() => requestReveal(sel.descSpan!.file, sel.descSpan!.line, 1)}
-                    >
-                      ✎ vai al testo
+                    <button className="btn btn-quieto btn-piccolo" onClick={() => requestReveal(sel.descSpan!.file, sel.descSpan!.line, 1)}>
+                      <IconaMatita />
+                      Vai al testo
                     </button>
                   )}
-                </p>
+                </div>
               ) : (
                 <>
+                  <label className="visivamente-nascosto" htmlFor="descrizione-stanza">
+                    Descrizione di {sel.name}
+                  </label>
                   <textarea
-                    rows={4}
+                    id="descrizione-stanza"
+                    className="campo-prosa"
+                    rows={5}
                     placeholder="Cosa vede il giocatore entrando qui…"
                     value={descBozza}
                     onChange={(e) => setDescBozza(e.target.value)}
                   />
-                  <button
-                    className="modal-btn primary objed-save"
-                    disabled={descBozza === sel.description}
-                    onClick={() => void salvaDescrizione()}
-                  >
-                    Salva descrizione
-                  </button>
+                  <div className="riga-azioni">
+                    {descBozza !== sel.description && (
+                      <button className="btn btn-quieto" onClick={() => setDescBozza(sel.description ?? '')}>
+                        Lascia com’era
+                      </button>
+                    )}
+                    <button className="btn btn-primario" disabled={descBozza === sel.description} onClick={() => void salvaDescrizione()}>
+                      Scrivi la descrizione
+                    </button>
+                  </div>
                 </>
               )}
-            </div>
+            </Riquadro>
 
-            <div className="objed-field">
-              <label>Uscite</label>
+            <Riquadro titolo="Uscite">
               <UsciteStanza stanzaId={sel.id} />
-            </div>
+            </Riquadro>
 
             <EliminaElemento nome={sel.name} tipo="stanza" onEliminato={() => setSelId(null)} />
           </div>

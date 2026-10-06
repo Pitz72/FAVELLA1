@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStudio } from '../store'
 import type { CommandsMode } from '../../../shared/protocol'
+import { NonPronto } from './Elenco'
+import { IconaChiudi, IconaMatita } from './Icone'
 
 // «Parole e comandi»: ciò che riguarda il modo di parlare con la storia.
 //  • Come comanda il giocatore: scrivendo, toccando i pulsanti, o tutti e due.
@@ -29,29 +31,9 @@ export default function WordsEditor(): JSX.Element {
   const [sinBersaglio, setSinBersaglio] = useState('')
   const [sinVoluto, setSinVoluto] = useState(false)
 
-  if (!isFav) return <div className="insp-empty">Apri un file .fav per modificare parole e comandi.</div>
-  if (!words) {
-    return (
-      <div className="insp-empty">
-        {loading ? 'Carico le parole…' : 'Nessuna parola caricata.'}
-        {!loading && (
-          <button className="map-reload" onClick={() => void loadWords()}>
-            ⟳ Carica
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (!words.ok) {
-    return (
-      <div className="insp-empty">
-        Il file contiene errori: correggili per usare questo pannello.
-        <button className="map-reload" onClick={() => void loadWords()}>
-          ⟳ Riprova
-        </button>
-      </div>
-    )
-  }
+  if (!isFav) return <NonPronto cosa="le parole e i comandi" stato="nessun-file" />
+  if (!words) return <NonPronto cosa="le parole e i comandi" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadWords()} />
+  if (!words.ok) return <NonPronto cosa="le parole e i comandi" stato="errori" onRiprova={() => void loadWords()} />
 
   const impostaModo = async (mode: CommandsMode): Promise<void> => {
     await applyStatement({ op: 'commands_mode', mode }, words.modeSpan ?? undefined)
@@ -94,7 +76,7 @@ export default function WordsEditor(): JSX.Element {
             </button>
           ))}
         </div>
-        <p className="var-note">
+        <p className="aiuto">
           {words.modeSpan
             ? 'Scritto nella storia come una frase: «I comandi si scrivono…».'
             : 'Se non dici niente, vale «Scrivere o toccare». Scegliere una voce aggiunge la frase alla storia.'}
@@ -103,25 +85,26 @@ export default function WordsEditor(): JSX.Element {
 
       <section className="words-sez">
         <h2>
-          I verbi inventati da te<span className="debug-count"> · {words.verbs.length}</span>
+          I verbi inventati da te<span className="elenco-conto">{words.verbs.length}</span>
         </h2>
-        <p className="var-note">
+        <p className="aiuto">
           Un verbo che il motore non conosce («lancia», «accelera») si dichiara, e poi si scrive una regola che dice cosa succede.
         </p>
-        {words.verbs.length === 0 && <p className="insp-none">nessun verbo inventato</p>}
+        {words.verbs.length === 0 && <p className="nota-riquadro">nessun verbo inventato</p>}
         <ul className="words-lista">
           {words.verbs.map((v, i) => (
             <li key={v.word + i} className="words-riga">
               <span className="words-parola">{v.word}</span>
               {v.noObject && <span className="var-badge">senza oggetto</span>}
-              <span className="ws-spacer" />
+              <span className="spazio" />
               {v.span && (
                 <>
-                  <button className="rule-edit" title="Vai al testo" onClick={() => requestReveal(v.span!.file, v.span!.line, 1)}>
-                    ✎ testo
+                  <button className="btn btn-quieto btn-piccolo" title="Vai alla frase nel testo" onClick={() => requestReveal(v.span!.file, v.span!.line, 1)}>
+                    <IconaMatita />
+                    Nel testo
                   </button>
-                  <button className="rule-del" title="Togli questo verbo" onClick={() => void deleteStatement(v.span!)}>
-                    ×
+                  <button className="btn-icona" aria-label={`Togli il verbo ${v.word}`} title="Togli questo verbo" onClick={() => void deleteStatement(v.span!, `Verbo «${v.word}» tolto`)}>
+                    <IconaChiudi />
                   </button>
                 </>
               )}
@@ -131,6 +114,7 @@ export default function WordsEditor(): JSX.Element {
         <div className="words-nuovo">
           <input
             type="text"
+            aria-label="Un verbo nuovo"
             placeholder="un verbo nuovo, es. lancia"
             value={nuovoVerbo}
             onChange={(e) => setNuovoVerbo(e.target.value)}
@@ -140,21 +124,21 @@ export default function WordsEditor(): JSX.Element {
             <input type="checkbox" checked={senzaOggetto} onChange={(e) => setSenzaOggetto(e.target.checked)} />
             senza oggetto
           </label>
-          <button className="btn-testo" disabled={!nuovoVerbo.trim()} onClick={() => void aggiungiVerbo()}>
-            + Aggiungi
+          <button className="btn btn-accento" disabled={!nuovoVerbo.trim()} onClick={() => void aggiungiVerbo()}>
+            Aggiungi il verbo
           </button>
         </div>
       </section>
 
       <section className="words-sez">
         <h2>
-          Parole che valgono come un’altra<span className="debug-count"> · {words.synonyms.length}</span>
+          Parole che valgono come un’altra<span className="elenco-conto">{words.synonyms.length}</span>
         </h2>
-        <p className="var-note">
+        <p className="aiuto">
           «ghermisci» vale «prendi»: scrivi una regola per «prendi» e funziona per tutte e due. Se cambi di proposito il significato di una parola che
           il motore già conosce, spunta «voluto»: l’avviso sparisce.
         </p>
-        {words.synonyms.length === 0 && <p className="insp-none">nessun sinonimo</p>}
+        {words.synonyms.length === 0 && <p className="nota-riquadro">nessun sinonimo</p>}
         <ul className="words-lista">
           {words.synonyms.map((s, i) => (
             <li key={s.word + i} className="words-riga">
@@ -165,20 +149,21 @@ export default function WordsEditor(): JSX.Element {
                 <input type="checkbox" checked={s.voluto} onChange={() => void cambiaVoluto(i)} disabled={!s.span} />
                 voluto
               </label>
-              <span className="ws-spacer" />
+              <span className="spazio" />
               {s.span && (
-                <button className="rule-del" title="Togli questo sinonimo" onClick={() => void deleteStatement(s.span!)}>
-                  ×
+                <button className="btn-icona" aria-label={`Togli il sinonimo ${s.word}`} title="Togli questo sinonimo" onClick={() => void deleteStatement(s.span!, `Sinonimo «${s.word}» tolto`)}>
+                  <IconaChiudi />
                 </button>
               )}
             </li>
           ))}
         </ul>
         <div className="words-nuovo">
-          <input type="text" placeholder="la parola, es. ghermisci" value={sinParola} onChange={(e) => setSinParola(e.target.value)} />
+          <input type="text" aria-label="La parola nuova" placeholder="la parola, es. ghermisci" value={sinParola} onChange={(e) => setSinParola(e.target.value)} />
           <span className="words-vale">vale</span>
           <input
             type="text"
+            aria-label="L’azione a cui vale"
             placeholder="l’azione, es. prendi"
             value={sinBersaglio}
             onChange={(e) => setSinBersaglio(e.target.value)}
@@ -188,8 +173,8 @@ export default function WordsEditor(): JSX.Element {
             <input type="checkbox" checked={sinVoluto} onChange={(e) => setSinVoluto(e.target.checked)} />
             voluto
           </label>
-          <button className="btn-testo" disabled={!sinParola.trim() || !sinBersaglio.trim()} onClick={() => void aggiungiSinonimo()}>
-            + Aggiungi
+          <button className="btn btn-accento" disabled={!sinParola.trim() || !sinBersaglio.trim()} onClick={() => void aggiungiSinonimo()}>
+            Aggiungi il sinonimo
           </button>
         </div>
       </section>

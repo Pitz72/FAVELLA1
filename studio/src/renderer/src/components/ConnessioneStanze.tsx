@@ -1,5 +1,7 @@
 import { useStudio } from '../store'
 import UsciteStanza, { DirezioneSelect } from './UsciteStanza'
+import Finestra from './Finestra'
+import { IconaChiudi, IconaCestino, IconaStanza } from './Icone'
 
 // Le due finestre della Mappa per cambiare le uscite senza lasciarla: una per la
 // connessione fra due stanze (clic su una freccia), una per tutte le uscite di una stanza
@@ -26,52 +28,50 @@ export function ConnessioneStanze({
   const daB = b.exits.filter((e) => e.to === a.id)
 
   return (
-    <div className="modal-backdrop" onClick={onChiudi}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Connessione</h2>
-        <p className="modal-body">
-          <b>{a.name}</b> ⇄ <b>{b.name}</b>
-        </p>
-        {daA.length === 0 && <p className="insp-none">Non trovo l’uscita: ricarica la mappa.</p>}
-        {daA.map((e, i) => (
-          <div key={i} className="uscita-riga">
-            <span className="var-note">Da {a.name}:</span>
-            <DirezioneSelect
-              valore={e.direction}
-              direzioni={outline.directions}
-              usate={a.exits.map((x) => x.direction)}
-              onScegli={(direzione, opposta) => void cambiaUscita({ daId: a.id, uscita: e, direzione, opposta })}
-            />
-            <span className="uscita-freccia" aria-hidden="true">
-              →
-            </span>
-            <span>{b.name}</span>
-            <button
-              className="modal-btn danger"
-              title="Toglie la connessione, anche il ritorno"
-              disabled={!e.span}
-              onClick={() => {
-                void eliminaUscita(e)
-                onChiudi()
-              }}
-            >
-              Elimina
-            </button>
-          </div>
-        ))}
-        {daB.length > 0 && (
-          <p className="var-note">
-            Dall’altra parte, da {b.name} si va a {daB.map((e) => e.direction).join(', ')}: il ritorno si
-            aggiorna da solo.
-          </p>
-        )}
-        <div className="modal-actions">
-          <button className="modal-btn primary" onClick={onChiudi}>
-            Fatto
+    <Finestra
+      titolo="Il collegamento"
+      sottotitolo={`${a.name} ⇄ ${b.name}`}
+      onChiudi={onChiudi}
+      azioni={
+        <button className="btn btn-primario" onClick={onChiudi}>
+          Fatto
+        </button>
+      }
+    >
+      {daA.length === 0 && <p className="nota-riquadro">Non trovo l’uscita: ricarica la mappa.</p>}
+      {daA.map((e, i) => (
+        <div key={i} className="uscita-riga">
+          <span className="uscita-da">Da {a.name}, verso</span>
+          <DirezioneSelect
+            valore={e.direction}
+            direzioni={outline.directions}
+            usate={a.exits.map((x) => x.direction)}
+            onScegli={(direzione, opposta) => void cambiaUscita({ daId: a.id, uscita: e, direzione, opposta })}
+          />
+          <span className="uscita-freccia" aria-hidden="true">
+            →
+          </span>
+          <span className="uscita-meta">{b.name}</span>
+          <button
+            className="btn btn-pericolo btn-piccolo"
+            title="Toglie il collegamento, anche il ritorno"
+            disabled={!e.span}
+            onClick={() => {
+              void eliminaUscita(e)
+              onChiudi()
+            }}
+          >
+            <IconaCestino />
+            Togli
           </button>
         </div>
-      </div>
-    </div>
+      ))}
+      {daB.length > 0 && (
+        <p className="aiuto">
+          Da {b.name} si torna verso {daB.map((e) => e.direction).join(', ')}: il ritorno si aggiorna da solo.
+        </p>
+      )}
+    </Finestra>
   )
 }
 
@@ -79,20 +79,29 @@ export function ConnessioneStanze({
 export function SchedaStanzaMappa({ id, onChiudi }: { id: string; onChiudi: () => void }): JSX.Element | null {
   const outline = useStudio((s) => s.outline)
   const setRightTab = useStudio((s) => s.setRightTab)
+  const richiediSelezione = useStudio((s) => s.richiediSelezione)
   const stanza = outline?.rooms.find((r) => r.id === id)
   if (!outline || !stanza) return null
   return (
-    <aside className="scheda-mappa" aria-label={`Uscite di ${stanza.name}`}>
+    <aside className="scheda-mappa" aria-label={`Le uscite di ${stanza.name}`}>
       <div className="scheda-mappa-testa">
-        <strong>{stanza.name}</strong>
-        <button className="icon-btn" title="Chiudi" onClick={onChiudi}>
-          ✕
+        <IconaStanza size={18} />
+        <h2>{stanza.name}</h2>
+        <button className="btn-icona" aria-label="Chiudi la scheda" title="Chiudi" onClick={onChiudi}>
+          <IconaChiudi />
         </button>
       </div>
       <div className="scheda-mappa-corpo">
         <UsciteStanza stanzaId={stanza.id} />
-        <button className="modal-btn ghost objed-save" onClick={() => setRightTab('stanze')}>
-          Apri la scheda della stanza →
+        <button
+          className="btn btn-quieto"
+          onClick={() => {
+            // Si apre il pannello Stanze GIÀ sulla stanza giusta (prima si apriva vuoto).
+            richiediSelezione('stanza', stanza.id)
+            setRightTab('stanze')
+          }}
+        >
+          Apri la scheda della stanza
         </button>
       </div>
     </aside>

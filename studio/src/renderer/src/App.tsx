@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import './monaco/setup' // side-effect: configura worker + loader Monaco (offline)
-import { useStudio } from './store'
+import { useStudio, QUESTA_FINESTRA } from './store'
 import Explorer from './components/Explorer'
 import TabBar from './components/TabBar'
 import EditorPane from './components/EditorPane'
@@ -13,11 +13,20 @@ import { Benvenuto, ScegliStoria } from './components/Accoglienza'
 import { sezioneDi, SEZIONI } from './sezioni'
 import UnsavedDialog from './components/UnsavedDialog'
 import UpdateDialog from './components/UpdateDialog'
+import Avvisi from './components/Avvisi'
+import ConsensoAggiornamenti from './components/ConsensoAggiornamenti'
+import Riparo from './components/Riparo'
+import { IconaChevron } from './components/Icone'
+import { applicaAspetto } from './aspetto'
 import type { EngineEvent, EngineLexicon } from '../../shared/protocol'
 
-interface Toast {
-  id: number
-  text: string
+/** Il fuoco è in un campo di testo (o nell'editor)? Allora le scorciatoie «nude» tacciono. */
+function staScrivendo(): boolean {
+  const el = document.activeElement as HTMLElement | null
+  if (!el) return false
+  if (el.closest('.monaco-editor')) return true
+  const tag = el.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
 }
 
 export default function App(): JSX.Element {
@@ -27,6 +36,7 @@ export default function App(): JSX.Element {
   const salvaConNome = useStudio((s) => s.salvaConNome)
   const riordinaStoria = useStudio((s) => s.riordinaStoria)
   const openProject = useStudio((s) => s.openProject)
+  const openStory = useStudio((s) => s.openStory)
   const compileActive = useStudio((s) => s.compileActive)
   const rightTab = useStudio((s) => s.rightTab)
   const activePath = useStudio((s) => s.activePath)
@@ -34,24 +44,22 @@ export default function App(): JSX.Element {
   const revisione = useStudio((s) => s.revisione)
   const sidecarStatus = useStudio((s) => s.sidecarStatus)
   const setUpdaterStatus = useStudio((s) => s.setUpdaterStatus)
-  const [toasts, setToasts] = useState<Toast[]>([])
+  const avvisa = useStudio((s) => s.avvisa)
+  const aspetto = useStudio((s) => s.aspetto)
 
-  const pushToast = useCallback((text: string) => {
-    const id = Date.now() + Math.floor(performance.now())
-    setToasts((t) => [...t, { id, text }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
-  }, [])
-
-  // Gli avvisi degli editor visuali (gameNotice nello store: riordino, errori di
-  // serializzazione, edit cross-file…) diventano toast anche nell'IDE.
+  // Gli avvisi degli editor visuali (gameNotice: riordino, esportazione, rinomina…)
+  // diventano avvisi in basso a destra.
   const gameNotice = useStudio((s) => s.gameNotice)
   const clearGameNotice = useStudio((s) => s.clearGameNotice)
   useEffect(() => {
     if (gameNotice) {
-      pushToast(gameNotice)
+      avvisa(gameNotice)
       clearGameNotice()
     }
-  }, [gameNotice, pushToast, clearGameNotice])
+  }, [gameNotice, avvisa, clearGameNotice])
+
+  // Tema e contrasto (Leggibilità): sul documento intero.
+  useEffect(() => applicaAspetto(aspetto), [aspetto])
 
   const loadLexicon = useCallback(async () => {
     try {
@@ -66,47 +74,48 @@ export default function App(): JSX.Element {
     const unsub = window.favella.onEngineEvent((event: EngineEvent) => {
       if (event.kind === 'status') {
         setSidecarStatus(event.status)
-        if (event.status === 'restarting') pushToast('Il motore si è chiuso: riavvio in corso…')
+        if (event.status === 'restarting') avvisa('Il motore si è chiuso: lo riavvio…', { tipo: 'errore' })
         if (event.status === 'crashed') {
-          // Mostra anche la causa (ultima riga del traceback Python, passata nel
-          // detail): un errore senza il perché non è diagnosticabile dall'utente.
-          pushToast(
-            'Il motore FAVELLA è andato in errore' +
-              (event.detail ? `: ${event.detail}` : '.')
-          )
-          // Il traceback completo va in console (DevTools) per le segnalazioni.
+          // La causa (l'ultima riga del traceback Python) insieme al messaggio.
+          avvisa('Il motore FAVELLA è andato in errore' + (event.detail ? `: ${event.detail}` : '.'), {
+            tipo: 'errore',
+            durata: 10000
+          })
           void window.favella.sidecarLastError().then((tail) => {
             if (tail) console.error('[motore FAVELLA — stderr]\n' + tail)
           })
         }
       } else if (event.kind === 'ready') {
         setSidecarStatus('ready')
-        if (event.data.engineLoaded) {
-          pushToast('Motore FAVELLA connesso.')
-          void loadLexicon()
-        } else {
-          pushToast('Motore non caricato: ' + (event.data.engineError ?? '?'))
-        }
+        if (event.data.engineLoaded) void loadLexicon()
+        else avvisa('Il motore non si è caricato: ' + (event.data.engineError ?? '?'), { tipo: 'errore', durata: 10000 })
       }
     })
     window.favella.sidecarStatus().then(setSidecarStatus)
     void loadLexicon()
     return unsub
-  }, [loadLexicon, pushToast, setSidecarStatus])
+  }, [loadLexicon, avvisa, setSidecarStatus])
 
-  // Auto-updater: ascolta gli aggiornamenti in background e all'avvio
+  // Aggiornamenti: lo stato arriva dal main; la prima volta si chiede il permesso.
   useEffect(() => {
     const unsub = window.favella.onUpdaterStatus((status) => {
       setUpdaterStatus(status)
-      if (status.type === 'available') {
-        pushToast(`È disponibile Favella Studio v${status.version}`)
-      } else if (status.type === 'ready') {
-        pushToast(`Favella Studio v${status.version} pronto per l'installazione`)
+      if (status.type === 'available' && !status.manual) {
+        avvisa(`C’è una versione nuova di Favella Studio: la ${status.version}.`, {
+          azione: { etichetta: 'Vedi', esegui: () => useStudio.getState().setUpdateModalOpen(true) },
+          durata: 12000
+        })
       }
     })
     void window.favella.getUpdaterStatus().then(setUpdaterStatus)
+    void window.favella.getAutoUpdates().then((v) => useStudio.getState().setAggiornamentiAuto(v))
     return unsub
-  }, [setUpdaterStatus, pushToast])
+  }, [setUpdaterStatus, avvisa])
+
+  // Una sola partita nel motore: se la prende la finestra di gioco, la Prova qui si ferma.
+  useEffect(() => {
+    return window.favella.onGameOwner((chi) => useStudio.getState().setPartitaAltrove(chi !== QUESTA_FINESTRA))
+  }, [])
 
   // Auto-compile (Fase 2): compila la storia (il file principale coi suoi moduli, sui
   // buffer aperti) all'apertura, a ogni modifica (debounced) e quando il motore diventa
@@ -118,68 +127,71 @@ export default function App(): JSX.Element {
     return () => clearTimeout(t)
   }, [activePath, revisione, sidecarStatus, compileActive])
 
-  // Guardia «modifiche non salvate» in uscita: quando il main chiede di chiudere,
-  // se ci sono file sporchi mostra il dialogo nativo Salva/Non salvare/Annulla.
+  // Guardia «modifiche non salvate» in uscita (finestra, Alt+F4, Cmd+Q, aggiornamento):
+  // il main chiede, qui si decide; il motore si ferma solo dopo la conferma.
   useEffect(() => {
-    const unsub = window.favella.onRequestClose(async () => {
-      const sporchi = useStudio
-        .getState()
-        .openFiles.filter((f) => f.content !== f.savedContent)
-      if (sporchi.length === 0) {
-        void window.favella.confirmClose()
-        return
-      }
-      const scelta = await useStudio.getState().askUnsaved(sporchi.map((f) => f.name))
-      if (scelta === 'cancel') return
-      if (scelta === 'save') await useStudio.getState().saveAll()
-      void window.favella.confirmClose()
+    return window.favella.onRequestClose(async () => {
+      if (await useStudio.getState().guardiaNonSalvati()) void window.favella.confirmClose()
     })
-    return unsub
   }, [])
 
   // Sincronizzazione live: quando la finestra di gioco avanza (turno/avvio/reset),
-  // ricarica i pannelli aperti leggendo dal sidecar condiviso. Così Stato/Debug/
-  // Mappa dell'IDE riflettono la partita giocata nella finestra dedicata.
+  // ricarica i pannelli aperti leggendo dal sidecar condiviso.
   useEffect(() => {
-    const unsub = window.favella.onGameAdvanced(() => {
+    return window.favella.onGameAdvanced(() => {
       const s = useStudio.getState()
       void s.loadWorldSnapshot()
       if (s.rightTab === 'debug' || (s.rightTab === 'gioca' && s.provaLato === 'debug')) void s.loadDebugHistory()
     })
-    return unsub
   }, [])
 
-  // Scorciatoie globali: Ctrl+S salva (tutti i file cambiati), Ctrl+Maiusc+S salva con nome,
-  // Ctrl+O apre una cartella, Ctrl+Alt+R riordina il testo, F5 prova la storia, Ctrl+1…5
-  // cambia sezione, Ctrl +/−/0 la grandezza dell'interfaccia.
+  // Scorciatoie globali: Ctrl+S salva tutto, Ctrl+Maiusc+S salva con nome, Ctrl+O apre una
+  // storia, Ctrl+Maiusc+O una cartella, Ctrl+Alt+R riordina, F5 prova, Ctrl+1…5 le
+  // sezioni, Ctrl +/−/0 la grandezza, Ctrl+Z (fuori dal testo) annulla l'ultima modifica
+  // fatta da un pannello.
   const startGame = useStudio((s) => s.startGame)
   const setSezione = useStudio((s) => s.setSezione)
   const setZoom = useStudio((s) => s.setZoom)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const ctrl = e.ctrlKey || e.metaKey
-      if (ctrl && e.key.toLowerCase() === 's') {
+      const tasto = e.key.toLowerCase()
+      if (ctrl && tasto === 's') {
         e.preventDefault()
         if (e.shiftKey) void salvaConNome()
         else void saveAll()
+        return
       }
-      if (ctrl && e.altKey && e.key.toLowerCase() === 'r') {
+      if (ctrl && e.altKey && tasto === 'r') {
         e.preventDefault()
         void riordinaStoria()
+        return
       }
-      if (ctrl && e.key.toLowerCase() === 'o') {
+      if (ctrl && tasto === 'o') {
         e.preventDefault()
-        void openProject()
+        if (e.shiftKey) void openProject()
+        else void openStory()
+        return
+      }
+      if (ctrl && !e.shiftKey && tasto === 'z' && !staScrivendo()) {
+        const st = useStudio.getState()
+        if (st.rightTab !== null && st.storicoPannelli.length > 0) {
+          e.preventDefault()
+          void st.annullaModificaPannello()
+        }
+        return
       }
       if (e.key === 'F5') {
         e.preventDefault()
         if (useStudio.getState().activePath?.toLowerCase().endsWith('.fav')) void startGame()
+        return
       }
       if (ctrl && !e.shiftKey && !e.altKey) {
         const sez = SEZIONI.find((d) => d.tasto === e.key)
         if (sez && useStudio.getState().projectRoot) {
           e.preventDefault()
           setSezione(sez.id)
+          return
         }
         const z = useStudio.getState().zoom
         if (e.key === '+' || e.key === '=') {
@@ -196,7 +208,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveAll, salvaConNome, riordinaStoria, openProject, startGame, setSezione, setZoom])
+  }, [saveAll, salvaConNome, riordinaStoria, openProject, openStory, startGame, setSezione, setZoom])
 
   const projectRoot = useStudio((s) => s.projectRoot)
   const sezione = sezioneDi(rightTab)
@@ -213,59 +225,63 @@ export default function App(): JSX.Element {
 
   return (
     <div className="app">
+      <a className="salta" href="#area-principale">
+        Salta all’area di lavoro
+      </a>
       <TopBar />
 
-      {!projectRoot ? (
-        <Benvenuto />
-      ) : (
-        <div className="body">
-          <Rail />
-          {sezione === 'storia' ? (
-            <div className="storia">
-              {esploraAperto ? (
-                <div className="storia-lato">
-                  <Explorer />
-                  <button
-                    className="lato-chiudi"
-                    onClick={() => setEsploraAperto(false)}
-                    title="Nascondi l'elenco dei file"
-                    aria-label="Nascondi l'elenco dei file"
-                  >
-                    ‹
-                  </button>
+      <Riparo livello="app">
+        {!projectRoot ? (
+          <Benvenuto />
+        ) : (
+          <div className="corpo">
+            <Rail />
+            <div className="area" id="area-principale" tabIndex={-1}>
+              {sezione === 'storia' ? (
+                <div className="storia">
+                  {esploraAperto ? (
+                    <div className="storia-lato">
+                      <Explorer />
+                      <button
+                        className="lato-chiudi"
+                        onClick={() => setEsploraAperto(false)}
+                        title="Nascondi l'elenco dei file"
+                        aria-label="Nascondi l'elenco dei file"
+                      >
+                        <IconaChevron direzione="sinistra" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="lato-apri"
+                      onClick={() => setEsploraAperto(true)}
+                      title="Mostra l'elenco dei file"
+                      aria-label="Mostra l'elenco dei file"
+                    >
+                      <IconaChevron direzione="destra" />
+                    </button>
+                  )}
+                  <main className="editor-area" aria-label="Il testo della storia">
+                    <TabBar />
+                    <div className="editor-host">
+                      <Riparo livello="pannello" chiave="testo">
+                        {haFile ? <EditorPane /> : <ScegliStoria />}
+                      </Riparo>
+                    </div>
+                    {problemiAperti && <ProblemsPanel />}
+                  </main>
                 </div>
               ) : (
-                <button
-                  className="lato-apri"
-                  onClick={() => setEsploraAperto(true)}
-                  title="Mostra l'elenco dei file"
-                  aria-label="Mostra l'elenco dei file"
-                >
-                  ›
-                </button>
+                <Workspace />
               )}
-              <main className="editor-area">
-                <TabBar />
-                <div className="editor-host">{haFile ? <EditorPane /> : <ScegliStoria />}</div>
-                {problemiAperti && <ProblemsPanel />}
-              </main>
             </div>
-          ) : (
-            <Workspace />
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </Riparo>
 
       <StatusBar />
-
-      <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className="toast">
-            {t.text}
-          </div>
-        ))}
-      </div>
-
+      <Avvisi />
+      <ConsensoAggiornamenti />
       <UnsavedDialog />
       <UpdateDialog />
     </div>

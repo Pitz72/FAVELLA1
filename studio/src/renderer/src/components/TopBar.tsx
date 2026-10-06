@@ -1,9 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import type { FileNode } from '../../../shared/protocol'
 import { useStudio, infoStoria } from '../store'
 import logoStudio from '../assets/favella-studio-logo.svg'
-import { IconaCartella, IconaFreccia, IconaMenu, IconaPlay, IconaRiordina, IconaSalva } from './Icone'
+import {
+  IconaAnnulla,
+  IconaCartella,
+  IconaChevron,
+  IconaEsporta,
+  IconaFinestra,
+  IconaMenu,
+  IconaPiu,
+  IconaPlay,
+  IconaRiordina,
+  IconaSalva,
+  IconaTesto
+} from './Icone'
 import { stessoFile } from '../utils/progetto'
+import { useMenu, tastieraMenu, VoceMenu } from './Menu'
 
 function nomeCartella(root: string | null): string {
   if (!root) return ''
@@ -20,90 +33,70 @@ function fileFav(nodi: FileNode[]): FileNode[] {
   return out
 }
 
-/** Chiude un menu a comparsa al clic fuori o con Esc. */
-function useChiudiFuori(aperto: boolean, chiudi: () => void) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!aperto) return
-    const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) chiudi()
-    }
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') chiudi()
-    }
-    window.addEventListener('mousedown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [aperto, chiudi])
-  return ref
-}
-
+/** Il file che stai modificando, e il menu per passare a un altro file della storia. */
 function SelettoreFile(): JSX.Element | null {
   const tree = useStudio((s) => s.tree)
   const activePath = useStudio((s) => s.activePath)
   const openFile = useStudio((s) => s.openFile)
   // I file della storia a cui appartiene quello aperto (la radice e i moduli inclusi).
   const membri = useStudio((s) => JSON.stringify(infoStoria(s)?.membri ?? []))
-  const [aperto, setAperto] = useState(false)
-  const ref = useChiudiFuori(aperto, () => setAperto(false))
+  const m = useMenu()
   const file = useMemo(() => fileFav(tree), [tree])
   const dellaStoria = useMemo(() => JSON.parse(membri) as string[], [membri])
   const attivo = file.find((f) => stessoFile(f.path, activePath))
   if (file.length === 0) return null
 
-  const aDestra = file.filter((f) => !dellaStoria.some((m) => stessoFile(m, f.path)))
-  const interni = dellaStoria
-    .map((m) => file.find((f) => stessoFile(f.path, m)))
-    .filter((f): f is FileNode => !!f)
+  const altri = file.filter((f) => !dellaStoria.some((x) => stessoFile(x, f.path)))
+  const interni = dellaStoria.map((x) => file.find((f) => stessoFile(f.path, x))).filter((f): f is FileNode => !!f)
 
   const voce = (f: FileNode, principale: boolean): JSX.Element => (
-    <button
+    <VoceMenu
       key={f.path}
-      role="option"
-      aria-selected={stessoFile(f.path, activePath)}
-      className={'menu-item' + (stessoFile(f.path, activePath) ? ' current' : '')}
+      tipo="menuitemradio"
+      spunta={stessoFile(f.path, activePath)}
       onClick={() => {
-        setAperto(false)
+        m.chiudi()
         void openFile(f)
       }}
     >
-      <span>
-        {principale && '★ '}
-        {f.name}
-      </span>
-      {principale && <span className="menu-nota">principale</span>}
-    </button>
+      {f.name}
+      {principale && <span className="distintivo distintivo-accento">principale</span>}
+    </VoceMenu>
   )
 
   return (
-    <div className="menu-wrap" ref={ref}>
+    <div className="menu-ancora" ref={m.refContenitore}>
       <button
-        className="crumb-file"
-        onClick={() => setAperto((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={aperto}
+        ref={m.refPulsante}
+        className="selettore-file"
+        onClick={m.alterna}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            m.apri()
+          }
+        }}
+        aria-haspopup="menu"
+        aria-expanded={m.aperto}
         title="Scegli quale file della storia stai modificando"
       >
-        <span className="crumb-file-name">{attivo?.name ?? 'Scegli un file…'}</span>
-        {dellaStoria.length > 1 && <span className="crumb-badge">{dellaStoria.length} file</span>}
-        <IconaFreccia />
+        <IconaTesto size={15} />
+        <span className="selettore-file-nome">{attivo?.name ?? 'Scegli un file…'}</span>
+        {dellaStoria.length > 1 && <span className="distintivo">{dellaStoria.length} file</span>}
+        <IconaChevron size={14} />
       </button>
-      {aperto && (
-        <div className="menu menu-left" role="listbox">
-          {interni.length > 1 && (
+      {m.aperto && (
+        <div className="menu menu-sinistra" role="menu" aria-label="File" onKeyDown={(e) => tastieraMenu(e, m.chiudi)}>
+          {interni.length > 1 ? (
             <>
-              <div className="menu-title">File di questa storia</div>
+              <div className="menu-titolo">File di questa storia</div>
               {interni.map((f, i) => voce(f, i === 0))}
-              {aDestra.length > 0 && <div className="menu-title">Altri file del progetto</div>}
-              {aDestra.map((f) => voce(f, false))}
+              {altri.length > 0 && <div className="menu-titolo">Altri file del progetto</div>}
+              {altri.map((f) => voce(f, false))}
             </>
-          )}
-          {interni.length <= 1 && (
+          ) : (
             <>
-              <div className="menu-title">File della storia</div>
+              <div className="menu-titolo">Le storie del progetto</div>
               {file.map((f) => voce(f, false))}
             </>
           )}
@@ -121,207 +114,236 @@ export default function TopBar(): JSX.Element {
   const multiFile = useStudio((s) => (infoStoria(s)?.membri.length ?? 1) > 1)
   const saveAll = useStudio((s) => s.saveAll)
   const openProject = useStudio((s) => s.openProject)
+  const openStory = useStudio((s) => s.openStory)
   const newProject = useStudio((s) => s.newProject)
   const zoom = useStudio((s) => s.zoom)
   const setZoom = useStudio((s) => s.setZoom)
+  const aspetto = useStudio((s) => s.aspetto)
+  const setAspetto = useStudio((s) => s.setAspetto)
   const startGame = useStudio((s) => s.startGame)
   const busy = useStudio((s) => s.gameBusy)
+  const inPannello = useStudio((s) => s.rightTab !== null)
+  const ultimoPasso = useStudio((s) => s.storicoPannelli[s.storicoPannelli.length - 1] ?? null)
+  const annulla = useStudio((s) => s.annullaModificaPannello)
   const updaterStatus = useStudio((s) => s.updaterStatus)
   const setUpdateModalOpen = useStudio((s) => s.setUpdateModalOpen)
-  const [menu, setMenu] = useState(false)
-  const refMenu = useChiudiFuori(menu, () => setMenu(false))
-  const [salvaMenu, setSalvaMenu] = useState(false)
-  const refSalva = useChiudiFuori(salvaMenu, () => setSalvaMenu(false))
+  const aggiornamentiAuto = useStudio((s) => s.aggiornamentiAuto)
+  const rispondiAuto = useStudio((s) => s.rispondiAggiornamentiAuto)
+  const menu = useMenu()
+  const salvaMenu = useMenu()
   const st = useStudio.getState
 
-  const voce = (
-    etichetta: string,
-    azione: () => void,
-    opts?: { disabilitata?: boolean; scorciatoia?: string; chiudi?: () => void }
-  ): JSX.Element => (
-    <button
-      className="menu-item"
-      disabled={opts?.disabilitata}
-      onClick={() => {
-        ;(opts?.chiudi ?? (() => setMenu(false)))()
-        azione()
-      }}
-    >
-      <span>{etichetta}</span>
-      {opts?.scorciatoia && <kbd>{opts.scorciatoia}</kbd>}
-    </button>
-  )
-  const voceSalva = (etichetta: string, azione: () => void, scorciatoia?: string, disabilitata = false): JSX.Element =>
-    voce(etichetta, azione, { scorciatoia, disabilitata, chiudi: () => setSalvaMenu(false) })
+  const fai = (azione: () => void, quale = menu) => (): void => {
+    quale.chiudi()
+    azione()
+  }
 
   return (
-    <header className="topbar">
-      <div className="brand">
-        <img className="brand-logo" src={logoStudio} alt="" width={34} height={34} />
-        <span className="brand-name">Favella Studio</span>
+    <header className="barra">
+      <div className="marchio">
+        <img className="marchio-logo" src={logoStudio} alt="" width={30} height={30} />
+        <span className="marchio-nome">Favella Studio</span>
       </div>
 
       {projectRoot && (
-        <div className="crumb" aria-label="Dove sei">
-          <span className="crumb-project" title={projectRoot}>
+        <nav className="dove" aria-label="Dove sei">
+          <span className="dove-progetto" title={projectRoot}>
             <IconaCartella size={15} />
-            {nomeCartella(projectRoot)}
+            <span>{nomeCartella(projectRoot)}</span>
           </span>
-          <span className="crumb-sep" aria-hidden="true">
+          <span className="dove-sep" aria-hidden="true">
             /
           </span>
           <SelettoreFile />
-        </div>
+        </nav>
       )}
 
-      <div className="topbar-spacer" />
+      <div className="barra-spazio" />
+
+      {updaterStatus.type === 'available' && (
+        <button className="pillola-aggiornamento" onClick={() => setUpdateModalOpen(true)}>
+          <span className="pillola-punto" aria-hidden="true" />
+          Versione {updaterStatus.version}
+        </button>
+      )}
+      {updaterStatus.type === 'downloading' && (
+        <button className="pillola-aggiornamento" onClick={() => setUpdateModalOpen(true)}>
+          Scarico… {updaterStatus.percent}%
+        </button>
+      )}
+      {updaterStatus.type === 'ready' && (
+        <button className="pillola-aggiornamento pronta" onClick={() => setUpdateModalOpen(true)}>
+          <span className="pillola-punto" aria-hidden="true" />
+          Aggiornamento pronto
+        </button>
+      )}
 
       {projectRoot && (
-        <>
+        <div className="barra-azioni">
+          {inPannello && (
+            <button
+              className="btn btn-quieto"
+              aria-label="Annulla"
+              onClick={() => void annulla()}
+              disabled={!ultimoPasso}
+              title={ultimoPasso ? `Annulla: ${ultimoPasso.etichetta.toLowerCase()} (Ctrl+Z)` : 'Niente da annullare'}
+            >
+              <IconaAnnulla />
+              <span className="etichetta">Annulla</span>
+            </button>
+          )}
           <button
-            className="btn-riordina"
+            className="btn btn-quieto"
+            aria-label="Riordina"
             onClick={() => void st().riordinaStoria()}
             disabled={!isFav}
             title={
-              multiFile
-                ? 'Riordina il testo di tutti i file della storia: stanze, oggetti, regole e dialoghi ognuno al suo posto (Ctrl+Alt+R)'
-                : 'Riordina il testo: stanze, oggetti, regole e dialoghi ognuno al suo posto, senza perdere niente (Ctrl+Alt+R)'
+              (multiFile
+                ? 'Riordina il testo di tutti i file della storia: '
+                : 'Riordina il testo: ') + 'stanze, oggetti, regole e dialoghi ognuno al suo posto (Ctrl+Alt+R)'
             }
           >
             <IconaRiordina />
-            Riordina
+            <span className="etichetta">Riordina</span>
           </button>
 
-          <div className="menu-wrap btn-salva-gruppo" ref={refSalva}>
+          <div className="menu-ancora gruppo-salva" ref={salvaMenu.refContenitore}>
             <button
-              className={'btn-save' + (daSalvare > 0 ? ' dirty' : '')}
+              className={'btn btn-salva' + (daSalvare > 0 ? ' da-salvare' : '')}
+              aria-label={daSalvare === 0 ? 'Salvato' : `Salva ${daSalvare === 1 ? 'il file cambiato' : `i ${daSalvare} file cambiati`}`}
               onClick={() => void saveAll()}
               disabled={daSalvare === 0}
               title={daSalvare > 1 ? `Salva i ${daSalvare} file cambiati (Ctrl+S)` : 'Salva (Ctrl+S)'}
             >
               <IconaSalva />
-              {daSalvare === 0 ? 'Salvato' : daSalvare > 1 ? `Salva (${daSalvare})` : 'Salva'}
+              <span className="etichetta">{daSalvare === 0 ? 'Salvato' : daSalvare > 1 ? `Salva (${daSalvare})` : 'Salva'}</span>
             </button>
             <button
-              className={'btn-save btn-save-caret' + (daSalvare > 0 ? ' dirty' : '')}
-              onClick={() => setSalvaMenu((v) => !v)}
+              ref={salvaMenu.refPulsante}
+              className={'btn btn-salva btn-salva-freccia' + (daSalvare > 0 ? ' da-salvare' : '')}
+              onClick={salvaMenu.alterna}
               aria-haspopup="menu"
-              aria-expanded={salvaMenu}
+              aria-expanded={salvaMenu.aperto}
               aria-label="Altri modi di salvare"
               title="Salva con nome, salva il progetto altrove"
             >
-              <IconaFreccia />
+              <IconaChevron size={14} />
             </button>
-            {salvaMenu && (
-              <div className="menu menu-right" role="menu">
-                {voceSalva('Salva con nome…', () => void st().salvaConNome(), 'Ctrl+Maiusc+S', !isFav)}
-                {voceSalva('Salva il progetto come…', () => void st().salvaProgettoCome())}
-                <p className="menu-nota-lunga">
-                  «Salva con nome» fa una copia di questo file (dentro il progetto). «Salva il progetto come…» copia
-                  tutta la cartella, storia e moduli, in una cartella nuova e passa a lavorare lì.
+            {salvaMenu.aperto && (
+              <div className="menu menu-destra" role="menu" aria-label="Salva" onKeyDown={(e) => tastieraMenu(e, salvaMenu.chiudi)}>
+                <VoceMenu onClick={fai(() => void st().salvaConNome(), salvaMenu)} disabled={!isFav} scorciatoia="Ctrl+Maiusc+S">
+                  Salva con nome…
+                </VoceMenu>
+                <VoceMenu onClick={fai(() => void st().salvaProgettoCome(), salvaMenu)}>Salva il progetto come…</VoceMenu>
+                <p className="menu-nota">
+                  «Salva con nome» fa una copia di questo file, dentro il progetto. «Salva il progetto come…» copia tutta
+                  la cartella in una cartella nuova e passa a lavorare lì.
                 </p>
               </div>
             )}
           </div>
 
           <button
-            className="btn-prova"
+            className="btn btn-prova"
+            aria-label="Prova la storia"
             onClick={() => void startGame()}
             disabled={!isFav || busy}
             title="Prova la storia: la compila e la gioca qui (F5)"
           >
             <IconaPlay />
-            Prova la storia
+            <span className="etichetta">Prova la storia</span>
           </button>
-        </>
+        </div>
       )}
 
-      {updaterStatus.type === 'available' && (
+      <div className="menu-ancora" ref={menu.refContenitore}>
         <button
-          className="btn-update-pill"
-          onClick={() => setUpdateModalOpen(true)}
-          title={`Nuova versione ${updaterStatus.version} disponibile`}
-        >
-          <span className="update-dot" />
-          Aggiornamento v{updaterStatus.version}
-        </button>
-      )}
-      {updaterStatus.type === 'downloading' && (
-        <button
-          className="btn-update-pill downloading"
-          onClick={() => setUpdateModalOpen(true)}
-          title={`Scaricamento: ${updaterStatus.percent}%`}
-        >
-          Download {updaterStatus.percent}%
-        </button>
-      )}
-      {updaterStatus.type === 'ready' && (
-        <button
-          className="btn-update-pill ready"
-          onClick={() => setUpdateModalOpen(true)}
-          title="Aggiornamento pronto: clicca per riavviare"
-        >
-          <span className="update-dot ready" />
-          Riavvia per aggiornare
-        </button>
-      )}
-
-      <div className="menu-wrap" ref={refMenu}>
-        <button
-          className="btn-icon"
-          onClick={() => setMenu((v) => !v)}
+          ref={menu.refPulsante}
+          className="btn-icona btn-icona-grande"
+          onClick={menu.alterna}
           aria-haspopup="menu"
-          aria-expanded={menu}
+          aria-expanded={menu.aperto}
           aria-label="Altre azioni"
           title="Altre azioni"
         >
           <IconaMenu />
         </button>
-        {menu && (
-          <div className="menu menu-right" role="menu">
-            <div className="menu-title">Progetto</div>
-            {voce('Nuovo progetto…', () => void newProject())}
-            {voce('Apri una cartella…', () => void openProject(), { scorciatoia: 'Ctrl+O' })}
+        {menu.aperto && (
+          <div className="menu menu-destra menu-largo" role="menu" aria-label="Altre azioni" onKeyDown={(e) => tastieraMenu(e, menu.chiudi)}>
+            <div className="menu-titolo">Progetto</div>
+            <VoceMenu icona={<IconaPiu />} onClick={fai(() => void newProject())}>
+              Nuova storia…
+            </VoceMenu>
+            <VoceMenu icona={<IconaTesto />} onClick={fai(() => void openStory())} scorciatoia="Ctrl+O">
+              Apri una storia (.fav)…
+            </VoceMenu>
+            <VoceMenu icona={<IconaCartella />} onClick={fai(() => void openProject())} scorciatoia="Ctrl+Maiusc+O">
+              Apri una cartella…
+            </VoceMenu>
             {projectRoot && (
               <>
-                {voce('Salva con nome…', () => void st().salvaConNome(), {
-                  disabilitata: !isFav,
-                  scorciatoia: 'Ctrl+Maiusc+S'
-                })}
-                {voce('Salva il progetto come…', () => void st().salvaProgettoCome())}
-                <div className="menu-title">Storia</div>
-                {voce('Riordina il testo', () => void st().riordinaStoria(), {
-                  disabilitata: !isFav,
-                  scorciatoia: 'Ctrl+Alt+R'
-                })}
-                {voce('Esporta come pagina web giocabile…', () => void st().exportGame(), { disabilitata: !isFav })}
-                {voce('Apri il gioco in una finestra a parte', () => st().launchGameWindow(), { disabilitata: !isFav })}
+                <VoceMenu onClick={fai(() => void st().salvaConNome())} disabled={!isFav} scorciatoia="Ctrl+Maiusc+S">
+                  Salva con nome…
+                </VoceMenu>
+                <VoceMenu onClick={fai(() => void st().salvaProgettoCome())}>Salva il progetto come…</VoceMenu>
+                <div className="menu-titolo">Storia</div>
+                <VoceMenu icona={<IconaRiordina />} onClick={fai(() => void st().riordinaStoria())} disabled={!isFav} scorciatoia="Ctrl+Alt+R">
+                  Riordina il testo
+                </VoceMenu>
+                <VoceMenu icona={<IconaEsporta />} onClick={fai(() => void st().exportGame())} disabled={!isFav}>
+                  Esporta come pagina web giocabile…
+                </VoceMenu>
+                <VoceMenu icona={<IconaFinestra />} onClick={fai(() => st().launchGameWindow())} disabled={!isFav}>
+                  Apri il gioco in una finestra a parte
+                </VoceMenu>
               </>
             )}
-            <div className="menu-title">Leggibilità</div>
-            <div className="menu-zoom">
-              <button className="zoom-btn" onClick={() => setZoom(zoom - 0.1)} aria-label="Riduci la grandezza" title="Riduci (Ctrl+−)">
+
+            <div className="menu-titolo">Leggibilità</div>
+            <div className="menu-riga" role="group" aria-label="Grandezza dell’interfaccia">
+              <span className="menu-riga-etichetta">Grandezza</span>
+              <button className="btn-passo" onClick={() => setZoom(zoom - 0.1)} aria-label="Più piccolo" title="Più piccolo (Ctrl+−)">
                 A−
               </button>
-              <span className="zoom-val" aria-live="polite">
+              <span className="menu-riga-valore" aria-live="polite">
                 {Math.round(zoom * 100)}%
               </span>
-              <button className="zoom-btn" onClick={() => setZoom(zoom + 0.1)} aria-label="Ingrandisci" title="Ingrandisci (Ctrl++)">
+              <button className="btn-passo" onClick={() => setZoom(zoom + 0.1)} aria-label="Più grande" title="Più grande (Ctrl++)">
                 A+
               </button>
-              <button className="zoom-btn" onClick={() => setZoom(1.1)} title="Torna alla grandezza consigliata (Ctrl+0)">
-                Reimposta
+              <button className="btn-passo" onClick={() => setZoom(1.1)} title="La grandezza consigliata (Ctrl+0)">
+                Consigliata
               </button>
             </div>
-            <div className="menu-title">Applicazione</div>
-            {voce('Controlla aggiornamenti…', () => {
-              setUpdateModalOpen(true)
-              void window.favella.checkForUpdates(true)
-            })}
+            <VoceMenu tipo="menuitemradio" spunta={aspetto.tema === 'notte'} onClick={() => setAspetto({ tema: 'notte' })}>
+              Tema notte
+            </VoceMenu>
+            <VoceMenu tipo="menuitemradio" spunta={aspetto.tema === 'carta'} onClick={() => setAspetto({ tema: 'carta' })}>
+              Tema carta (chiaro)
+            </VoceMenu>
+            <VoceMenu
+              tipo="menuitemcheckbox"
+              spunta={aspetto.contrasto === 'alto'}
+              onClick={() => setAspetto({ contrasto: aspetto.contrasto === 'alto' ? 'normale' : 'alto' })}
+            >
+              Contrasto alto
+            </VoceMenu>
+
+            <div className="menu-titolo">Applicazione</div>
+            <VoceMenu
+              onClick={fai(() => {
+                setUpdateModalOpen(true)
+                void window.favella.checkForUpdates(true)
+              })}
+            >
+              Controlla gli aggiornamenti…
+            </VoceMenu>
+            <VoceMenu tipo="menuitemcheckbox" spunta={aggiornamentiAuto === true} onClick={() => void rispondiAuto(aggiornamentiAuto !== true)}>
+              Controlla da solo a ogni avvio
+            </VoceMenu>
           </div>
         )}
       </div>
     </header>
   )
 }
-

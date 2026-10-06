@@ -4,7 +4,7 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import { Sidecar } from './sidecar'
 import { registraFileSystemIPC, scriviFileAtomico } from './fsapi'
-import { initUpdater } from './updater'
+import { avviaAggiornamenti } from './updater'
 import type { EngineEvent, Savegame } from '../shared/protocol'
 
 let mainWindow: BrowserWindow | null = null
@@ -13,9 +13,49 @@ let sidecar: Sidecar | null = null
 // Payload (path + buffer live + buffer degli altri file della storia) passato dall'IDE
 // alla finestra di gioco al lancio.
 let gameLaunch: { path: string; source?: string; sources?: Record<string, string> } | null = null
-// Guardia «modifiche non salvate»: la chiusura della finestra IDE è intercettata
-// finché il renderer non conferma (eventuale salvataggio o scarto). Vedi createWindow.
-let allowClose = false
+// Chiusura in due tempi. Ogni richiesta di chiusura (la finestra, Alt+F4, Cmd+Q, un
+// aggiornamento) passa prima dal renderer, che conosce i file non salvati e chiede; solo
+// quando il renderer conferma (`app:confirmClose`) si ferma il motore e si esce davvero.
+// Prima della 1.2 il motore si fermava SUBITO all'uscita: se poi si annullava, Studio
+// restava aperto senza motore.
+let uscitaConfermata = false
+let uscitaInCorso = false
+
+/** Ferma il motore e chiude l'app (dopo la conferma del renderer). */
+function esciDavvero(): void {
+  if (uscitaInCorso) return
+  uscitaInCorso = true
+  const s = sidecar
+  sidecar = null
+  void (s ? s.stop() : Promise.resolve()).finally(() => {
+    uscitaConfermata = true
+    app.quit()
+  })
+}
+
+/** Chiede al renderer di gestire la chiusura; senza finestra si esce subito. */
+function chiediChiusura(): void {
+  // Un renderer andato in crash non può più rispondere: si esce senza chiedere.
+  if (
+    mainWindow &&
+    !mainWindow.isDestroyed() &&
+    !mainWindow.webContents.isDestroyed() &&
+    !mainWindow.webContents.isCrashed()
+  ) {
+    mainWindow.webContents.send('app:request-close')
+  } else {
+    esciDavvero()
+  }
+}
+
+// Chi sta usando la partita nel motore: lo Studio (la Prova) o la finestra di gioco. La
+// sessione è una sola: quando passa all'altra finestra, quella di prima lo deve sapere.
+type Proprietario = 'studio' | 'finestra'
+function annunciaProprietario(chi: Proprietario): void {
+  for (const w of [mainWindow, gameWindow]) {
+    if (w && !w.isDestroyed() && !w.webContents.isDestroyed()) w.webContents.send('game:owner', chi)
+  }
+}
 
 // Icona della finestra (Linux e sviluppo; su Windows/macOS la dà il pacchetto).
 // In produzione il file può non esserci: allora si lascia quella del sistema.
@@ -68,13 +108,11 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
 
-  // Guardia «modifiche non salvate»: alla prima richiesta di chiusura si blocca
-  // l'evento e si interpella il renderer (che conosce i file sporchi). Il renderer
-  // risponde via IPC `app:confirmClose`, che alza `allowClose` e richiude davvero.
+  // Guardia «modifiche non salvate»: vedi chiediChiusura / esciDavvero.
   mainWindow.on('close', (e) => {
-    if (allowClose) return
+    if (uscitaConfermata) return
     e.preventDefault()
-    mainWindow?.webContents.send('app:request-close')
+    chiediChiusura()
   })
 
   // Apri i link esterni nel browser di sistema, non in una finestra Electron.
@@ -120,6 +158,8 @@ function createGameWindow(): void {
   gameWindow.on('ready-to-show', () => gameWindow?.show())
   gameWindow.on('closed', () => {
     gameWindow = null
+    // La partita torna libera: lo Studio può riprenderla nella Prova.
+    annunciaProprietario('studio')
   })
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
@@ -154,12 +194,14 @@ app.whenReady().then(() => {
     await sidecar?.stop()
     startSidecar()
   })
+  ipcMain.on('game:claim', (_e, chi: Proprietario) => annunciaProprietario(chi))
 
   // Finestra di gioco dedicata: l'IDE passa path + buffer live, poi la finestra
   // li recupera al caricamento e avvia la partita.
   ipcMain.handle('game:open', (_e, payload: { path: string; source?: string; sources?: Record<string, string> }) => {
     gameLaunch = payload
     createGameWindow()
+    annunciaProprietario('finestra')
   })
   ipcMain.handle('game:launchPayload', () => gameLaunch)
 
@@ -228,15 +270,14 @@ app.whenReady().then(() => {
   // Guardia «modifiche non salvate»: il dialogo è un modal React integrato nel
   // renderer (stile IDE). Qui resta solo la conferma di chiusura effettiva.
   ipcMain.handle('app:confirmClose', () => {
-    allowClose = true
-    mainWindow?.close()
+    esciDavvero()
   })
 
   registraFileSystemIPC()
 
   startSidecar()
   createWindow()
-  initUpdater(() => mainWindow)
+  avviaAggiornamenti(() => mainWindow, esciDavvero)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -249,17 +290,11 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Arresto ordinato: blocca la PRIMA richiesta di quit, attende che il sidecar
-// termini davvero (stop graduale con escalation, max ~3s), poi richiude. Evita
-// processi Python orfani a ogni chiusura dell'app.
-let quitConfermato = false
+// Uscita dall'app (Cmd+Q, menu di sistema): come la chiusura della finestra, passa prima
+// dalla guardia «modifiche non salvate». Lo stop del motore (graduale, max ~3 s, niente
+// processi Python orfani) avviene in esciDavvero, dopo la conferma.
 app.on('before-quit', (e) => {
-  if (quitConfermato || !sidecar) return
+  if (uscitaConfermata) return
   e.preventDefault()
-  const s = sidecar
-  sidecar = null
-  void s.stop().finally(() => {
-    quitConfermato = true
-    app.quit()
-  })
+  chiediChiusura()
 })

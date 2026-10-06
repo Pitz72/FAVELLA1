@@ -78,8 +78,19 @@
     // Aggiornamenti: nel browser non ce ne sono.
     checkForUpdates: async () => {},
     downloadUpdate: async () => {},
-    installUpdate: async () => {},
+    installUpdate: async () => ({ ok: false, message: 'Nel browser non ci sono aggiornamenti.' }),
     getUpdaterStatus: async () => ({ type: 'idle' }),
     onUpdaterStatus: () => () => {},
+    getAutoUpdates: async () => false,
+    setAutoUpdates: async () => {},
+    // «Apri una storia»: nel browser apre la cartella del ponte e il suo file principale.
+    openStoryFile: async () => {
+      const r = await post('/open')
+      const fav = (r.tree || []).find((n) => n.type === 'file' && /\.fav$/i.test(n.name))
+      return fav ? { ...r, openPath: fav.path } : null
+    },
+    // Una partita sola: nel browser le due schede non si parlano.
+    claimGame: () => {},
+    onGameOwner: () => () => {},
   }
 })()

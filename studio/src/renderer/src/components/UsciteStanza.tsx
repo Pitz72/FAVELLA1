@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStudio } from '../store'
 import type { OutlineExit, OutlineRoom } from '../../../shared/protocol'
+import { IconaChiudi } from './Icone'
 
 // Le uscite di una stanza, modificabili: lo stesso pezzo sta nel pannello Stanze e nella
 // scheda che compare sulla Mappa quando si clicca una stanza. Si cambia la direzione, si
@@ -37,10 +38,18 @@ export function DirezioneSelect({
   if (nuova) {
     return (
       <span className="dir-nuova">
-        <input type="text" autoFocus placeholder="direzione" value={nome} onChange={(e) => setNome(e.target.value)} />
+        <input
+          type="text"
+          autoFocus
+          aria-label="La direzione nuova (una parola)"
+          placeholder="direzione"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+        />
         <span aria-hidden="true">↔</span>
         <input
           type="text"
+          aria-label="La sua opposta (il ritorno)"
           placeholder="opposta"
           value={opp}
           onChange={(e) => setOpp(e.target.value)}
@@ -52,7 +61,7 @@ export function DirezioneSelect({
           }}
         />
         <button
-          className="modal-btn primary"
+          className="btn btn-primario btn-piccolo"
           disabled={!valida}
           title="Es. «botola» ↔ «scala»: una parola sola, e il ritorno è la sua opposta"
           onClick={() => {
@@ -62,7 +71,7 @@ export function DirezioneSelect({
         >
           Ok
         </button>
-        <button className="modal-btn ghost" onClick={() => setNuova(false)}>
+        <button className="btn btn-quieto btn-piccolo" onClick={() => setNuova(false)}>
           Annulla
         </button>
       </span>
@@ -73,6 +82,7 @@ export function DirezioneSelect({
   const lista = !valore || direzioni.includes(valore) ? direzioni : [...direzioni, valore]
   return (
     <select
+      aria-label="Direzione"
       value={valore ?? ''}
       onChange={(e) => {
         if (e.target.value === NUOVA) setNuova(true)
@@ -89,7 +99,7 @@ export function DirezioneSelect({
           </option>
         )
       })}
-      <option value={NUOVA}>➕ nuova direzione…</option>
+      <option value={NUOVA}>nuova direzione…</option>
     </select>
   )
 }
@@ -131,19 +141,20 @@ function UscitaRiga({ stanza, uscita, rooms, direzioni }: {
       </div>
       {uscita.implicit && (
         <span
-          className="var-badge"
+          className="distintivo"
           title="È il ritorno di una connessione scritta dall'altra stanza: cambiarla riscrive quella frase."
         >
           ritorno
         </span>
       )}
       <button
-        className="rule-del"
+        className="btn-icona"
+        aria-label={`Togli l’uscita verso ${rooms.find((r) => r.id === uscita.to)?.name ?? uscita.to}`}
         title={uscita.implicit ? 'Toglie la connessione (anche l’andata)' : 'Toglie la connessione (anche il ritorno)'}
         onClick={() => void eliminaUscita(uscita)}
         disabled={!uscita.span}
       >
-        ×
+        <IconaChiudi />
       </button>
     </div>
   )
@@ -166,7 +177,7 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
 
   return (
     <div className="uscite">
-      {stanza.exits.length === 0 && <p className="insp-none">Nessuna uscita: aggiungine una qui sotto.</p>}
+      {stanza.exits.length === 0 && <p className="nota-riquadro">Nessuna uscita: aggiungine una qui sotto.</p>}
       {stanza.exits.map((e, i) => (
         <UscitaRiga key={e.direction + '>' + e.to + i} stanza={stanza} uscita={e} rooms={rooms} direzioni={direzioni} />
       ))}
@@ -196,7 +207,7 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
             </select>
           </div>
           <button
-            className="modal-btn primary"
+            className="btn btn-accento"
             disabled={!pronta}
             title="Aggiunge l'uscita e il ritorno dall'altra stanza"
             onClick={() => {
@@ -209,15 +220,13 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
               void mapAddConnection(stanza.id, d, v, o)
             }}
           >
-            + Aggiungi uscita
+            Aggiungi l’uscita
           </button>
         </div>
       ) : (
-        <p className="insp-none">Servono almeno due stanze per collegarle.</p>
+        <p className="nota-riquadro">Servono almeno due stanze per collegarle.</p>
       )}
-      <p className="var-note">
-        Il ritorno dall'altra stanza si scrive da solo: «nord» da qui è «sud» da lì.
-      </p>
+      <p className="aiuto">Il ritorno dall’altra stanza si scrive da solo: «nord» da qui è «sud» da lì.</p>
     </div>
   )
 }

@@ -22,8 +22,19 @@ TypeScript, con il motore FAVELLA (Python) eseguito come *sidecar* via JSON-RPC 
 Cinque sezioni, nell'ordine in cui si scrive una storia: **Storia** (il testo), **Mondo**
 (stanze, oggetti, mappa), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati),
 **Prova** (la partita, con i pulsanti-verbo del motore). `F5` prova la storia; `Ctrl+1…5` cambia
-sezione; `Ctrl +/−/0` regola la grandezza. I pannelli visuali scrivono nel testo, e il testo si
-può affiancare con un interruttore. Dettagli in [CHANGELOG.md](CHANGELOG.md).
+sezione; `Ctrl+O` apre una storia, `Ctrl+Maiusc+O` una cartella; `Ctrl +/−/0` regola la grandezza.
+I pannelli visuali scrivono nel testo, e il testo si può affiancare con un interruttore; ogni
+modifica dei pannelli si **annulla** (pulsante «Annulla» o `Ctrl+Z` fuori dal testo). Dettagli in
+[CHANGELOG.md](CHANGELOG.md).
+
+**Leggibilità.** Studio è pensato anche per chi ci vede poco: tema **notte** o **carta** (chiaro),
+**contrasto alto**, grandezza dell'interfaccia dall'80 al 200 %, tutto raggiungibile da tastiera,
+finestre di dialogo e racconto della partita annunciati ai lettori di schermo. Il sistema visivo
+(«Scrittoio», `src/renderer/src/tema.css`) tiene ogni testo ad almeno 4,5:1 sul suo fondo.
+
+**Aggiornamenti.** Studio chiede, la prima volta, se può controllare da solo le versioni nuove su
+GitHub; altrimenti non si collega a internet. Un aggiornamento si installa solo se l'impronta
+SHA-256 del file coincide con quella pubblicata.
 
 Tutto ciò che sta nella storia si crea e si cambia dai pannelli: stanze, oggetti, **personaggi**,
 uscite (anche dalla mappa), regole, dialoghi. Ogni elemento si **rinomina** (in tutte le frasi che lo

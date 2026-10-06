@@ -1,6 +1,7 @@
 import { useStudio } from '../store'
 import type { SidecarStatus } from '../../../shared/protocol'
 import { sezioneDi } from '../sezioni'
+import { IconaAvviso, IconaErrore } from './Icone'
 
 const STATUS_LABEL: Record<SidecarStatus, string> = {
   starting: 'Motore: avvio…',
@@ -8,14 +9,6 @@ const STATUS_LABEL: Record<SidecarStatus, string> = {
   crashed: 'Motore in errore',
   restarting: 'Motore: riavvio…',
   stopped: 'Motore fermo'
-}
-
-const STATUS_COLOR: Record<SidecarStatus, string> = {
-  starting: 'var(--warn)',
-  ready: 'var(--ok)',
-  crashed: 'var(--err)',
-  restarting: 'var(--warn)',
-  stopped: 'var(--text-dim)'
 }
 
 export default function StatusBar(): JSX.Element {
@@ -28,6 +21,7 @@ export default function StatusBar(): JSX.Element {
   const setProblemiAperti = useStudio((s) => s.setProblemiAperti)
   const rightTab = useStudio((s) => s.rightTab)
   const setSezione = useStudio((s) => s.setSezione)
+  const zoom = useStudio((s) => s.zoom)
   const active = openFiles.find((f) => f.path === activePath)
   const isFav = !!active && active.name.toLowerCase().endsWith('.fav')
   const errori = problems.filter((p) => p.severity === 'error').length
@@ -41,33 +35,45 @@ export default function StatusBar(): JSX.Element {
   }
 
   return (
-    <footer className="statusbar">
-      <div className="statusbar-left">
-        <span className="sb-item" title="Il motore FAVELLA che compila e fa girare la storia">
-          <span className="dot" style={{ background: STATUS_COLOR[status] }} />
+    <footer className="stato">
+      <div className="stato-sinistra">
+        <span className={'stato-motore stato-' + status} title="Il motore FAVELLA che compila e fa girare la storia">
+          <span className="stato-punto" aria-hidden="true" />
           {STATUS_LABEL[status]}
         </span>
         {isFav && (
           <button
-            className={'sb-problemi' + (errori ? ' ha-errori' : avvisi ? ' ha-avvisi' : '')}
+            className={'stato-problemi' + (errori ? ' ha-errori' : avvisi ? ' ha-avvisi' : '')}
             onClick={apriProblemi}
             title="Mostra o nascondi l'elenco dei problemi del testo"
             aria-pressed={inStoria && problemiAperti}
           >
-            {errori === 0 && avvisi === 0
-              ? 'Nessun problema'
-              : [errori ? `${errori} ${errori === 1 ? 'errore' : 'errori'}` : '', avvisi ? `${avvisi} ${avvisi === 1 ? 'avviso' : 'avvisi'}` : '']
-                  .filter(Boolean)
-                  .join(' · ')}
+            {errori === 0 && avvisi === 0 ? (
+              'Nessun problema'
+            ) : (
+              <>
+                {errori > 0 && (
+                  <span>
+                    <IconaErrore size={14} /> {errori} {errori === 1 ? 'errore' : 'errori'}
+                  </span>
+                )}
+                {avvisi > 0 && (
+                  <span>
+                    <IconaAvviso size={14} /> {avvisi} {avvisi === 1 ? 'avviso' : 'avvisi'}
+                  </span>
+                )}
+              </>
+            )}
           </button>
         )}
       </div>
-      <div className="statusbar-right">
+      <div className="stato-destra">
         {active && inStoria && (
-          <span className="sb-item">
+          <span>
             Riga {cursor.line}, colonna {cursor.column}
           </span>
         )}
+        <span title="La grandezza dell’interfaccia (Ctrl + / Ctrl − / Ctrl 0)">{Math.round(zoom * 100)}%</span>
       </div>
     </footer>
   )

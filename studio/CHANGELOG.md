@@ -1,8 +1,106 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (attualmente **v1.4.2**).
-Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.0 c'è il motore **v1.4.3**).
+Schema: [SemVer](https://semver.org/lang/it/).
+
+## [1.2.0] — 2026-10-06 — Revisione completa e ridisegno «Scrittoio»
+
+Una revisione di tutto Studio, riga per riga, dopo la 1.1.3. Ha trovato difetti seri (uno
+lasciava la finestra vuota e faceva perdere il lavoro non salvato) e li corregge tutti; poi
+ridisegna l'interfaccia per chi ci vede poco: più contrasto, tutto raggiungibile da tastiera,
+tre modi di leggere.
+
+### Corretto (gravi)
+- **Aprire una regola, un demone o una risposta con una condizione semplice** («se la porta è
+  chiusa») mandava in errore l'interfaccia: la finestra diventava vuota e il lavoro non salvato
+  non si poteva più raggiungere. Succedeva già alla prima regola della storia d'esempio.
+- **Aprire o creare un altro progetto con dei file non salvati** li lasciava aperti ma fuori
+  dalla cartella nuova: non si potevano più salvare. Ora Studio chiede prima (Salva / Non salvare
+  / Annulla) e riparte pulito.
+- **Uscire dall'app** (Cmd+Q, chiusura durante un aggiornamento) fermava il motore *prima* della
+  domanda sui file non salvati: se si annullava, Studio restava aperto senza motore. Ora il motore
+  si ferma solo dopo la conferma.
+- **Un errore qualsiasi dell'interfaccia lasciava la finestra vuota.** Ora resta chiuso nel
+  pannello che l'ha prodotto: si legge che cosa è successo, si salva tutto, si riprova.
+- **Due modifiche fatte di fila dai pannelli** (due clic veloci) potevano leggere lo stesso
+  testo di partenza: la seconda cancellava la prima. Ora passano in fila.
+
+### Corretto (aggiornamento automatico della 1.1.3)
+- Studio **non si collega più a internet da solo** senza permesso: la prima volta chiede, e la
+  risposta si cambia dal menu (Applicazione → «Controlla da solo a ogni avvio»).
+- Il file scaricato si installa solo se la sua **impronta SHA-256 coincide** con quella che GitHub
+  pubblica per la Release.
+- L'installazione parte **dopo** la domanda sui file non salvati (prima l'installer partiva e
+  Studio si chiudeva a metà domanda).
+- Su Linux l'aggiornamento **sostituisce l'AppImage in uso** e la riapre (prima avviava una copia
+  rimasta nella cartella temporanea).
+- Un controllo automatico fallito (rete assente) non apre più errori; le Release di FAVELLA non
+  si mescolano più a quelle di Studio.
+
+### Corretto (medi e lievi)
+- **«Apri una storia (.fav)» è tornato** (Ctrl+O; la cartella con Ctrl+Maiusc+O): l'aveva
+  introdotto la 1.1.1 perché il selettore di cartelle di Windows non mostra i file, e la 1.1.3
+  l'aveva tolto. Aprendo una cartella con una storia sola, la storia si apre da sé.
+- Il **modello di una storia nuova** mette davvero il giocatore nella prima stanza.
+- **Creare una stanza, un oggetto o un personaggio con un nome già usato** ridefiniva in silenzio
+  quello che c'era (il motore unisce le definizioni): ora Studio lo dice e non lo crea.
+- **Spostare un oggetto o un personaggio** verso una stanza o un contenitore definiti più in basso
+  è un passo solo: prima erano due modifiche, e se la seconda falliva l'oggetto restava senza posto.
+  Lo stesso per creare ed eliminare stati e contatori.
+- La **destinazione di una risposta** nei dialoghi si scrive quando si lascia il campo, non a ogni
+  tasto (prima ogni lettera riscriveva il file).
+- **Salvare** segna come salvato il testo davvero scritto (se si continua a scrivere durante il
+  salvataggio, il file resta «da salvare»); un errore di scrittura si dice.
+- **La Prova e la finestra di gioco a parte** usano la stessa partita del motore: quando la
+  partita passa all'altra finestra, questa lo dice e offre «Riprendi qui».
+- **Mappa**: ogni collegamento ha la direzione scritta vicino alla stanza da cui la si prende
+  (prima un'etichetta sola, a metà strada, e non si capiva da quale parte valesse); i collegamenti
+  vanno dritti da bordo a bordo; le uscite a senso unico sono tratteggiate; le posizioni si
+  ricordano per storia; «Apri la scheda della stanza» apre la stanza giusta.
+- Nell'elenco delle regole si vede sempre la fase: «invece di», «prima di», «dopo di».
+- L'editor colora il testo anche se il motore risponde dopo l'apertura del file.
+- Il banco di prova nel browser (`dev-web/`) non andava più (schermo vuoto) dalla 1.1.3.
+- `package-lock.json` diceva ancora 0.9.20.
+
+### Aggiunto
+- **Annulla per i pannelli**: ogni modifica fatta dai pannelli (anche su file non aperti) si
+  annulla col pulsante «Annulla» in alto o con Ctrl+Z fuori dal testo; dopo un'eliminazione
+  l'avviso ha il suo «Annulla».
+- **Leggibilità**: tema **notte** o **carta** (chiaro), e **contrasto alto** per entrambi (fondo
+  pieno, bordi spessi, fuoco giallo); anche l'editor di testo e la mappa cambiano. Si sceglie dal
+  menu, insieme alla grandezza (80–200 %).
+- **Pulsanti** nella Prova: si nascondono per avere più spazio per il racconto.
+- La ricerca negli elenchi lunghi (stanze, oggetti, personaggi).
+
+### Cambiato — il ridisegno «Scrittoio»
+- Un sistema visivo solo, a token (`tema.css`), con la palette di FAVELLA del sito: tutti i testi
+  ≥ 4,5:1 sul loro fondo in ogni aspetto (misurato), bordi dei campi ≥ 3:1, controlli alti almeno
+  40 px, anello di fuoco spesso e sempre visibile, movimento ridotto rispettato.
+- Ogni sezione ha la stessa intestazione (titolo, linguette, dove vanno le cose nuove, testo
+  accanto); stanze, oggetti e personaggi hanno lo stesso schema: elenco a sinistra, scheda a destra
+  divisa in riquadri, eliminazione in fondo.
+- La Prova e la finestra di gioco sono pagine da leggere: il racconto in serif (Lora, lo stesso
+  del sito, incluso nel pacchetto), titoli delle stanze, comandi distinti, esito in evidenza.
+- Icone a tratto ovunque, al posto delle emoji e dei simboli (⟳ 🗁 ✎ 🗑 ☻) che cambiavano col font.
+- La barra in alto si adatta: con poco spazio (finestra stretta o interfaccia ingrandita) le azioni
+  restano come icone, col nome per i lettori di schermo.
+
+### Accessibilità
+- Tutto si raggiunge da tastiera: schede dei file (frecce, Canc), elenchi (frecce, Inizio, Fine),
+  problemi, menu (frecce, Esc), linguette (frecce).
+- Le finestre di dialogo sono vere finestre di dialogo: tengono il fuoco dentro, Esc chiude, il
+  fuoco torna dov'era.
+- Il racconto della partita è annunciato dai lettori di schermo; ogni campo ha il suo nome; un
+  collegamento «Salta all'area di lavoro» apre la pagina.
+
+---
+
+## Nota sulle versioni 1.1.2 e 1.1.3
+
+Le due voci qui sotto sono rimaste come furono scritte. La 1.1.2 dice di aver «ripristinato»
+l'apertura per cartella: in realtà aveva tolto «Apri una storia (.fav)» della 1.1.1 (e la voce
+della 1.1.1 era stata riscritta per non dirlo). La 1.2.0 la rimette.
 
 ## [1.1.3] — 2026-10-02 — Auto-updater per Favella Studio
 
@@ -27,7 +125,9 @@ Schema: [SemVer](https://semver.org/lang/it/) 0.x (pre-1.0).
 - Un oggetto messo su un supporto il cui nome non ha l'articolo («Tavolino basso») veniva scritto
   «è su Tavolino basso.», frase che il compilatore rifiuta. Ora si scrive «è sul Tavolino basso.»
   (anche se un vecchio file ha ancora «su», il sidecar lo corregge in «sul»).
-- Correzione di compatibilità nella selezione dei percorsi di lavoro.
+- «Apri una cartella» non mostrava i file .fav (il selettore di cartelle di Windows non li elenca):
+  c'era «Apri una storia (.fav)» (Ctrl+O, schermata iniziale, Esplora, menu) che apre il file e
+  usa la sua cartella come progetto. *(Voce ripristinata nella 1.2.0: la 1.1.3 l'aveva riscritta.)*
 
 ---
 

@@ -5,7 +5,8 @@ import type { Monaco } from '@monaco-editor/react'
 import type { EngineLexicon } from '../../../shared/protocol'
 
 export const FAVELLA_LANG_ID = 'favella'
-export const FAVELLA_THEME = 'favella-dark'
+// [Studio 1.2] I temi sono quattro (vedi definisciTemi e aspetto.ts).
+export const FAVELLA_THEME = 'favella-notte'
 
 let registrata = false
 
@@ -81,37 +82,93 @@ export function registraLinguaFavella(monaco: Monaco, lexicon: EngineLexicon): v
       return { suggestions: suggerimenti }
     }
   })
+}
 
-  monaco.editor.defineTheme(FAVELLA_THEME, {
-    base: 'vs-dark',
+let temiDefiniti = false
+
+type Tinte = {
+  base: 'vs' | 'vs-dark' | 'hc-black' | 'hc-light'
+  sfondo: string
+  testo: string
+  commento: string
+  stringa: string
+  parola: string
+  verbo: string
+  costante: string
+  variabile: string
+  numeriRiga: string
+  numeriRigaAttivo: string
+  selezione: string
+  rigaAttiva: string
+  cursore: string
+  widget: string
+  bordo: string
+}
+
+function tema(t: Tinte): Parameters<Monaco['editor']['defineTheme']>[1] {
+  return {
+    base: t.base,
     inherit: true,
     rules: [
-      // Palette di marca (la stessa del manuale): ciano per le parole del linguaggio,
-      // smeraldo per i testi, ambra per numeri e punti, fiamma per le [interpolazioni].
-      { token: 'comment', foreground: '6f8aa3', fontStyle: 'italic' },
-      { token: 'string', foreground: '34d399' },
-      { token: 'string.quote', foreground: '34d399' },
-      { token: 'string.escape', foreground: 'fb923c' },
-      { token: 'variable', foreground: 'fb923c' },
-      { token: 'keyword', foreground: '5cf3ff', fontStyle: 'bold' },
-      { token: 'type', foreground: 'a78bfa' },
-      { token: 'constant', foreground: 'f59e0b' },
-      { token: 'number', foreground: 'f59e0b' },
-      { token: 'identifier', foreground: 'e8f0f8' },
-      { token: 'delimiter', foreground: 'f59e0b', fontStyle: 'bold' }
+      // Palette di marca (la stessa del manuale): parole del linguaggio, testi, numeri e
+      // punti, interpolazioni. I commenti restano leggibili (contrasto AA anche loro).
+      { token: 'comment', foreground: t.commento, fontStyle: 'italic' },
+      { token: 'string', foreground: t.stringa },
+      { token: 'string.quote', foreground: t.stringa },
+      { token: 'string.escape', foreground: t.variabile },
+      { token: 'variable', foreground: t.variabile },
+      { token: 'keyword', foreground: t.parola, fontStyle: 'bold' },
+      { token: 'type', foreground: t.verbo },
+      { token: 'constant', foreground: t.costante },
+      { token: 'number', foreground: t.costante },
+      { token: 'identifier', foreground: t.testo },
+      { token: 'delimiter', foreground: t.costante, fontStyle: 'bold' }
     ],
     colors: {
-      'editor.background': '#060c17',
-      'editor.foreground': '#e8f0f8',
-      'editorLineNumber.foreground': '#3d5873',
-      'editorLineNumber.activeForeground': '#93a9bf',
-      'editor.selectionBackground': '#16466a',
-      'editor.lineHighlightBackground': '#0a1422',
-      'editorCursor.foreground': '#22d3ee',
-      'editorWidget.background': '#0f1e33',
-      'editorWidget.border': '#1b3149',
-      'editorIndentGuide.background1': '#13263c',
-      'scrollbarSlider.background': '#1b314966'
+      'editor.background': '#' + t.sfondo,
+      'editor.foreground': '#' + t.testo,
+      'editorLineNumber.foreground': '#' + t.numeriRiga,
+      'editorLineNumber.activeForeground': '#' + t.numeriRigaAttivo,
+      'editor.selectionBackground': '#' + t.selezione,
+      'editor.lineHighlightBackground': '#' + t.rigaAttiva,
+      'editor.lineHighlightBorder': '#' + t.rigaAttiva,
+      'editorCursor.foreground': '#' + t.cursore,
+      'editorWidget.background': '#' + t.widget,
+      'editorWidget.border': '#' + t.bordo,
+      'editorSuggestWidget.background': '#' + t.widget,
+      'editorSuggestWidget.border': '#' + t.bordo,
+      'editorHoverWidget.background': '#' + t.widget,
+      'editorHoverWidget.border': '#' + t.bordo,
+      'editorIndentGuide.background1': '#' + t.rigaAttiva,
+      'scrollbarSlider.background': '#' + t.bordo + '99',
+      'scrollbarSlider.hoverBackground': '#' + t.bordo,
+      'focusBorder': '#' + t.cursore
     }
-  })
+  }
+}
+
+/** I quattro temi dell'editor: notte e carta, ognuno anche ad alto contrasto. */
+export function definisciTemi(monaco: Monaco): void {
+  if (temiDefiniti) return
+  temiDefiniti = true
+  monaco.editor.defineTheme('favella-notte', tema({
+    base: 'vs-dark', sfondo: '07101d', testo: 'e8f0f8', commento: '8ea7be', stringa: '34d399', parola: '5cf3ff',
+    verbo: 'b9a4ff', costante: 'f5b13d', variabile: 'fb923c', numeriRiga: '7590ab', numeriRigaAttivo: 'c4d4e3',
+    selezione: '1b4a6b', rigaAttiva: '0d1a2c', cursore: '22d3ee', widget: '0f2032', bordo: '25455f'
+  }))
+  monaco.editor.defineTheme('favella-notte-alto', tema({
+    base: 'hc-black', sfondo: '000000', testo: 'ffffff', commento: 'c9d6e2', stringa: '6ff5bd', parola: '8ffbff',
+    verbo: 'd3c4ff', costante: 'ffd27a', variabile: 'ffb070', numeriRiga: 'a9bccd', numeriRigaAttivo: 'ffffff',
+    selezione: '0b5d80', rigaAttiva: '101820', cursore: '8ffbff', widget: '0a0f14', bordo: 'a9bccd'
+  }))
+  monaco.editor.defineTheme('favella-carta', tema({
+    base: 'vs', sfondo: 'fcfaf5', testo: '1c2632', commento: '5b6875', stringa: '0d6b4c', parola: '0b6680',
+    verbo: '6a3fb0', costante: '9a5300', variabile: 'b4470b', numeriRiga: '5f6b77', numeriRigaAttivo: '1c2632',
+    selezione: 'c9e5ee', rigaAttiva: 'f2ede2', cursore: '0b6680', widget: 'ffffff', bordo: 'c9c2b3'
+  }))
+  monaco.editor.defineTheme('favella-carta-alto', tema({
+    base: 'hc-light', sfondo: 'ffffff', testo: '000000', commento: '2e3a46', stringa: '004d35', parola: '00475a',
+    verbo: '4a1f8f', costante: '6b3500', variabile: '8a3000', numeriRiga: '333d47', numeriRigaAttivo: '000000',
+    selezione: 'a9d6e5', rigaAttiva: 'f0f0f0', cursore: '00475a', widget: 'ffffff', bordo: '333d47'
+  }))
 }

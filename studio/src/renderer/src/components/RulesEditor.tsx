@@ -10,6 +10,8 @@ import type {
 } from '../../../shared/protocol'
 import RuleForm from './RuleForm'
 import { CMP_LABELS, operandoText, conseqRepresentable } from './logicBuilder'
+import { NonPronto, Vuoto } from './Elenco'
+import { IconaAggiorna, IconaChiudi, IconaMatita, IconaPiu } from './Icone'
 
 // --- Riassunti leggibili (sola lettura, 6c.1) ---
 
@@ -42,6 +44,15 @@ function condText(c: RuleCondition): string {
       if (t.op === 'varEq') return `${t.name} non è come ${t.other}`
       if (t.op === 'playerIn') return `il giocatore non è in ${t.name}`
       return `non ${gruppo(t)}`
+    }
+    // [motore 1.3] «X è in Y» / «X è qui», «il personaggio ha X» (si modificano nel testo).
+    case 'objIn' as RuleCondition['op']: {
+      const o = c as unknown as { name: string; place: string; placeName: string }
+      return o.place === 'qui' ? `${o.name} è qui` : `${o.name} è in ${o.placeName}`
+    }
+    case 'npcHas' as RuleCondition['op']: {
+      const o = c as unknown as { npcName: string; name: string }
+      return `${o.npcName} ha ${o.name}`
     }
     case 'and':
       return c.terms.map(gruppo).join(' e ')
@@ -141,56 +152,32 @@ export default function RulesEditor(): JSX.Element {
     span: OutlineSpan | null
   } | null>(null)
 
-  if (!isFav) {
-    return <div className="insp-empty">Apri un file .fav per vedere le regole e gli eventi.</div>
-  }
-  if (!rules) {
-    return (
-      <div className="insp-empty">
-        {loading ? 'Carico le regole…' : 'Nessuna regola caricata.'}
-        {!loading && (
-          <button className="map-reload" onClick={() => void loadRules()}>
-            ⟳ Carica
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (!rules.ok) {
-    return (
-      <div className="insp-empty">
-        Il file contiene errori: correggili per vedere le regole.
-        <button className="map-reload" onClick={() => void loadRules()}>
-          ⟳ Riprova
-        </button>
-      </div>
-    )
-  }
+  if (!isFav) return <NonPronto cosa="le regole" stato="nessun-file" />
+  if (!rules) return <NonPronto cosa="le regole" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadRules()} />
+  if (!rules.ok) return <NonPronto cosa="le regole" stato="errori" onRiprova={() => void loadRules()} />
 
   const { rules: regole, events, demons } = rules
 
   return (
     <div className="ruled">
-      <div className="insp-top">
-        <span className="debug-title">
-          Regole<span className="debug-count"> · {regole.length}</span> · Eventi
-          <span className="debug-count"> · {events.length}</span> · Demoni
-          <span className="debug-count"> · {demons.length}</span>
-        </span>
-        <div>
-          <button
-            className="icon-btn"
-            title="Nuova regola, evento o demone"
-            onClick={() =>
-              setEditing((v) => (v ? null : { rule: null, event: null, demon: null, span: null }))
-            }
-          >
-            ➕
-          </button>
-          <button className="icon-btn" title="Aggiorna" onClick={() => void loadRules()}>
-            ⟳
-          </button>
-        </div>
+      <div className="pannello-testa">
+        <h2 className="pannello-titolo">
+          Regole <span className="elenco-conto">{regole.length}</span>
+          <span className="pannello-sep" aria-hidden="true">·</span>
+          Eventi <span className="elenco-conto">{events.length}</span>
+          <span className="pannello-sep" aria-hidden="true">·</span>
+          Demoni <span className="elenco-conto">{demons.length}</span>
+        </h2>
+        <button className="btn-icona" aria-label="Rileggi le regole" title="Rileggi" onClick={() => void loadRules()}>
+          <IconaAggiorna />
+        </button>
+        <button
+          className="btn btn-accento btn-piccolo"
+          onClick={() => setEditing((v) => (v ? null : { rule: null, event: null, demon: null, span: null }))}
+        >
+          <IconaPiu size={15} />
+          Nuova regola
+        </button>
       </div>
 
       {editing && (
@@ -206,15 +193,17 @@ export default function RulesEditor(): JSX.Element {
 
       <div className="ruled-body">
         {regole.length === 0 && events.length === 0 && demons.length === 0 && (
-          <p className="insp-none">nessuna regola, evento o demone — creane uno con ➕</p>
+          <Vuoto titolo="Ancora nessuna regola">
+            Una regola dice che cosa succede quando il giocatore fa qualcosa: «Invece di apri la porta: …». Creane una con «Nuova regola».
+          </Vuoto>
         )}
 
         {regole.map((r, i) => (
           <div key={'r' + i} className="rule-card">
             <div className="rule-head">
-              {r.phase && r.phase !== 'invece' && (
-                <span className="rule-phase">{r.phase === 'prima' ? 'prima di' : 'dopo di'}</span>
-              )}
+              <span className={'rule-phase fase-' + (r.phase ?? 'invece')}>
+                {r.phase === 'prima' ? 'prima di' : r.phase === 'dopo' ? 'dopo di' : 'invece di'}
+              </span>
               <span className="rule-verb">{r.verb}</span>
               {r.target ? (
                 <span className="rule-target">
@@ -224,33 +213,23 @@ export default function RulesEditor(): JSX.Element {
                     : ''}
                 </span>
               ) : (
-                <span className="rule-global">(globale)</span>
+                <span className="rule-global">(qualunque cosa)</span>
               )}
               {r.span &&
                 (ruleRepresentable(r) ? (
-                  <button
-                    className="rule-edit"
-                    title="Modifica questa regola"
-                    onClick={() => setEditing({ rule: r, span: r.span })}
-                  >
-                    ✎
+                  <button className="btn btn-quieto btn-piccolo" onClick={() => setEditing({ rule: r, span: r.span })}>
+                    <IconaMatita />
+                    Modifica
                   </button>
                 ) : (
-                  <button
-                    className="rule-edit"
-                    title="Troppo complessa per l’editor: modificala nel testo"
-                    onClick={() => requestReveal(r.span!.file, r.span!.line, 1)}
-                  >
-                    ✎ testo
+                  <button className="btn btn-quieto btn-piccolo" title="Troppo complessa per l’editor: modificala nel testo" onClick={() => requestReveal(r.span!.file, r.span!.line, 1)}>
+                    <IconaMatita />
+                    Nel testo
                   </button>
                 ))}
               {r.span && (
-                <button
-                  className="rule-del"
-                  title="Elimina questa regola"
-                  onClick={() => void deleteStatement(r.span!)}
-                >
-                  ×
+                <button className="btn-icona" aria-label="Elimina questa regola" title="Elimina questa regola" onClick={() => void deleteStatement(r.span!, 'Regola tolta')}>
+                  <IconaChiudi />
                 </button>
               )}
             </div>
@@ -291,29 +270,19 @@ export default function RulesEditor(): JSX.Element {
               </span>
               {e.span &&
                 (eventRepresentable(e) ? (
-                  <button
-                    className="rule-edit"
-                    title="Modifica questo evento"
-                    onClick={() => setEditing({ event: e, span: e.span })}
-                  >
-                    ✎
+                  <button className="btn btn-quieto btn-piccolo" onClick={() => setEditing({ event: e, span: e.span })}>
+                    <IconaMatita />
+                    Modifica
                   </button>
                 ) : (
-                  <button
-                    className="rule-edit"
-                    title="Troppo complesso per l’editor: modificalo nel testo"
-                    onClick={() => requestReveal(e.span!.file, e.span!.line, 1)}
-                  >
-                    ✎ testo
+                  <button className="btn btn-quieto btn-piccolo" title="Troppo complesso per l’editor: modificalo nel testo" onClick={() => requestReveal(e.span!.file, e.span!.line, 1)}>
+                    <IconaMatita />
+                    Nel testo
                   </button>
                 ))}
               {e.span && (
-                <button
-                  className="rule-del"
-                  title="Elimina questo evento"
-                  onClick={() => void deleteStatement(e.span!)}
-                >
-                  ×
+                <button className="btn-icona" aria-label="Elimina questo evento" title="Elimina questo evento" onClick={() => void deleteStatement(e.span!, 'Evento tolto')}>
+                  <IconaChiudi />
                 </button>
               )}
             </div>
@@ -339,29 +308,19 @@ export default function RulesEditor(): JSX.Element {
               {d.condition && <span className="rule-target">{condText(d.condition)}</span>}
               {d.span &&
                 (demonRepresentable(d) ? (
-                  <button
-                    className="rule-edit"
-                    title="Modifica questo demone"
-                    onClick={() => setEditing({ demon: d, span: d.span })}
-                  >
-                    ✎
+                  <button className="btn btn-quieto btn-piccolo" onClick={() => setEditing({ demon: d, span: d.span })}>
+                    <IconaMatita />
+                    Modifica
                   </button>
                 ) : (
-                  <button
-                    className="rule-edit"
-                    title="Troppo complesso per l’editor: modificalo nel testo"
-                    onClick={() => requestReveal(d.span!.file, d.span!.line, 1)}
-                  >
-                    ✎ testo
+                  <button className="btn btn-quieto btn-piccolo" title="Troppo complesso per l’editor: modificalo nel testo" onClick={() => requestReveal(d.span!.file, d.span!.line, 1)}>
+                    <IconaMatita />
+                    Nel testo
                   </button>
                 ))}
               {d.span && (
-                <button
-                  className="rule-del"
-                  title="Elimina questo demone"
-                  onClick={() => void deleteStatement(d.span!)}
-                >
-                  ×
+                <button className="btn-icona" aria-label="Elimina questo demone" title="Elimina questo demone" onClick={() => void deleteStatement(d.span!, 'Demone tolto')}>
+                  <IconaChiudi />
                 </button>
               )}
             </div>

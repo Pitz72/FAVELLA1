@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import type { FileNode } from '../../../shared/protocol'
 import { useStudio, infoStoria } from '../store'
 import { nomeFile, nomeFileValido, stessoFile } from '../utils/progetto'
-import { IconaFile, IconaPiu } from './Icone'
+import { IconaAiuto, IconaChiudi, IconaFile, IconaPiu } from './Icone'
+import Finestra from './Finestra'
 
 // La storia come insieme di file. Una storia sta in un file solo oppure è divisa in moduli:
 // il file principale include gli altri con «Includi "nome.fav".». Qui si vede com'è fatta,
@@ -33,48 +34,49 @@ function NuovoFileDialog({ onChiudi }: { onChiudi: () => void }): JSX.Element {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onChiudi}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Nuovo file della storia</h2>
-        <p className="modal-body">
-          Un file in più, accanto agli altri, per tenere in ordine una storia lunga: per esempio uno per le
-          stanze, uno per i personaggi, uno per le regole.
-        </p>
-        <div className="dir-libera">
+    <Finestra
+      titolo="Un file nuovo per la storia"
+      sottotitolo="Per tenere in ordine una storia lunga: per esempio uno per le stanze, uno per i personaggi, uno per le regole."
+      onChiudi={onChiudi}
+      azioni={
+        <>
+          <button className="btn btn-quieto" onClick={onChiudi}>
+            Annulla
+          </button>
+          <button className="btn btn-primario" disabled={!nome.trim() || !!errore || lavoro} onClick={() => void crea()}>
+            {lavoro ? 'Creo…' : 'Crea il file'}
+          </button>
+        </>
+      }
+    >
+      <label className="campo">
+        <span className="campo-etichetta">Il nome del file</span>
+        <span className="campo-con-coda">
           <input
             type="text"
             autoFocus
             placeholder="personaggi"
             value={nome}
+            aria-invalid={!!errore}
             onChange={(e) => setNome(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void crea()
-              if (e.key === 'Escape') onChiudi()
             }}
-            aria-label="Nome del file"
           />
-          <span className="var-note">.fav</span>
-        </div>
-        {errore && <p className="modal-errore">{errore}</p>}
-        <label className="objed-check nuovo-includi">
-          <input type="checkbox" checked={includi} onChange={(e) => setIncludi(e.target.checked)} />
-          Includilo nella storia
-        </label>
-        <p className="var-note">
-          {includi
-            ? 'Il file principale riceve la riga Includi e il file nuovo diventa il posto dove vanno le cose che aggiungi dai pannelli.'
-            : 'Il file resta fuori dalla storia finché non lo includi: finché non lo fai, quello che ci scrivi non si gioca.'}
-        </p>
-        <div className="modal-actions">
-          <button className="modal-btn ghost" onClick={onChiudi}>
-            Annulla
-          </button>
-          <button className="modal-btn primary" disabled={!nome.trim() || !!errore || lavoro} onClick={() => void crea()}>
-            {lavoro ? 'Creo…' : 'Crea il file'}
-          </button>
-        </div>
-      </div>
-    </div>
+          <span className="campo-coda">.fav</span>
+        </span>
+      </label>
+      {errore && <p className="errore-campo">{errore}</p>}
+      <label className="spunta">
+        <input type="checkbox" checked={includi} onChange={(e) => setIncludi(e.target.checked)} />
+        <span>Includilo nella storia</span>
+      </label>
+      <p className="aiuto">
+        {includi
+          ? 'Il file principale riceve la riga «Includi», e il file nuovo diventa il posto dove vanno le cose che aggiungi dai pannelli.'
+          : 'Il file resta fuori dalla storia finché non lo includi: quello che ci scrivi non si gioca.'}
+      </p>
+    </Finestra>
   )
 }
 
@@ -99,12 +101,13 @@ export default function StrutturaStoria(): JSX.Element | null {
       <div className="struttura-testa">
         <span>{molti ? `La storia · ${membri.length} file` : 'La storia · 1 file'}</span>
         <button
-          className="icon-btn"
+          className="btn-icona"
           title="Come si divide una storia in più file"
+          aria-label="Come si divide una storia in più file"
           aria-expanded={guida}
           onClick={() => setGuida((v) => !v)}
         >
-          ?
+          <IconaAiuto />
         </button>
       </div>
 
@@ -125,11 +128,12 @@ export default function StrutturaStoria(): JSX.Element | null {
             </button>
             {i > 0 && (
               <button
-                className="rule-del"
+                className="btn-icona"
+                aria-label={`Togli ${nomeFile(m)} dalla storia`}
                 title="Toglie la riga «Includi» di questo file: il file resta sul disco ma non fa più parte della storia"
                 onClick={() => void togliInclusione(m)}
               >
-                ×
+                <IconaChiudi size={14} />
               </button>
             )}
           </li>
@@ -137,8 +141,8 @@ export default function StrutturaStoria(): JSX.Element | null {
       </ul>
 
       <div className="struttura-azioni">
-        <button className="btn-testo" onClick={() => setNuovo(true)} title="Crea un file nuovo e includilo nella storia">
-          <IconaPiu size={13} /> Nuovo file
+        <button className="btn btn-quieto btn-piccolo" onClick={() => setNuovo(true)} title="Crea un file nuovo e includilo nella storia">
+          <IconaPiu size={14} /> Nuovo file
         </button>
         {fuori.length > 0 && (
           <select

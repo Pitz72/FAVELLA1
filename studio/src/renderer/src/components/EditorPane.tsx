@@ -5,7 +5,8 @@ import Editor, {
 } from '@monaco-editor/react'
 import type { editor as MonacoEditor } from 'monaco-editor'
 import { useStudio, stessoPercorso } from '../store'
-import { FAVELLA_THEME, registraLinguaFavella } from '../monaco/favella-language'
+import { FAVELLA_LANG_ID, definisciTemi, registraLinguaFavella } from '../monaco/favella-language'
+import { aspettoCorrente, suAspetto, temaMonaco } from '../aspetto'
 import { modificaMinima } from '../utils/modifiche'
 
 const MARKER_OWNER = 'favella'
@@ -31,13 +32,28 @@ export default function EditorPane(): JSX.Element {
   const active = openFiles.find((f) => f.path === activePath)
 
   const handleBeforeMount = (monaco: Monaco): void => {
+    definisciTemi(monaco)
     if (lexicon) registraLinguaFavella(monaco, lexicon)
   }
+
+  // [Studio 1.2] Se il motore risponde DOPO l'apertura del file, il lessico arriva tardi:
+  // si registra la lingua allora e la si dà al modello (prima il testo restava senza
+  // colori finché non si riapriva il file).
+  useEffect(() => {
+    const monaco = monacoRef.current
+    const model = editorRef.current?.getModel()
+    if (!monaco || !model || !lexicon || !activePath?.toLowerCase().endsWith('.fav')) return
+    registraLinguaFavella(monaco, lexicon)
+    if (model.getLanguageId() !== FAVELLA_LANG_ID) monaco.editor.setModelLanguage(model, FAVELLA_LANG_ID)
+  }, [lexicon, activePath])
+
+  // Il tema segue la Leggibilità (notte/carta, contrasto).
+  useEffect(() => suAspetto((a) => monacoRef.current?.editor.setTheme(temaMonaco(a))), [])
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
-    monaco.editor.setTheme(FAVELLA_THEME)
+    monaco.editor.setTheme(temaMonaco(aspettoCorrente()))
     // I .fav sono LF per convenzione (gli span del round-trip lo assumono):
     // anche se nel buffer arrivasse del CRLF, il modello resta in LF e ogni
     // Invio inserisce '\n'. Cintura e bretelle rispetto alla normalizzazione
@@ -136,12 +152,9 @@ export default function EditorPane(): JSX.Element {
 
   if (!active) {
     return (
-      <div className="editor-empty">
-        <div className="editor-empty-inner">
-          <div className="big-logo">✦</div>
-          <h2>Favella Studio</h2>
-          <p>Apri una cartella e seleziona un file <code>.fav</code> per iniziare a scrivere.</p>
-        </div>
+      <div className="vuoto">
+        <p className="vuoto-titolo">Nessun file aperto</p>
+        <p>Scegli un file della storia dall’elenco a sinistra, o dalla barra in alto.</p>
       </div>
     )
   }
@@ -157,13 +170,15 @@ export default function EditorPane(): JSX.Element {
       key={active.path}
       language={active.language}
       defaultValue={active.content}
-      theme={FAVELLA_THEME}
+      theme={temaMonaco(aspettoCorrente())}
       beforeMount={handleBeforeMount}
       onMount={handleMount}
       onChange={(v) => updateContent(active.path, v ?? '')}
       options={{
         fontSize: 15,
-        lineHeight: 24,
+        lineHeight: 26,
+        accessibilitySupport: 'auto',
+        ariaLabel: `Il testo di ${active.name}`,
         fontFamily: "'Source Code Pro', 'Cascadia Code', Consolas, monospace",
         minimap: { enabled: false },
         padding: { top: 14, bottom: 14 },

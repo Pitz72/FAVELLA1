@@ -11,6 +11,8 @@ import type {
 } from '../../../shared/protocol'
 import { DialogueNodeForm, DialogueOptionForm } from './DialogueForms'
 import { CMP_LABELS, operandoText, conseqRepresentable } from './logicBuilder'
+import { NonPronto, Vuoto } from './Elenco'
+import { IconaAggiorna, IconaCestino, IconaChiudi, IconaIngranaggio, IconaMatita, IconaPersona, IconaPiu, IconaStella } from './Icone'
 
 // --- Riassunti leggibili delle condizioni/conseguenze (per le righe in sola lettura) ---
 
@@ -146,6 +148,16 @@ function OptionRow({
   const requestReveal = useStudio((s) => s.requestReveal)
   const [text, setText] = useState(option.text)
   useEffect(() => setText(option.text), [option.text])
+  // [Studio 1.2] La destinazione si scrive nel testo quando si lascia il campo (o con
+  // Invio), non a ogni tasto: prima «accoglienza» erano undici riscritture del file, e a
+  // metà parola la frase poteva essere sbagliata.
+  const [dest, setDest] = useState(option.dest ?? '')
+  useEffect(() => setDest(option.dest ?? ''), [option.dest])
+  const salvaDest = (): void => {
+    const d = dest.trim()
+    if (d && d !== (option.dest ?? '')) salva({ outcome: 'conduce', dest: d })
+    else setDest(option.dest ?? '')
+  }
 
   const editable = optionRepresentable(option)
   const span = option.span ?? undefined
@@ -169,16 +181,17 @@ function OptionRow({
         ))}
         {span && (
           <button
-            className="rule-edit"
+            className="btn btn-quieto btn-piccolo"
             title="Troppo complessa per l’editor: modificala nel testo"
             onClick={() => requestReveal(span.file, span.line, 1)}
           >
-            ✎ testo
+            <IconaMatita />
+            Nel testo
           </button>
         )}
         {span && (
-          <button className="rule-del" title="Elimina" onClick={() => void deleteStatement(span)}>
-            ×
+          <button className="btn-icona" aria-label="Togli la risposta" title="Togli la risposta" onClick={() => void deleteStatement(span, 'Risposta tolta')}>
+            <IconaChiudi />
           </button>
         )}
       </div>
@@ -191,6 +204,7 @@ function OptionRow({
       <input
         className="dlg-opt-input"
         type="text"
+        aria-label="Il testo della risposta"
         value={text}
         placeholder="testo della risposta"
         onChange={(e) => setText(e.target.value)}
@@ -222,9 +236,15 @@ function OptionRow({
             className="dlg-opt-dest"
             type="text"
             list="dlg-node-labels"
-            value={option.dest ?? ''}
+            aria-label="Il nodo dove porta la risposta"
+            value={dest}
             placeholder="nodo (anche nuovo)"
-            onChange={(e) => salva({ outcome: 'conduce', dest: e.target.value })}
+            onChange={(e) => setDest(e.target.value)}
+            onBlur={salvaDest}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') salvaDest()
+              if (e.key === 'Escape') setDest(option.dest ?? '')
+            }}
           />
         </>
       )}
@@ -238,12 +258,12 @@ function OptionRow({
           ))}
         </span>
       )}
-      <button className="rule-edit" title="Condizione / conseguenze (avanzate)" onClick={onAdvanced}>
-        ⚙
+      <button className="btn-icona" aria-label="Condizione e conseguenze" title="Condizione e conseguenze" onClick={onAdvanced}>
+        <IconaIngranaggio />
       </button>
       {span && (
-        <button className="rule-del" title="Elimina la risposta" onClick={() => void deleteStatement(span)}>
-          ×
+        <button className="btn-icona" aria-label="Togli la risposta" title="Togli la risposta" onClick={() => void deleteStatement(span, 'Risposta tolta')}>
+          <IconaChiudi />
         </button>
       )}
     </div>
@@ -335,7 +355,9 @@ function NodeCard({
   return (
     <div className="dlg-node">
       <div className="dlg-node-head">
-        <span className="dlg-node-mark">◈</span>
+        <span className="dlg-node-mark" aria-hidden="true">
+          <IconaFumettoPiccolo />
+        </span>
         {editLabel ? (
           <input
             className="dlg-label-input"
@@ -361,13 +383,14 @@ function NodeCard({
               setEditLabel(true)
             }}
           >
-            {node.label} <span className="dlg-pencil">✎</span>
+            {node.label} <IconaMatita size={14} />
           </button>
         )}
 
         {node.speaker ? (
           <select
             className="dlg-speaker"
+            aria-label="Chi parla"
             value={node.speaker.id}
             title="Chi parla a questo nodo"
             onChange={(e) => void cambiaSpeaker(e.target.value)}
@@ -384,26 +407,30 @@ function NodeCard({
 
         {npcName && (
           <button
-            className={'dlg-star' + (isEntry ? ' on' : '')}
-            title={isEntry ? `Nodo d’ingresso di ${npcName}` : `Rendi nodo d’ingresso di ${npcName}`}
+            className={'btn-icona dlg-star' + (isEntry ? ' attivo' : '')}
+            aria-pressed={isEntry}
+            aria-label={isEntry ? `Il dialogo di ${npcName} comincia qui` : `Fai cominciare qui il dialogo di ${npcName}`}
+            title={isEntry ? `Il dialogo di ${npcName} comincia qui` : `Fai cominciare qui il dialogo di ${npcName}`}
             onClick={toggleEntry}
           >
-            {isEntry ? '★' : '☆'}
+            <IconaStella piena={isEntry} />
           </button>
         )}
 
         <button
-          className="rule-del"
-          title="Elimina l’intero nodo (battuta + risposte)"
+          className="btn-icona"
+          aria-label={`Elimina il nodo ${node.label}`}
+          title="Elimina il nodo (la battuta e le risposte)"
           onClick={() => void deleteDialogueNode(node.label)}
         >
-          🗑
+          <IconaCestino />
         </button>
       </div>
 
       {node.lineSpan ? (
         <textarea
-          className="dlg-battuta"
+          className="dlg-battuta campo-prosa"
+          aria-label={`La battuta di ${speakerName || 'chi parla'}`}
           rows={2}
           value={line}
           placeholder="battuta del personaggio"
@@ -412,9 +439,9 @@ function NodeCard({
         />
       ) : (
         <div className="dlg-addline">
-          <span className="insp-none">Questo nodo è citato ma non ha battuta.</span>
+          <span className="nota-riquadro">Questo nodo è citato ma non ha battuta.</span>
           <div className="ruleform-when">
-            <select value={newSpeaker} onChange={(e) => setNewSpeaker(e.target.value)}>
+            <select aria-label="Chi parla" value={newSpeaker} onChange={(e) => setNewSpeaker(e.target.value)}>
               {menu.objects.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -423,12 +450,13 @@ function NodeCard({
             </select>
             <input
               type="text"
+              aria-label="La battuta"
               placeholder="scrivi la battuta…"
               value={newLine}
               onChange={(e) => setNewLine(e.target.value)}
             />
-            <button className="modal-btn ghost" disabled={!newLine.trim()} onClick={aggiungiBattuta}>
-              + battuta
+            <button className="btn btn-quieto btn-piccolo" disabled={!newLine.trim()} onClick={aggiungiBattuta}>
+              Aggiungi la battuta
             </button>
           </div>
         </div>
@@ -445,7 +473,7 @@ function NodeCard({
           />
         ))}
         <button
-          className="modal-btn ghost dlg-add-opt"
+          className="btn btn-quieto btn-piccolo dlg-add-opt"
           title="Aggiungi una risposta del giocatore"
           onClick={() =>
             void applyStatement({
@@ -457,10 +485,19 @@ function NodeCard({
             })
           }
         >
-          + risposta
+          <IconaPiu size={14} />
+          Risposta
         </button>
       </div>
     </div>
+  )
+}
+
+function IconaFumettoPiccolo(): JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+      <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v9A1.5 1.5 0 0 1 19 16.5h-8.5L6 20v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5z" />
+    </svg>
   )
 }
 
@@ -482,31 +519,9 @@ export default function DialoguesEditor(): JSX.Element {
   } | null>(null)
   const [promote, setPromote] = useState('')
 
-  if (!isFav) {
-    return <div className="insp-empty">Apri un file .fav per vedere i dialoghi e i personaggi.</div>
-  }
-  if (!dialogues) {
-    return (
-      <div className="insp-empty">
-        {loading ? 'Carico i dialoghi…' : 'Nessun dialogo caricato.'}
-        {!loading && (
-          <button className="map-reload" onClick={() => void loadDialogues()}>
-            ⟳ Carica
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (!dialogues.ok) {
-    return (
-      <div className="insp-empty">
-        Il file contiene errori: correggili per vedere i dialoghi.
-        <button className="map-reload" onClick={() => void loadDialogues()}>
-          ⟳ Riprova
-        </button>
-      </div>
-    )
-  }
+  if (!isFav) return <NonPronto cosa="i dialoghi" stato="nessun-file" />
+  if (!dialogues) return <NonPronto cosa="i dialoghi" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadDialogues()} />
+  if (!dialogues.ok) return <NonPronto cosa="i dialoghi" stato="errori" onRiprova={() => void loadDialogues()} />
 
   const { npcs, nodes, menu } = dialogues
   const npcById = new Map(npcs.map((n) => [n.id, n]))
@@ -514,19 +529,17 @@ export default function DialoguesEditor(): JSX.Element {
 
   return (
     <div className="ruled">
-      <div className="insp-top">
-        <span className="debug-title">
-          Personaggi<span className="debug-count"> · {npcs.length}</span> · Nodi
-          <span className="debug-count"> · {nodes.length}</span>
-        </span>
-        <div>
-          <button className="icon-btn" title="Nuovo nodo di dialogo" onClick={() => setNodeModal(true)}>
-            ➕
-          </button>
-          <button className="icon-btn" title="Aggiorna" onClick={() => void loadDialogues()}>
-            ⟳
-          </button>
-        </div>
+      <div className="pannello-testa">
+        <h2 className="pannello-titolo">
+          Dialoghi <span className="elenco-conto">{nodes.length} nodi</span>
+        </h2>
+        <button className="btn-icona" aria-label="Rileggi i dialoghi" title="Rileggi" onClick={() => void loadDialogues()}>
+          <IconaAggiorna />
+        </button>
+        <button className="btn btn-accento btn-piccolo" onClick={() => setNodeModal(true)}>
+          <IconaPiu size={15} />
+          Nuovo nodo
+        </button>
       </div>
 
       <datalist id="dlg-node-labels">
@@ -548,13 +561,16 @@ export default function DialoguesEditor(): JSX.Element {
 
       <div className="ruled-body">
         {/* ① PERSONAGGI */}
-        <div className="dlg-section-title">① Personaggi</div>
-        {npcs.length === 0 && <p className="insp-none">nessun personaggio</p>}
+        <h3 className="dlg-section-title">Chi parla</h3>
+        {npcs.length === 0 && <p className="nota-riquadro">Nessun personaggio ancora: crealo nella linguetta «Personaggi».</p>}
         {npcs.map((n, i) => (
           <div key={'npc' + i} className="dlg-npc">
-            <span className="dlg-npc-name">👤 {n.name}</span>
-            <span className="dlg-opt-outcome">ingresso:</span>
+            <span className="dlg-npc-name">
+              <IconaPersona /> {n.name}
+            </span>
+            <span className="dlg-opt-outcome">comincia da</span>
             <select
+              aria-label={`Il nodo da cui comincia il dialogo di ${n.name}`}
               value={n.startNode ?? ''}
               onChange={(e) =>
                 e.target.value &&
@@ -564,7 +580,7 @@ export default function DialoguesEditor(): JSX.Element {
                 )
               }
             >
-              <option value="">— scegli —</option>
+              <option value="">scegli un nodo…</option>
               {menu.nodeLabels.map((l) => (
                 <option key={l} value={l}>
                   {l}
@@ -573,19 +589,20 @@ export default function DialoguesEditor(): JSX.Element {
             </select>
             {n.defSpan && (
               <button
-                className="rule-del"
+                className="btn-icona"
+                aria-label={`${n.name} non è più un personaggio`}
                 title="Non è più un personaggio (l’oggetto resta)"
-                onClick={() => void deleteStatement(n.defSpan!)}
+                onClick={() => void deleteStatement(n.defSpan!, `${n.name} non è più un personaggio`)}
               >
-                ×
+                <IconaChiudi />
               </button>
             )}
           </div>
         ))}
         {nonNpc.length > 0 && (
           <div className="ruleform-when dlg-promote">
-            <select value={promote} onChange={(e) => setPromote(e.target.value)}>
-              <option value="">— rendi personaggio un oggetto —</option>
+            <select aria-label="Un oggetto che diventa personaggio" value={promote} onChange={(e) => setPromote(e.target.value)}>
+              <option value="">fai parlare un oggetto…</option>
               {nonNpc.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -593,7 +610,7 @@ export default function DialoguesEditor(): JSX.Element {
               ))}
             </select>
             <button
-              className="modal-btn ghost"
+              className="btn btn-quieto btn-piccolo"
               disabled={!promote}
               onClick={() => {
                 const o = nonNpc.find((x) => x.id === promote)
@@ -601,17 +618,15 @@ export default function DialoguesEditor(): JSX.Element {
                 setPromote('')
               }}
             >
-              + personaggio
+              Fallo parlare
             </button>
           </div>
         )}
 
         {/* ② NODI / COPIONE */}
-        <div className="dlg-section-title">② Copione (nodi)</div>
+        <h3 className="dlg-section-title">Il copione</h3>
         {nodes.length === 0 && (
-          <p className="insp-none">
-            nessun nodo — crea il primo con ➕ (chi parla, un’etichetta e la prima battuta)
-          </p>
+          <Vuoto titolo="Nessun nodo di dialogo">Crea il primo con «Nuovo nodo»: chi parla, un nome per il nodo e la prima battuta.</Vuoto>
         )}
         {nodes.map((nd) => {
           const npc = nd.speaker ? npcById.get(nd.speaker.id) : undefined

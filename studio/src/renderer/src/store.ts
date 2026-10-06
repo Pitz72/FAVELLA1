@@ -38,6 +38,8 @@ import {
   type GrafoInclusioni
 } from './utils/progetto'
 import { calcolaContenuti, type Modifica, type FileDaModificare } from './utils/modifiche'
+import { idDiNome } from './utils/posizione'
+import { ASPETTO_PREDEFINITO, isAspetto, type Aspetto } from './aspetto'
 
 /** Vista attiva del dock destro (null = dock chiuso). */
 export type RightTab =
@@ -69,6 +71,29 @@ export interface RevealRequest {
 
 /** Scelta dell'utente nel dialogo «modifiche non salvate». */
 export type UnsavedChoice = 'save' | 'discard' | 'cancel'
+
+/** [Studio 1.2] Un avviso in basso a destra; può avere un'azione (es. «Annulla»). */
+export interface Avviso {
+  id: number
+  testo: string
+  tipo: 'info' | 'ok' | 'errore'
+  azione?: { etichetta: string; esegui: () => void }
+}
+
+/** [Studio 1.2] Una modifica fatta dai pannelli, per poterla annullare. */
+export interface PassoPannello {
+  etichetta: string
+  /** percorso → testo prima e dopo la modifica. */
+  prima: Record<string, string>
+  dopo: Record<string, string>
+}
+
+/** [Studio 1.2] Richiesta di selezionare un elemento in un pannello (es. dalla Mappa). */
+export interface RichiestaSelezione {
+  tipo: 'stanza' | 'oggetto' | 'personaggio'
+  id: string
+  nonce: number
+}
 
 /** Richiesta in sospeso di conferma «modifiche non salvate» (modal integrato). */
 export interface UnsavedPrompt {
@@ -173,20 +198,41 @@ interface StudioState {
   // Auto-updater
   updaterStatus: UpdaterStatus
   updateModalOpen: boolean
+  // [Studio 1.2] Avvisi, annulla dei pannelli, selezione richiesta, partita altrove.
+  avvisi: Avviso[]
+  storicoPannelli: PassoPannello[]
+  selezione: RichiestaSelezione | null
+  /** La partita del motore è nella finestra di gioco a parte: la Prova qui è ferma. */
+  partitaAltrove: boolean
+  /** [Studio 1.2] Leggibilità: tema (notte/carta) e contrasto (normale/alto). */
+  aspetto: Aspetto
+  /** Aggiornamenti automatici: null = non ancora chiesto. */
+  aggiornamentiAuto: boolean | null
 
   // Azioni
   setUpdaterStatus: (s: UpdaterStatus) => void
   setUpdateModalOpen: (v: boolean) => void
+  avvisa: (testo: string, opzioni?: { tipo?: Avviso['tipo']; azione?: Avviso['azione']; durata?: number }) => void
+  togliAvviso: (id: number) => void
+  annullaModificaPannello: () => Promise<void>
+  richiediSelezione: (tipo: RichiestaSelezione['tipo'], id: string) => void
+  setPartitaAltrove: (v: boolean) => void
+  setAspetto: (a: Partial<Aspetto>) => void
+  setAggiornamentiAuto: (v: boolean | null) => void
+  rispondiAggiornamentiAuto: (v: boolean) => Promise<void>
+  /** Chiede dei file non salvati; true = si può procedere (salvati o scartati). */
+  guardiaNonSalvati: () => Promise<boolean>
   openProject: () => Promise<void>
+  openStory: () => Promise<void>
   newProject: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (node: FileNode) => Promise<void>
   closeFile: (path: string) => void
   setActive: (path: string) => void
   updateContent: (path: string, content: string) => void
-  saveFile: (path: string) => Promise<void>
-  saveActive: () => Promise<void>
-  saveAll: () => Promise<void>
+  saveFile: (path: string) => Promise<boolean>
+  saveActive: () => Promise<boolean>
+  saveAll: () => Promise<boolean>
   setLexicon: (lex: EngineLexicon) => void
   setSidecarStatus: (s: SidecarStatus) => void
   setCursor: (line: number, column: number) => void
@@ -247,11 +293,18 @@ interface StudioState {
   }) => Promise<void>
   eliminaUscita: (uscita: OutlineExit) => Promise<void>
   // [Studio 1.1] Il cuore delle modifiche: applica N modifiche, anche su file diversi.
-  applica: (mods: Modifica[]) => Promise<boolean>
+  // [Studio 1.2] `etichetta` dice che cosa è cambiato (per «Annulla»); `senzaStorico`
+  // la tiene fuori dalla pila (lo usa l'annulla stesso).
+  applica: (mods: Modifica[], etichetta?: string, senzaStorico?: boolean) => Promise<boolean>
+  // [Studio 1.2] Toglie una frase e ne scrive un'altra in coda, in un passo solo (per gli
+  // spostamenti verso una stanza o un contenitore definiti più in basso).
+  spostaInCoda: (vecchia: OutlineSpan | null, spec: SerializeSpec, etichetta?: string) => Promise<boolean>
+  // [Studio 1.2] Il nome di una cosa nuova è libero? null = sì, altrimenti il perché.
+  nomeOccupato: (nome: string) => string | null
   ricarica: () => Promise<void>
   // Editor oggetti (6a.4): genera/sostituisce o elimina una frase.
   applyStatement: (spec: SerializeSpec, span?: OutlineSpan | null) => Promise<void>
-  deleteStatement: (span: OutlineSpan) => Promise<void>
+  deleteStatement: (span: OutlineSpan, etichetta?: string) => Promise<void>
   // Editor dialoghi (6b): appende PIÙ frasi in un solo edit (es. un nodo = battuta
   // + nodo d'ingresso + opzioni), evitando lo staleness degli span fra edit separati.
   appendStatements: (specs: SerializeSpec[]) => Promise<void>
@@ -260,7 +313,7 @@ interface StudioState {
   // [Studio 1.1] Rinomina una stanza/un oggetto in tutte le frasi che lo citano.
   rinominaElemento: (nome: string, nuovoNome: string) => Promise<boolean>
   riferimentiElemento: (nome: string) => Promise<ReferencesResult | null>
-  eliminaFrasi: (spans: OutlineSpan[]) => Promise<boolean>
+  eliminaFrasi: (spans: OutlineSpan[], etichetta?: string) => Promise<boolean>
   // [Fase 7] Esporta la storia come HTML autoportante (dialogo di salvataggio).
   exportGame: () => Promise<void>
   // Rinomina un nodo di dialogo PROPAGANDO il nuovo nome a tutte le frasi che lo
@@ -454,6 +507,164 @@ async function preparaDirezione(
   return { ok: true, dichiarazione: r.testo + '\n', opposta: opp }
 }
 
+let contatoreAvvisi = 0
+
+/** Questa finestra: lo Studio o la finestra di gioco a parte (caricata con #game). */
+export const QUESTA_FINESTRA: 'studio' | 'finestra' =
+  typeof window !== 'undefined' && window.location.hash.replace(/^#/, '') === 'game' ? 'finestra' : 'studio'
+
+/** Lo stato di un progetto appena aperto: niente file, niente pannelli, niente partita. */
+const PROGETTO_VUOTO: Partial<StudioState> = {
+  openFiles: [],
+  activePath: null,
+  problems: [],
+  problemsFile: null,
+  worldSummary: null,
+  reveal: null,
+  rightTab: null,
+  gameLines: [],
+  gameState: null,
+  gameButtons: null,
+  gameRunning: false,
+  gameError: null,
+  editError: null,
+  worldGraph: null,
+  worldSnapshot: null,
+  debugHistory: [],
+  outline: null,
+  rules: null,
+  variables: null,
+  dialogues: null,
+  words: null,
+  pendingEdit: null,
+  inclusioniDisco: {},
+  destinazioneNuovi: null,
+  storicoPannelli: [],
+  selezione: null
+}
+
+/**
+ * Dopo l'apertura di una cartella: se c'è una sola storia (un file .fav che nessun altro
+ * include), la si apre subito. Con più storie si lascia scegliere.
+ */
+async function apriStoriaPrincipale(get: () => StudioState): Promise<void> {
+  const s = get()
+  const grafo = s.inclusioniDisco
+  const fav = Object.keys(grafo)
+  if (fav.length === 0) return
+  const incluse = new Set(Object.values(grafo).flat().map(chiave))
+  const radici = fav.filter((f) => !incluse.has(chiave(f)))
+  if (radici.length !== 1) return
+  await s.openFile({ name: nomeFile(radici[0]), path: radici[0], type: 'file' })
+}
+
+// Le modifiche dei pannelli, in fila (vedi applica).
+let codaModifiche: Promise<unknown> = Promise.resolve()
+
+/** Al massimo tanti passi annullabili dai pannelli. */
+const MAX_STORICO = 60
+
+/**
+ * Applica N modifiche, anche su file diversi: calcola il testo nuovo di ogni file
+ * toccato (una frase può stare in un file incluso), lo mette nei buffer (con l'annulla
+ * nativo di Monaco per il file aperto), ricorda il prima/dopo per «Annulla» e ricarica i
+ * pannelli. Niente si salva da solo: i file cambiati restano «da salvare».
+ */
+async function applicaOra(mods: Modifica[], etichetta?: string, senzaStorico?: boolean): Promise<boolean> {
+  const set = useStudio.setState
+  const get = useStudio.getState
+  set({ editError: null })
+  if (mods.length === 0) return true
+  const s = get()
+  const destinazione = destinazioneEffettiva(s)
+  if (!destinazione) {
+    set({ editError: 'Apri un file .fav per modificare la storia.' })
+    return false
+  }
+  // Il testo di partenza di ogni file toccato: il buffer se è aperto, altrimenti il disco.
+  const dati = new Map<string, FileDaModificare>()
+  const daDisco = new Map<string, string>()
+  const toccati = new Set<string>()
+  for (const m of mods) {
+    toccati.add(m.tipo === 'aggiungi' ? (m.file ?? destinazione) : m.tipo === 'file' ? m.file : m.span.file)
+  }
+  for (const f of toccati) {
+    const aperto = s.openFiles.find((x) => stessoFile(x.path, f))
+    if (aperto) {
+      dati.set(chiave(f), { file: aperto.path, contenuto: aperto.content })
+      continue
+    }
+    try {
+      const testo = (await window.favella.readFile(f)).replace(/\r\n?/g, '\n')
+      dati.set(chiave(f), { file: f, contenuto: testo })
+      daDisco.set(chiave(f), testo)
+    } catch (e) {
+      set({ editError: `Non riesco a leggere «${nomeFile(f)}»: ${messaggioErrore(e)}` })
+      return false
+    }
+  }
+  const esito = calcolaContenuti(mods, dati, destinazione)
+  if (!esito.ok) {
+    set({ editError: esito.errore })
+    return false
+  }
+  const prima: Record<string, string> = {}
+  const dopo: Record<string, string> = {}
+  for (const [k, nuovo] of esito.contenuti) {
+    const info = dati.get(k)!
+    prima[info.file] = info.contenuto
+    dopo[info.file] = nuovo
+  }
+  set((cur) => {
+    const aperti = cur.openFiles.slice()
+    for (const [k, nuovo] of esito.contenuti) {
+      const i = aperti.findIndex((x) => chiave(x.path) === k)
+      if (i >= 0) {
+        aperti[i] = { ...aperti[i], content: nuovo }
+      } else {
+        const info = dati.get(k)!
+        aperti.push({
+          path: info.file,
+          name: nomeFile(info.file),
+          content: nuovo,
+          savedContent: daDisco.get(k) ?? info.contenuto,
+          language: linguaDa(info.file)
+        })
+      }
+    }
+    const perAttivo = cur.activePath ? esito.contenuti.get(chiave(cur.activePath)) : undefined
+    const passo: PassoPannello = { etichetta: etichetta ?? etichettaDi(mods), prima, dopo }
+    return {
+      openFiles: aperti,
+      revisione: cur.revisione + 1,
+      storicoPannelli: senzaStorico ? cur.storicoPannelli : [...cur.storicoPannelli, passo].slice(-MAX_STORICO),
+      pendingEdit:
+        perAttivo !== undefined
+          ? { path: cur.activePath as string, finale: perAttivo, nonce: (cur.pendingEdit?.nonce ?? 0) + 1 }
+          : cur.pendingEdit
+    }
+  })
+  await get().ricarica()
+  return true
+}
+
+/** Dopo un'eliminazione dai pannelli: l'avviso con «Annulla» a portata di mano. */
+function avvisaConAnnulla(etichetta: string): void {
+  const st = useStudio.getState()
+  st.avvisa(etichetta + '.', {
+    tipo: 'ok',
+    azione: { etichetta: 'Annulla', esegui: () => void useStudio.getState().annullaModificaPannello() }
+  })
+}
+
+/** Un nome generico per una modifica senza etichetta. */
+function etichettaDi(mods: Modifica[]): string {
+  if (mods.every((m) => m.tipo === 'elimina')) return mods.length === 1 ? 'Frase tolta' : `${mods.length} frasi tolte`
+  if (mods.every((m) => m.tipo === 'aggiungi')) return 'Frase aggiunta'
+  if (mods.some((m) => m.tipo === 'file')) return 'Testo riscritto'
+  return 'Modifica'
+}
+
 export const useStudio = create<StudioState>((set, get) => ({
   projectRoot: null,
   tree: [],
@@ -503,23 +714,103 @@ export const useStudio = create<StudioState>((set, get) => ({
   problemiAperti: leggiPref('problemiAperti', false, isBool),
   updaterStatus: { type: 'idle' },
   updateModalOpen: false,
+  avvisi: [],
+  storicoPannelli: [],
+  selezione: null,
+  partitaAltrove: false,
+  aspetto: leggiPref('aspetto', ASPETTO_PREDEFINITO, isAspetto),
+  aggiornamentiAuto: false,
 
-  openProject: async () => {
-    const res = await window.favella.openProject()
-    if (!res) return
-    set({ projectRoot: res.root, tree: res.tree, destinazioneNuovi: null, inclusioniDisco: {} })
-    void get().aggiornaInclusioni()
+  setAspetto: (a) => {
+    const nuovo = { ...get().aspetto, ...a }
+    salvaPref('aspetto', nuovo)
+    set({ aspetto: nuovo })
+  },
+  setAggiornamentiAuto: (v) => set({ aggiornamentiAuto: v }),
+  rispondiAggiornamentiAuto: async (v) => {
+    set({ aggiornamentiAuto: v })
+    await window.favella.setAutoUpdates(v)
   },
 
+  avvisa: (testo, opzioni) => {
+    const id = ++contatoreAvvisi
+    const avviso: Avviso = { id, testo, tipo: opzioni?.tipo ?? 'info', azione: opzioni?.azione }
+    // Al massimo quattro avvisi a schermo: il più vecchio lascia il posto.
+    set((s) => ({ avvisi: [...s.avvisi.slice(-3), avviso] }))
+    const durata = opzioni?.durata ?? (opzioni?.azione ? 8000 : opzioni?.tipo === 'errore' ? 7000 : 4500)
+    setTimeout(() => get().togliAvviso(id), durata)
+  },
+  togliAvviso: (id) => set((s) => ({ avvisi: s.avvisi.filter((a) => a.id !== id) })),
+
+  // Annulla l'ultima modifica fatta dai pannelli (anche su file non aperti nell'editor).
+  // Se nel frattempo il testo è cambiato a mano, non si tocca niente: lo si dice.
+  annullaModificaPannello: async () => {
+    const pila = get().storicoPannelli
+    const passo = pila[pila.length - 1]
+    if (!passo) return
+    const aperti = get().openFiles
+    for (const [percorso, dopo] of Object.entries(passo.dopo)) {
+      const f = aperti.find((x) => stessoFile(x.path, percorso))
+      if (f && f.content !== dopo) {
+        set({ storicoPannelli: pila.slice(0, -1) })
+        get().avvisa('Non posso annullare: il testo è cambiato dopo quella modifica. Usa Ctrl+Z nel testo.', {
+          tipo: 'errore'
+        })
+        return
+      }
+    }
+    set({ storicoPannelli: pila.slice(0, -1) })
+    const ok = await get().applica(
+      Object.entries(passo.prima).map(([file, testo]) => ({ tipo: 'file' as const, file, testo })),
+      undefined,
+      true
+    )
+    if (ok) get().avvisa(`Annullato: ${passo.etichetta.toLowerCase()}.`, { tipo: 'ok' })
+  },
+
+  richiediSelezione: (tipo, id) =>
+    set((s) => ({ selezione: { tipo, id, nonce: (s.selezione?.nonce ?? 0) + 1 } })),
+
+  setPartitaAltrove: (v) => set({ partitaAltrove: v }),
+
+  guardiaNonSalvati: async () => {
+    const sporchi = get().openFiles.filter((f) => f.content !== f.savedContent)
+    if (sporchi.length === 0) return true
+    const scelta = await get().askUnsaved(sporchi.map((f) => f.name))
+    if (scelta === 'cancel') return false
+    if (scelta === 'save') return get().saveAll()
+    return true
+  },
+
+  // [Studio 1.2] Aprire o creare un altro progetto chiude quello di prima: prima si chiede
+  // dei file non salvati (prima della 1.2 restavano aperti, ma fuori dalla cartella del
+  // progetto nuovo non si potevano più salvare), poi si riparte puliti.
+  openProject: async () => {
+    if (!(await get().guardiaNonSalvati())) return
+    const res = await window.favella.openProject()
+    if (!res) return
+    set({ ...PROGETTO_VUOTO, projectRoot: res.root, tree: res.tree })
+    await get().aggiornaInclusioni()
+    await apriStoriaPrincipale(get)
+  },
+
+  openStory: async () => {
+    if (!(await get().guardiaNonSalvati())) return
+    const res = await window.favella.openStoryFile()
+    if (!res) return
+    set({ ...PROGETTO_VUOTO, projectRoot: res.root, tree: res.tree })
+    await get().aggiornaInclusioni()
+    await get().openFile({ name: nomeFile(res.openPath), path: res.openPath, type: 'file' })
+  },
 
   newProject: async () => {
+    if (!(await get().guardiaNonSalvati())) return
     const res = await window.favella.newProject()
     if (!res) return
-    set({ projectRoot: res.root, tree: res.tree, destinazioneNuovi: null, inclusioniDisco: {} })
-    void get().aggiornaInclusioni()
-    // Apre subito il .fav vuoto appena creato, pronto da riempire.
-    const name = res.openPath.split(/[\\/]/).pop() ?? 'storia.fav'
-    await get().openFile({ name, path: res.openPath, type: 'file' })
+    set({ ...PROGETTO_VUOTO, projectRoot: res.root, tree: res.tree })
+    await get().aggiornaInclusioni()
+    // Apre subito la storia appena creata.
+    await get().openFile({ name: nomeFile(res.openPath), path: res.openPath, type: 'file' })
   },
 
   refreshTree: async () => {
@@ -571,26 +862,36 @@ export const useStudio = create<StudioState>((set, get) => ({
     }))
   },
 
+  // [Studio 1.2] Si segna come salvato il testo SCRITTO, non quello di adesso: se si
+  // continua a scrivere mentre il salvataggio è in corso, il file resta «da salvare».
+  // Un errore di scrittura si dice (prima finiva in console e il file sembrava salvato).
   saveFile: async (path) => {
     const file = get().openFiles.find((f) => f.path === path)
-    if (!file) return
-    await window.favella.writeFile(path, file.content)
+    if (!file) return true
+    const scritto = file.content
+    try {
+      await window.favella.writeFile(path, scritto)
+    } catch (e) {
+      get().avvisa(`Non riesco a salvare «${file.name}»: ${messaggioErrore(e)}`, { tipo: 'errore' })
+      return false
+    }
     set((s) => ({
-      openFiles: s.openFiles.map((f) =>
-        f.path === path ? { ...f, savedContent: f.content } : f
-      ),
-      inclusioniDisco: { ...s.inclusioniDisco, [path]: estraiInclusioni(file.content, path) }
+      openFiles: s.openFiles.map((f) => (f.path === path ? { ...f, savedContent: scritto } : f)),
+      inclusioniDisco: { ...s.inclusioniDisco, [path]: estraiInclusioni(scritto, path) }
     }))
+    return true
   },
 
   saveActive: async () => {
     const active = get().activePath
-    if (active) await get().saveFile(active)
+    return active ? get().saveFile(active) : true
   },
 
   saveAll: async () => {
     const sporchi = get().openFiles.filter((f) => f.content !== f.savedContent)
-    for (const f of sporchi) await get().saveFile(f.path)
+    let tutti = true
+    for (const f of sporchi) if (!(await get().saveFile(f.path))) tutti = false
+    return tutti
   },
 
   setLexicon: (lex) => set({ lexicon: lex }),
@@ -701,7 +1002,9 @@ export const useStudio = create<StudioState>((set, get) => ({
   // Avvia una partita su un file/buffer espliciti. È il cuore usato sia dal dock
   // inline (startGame) sia dalla finestra di gioco dedicata (che non ha activePath).
   startGameWith: async (path, source, sources) => {
-    set({ gameBusy: true, gameError: null })
+    // La partita del motore è una sola: chi la avvia la prende (vedi game:owner).
+    window.favella.claimGame(QUESTA_FINESTRA)
+    set({ gameBusy: true, gameError: null, partitaAltrove: false })
     try {
       const res = await window.favella.startGame(path, source, sources)
       if (!res.ok) {
@@ -761,8 +1064,12 @@ export const useStudio = create<StudioState>((set, get) => ({
   sendGameCommand: async (command) => {
     const testo = command.trim()
     if (!testo) return
-    const { gameRunning, gameBusy } = get()
+    const { gameRunning, gameBusy, partitaAltrove } = get()
     if (!gameRunning || gameBusy) return
+    if (partitaAltrove) {
+      get().avvisa('La partita ora è nell’altra finestra: premi «Riprendi qui» per ricominciarla qui.', { tipo: 'errore' })
+      return
+    }
     // Eco del comando del giocatore in console, poi la risposta del motore.
     set((s) => ({ gameBusy: true, gameLines: [...s.gameLines, '> ' + testo] }))
     try {
@@ -787,7 +1094,9 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 
   resetGame: async () => {
-    set({ gameBusy: true, gameError: null })
+    // La partita del motore è una sola: chi la avvia la prende (vedi game:owner).
+    window.favella.claimGame(QUESTA_FINESTRA)
+    set({ gameBusy: true, gameError: null, partitaAltrove: false })
     try {
       const res = await window.favella.resetGame()
       if (!res.ok) {
@@ -836,7 +1145,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       return
     }
     if (!save) return // annullato
-    set({ gameBusy: true, gameError: null })
+    // La partita del motore è una sola: chi la avvia la prende (vedi game:owner).
+    window.favella.claimGame(QUESTA_FINESTRA)
+    set({ gameBusy: true, gameError: null, partitaAltrove: false })
     try {
       const res = await window.favella.gameLoad(save)
       if (!res.ok) {
@@ -1013,71 +1324,40 @@ export const useStudio = create<StudioState>((set, get) => ({
   // mette nei buffer (con l'annulla nativo di Monaco per il file aperto) e ricarica i
   // pannelli. Niente si salva da solo: i file cambiati restano «da salvare».
 
-  applica: async (mods) => {
+  // [Studio 1.2] Le modifiche passano in fila, una alla volta: due modifiche partite
+  // insieme (due clic veloci) leggevano lo stesso testo di partenza e la seconda
+  // cancellava la prima.
+  applica: (mods, etichetta, senzaStorico) => {
+    const lavoro = codaModifiche.then(() => applicaOra(mods, etichetta, senzaStorico))
+    codaModifiche = lavoro.catch(() => undefined)
+    return lavoro
+  },
+
+  spostaInCoda: async (vecchia, spec, etichetta) => {
     set({ editError: null })
-    if (mods.length === 0) return true
-    const s = get()
-    const destinazione = destinazioneEffettiva(s)
-    if (!destinazione) {
-      set({ editError: 'Apri un file .fav per modificare la storia.' })
+    const r = await serializza(spec)
+    if (!r.ok) {
+      set({ editError: r.errore })
       return false
     }
-    // Il testo di partenza di ogni file toccato: il buffer se è aperto, altrimenti il disco.
-    const dati = new Map<string, FileDaModificare>()
-    const daDisco = new Map<string, string>()
-    const toccati = new Set<string>()
-    for (const m of mods) {
-      toccati.add(m.tipo === 'aggiungi' ? (m.file ?? destinazione) : m.tipo === 'file' ? m.file : m.span.file)
+    const mods: Modifica[] = vecchia ? [{ tipo: 'elimina', span: vecchia }] : []
+    mods.push({ tipo: 'aggiungi', testo: r.testo })
+    return get().applica(mods, etichetta ?? 'Spostamento')
+  },
+
+  nomeOccupato: (nome) => {
+    const id = idDiNome(nome)
+    if (!id) return 'Scrivi un nome.'
+    const o = get().outline
+    if (!o) return null
+    const stanza = o.rooms.find((r) => r.id === id)
+    if (stanza) return `C’è già una stanza che si chiama «${stanza.name}».`
+    const cosa = o.objects.find((x) => x.id === id)
+    if (cosa) {
+      const tipo = cosa.kind === 'personaggio' ? 'un personaggio' : 'un oggetto'
+      return `C’è già ${tipo} che si chiama «${cosa.name}».`
     }
-    for (const f of toccati) {
-      const aperto = s.openFiles.find((x) => stessoFile(x.path, f))
-      if (aperto) {
-        dati.set(chiave(f), { file: aperto.path, contenuto: aperto.content })
-        continue
-      }
-      try {
-        const testo = (await window.favella.readFile(f)).replace(/\r\n?/g, '\n')
-        dati.set(chiave(f), { file: f, contenuto: testo })
-        daDisco.set(chiave(f), testo)
-      } catch (e) {
-        set({ editError: `Non riesco a leggere «${nomeFile(f)}»: ${messaggioErrore(e)}` })
-        return false
-      }
-    }
-    const esito = calcolaContenuti(mods, dati, destinazione)
-    if (!esito.ok) {
-      set({ editError: esito.errore })
-      return false
-    }
-    set((cur) => {
-      const aperti = cur.openFiles.slice()
-      for (const [k, nuovo] of esito.contenuti) {
-        const i = aperti.findIndex((x) => chiave(x.path) === k)
-        if (i >= 0) {
-          aperti[i] = { ...aperti[i], content: nuovo }
-        } else {
-          const info = dati.get(k)!
-          aperti.push({
-            path: info.file,
-            name: nomeFile(info.file),
-            content: nuovo,
-            savedContent: daDisco.get(k) ?? info.contenuto,
-            language: linguaDa(info.file)
-          })
-        }
-      }
-      const perAttivo = cur.activePath ? esito.contenuti.get(chiave(cur.activePath)) : undefined
-      return {
-        openFiles: aperti,
-        revisione: cur.revisione + 1,
-        pendingEdit:
-          perAttivo !== undefined
-            ? { path: cur.activePath as string, finale: perAttivo, nonce: (cur.pendingEdit?.nonce ?? 0) + 1 }
-            : cur.pendingEdit
-      }
-    })
-    await get().ricarica()
-    return true
+    return null
   },
 
   ricarica: async () => {
@@ -1104,8 +1384,9 @@ export const useStudio = create<StudioState>((set, get) => ({
     await get().applica([span ? { tipo: 'sostituisci', span, testo: r.testo } : { tipo: 'aggiungi', testo: r.testo }])
   },
 
-  deleteStatement: async (span) => {
-    await get().applica([{ tipo: 'elimina', span }])
+  deleteStatement: async (span, etichetta) => {
+    const ok = await get().applica([{ tipo: 'elimina', span }], etichetta ?? 'Frase tolta')
+    if (ok && etichetta) avvisaConAnnulla(etichetta)
   },
 
   // Serializza N spec e le appende come UN UNICO blocco (una riga per frase): così non
@@ -1203,7 +1484,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ editError: 'Questa uscita non ha una frase da togliere: modificala nel testo.' })
       return
     }
-    await get().applica([{ tipo: 'elimina', span: uscita.span }])
+    if (await get().applica([{ tipo: 'elimina', span: uscita.span }], 'Uscita tolta')) avvisaConAnnulla('Uscita tolta')
   },
 
   mapDeleteConnection: async (aId, bId) => {
@@ -1226,7 +1507,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ editError: 'Connessione non trovata nel sorgente (forse generata da un’altra frase).' })
       return
     }
-    await get().applica([{ tipo: 'elimina', span }])
+    if (await get().applica([{ tipo: 'elimina', span }], 'Collegamento tolto')) avvisaConAnnulla('Collegamento tolto')
   },
 
   // --- Riordino, rinomina, eliminazione ---------------------------------------
@@ -1308,7 +1589,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 
   // Toglie le frasi indicate (le stesse che `riferimentiElemento` ha elencato).
-  eliminaFrasi: async (spans) => {
+  eliminaFrasi: async (spans, etichetta) => {
     const visti = new Set<string>()
     const mods: Modifica[] = []
     for (const sp of spans) {
@@ -1317,7 +1598,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       visti.add(k)
       mods.push({ tipo: 'elimina', span: sp })
     }
-    return get().applica(mods)
+    const ok = await get().applica(mods, etichetta ?? 'Eliminazione')
+    if (ok && etichetta) avvisaConAnnulla(etichetta)
+    return ok
   },
 
   exportGame: async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useStudio } from '../store'
 import type {
   Rule,
@@ -19,8 +19,11 @@ import {
   defaultAtom,
   defaultCons,
   arricchisciCons,
+  comeGruppo,
+  semplifica,
   type ConsKind
 } from './logicBuilder'
+import Finestra from './Finestra'
 
 // Verbi con un EFFETTO di default che «Invece di» sopprime: prendi (→ inventario),
 // lascia (→ stanza), metti (→ contenitore/supporto), apri. Una regola su questi verbi
@@ -81,9 +84,8 @@ export default function RuleForm({
   const [cons, setCons] = useState<RuleConsequence[]>(
     arricchisciCons((event ?? rule ?? demon)?.consequences ?? [], menu)
   )
-  const [condition, setCondition] = useState<RuleCondition | null>(
-    rule?.condition ?? demon?.condition ?? null
-  )
+  const condIniziale = rule?.condition ?? demon?.condition ?? null
+  const [condition, setCondition] = useState<RuleCondition | null>(condIniziale ? comeGruppo(condIniziale) : null)
   const [addKind, setAddKind] = useState<ConsKind>('prop')
   // [motore 1.3] «Invece di / Prima di / Dopo di» e il ramo «altrimenti».
   const [phase, setPhase] = useState<RulePhase>(rule?.phase ?? 'invece')
@@ -93,15 +95,6 @@ export default function RuleForm({
       : null
   )
   const [altrAddKind, setAltrAddKind] = useState<ConsKind>('prop')
-
-  // Esc chiude la modale.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onDone()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onDone])
 
   const targetIsObject = targetSel.startsWith('o:')
 
@@ -154,7 +147,7 @@ export default function RuleForm({
         {
           op: 'demon',
           mode: demonMode,
-          condition: condition ?? null,
+          condition: semplifica(condition),
           response: response.trim(),
           consequences: cons
         },
@@ -185,7 +178,7 @@ export default function RuleForm({
         otherwise: altr && condition ? { response: altr.response.trim(), consequences: altr.cons } : null,
         verb: verb.trim(),
         target,
-        condition: condition ?? null,
+        condition: semplifica(condition),
         response: response.trim(),
         consequences: cons
       },
@@ -195,23 +188,37 @@ export default function RuleForm({
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onDone()
-      }}
+    <Finestra
+      titolo={
+        inModifica
+          ? kind === 'event'
+            ? 'Modifica l’evento'
+            : kind === 'demon'
+              ? 'Modifica il demone'
+              : 'Modifica la regola'
+          : 'Una regola nuova'
+      }
+      sottotitolo={
+        kind === 'event'
+          ? 'Un evento succede col passare del tempo: a un certo turno, o ogni tanti turni.'
+          : kind === 'demon'
+            ? 'Un demone sorveglia una condizione e scatta quando diventa vera.'
+            : 'Una regola risponde a ciò che fa il giocatore.'
+      }
+      onChiudi={onDone}
+      larga
+      azioni={
+        <>
+          <button className="btn btn-quieto" onClick={onDone}>
+            Annulla
+          </button>
+          <button className="btn btn-primario" disabled={!valido} onClick={() => void salva()}>
+            {(inModifica ? 'Scrivi ' : 'Crea ') + (kind === 'event' ? 'l’evento' : kind === 'demon' ? 'il demone' : 'la regola')}
+          </button>
+        </>
+      }
     >
-      <div className="modal rule-modal">
-        <h2 className="modal-title">
-          {inModifica
-            ? kind === 'event'
-              ? 'Modifica evento'
-              : kind === 'demon'
-                ? 'Modifica demone'
-                : 'Modifica regola'
-            : 'Nuova regola, evento o demone'}
-        </h2>
-        <div className="rule-modal-body">
+        <div className="modulo">
           {!inModifica && (
             <div className="objed-field">
               <label>Tipo</label>
@@ -336,8 +343,8 @@ export default function RuleForm({
               </div>
             </div>
             {phase === 'invece' && VERBI_CON_EFFETTO.has(verb) && (
-              <p className="ruleform-warn">
-                ⚠️ «Invece di {verb}» <b>sostituisce</b> l'azione normale: la regola viene
+              <p className="ruleform-warn" role="note">
+                «Invece di {verb}» <b>sostituisce</b> l'azione normale: la regola viene
                 eseguita <i>al posto</i> di «{verb}». Se vuoi che l'effetto avvenga comunque
                 (es. l'oggetto finisca in inventario), aggiungilo come conseguenza qui sotto
                 (es. <b>sposta un oggetto → in inventario</b>).
@@ -354,7 +361,7 @@ export default function RuleForm({
               </label>
               {condition === null ? (
                 <button
-                  className="modal-btn ghost"
+                  className="btn btn-quieto btn-piccolo"
                   onClick={aggiungiCondizione}
                   disabled={!defaultAtom(menu)}
                 >
@@ -362,7 +369,7 @@ export default function RuleForm({
                 </button>
               ) : (
                 <CondGroup
-                  node={condition as Extract<RuleCondition, { op: 'and' | 'or' }>}
+                  node={comeGruppo(condition)}
                   menu={menu}
                   onChange={(n) => setCondition(n)}
                   onRemove={() => setCondition(null)}
@@ -384,7 +391,7 @@ export default function RuleForm({
 
           <div className="objed-field">
             <label>Fai questo… (conseguenze)</label>
-            {cons.length === 0 && <span className="insp-none">nessuna conseguenza</span>}
+            {cons.length === 0 && <span className="nota-riquadro">nessuna conseguenza</span>}
             {cons.map((c, i) => (
               <ConsRow key={i} c={c} menu={menu} onChange={(nc) => aggiornaCons(i, nc)} onRemove={() => rimuoviCons(i)} />
             ))}
@@ -400,7 +407,7 @@ export default function RuleForm({
                   </optgroup>
                 ))}
               </select>
-              <button className="modal-btn ghost" onClick={aggiungiCons}>
+              <button className="btn btn-quieto btn-piccolo" onClick={aggiungiCons}>
                 + conseguenza
               </button>
             </div>
@@ -410,7 +417,7 @@ export default function RuleForm({
             <div className="objed-field">
               <label>Altrimenti (se la condizione NON è vera)</label>
               {altr === null ? (
-                <button className="modal-btn ghost" onClick={() => setAltr({ response: '', cons: [] })}>
+                <button className="btn btn-quieto btn-piccolo" onClick={() => setAltr({ response: '', cons: [] })}>
                   + aggiungi un «altrimenti»
                 </button>
               ) : (
@@ -443,7 +450,7 @@ export default function RuleForm({
                       ))}
                     </select>
                     <button
-                      className="modal-btn ghost"
+                      className="btn btn-quieto btn-piccolo"
                       onClick={() => {
                         const c = defaultCons(altrAddKind, menu)
                         if (c) setAltr({ ...altr, cons: [...altr.cons, c] })
@@ -451,7 +458,7 @@ export default function RuleForm({
                     >
                       + conseguenza
                     </button>
-                    <button className="modal-btn ghost" onClick={() => setAltr(null)}>
+                    <button className="btn btn-quieto btn-piccolo" onClick={() => setAltr(null)}>
                       Togli l'«altrimenti»
                     </button>
                   </div>
@@ -460,16 +467,6 @@ export default function RuleForm({
             </div>
           )}
         </div>
-        <div className="modal-actions">
-          <button className="modal-btn ghost" onClick={onDone}>
-            Annulla
-          </button>
-          <button className="modal-btn primary" disabled={!valido} onClick={() => void salva()}>
-            {(inModifica ? 'Salva ' : 'Crea ') +
-              (kind === 'event' ? 'evento' : kind === 'demon' ? 'demone' : 'regola')}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Finestra>
   )
 }

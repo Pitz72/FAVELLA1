@@ -1,5 +1,6 @@
 import { useStudio } from '../store'
 import type { DebugEntry, WorldSnapshot } from '../../../shared/protocol'
+import { IconaAggiorna } from './Icone'
 
 interface Change {
   icon: string
@@ -77,12 +78,11 @@ export default function DebugPanel(): JSX.Element {
   return (
     <div className="debug">
       <div className="insp-top">
-        <span className="debug-title">
-          Debugger
-          <span className="debug-count"> · {history.length} turni</span>
-        </span>
-        <button className="icon-btn" title="Aggiorna" onClick={() => void reload()}>
-          ⟳
+        <h2 className="pannello-titolo">
+          Passo passo <span className="elenco-conto">{history.length} turni</span>
+        </h2>
+        <button className="btn-icona" aria-label="Rileggi i turni" title="Rileggi" onClick={() => void reload()}>
+          <IconaAggiorna />
         </button>
       </div>
 
@@ -91,7 +91,7 @@ export default function DebugPanel(): JSX.Element {
           <div className="debug-empty">
             {loading
               ? 'Carico la history…'
-              : 'Avvia una partita e gioca qualche turno, poi ⟳ per vedere i passi.'}
+              : 'Avvia una partita e gioca qualche turno: qui vedrai che cosa è cambiato a ogni passo.'}
           </div>
         ) : (
           righe.map(({ entry, changes }, i) => {

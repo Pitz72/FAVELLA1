@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import GameWindow from './GameWindow'
 import './assets/fonts/fonts.css'
-import './styles.css'
-import './shell.css'
+import './tema.css'
+import './scocca.css'
+import './pannelli.css'
 
 // La stessa build serve due finestre: l'IDE (default) e la finestra di gioco
 // dedicata (caricata con hash '#game' dal processo main). Il branch sceglie la
