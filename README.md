@@ -74,7 +74,7 @@ a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio 1.4.
 [spec](documentazione/grammatica-1.4.0.md), §23).
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
-- **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026); la **Terza edizione**, allineata alla 1.4.1, è in arrivo
+- **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026); la **Terza edizione** (96 pagine a colori, allineata alla 1.4.4, 12,99 €) è stata inviata ad Amazon il 6 ottobre 2026 ed è in uscita a giorni
 
 ---
 

@@ -15,7 +15,8 @@ const Nota = () =>
   PAPERBACK.next ? (
     <p className="mt-6 max-w-[520px] border-l-2 border-favella-amber/50 pl-4 font-serif text-[14.5px] leading-[1.6] text-favella-text-secondary">
       In vendita c'è la <strong className="font-semibold text-favella-text-primary">{PAPERBACK.edition.toLowerCase()}</strong> (FAVELLA{" "}
-      {PAPERBACK.version}). La {PAPERBACK.next.edition.toLowerCase()}, aggiornata alla {PAPERBACK.next.version}, è in preparazione: il PDF
+      {PAPERBACK.version}). La {PAPERBACK.next.edition.toLowerCase()}, aggiornata alla {PAPERBACK.next.version} ({PAPERBACK.next.pages} pagine,{" "}
+      {PAPERBACK.next.price}), è stata inviata ad Amazon e sarà in vendita fra pochi giorni, dopo la verifica: il PDF
       gratuito è già quello nuovo.
     </p>
   ) : null;

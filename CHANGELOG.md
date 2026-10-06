@@ -21,7 +21,7 @@ riepilogo e i comportamenti descritti; corretti sette punti imprecisi:
 - nota sulle direzioni `basso`/`sopra` nella pianta, e comandi `libreria`, `galleria`,
   `versione` aggiunti alla tabella del comando `favella1`.
 
-Ebook 95 pagine, interno KDP 96 pagine, copertina invariata.
+Ebook 95 pagine, interno KDP 96 pagine, copertina invariata. Terza edizione cartacea inviata ad Amazon KDP il 2026-10-06 (96 pagine, 12,99 €, in verifica); sito 2.8.5 e README aggiornati di conseguenza.
 
 ---
 

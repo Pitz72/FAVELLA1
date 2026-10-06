@@ -46,7 +46,9 @@ export const SITE_URL = "https://favella.eu";
 //   /studio, schermate rifatte, notizia.
 // · 2.8.4 = motore 1.4.4 (la riga degli errori) e Favella Studio 1.2.1 con la guida
 //   all'uso in PDF: download sulla pagina /studio, notizie.
-export const SITE_VERSION = "2.8.4";
+// · 2.8.5 = manuale, terza edizione cartacea (96 pagine, 12,99 €) inviata ad Amazon KDP:
+//   banner e notizia «in uscita». Da fare quando Amazon la pubblica: vedi PAPERBACK.
+export const SITE_VERSION = "2.8.5";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -98,13 +100,15 @@ export const MANUAL_PRICE = "13,51 €";
 export const MANUAL_PDF_PAGES = 95;
 export const MANUAL_PDF_EDITION = "Terza edizione";
 // Ciò che oggi si compra su Amazon.it (verificato sulla scheda del libro: 84 pagine,
-// 13,51 €, pubblicato il 27 giugno 2026). Quando la terza edizione per la stampa sarà
-// caricata su KDP basta far salire qui edizione/versione/pagine e togliere `next`.
+// 13,51 €, pubblicato il 27 giugno 2026). La terza edizione è stata inviata a KDP il
+// 6 ottobre 2026 (in verifica). Appena Amazon la pubblica: far salire qui
+// edizione/versione/pagine, mettere MANUAL_PRICE a quello nuovo, togliere `next`, e
+// controllare che AMAZON_PAPERBACK_URL punti ancora alla scheda giusta.
 export const PAPERBACK = {
   edition: "Seconda edizione",
   version: "1.0.0",
   pages: 84,
-  next: { edition: "Terza edizione", version: "1.4.4", pages: 96 } as { edition: string; version: string; pages: number } | null,
+  next: { edition: "Terza edizione", version: "1.4.4", pages: 96, price: "12,99 €" } as { edition: string; version: string; pages: number; price: string } | null,
 };
 
 export const AUTHOR_NAME = "Simone Pizzi";
@@ -190,9 +194,17 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
-    tag: "Studio",
+    tag: "Manuale",
     date: "Ottobre 2026",
     emphasis: "primary",
+    title: "Il manuale cartaceo, terza edizione, è in arrivo su Amazon",
+    body: "La terza edizione del Manuale di Programmazione è stata inviata ad Amazon e, dopo la verifica di rito, sarà in vendita fra pochi giorni: 96 pagine a colori, copertina flessibile, 12,99 €, allineata a FAVELLA 1.4.4 (salvataggi, collaudo che gioca, sinonimi d'autore, pulsanti-verbo). Prima di mandarla in stampa il manuale è stato riletto contro il motore: ogni esempio di codice e ogni comportamento descritto è stato provato sulla 1.4.4, e i pochi punti imprecisi sono stati corretti. Fino all'uscita, su Amazon resta in vendita la seconda edizione (1.0.0). Il PDF gratuito è già quello nuovo, e resta gratuito.",
+    cta: { label: "Scarica il manuale (PDF gratuito)", href: MANUAL_PDF_URL },
+  },
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "normal",
     title: "Favella Studio ha la sua guida",
     body: "Quarantacinque pagine con le schermate vere, un capitolo per ogni parte dell'app: la finestra, il testo, le stanze e la mappa, gli oggetti, i personaggi e i dialoghi, le regole, la prova, le reti di sicurezza, la leggibilità e tutte le scorciatoie. Gli esempi sono quelli del manuale, «La Casa di Via Stradivari», che Studio 1.2.1 apre con un clic. È un PDF accessibile, che i lettori di schermo leggono con i suoi titoli e le descrizioni delle figure; sta anche dentro l'app, nel menu. Scrivendola sono venuti fuori alcuni difetti, ora corretti: in Studio il menu dei file nella barra in alto, e nel motore (FAVELLA 1.4.4) la riga indicata per certi errori.",
     cta: { label: "Scarica la guida (PDF)", href: STUDIO_GUIDE_URL },
