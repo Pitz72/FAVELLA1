@@ -344,6 +344,10 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
 ## ✦ Favella Studio — l'ambiente di scrittura
 
+<p align="center">
+  <img src="branding/materiale/banner-favella-studio-v1.2.0.png" alt="Favella Studio 1.2.0 — l'ambiente di scrittura per FAVELLA 1" width="880">
+</p>
+
 In [`studio/`](studio/) c'è **Favella Studio 1.2.0**: l'ambiente di scrittura visuale per FAVELLA.
 Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
 oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
