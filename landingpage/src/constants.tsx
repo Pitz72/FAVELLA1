@@ -49,7 +49,8 @@ export const SITE_URL = "https://favella.eu";
 // · 2.8.5 = manuale, terza edizione cartacea (96 pagine, 12,99 €) inviata ad Amazon KDP:
 //   banner e notizia «in uscita». Da fare quando Amazon la pubblica: vedi PAPERBACK.
 // · 2.8.6 = Favella Studio 1.2.2 (la scritta del demone dice la verità; guida rivista).
-export const SITE_VERSION = "2.8.6";
+// · 2.8.7 = Il Viaggiatore 1.11.1 (col motore FAVELLA 1.4.4, al posto della 1.4.1).
+export const SITE_VERSION = "2.8.7";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -68,7 +69,7 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: il gioco si aggiorna (1.11.0 col motore FAVELLA 1.4.1).
+// Sempre l'ultima release: il gioco si aggiorna (1.11.1 col motore FAVELLA 1.4.4).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
@@ -194,6 +195,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Il Viaggiatore 1.11.1: ora gira sul motore FAVELLA 1.4.4",
+    body: "Il gioco era uscito, alla 1.11.0, con dentro il motore 1.4.1. La 1.11.1 non cambia la storia: porta nel gioco il motore 1.4.4. In pratica, «usa X su Y» si può dire in più modi («usa la chiave per aprire la porta», «apri la porta con la chiave»), un comando senza senso come «usa la tanica su nord» risponde con garbo invece che con un errore, e «Con cosa vuoi usarla?» non consuma più un turno. Le partite salvate si caricano come prima; solo in rari casi la partita ricaricata può avere un turno di differenza, e il gioco lo dice. L'aggiornamento arriva da solo a chi ha già il gioco installato.",
+    cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
+  },
   {
     tag: "Studio",
     date: "Ottobre 2026",

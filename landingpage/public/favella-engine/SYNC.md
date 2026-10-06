@@ -16,7 +16,7 @@ progetto FAVELLA 1.
 > fallisce se queste copie non sono identiche ai sorgenti, un altro
 > (`test_elenchi_dei_moduli_del_motore_allineati`) se gli elenchi dei moduli di
 > sito, esperimento e validatore non coincidono. `scripts/valida_checkpoint.py`:
-> 53/53. `src/constants.tsx` punta alla release v1.4.4 (GitHub e PyPI). `galleria/il-viaggiatore/` e `esperimento/` sono *Il Viaggiatore* 1.11.0.
+> 53/53. `src/constants.tsx` punta alla release v1.4.4 (GitHub e PyPI). `galleria/il-viaggiatore/` e `esperimento/` sono *Il Viaggiatore* 1.11.1.
 > `galleria/il-viaggiatore/` richiede almeno la 1.1.0.
 
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
