@@ -18,6 +18,8 @@ Patch: nessuna funzione nuova, il motore resta la **1.4.4**.
   la Casa di Via Stradivari); «quasi trenta oggetti» al posto di «una ventina».
 
 
+---
+
 ## [1.2.1] — 2026-10-06 — La guida all'uso, e quello che è venuto fuori scrivendola
 
 ### Aggiunto
