@@ -56,51 +56,51 @@ await scatta("accoglienza");
 // 2 · apre il progetto e il file della storia
 await clicca("button", "Apri una cartella");
 await pausa(1800);
-await clicca(".acc-file", "storia.fav");
+await clicca(".accoglienza-file", "storia.fav");
 await pausa(2500);
 await scatta("storia");
 
 // 3 · Mondo → Stanze
-await clicca(".rail-item", "Mondo");
+await clicca(".sezione", "Mondo");
 await pausa(1800);
-await clicca(".objed-row", "L'ingresso");
+await clicca(".elenco-voce", "L'ingresso");
 await pausa(900);
 await scatta("stanze");
 
 // 4 · Mondo → Mappa (con la scheda delle uscite di una stanza)
-await clicca(".seg", "Mappa");
+await clicca(".linguetta", "Mappa");
 await pausa(2200);
 await clicca(".react-flow__node", "L'ingresso");
 await pausa(900);
 await scatta("mappa");
 
 // 5 · Mondo → Oggetti
-await clicca(".seg", "Oggetti");
+await clicca(".linguetta", "Oggetti");
 await pausa(1500);
-await clicca(".objed-row", "La torcia");
+await clicca(".elenco-voce", "La torcia");
 await pausa(900);
 await scatta("oggetti");
 
 // 6 · Personaggi → Personaggi, poi Dialoghi
-await clicca(".rail-item", "Personaggi");
+await clicca(".sezione", "Personaggi");
 await pausa(1800);
-await clicca(".objed-row", "Il notaio");
+await clicca(".elenco-voce", "Il notaio");
 await pausa(900);
 await scatta("personaggi");
-await clicca(".seg", "Dialoghi");
+await clicca(".linguetta", "Dialoghi");
 await pausa(1800);
 await scatta("dialoghi");
 
 // 7 · Regole → Regole ed eventi, poi Parole e comandi
-await clicca(".rail-item", "Regole");
+await clicca(".sezione", "Regole");
 await pausa(1800);
 await scatta("regole");
-await clicca(".seg", "Parole e comandi");
+await clicca(".linguetta", "Parole e comandi");
 await pausa(1500);
 await scatta("parole");
 
 // 8 · Prova: la partita coi pulsanti-verbo
-await clicca(".rail-item", "Prova");
+await clicca(".sezione", "Prova");
 await pausa(800);
 await clicca(".btn-prova", "Prova la storia");
 await pausa(3000);

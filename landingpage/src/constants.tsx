@@ -42,7 +42,9 @@ export const SITE_URL = "https://favella.eu";
 //   interne senza nuova scheda in Btn (StudioPage), download diretti di Favella Studio 1.1.3
 //   e distinzione netta tra motore CLI e IDE desktop su /download, link e note allineati.
 // · 2.8.2 = motore 1.4.3: tre difetti chiusi dopo una verifica completa del motore.
-export const SITE_VERSION = "2.8.2";
+// · 2.8.3 = Favella Studio 1.2.0 (revisione completa e ridisegno «Scrittoio»): pagina
+//   /studio, schermate rifatte, notizia.
+export const SITE_VERSION = "2.8.3";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -66,7 +68,7 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.1.3";
+export const STUDIO_VERSION = "1.2.0";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -186,8 +188,8 @@ export const NEWS: NewsItem[] = [
     tag: "Studio",
     date: "Ottobre 2026",
     emphasis: "primary",
-    title: "Favella Studio 1.1.3: auto-updater e nuovi progetti",
-    body: "L'ambiente di scrittura visuale per FAVELLA 1 si arricchisce con la versione 1.1.3: aggiornamento automatico integrato direttamente da GitHub Releases con download e avanzamento a video, template di partenza (stanza e giocatore pronti) per abilitare subito tutti i pannelli visivi anche su progetti nuovi, e ripristino dell'apertura completa a cartella per le storie a più file.",
+    title: "Favella Studio 1.2: rivisto da cima a fondo, e ridisegnato per leggere bene",
+    body: "Una revisione completa dell'ambiente di scrittura, riga per riga. Corregge i difetti trovati (il più grave lasciava la finestra vuota aprendo certe regole) e ridisegna l'interfaccia per chi ci vede poco: tema notte o carta, contrasto alto per entrambi, ogni testo misurato ad almeno 4,5:1, tutto raggiungibile da tastiera, finestre e racconto della partita letti dai lettori di schermo. Le modifiche fatte dai pannelli si annullano; «Apri una storia» è tornato; l'aggiornamento automatico chiede il permesso e controlla l'impronta del file prima di installarlo. Dentro c'è il motore FAVELLA 1.4.3.",
     cta: { label: "Scopri Favella Studio", href: "/studio" },
   },
   {

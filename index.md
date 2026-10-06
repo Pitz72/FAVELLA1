@@ -75,7 +75,7 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-10-06 (motore 1.4.3).
 
 | Percorso | Git | Contenuto |
 |---|---|---|
-| `studio/` | tracciato | **Favella Studio** v1.1.3, IDE desktop (Electron + React + sidecar Python). Ambiente di scrittura visuale per FAVELLA 1 (Windows, Linux; macOS da sorgente). Licenza MIT. Fuori dal repo solo `node_modules/`, `out/`, `release/` |
+| `studio/` | tracciato | **Favella Studio** v1.2.0, IDE desktop (Electron + React + sidecar Python). Ambiente di scrittura visuale per FAVELLA 1 (Windows, Linux; macOS da sorgente). Licenza MIT. Fuori dal repo solo `node_modules/`, `out/`, `release/` |
 | `landingpage/` | tracciato (master grafici compresi) | Sito **favella.eu** (React/Vite + pre-rendering). Dal 2026-08-10 vive qui: non è più un repo a sé. I master grafici (`landingpage/immagini/`, ~51 MB) restano locali, come `branding/marchi/`; il sito usa le WebP in `landingpage/public/covers/`. Deploy: `npm run deploy` (FTPS, credenziali fuori dal repo) |
 | `newdesign/` | gitignored | Handoff redesign della landing (zip + estratto), materiale di lavorazione per `landingpage/` |
 | `presentazione/` | gitignored | Pitch deck Marp (sorgente, tema, `output/`): materiale di outreach **interno**, come `dove-presentare-favella.md` |

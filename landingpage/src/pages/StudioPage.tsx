@@ -38,7 +38,7 @@ const SCHERMATE = [
     alt: "La mappa delle stanze, con la scheda delle uscite della stanza selezionata",
     titolo: "Le stanze diventano una mappa",
     testo:
-      "Trascini da una stanza all'altra per collegarle. Un clic su una freccia cambia o toglie la connessione; un clic su una stanza apre le sue uscite, senza lasciare la mappa.",
+      "Trascini da una stanza all'altra per collegarle; la direzione è scritta accanto alla stanza da cui la prendi. Un clic su un collegamento lo cambia o lo toglie; un clic su una stanza apre le sue uscite, senza lasciare la mappa.",
   },
   {
     id: "oggetti",
@@ -97,12 +97,12 @@ const SCHERMATE = [
 
 // Che cosa si può fare dai pannelli, oltre al testo.
 const NOVITA = [
-  ["Aggiornamenti automatici", "Favella Studio controlla e scarica le nuove versioni in background da GitHub Releases, con avanzamento e installazione guidata."],
-  ["Template nuovo progetto", "Ogni nuovo progetto parte con stanza iniziale e giocatore già pronti, così tutti i pannelli visuali sono subito attivi."],
-  ["Personaggi da zero", "Nome, stanza e descrizione in un gesto; poi lo sposti, lo rinomini, scrivi il suo dialogo."],
-  ["Rinomina, elimina", "Il nome cambia in tutte le frasi che lo citano, anche negli altri file. Prima di eliminare, vedi che cosa se ne va."],
-  ["Uscite dalla mappa", "Cambi direzione o destinazione con un clic: dalla stanza o dalla mappa, è lo stesso editor."],
-  ["Storie a più file", "Un file principale e i moduli che include: li crei, li includi, li togli. Provare e riordinare lavorano sulla storia intera."],
+  ["Notte, carta, contrasto alto", "Tre modi di leggere, che valgono anche per il testo e per la mappa: un tema scuro, uno chiaro, e il contrasto alto per tutti e due. Ogni testo sta ad almeno 4,5:1 sul suo fondo."],
+  ["Ogni modifica si annulla", "Quello che fai dai pannelli si disfa con «Annulla» o con Ctrl+Z, anche nei file che non hai aperto. Dopo un'eliminazione, l'avviso ha il suo «Annulla»."],
+  ["Tutto da tastiera", "Sezioni, elenchi, schede, menu e finestre si usano con le frecce, Invio ed Esc. Il racconto della partita lo leggono i lettori di schermo."],
+  ["Aggiornamenti col tuo permesso", "Studio chiede prima di collegarsi a internet. Una versione nuova si installa solo se la sua impronta coincide con quella pubblicata, e solo dopo averti chiesto dei file non salvati."],
+  ["Una storia o una cartella", "Ctrl+O apre un file .fav, Ctrl+Maiusc+O una cartella; se nella cartella c'è una storia sola, si apre da sé. Il principale e i moduli che include li crei, li includi, li togli."],
+  ["Una mappa che si legge", "Ogni collegamento ha la direzione scritta accanto alla stanza da cui la prendi; le uscite a senso unico sono tratteggiate, e le posizioni delle stanze si ricordano."],
 ] as const;
 
 const SEZIONI = [
@@ -220,10 +220,10 @@ const StudioPage = () => {
             tone="amber"
             title={
               <>
-                Tutto si crea e si cambia <Ink>dai pannelli.</Ink>
+                Rivisto da cima a fondo, <Ink>per leggere bene.</Ink>
               </>
             }
-            lead="Stanze, oggetti, personaggi, uscite, regole, dialoghi: ogni cosa si aggiunge, si modifica, si rinomina e si elimina senza passare dal testo. E il testo resta lì, sempre uguale a ciò che fai."
+            lead="Una revisione completa, riga per riga, e un'interfaccia ridisegnata per chi ci vede poco. Stanze, oggetti, personaggi, uscite, regole e dialoghi si creano e si cambiano dai pannelli, e il testo resta sempre uguale a ciò che fai."
           />
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {NOVITA.map(([t, d], i) => (
@@ -269,7 +269,7 @@ const StudioPage = () => {
             ],
             [
               "Pensato per leggere bene",
-              "Grandezza regolabile dall'80% al 200% (Ctrl + / − / 0), contrasti alti, bersagli grandi, focus sempre visibile, tutto raggiungibile da tastiera. I font sono inclusi: funziona anche senza rete.",
+              "Grandezza regolabile dall'80% al 200% (Ctrl + / − / 0), tema notte o carta, contrasto alto, bersagli grandi, fuoco sempre visibile, tutto raggiungibile da tastiera. I font sono inclusi: funziona anche senza rete.",
             ],
           ].map(([t, d], i) => (
             <Reveal key={t} delay={i * 100}>

@@ -11,7 +11,7 @@
 > ### 🏁 Progetto concluso
 >
 > **FAVELLA 1 è finito.** La versione **1.4.3** è la definitiva e **non verrà più modificata**:
-> linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.1.3** è
+> linguaggio, motore, manuale (terza edizione) e sito restano come sono. **Favella Studio 1.2.0** è
 > la sua casa di scrittura. Il repository resta aperto, con licenza MIT, come **riferimento** per
 > chi voglia imparare, riprendere il lavoro o portarlo altrove. Le storie scritte oggi funzioneranno
 > uguali fra dieci anni.
@@ -344,14 +344,15 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
 ## ✦ Favella Studio — l'ambiente di scrittura
 
-In [`studio/`](studio/) c'è **Favella Studio 1.1.3**: l'ambiente di scrittura visuale per FAVELLA.
+In [`studio/`](studio/) c'è **Favella Studio 1.2.0**: l'ambiente di scrittura visuale per FAVELLA.
 Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
 oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
 comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra di gioco a parte per
-provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro l'app: non serve
-installarlo.
+provare la storia come la vedrebbe chi la riceve. Il motore Python (1.4.3) è dentro l'app: non
+serve installarlo. Si legge in tema notte o carta, anche a contrasto alto, e si usa tutto da
+tastiera.
 
-- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.1.3).
+- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.0).
 - **macOS**: si costruisce in cinque minuti sul proprio Mac, con un comando: [`studio/BUILD-MACOS.md`](studio/BUILD-MACOS.md).
 - Presentazione e schermate: [favella.eu/studio](https://www.favella.eu/studio). Licenza MIT.
 

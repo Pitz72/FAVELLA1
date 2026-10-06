@@ -92,7 +92,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/studio": {
     title: "Favella Studio — FAVELLA 1",
     description:
-      "Favella Studio 1.1.3: l'ambiente di scrittura visuale per FAVELLA 1. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
+      "Favella Studio 1.2.0: l'ambiente di scrittura visuale per FAVELLA 1. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, con tema notte o carta e contrasto alto, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
     og: "/og/studio.png",
     type: "website",
   },
