@@ -46,3 +46,20 @@ d'esempio**.
 A ogni versione nuova di Studio: aggiornare `STUDIO` (e se serve `MOTORE`) in
 `lib/guida.typ`, rifare schermate e PDF, e controllare che i nomi dei pulsanti citati nel
 testo siano ancora quelli.
+
+## L'edizione cartacea (Amazon KDP)
+
+Dalla stessa sorgente esce anche l'interno per la stampa, nello stesso formato del
+Manuale di Programmazione (6,69×9,61″, colore standard, carta bianca): `--input kdp=1`
+toglie la copertina, passa al trim KDP con margini e gutter del manuale e completa le
+pagine fino a un multiplo di 4 (oggi 56). La copertina completa (retro, dorso, fronte) è
+`copertina-kdp.typ`; il dorso si calcola sul numero di pagine (`pagine`, 56 × 0,002252″).
+
+```powershell
+pwsh studio/guida/build-kdp.ps1        # scrive in Documents\KDP\FavellaStudio, FUORI dal repo
+```
+
+Lo script si ferma se Typst avvisa che l'impaginazione non converge. Se cambia il numero
+di pagine dell'interno, aggiorna `pagine` in `copertina-kdp.typ`. Nella stampa le
+schermate della finestra intera sono piccole (il testo dell'app si legge a fatica): i
+pannelli e le finestre, ritagliati, si leggono bene.

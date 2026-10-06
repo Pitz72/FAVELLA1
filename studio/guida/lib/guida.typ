@@ -11,6 +11,11 @@
 #let MOTORE = "1.4.4"
 #let EDIZIONE = "Prima edizione · ottobre 2026"
 
+// Due tirature dalla stessa sorgente: il PDF per lo schermo (A4, default) e l'interno per la
+// stampa su Amazon KDP (`--input kdp=1`: 6,69×9,61″ come il Manuale di Programmazione).
+#let per-kdp = "kdp" in sys.inputs
+#let se-stampa(stampa, digitale) = if per-kdp { stampa } else { digitale }
+
 // --- PALETTE (identica a documentazione/manuale/lib/manuale-template.typ) --------
 #let c = (
   void: rgb("#03060d"),
@@ -87,7 +92,7 @@
   inset: (x: 13pt, y: 11pt),
   stroke: 0.6pt + rgb("#1e3a52"),
 )[
-  #set text(font: font-mono, size: 9.5pt, fill: rgb("#e8f0f8"))
+  #set text(font: font-mono, size: if per-kdp { 8.4pt } else { 9.5pt }, fill: rgb("#e8f0f8"))
   #set par(justify: false, leading: 0.75em)
   #corpo
 ]
@@ -121,7 +126,7 @@
 )[
   #text(font: font-display, size: 8.5pt, weight: 700, fill: accento, tracking: 1.2pt)[#upper(titolo)]
   #v(-0.25em)
-  #set text(size: 10.5pt)
+  #set text(size: if per-kdp { 9.5pt } else { 10.5pt })
   #set par(justify: false)
   #corpo
 ]
@@ -168,10 +173,11 @@
     let s = w / 1440
     box(width: w, height: 900 * s, stroke: 0.7pt + rgb("#c9d6e2"), radius: 5pt, clip: true)[
       #image("../immagini/" + file, width: w, alt: alt)
+      #let r = if per-kdp { 7pt } else { 10pt }   // in stampa la finestra è più piccola: numeri più piccoli
       #for (i, p) in punti.enumerate() {
-        place(top + left, dx: p.at(0) * s - 10pt, dy: p.at(1) * s - 10pt)[
-          #circle(radius: 10pt, fill: c.amber, stroke: 1.8pt + white)[
-            #align(center + horizon)[#text(font: font-display, size: 10pt, weight: 800, fill: white)[#(i + 1)]]
+        place(top + left, dx: p.at(0) * s - r, dy: p.at(1) * s - r)[
+          #circle(radius: r, fill: c.amber, stroke: (if per-kdp { 1.3pt } else { 1.8pt }) + white)[
+            #align(center + horizon)[#text(font: font-display, size: if per-kdp { 7.2pt } else { 10pt }, weight: 800, fill: white)[#(i + 1)]]
           ]
         ]
       }
@@ -277,7 +283,7 @@
     #v(3.5mm)
     #text(fill: c.ink, weight: 600)[© 2026 Simone Pizzi — Runtime Edizioni]
     #v(4.5mm)
-    #block(width: 78%)[Favella Studio e FAVELLA 1 sono open source, con licenza MIT. Questa guida si distribuisce gratuitamente insieme all'app e sul sito.]
+    #block(width: 78%)[#se-stampa[Favella Studio e FAVELLA 1 sono open source, con licenza MIT: l'app e questa guida in PDF si distribuiscono gratuitamente, insieme e sul sito. Questa edizione a stampa sostiene lo sviluppo del progetto.][Favella Studio e FAVELLA 1 sono open source, con licenza MIT. Questa guida si distribuisce gratuitamente insieme all'app e sul sito.]]
     #v(4.5mm)
     #block(width: 78%)[Sito ufficiale: #link("https://www.favella.eu/studio")[www.favella.eu/studio]. Il codice è su #link("https://github.com/Pitz72/FAVELLA1")[github.com/Pitz72/FAVELLA1], nella cartella `studio/`.]
     #v(4.5mm)
@@ -296,9 +302,10 @@
     description: "La guida all'uso di Favella Studio " + STUDIO + ", l'ambiente di scrittura per FAVELLA 1.",
     keywords: ("Favella Studio", "FAVELLA 1", "narrativa interattiva", "avventure testuali", "guida"),
   )
+  // A4 per lo schermo; per la stampa il trim KDP 6,69×9,61″ del Manuale (gutter interno 23 mm).
+  set page(paper: "a4", margin: (top: 25mm, bottom: 22mm, x: 21mm)) if not per-kdp
+  set page(width: 6.69in, height: 9.61in, margin: (top: 24mm, bottom: 22mm, inside: 23mm, outside: 18mm)) if per-kdp
   set page(
-    paper: "a4",
-    margin: (top: 25mm, bottom: 22mm, x: 21mm),
     header: context {
       let pg = here().page()
       let h1 = query(heading.where(level: 1))
@@ -319,8 +326,8 @@
       }
     },
   )
-  set text(font: font-body, size: 11.2pt, fill: c.ink, lang: "it", hyphenate: true)
-  set par(justify: true, leading: 0.78em, spacing: 1.05em)
+  set text(font: font-body, size: if per-kdp { 10.3pt } else { 11.2pt }, fill: c.ink, lang: "it", hyphenate: true)
+  set par(justify: true, leading: if per-kdp { 0.72em } else { 0.78em }, spacing: if per-kdp { 0.95em } else { 1.05em })
   set heading(numbering: none)
   set list(indent: 4pt, body-indent: 6pt, marker: text(fill: c.cyan-dark)[•])
   set enum(indent: 4pt)
@@ -331,7 +338,10 @@
     [#text(weight: 700, fill: c.cyan-dark)[#it.supplement #context it.counter.display(it.numbering)] — #it.body]
   }
   show heading.where(level: 1): it => {
-    pagebreak(weak: true)
+    // In stampa solo il primo capitolo apre su pagina dispari, come nel Manuale.
+    context {
+      if per-kdp and _capnum.get().first() == 0 { pagebreak(to: "odd", weak: true) } else { pagebreak(weak: true) }
+    }
     _capnum.step()
     block(above: 0pt, below: 1em)[
       #context text(font: font-display, size: 11pt, weight: 700, fill: c.cyan-dark, tracking: 2pt)[
@@ -350,6 +360,8 @@
   show heading.where(level: 3): it => block(above: 1.2em, below: 0.45em, sticky: true)[
     #text(font: font-display, size: 12pt, weight: 600, fill: c.cyan-dark)[#it.body]
   ]
+  // In stampa le colonne strette (figura + testo) non vanno giustificate: aprono buchi fra le parole.
+  show grid: set par(justify: false) if per-kdp
   show raw.where(block: false): it => fav(it.text)
   show strong: set text(fill: c.surface)
   show link: set text(fill: c.cyan-dark)

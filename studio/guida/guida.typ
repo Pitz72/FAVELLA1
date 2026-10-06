@@ -7,11 +7,13 @@
 
 #show: conf
 
-#copertina()
+// Nell'interno per la stampa la copertina è un file a sé (copertina-kdp.typ).
+#if not per-kdp { copertina() }
 #frontespizio()
 #colophon()
 
 // ---- INDICE -------------------------------------------------------------------
+#if per-kdp { pagebreak(to: "odd", weak: true) }
 #page(header: none)[
   #text(font: font-display, size: 24pt, weight: 800, fill: c.ink)[Indice]
   #v(2mm)
@@ -39,3 +41,16 @@
 #include "capitoli/12-sicurezza.typ"
 #include "capitoli/13-leggibilita.typ"
 #include "capitoli/14-scorciatoie.typ"
+
+// ---- PADDING A MULTIPLO DI 4 (obbligo brossura KDP) --------------------------------
+// Solo per l'interno di stampa: pagine vacat in coda, senza testatina né numero.
+#if per-kdp {
+  pagebreak(weak: true)
+  context {
+    let contenuto = here().page() - 1
+    let pad = calc.rem(4 - calc.rem(contenuto, 4), 4)
+    for _ in range(pad) {
+      page(header: none, footer: none)[#hide[·]]
+    }
+  }
+}

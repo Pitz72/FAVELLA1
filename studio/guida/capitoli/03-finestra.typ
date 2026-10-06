@@ -19,7 +19,7 @@ Quando non c'è niente di aperto, Studio ti chiede da dove cominciare.
   dentro c'è una storia sola, si apre da sé; se ce n'è più d'una, Studio te le mostra e
   scegli tu.
 - #ui[Prova con la storia d'esempio] apre «La Casa di Via Stradivari» (capitolo 1).
-- #ui[Leggi la guida] apre questo PDF.
+- #ui[Leggi la guida] apre #se-stampa[la guida in PDF, la stessa che hai in mano][questo PDF].
 
 Una storia nuova non parte vuota: ha già una stanza e il giocatore dentro, così compila
 subito e tutti i pannelli hanno da che cosa partire.
