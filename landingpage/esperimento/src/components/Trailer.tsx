@@ -198,7 +198,10 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     suono.current = new ColonnaSonora(branoIntro);
     // Sul desktop l'audio parte da solo (Electron permette l'autoplay): il
     // trailer è il primo schermo del gioco, non una pagina web.
-    if (inDesktop()) { suono.current.attiva(); setAudio(true); }
+    // Nel browser il gesto che ha chiuso l'avviso (clic o Invio) è passato PRIMA che il trailer
+    // esistesse: se la pagina ha già avuto un gesto, il browser lascia partire la musica anche ora.
+    const giaSbloccato = !!(navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive;
+    if (inDesktop() || giaSbloccato) { suono.current.attiva(); setAudio(true); }
     return () => { suono.current?.chiudi(); suono.current = null; };
   }, []);
 

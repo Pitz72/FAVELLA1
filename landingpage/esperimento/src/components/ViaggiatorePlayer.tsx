@@ -28,7 +28,7 @@ import Conferma from "../gioco/Conferma";
 import PannelloScorta from "../gioco/PannelloScorta";
 import { bersagliDelUso, chipDiContesto, senzaArticolo, serveAnteprima, valutaConferma, vociDelMenu, type Conferma as DatiConferma, type Cosa } from "../gioco/azioni";
 import { componi, dataLeggibile, nomePosto, scrivi, type Posto, type Riassunto, type Salvataggio } from "../lib/salvataggi";
-import { annota } from "../lib/desktop";
+import { annota, inDesktop, esciDalGioco } from "../lib/desktop";
 import { analizza, spezza, VOCI, GESTI, type Blocco } from "../gioco/testo";
 import "../gioco/gioco.css";
 
@@ -207,11 +207,14 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mondo.roomId, mondo.dialog, fase, finita]);
 
-  const esci = () => {
+  // lasciare la partita (verso l'intro o fuori dal gioco): se c'è strada non salvata, prima il posto automatico
+  const lascia = (dove: () => void) => {
     if (fase === "gioca" && !finita && !mondo.dialog && nonSalvati > 0) {
-      salvaIn("auto").catch(() => {}).finally(onExit);
-    } else onExit();
+      salvaIn("auto").catch(() => {}).finally(dove);
+    } else dove();
   };
+  const esci = () => lascia(onExit);
+  const chiudiGioco = () => lascia(esciDalGioco);
 
   /** Riprende una partita salvata: il motore rigioca la sequenza e verifica l'impronta. */
   function riprendi(dati: Salvataggio) {
@@ -425,6 +428,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
             <button className="vg-bottone vg-piccolo" onClick={() => setTaccuino("carica")} title="Carica una partita (F9)">carica</button>
             <button className="vg-bottone vg-piccolo" onClick={() => setGuida(true)}>? come si gioca</button>
             <button className="vg-bottone vg-piccolo" onClick={esci}>← intro</button>
+            {inDesktop() && <button className="vg-bottone vg-piccolo" onClick={chiudiGioco} title="Chiude il gioco (salva il posto automatico)">✕ esci</button>}
           </div>
         </div>
         <div className="vg-luogo">
@@ -452,6 +456,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
                     <button className="vg-bottone vg-pieno" onClick={ricomincia}>↺ riparti dalla stazione</button>
                     <button className="vg-bottone" onClick={() => setTaccuino("carica")}>carica una partita</button>
                     <button className="vg-bottone" onClick={onExit}>← intro</button>
+                    {inDesktop() && <button className="vg-bottone" onClick={esciDalGioco}>✕ esci</button>}
                   </div>
                 </section>
               )}

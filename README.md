@@ -79,7 +79,7 @@ stati calcolati, `e basta`, `per la prima volta`, `e poi dire`, gli arrivi…) e
 riepilogo; la semantica precisa è nella [spec](documentazione/grammatica-1.5.0.md), §28.
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
-- **Edizione cartacea**: disponibile su Amazon (Seconda edizione · 2026); la **Terza edizione** (96 pagine a colori, allineata alla 1.4.4, 12,99 €) è stata inviata ad Amazon il 6 ottobre 2026 ed è in uscita a giorni. Le frasi della 1.5.0 sono nel PDF; tutto ciò che il libro insegna vale anche nella 1.5.0
+- **Edizione cartacea**: la **Terza edizione** (96 pagine a colori, allineata alla 1.4.4, 13,51 €) è [su Amazon.it](https://www.amazon.it/dp/B0H6SKM9JR), l'ultima su carta. Le frasi della 1.5.0 sono nel PDF; tutto ciò che il libro insegna vale anche nella 1.5.0
 
 ---
 

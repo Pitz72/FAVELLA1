@@ -1,7 +1,7 @@
 // «Il manuale è un libro vero» — l'edizione cartacea a colori su Amazon.it.
 // Design 2026: un volume in 3D che segue il puntatore, su un palcoscenico di luce
 // ambra e ciano. Usato in Home, Novità e Guida rapida (variante compatta).
-import { AMAZON_PAPERBACK_URL, MANUAL_PDF_URL, MANUAL_PRICE, MANUAL_PDF_PAGES, PAPERBACK } from "../constants";
+import { AMAZON_PAPERBACK_URL, MANUAL_PDF_URL, MANUAL_PRICE, MANUAL_PDF_PAGES, PAPERBACK, VERSION } from "../constants";
 import Libro3D from "../ui/Libro3D";
 import { Btn, Eyebrow, GlyphField, Ink, Reveal } from "../ui/primitives";
 
@@ -19,7 +19,13 @@ const Nota = () =>
       {PAPERBACK.next.price}), è stata inviata ad Amazon e sarà in vendita fra pochi giorni, dopo la verifica: il PDF
       gratuito è già quello nuovo.
     </p>
-  ) : null;
+  ) : (
+    <p className="mt-6 max-w-[520px] border-l-2 border-favella-amber/50 pl-4 font-serif text-[14.5px] leading-[1.6] text-favella-text-secondary">
+      In vendita c'è la <strong className="font-semibold text-favella-text-primary">{PAPERBACK.edition.toLowerCase()}</strong> (FAVELLA{" "}
+      {PAPERBACK.version}), l'ultima su carta: quello che insegna vale anche nella {VERSION}, che aggiunge senza togliere. Le
+      frasi nuove sono nel PDF gratuito ({MANUAL_PDF_PAGES} pagine), che resta aggiornato.
+    </p>
+  );
 
 const ManualBanner = ({ className = "", variant = "stage" }: Props) => {
   if (variant === "compact") {

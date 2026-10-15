@@ -145,14 +145,14 @@ Viva e morta sono opposte.
     file: "verbi.fav",
     titolo: "Verbi d'azione comuni",
     blurb:
-      "Una scorta di verbi personalizzati molto usati, così non scrivi ogni volta «\"accendi\" è un comando.». Dopo l'inclusione basta scrivere le regole («Invece di accendi la lampada se …: …»). Include anche verbi senza oggetto («aspetta», «salta») per le regole globali.",
-    esempi: ["accendi", "spingi", "bevi", "bussa", "aspetta"],
+      "I verbi d'azione che il motore non conosce da sé («brucia», «scava», «bussa», «suona»…), così non scrivi ogni volta «\"brucia\" è un comando.». Dopo l'inclusione basta scrivere le regole («Invece di brucia la lettera se …: …»). Include anche verbi senza oggetto («salta», «urla») per le regole globali. Accendi, spegni, bevi, tocca, aspetta e gli altri verbi di libreria il motore li conosce già dalla 1.3.0: non vanno dichiarati, o perderebbero il loro effetto.",
+    esempi: ["brucia", "scava", "bussa", "suona", "salta"],
     codice: `# verbi.fav — Libreria standard di FAVELLA 1
 # Modulo «Verbi d'azione comuni»
 #
 # Dichiara una scorta di verbi personalizzati molto usati nelle avventure, così
-# non devi scrivere ogni volta '"accendi" è un comando.'. Dopo l'inclusione,
-# basta scrivere le regole: 'Invece di accendi la lampada se …: …'.
+# non devi scrivere ogni volta '"brucia" è un comando.'. Dopo l'inclusione,
+# basta scrivere le regole: 'Invece di brucia la lettera se …: …'.
 #
 # Uso:  Includi "verbi.fav".
 #       (in un'installazione pip:  favella1 libreria copia verbi)
@@ -160,32 +160,22 @@ Viva e morta sono opposte.
 # I verbi dichiarati ma senza una regola non danno errore: semplicemente non
 # faranno nulla finché non scrivi la regola corrispondente. Puoi includere tutto
 # o tenere solo le righe che ti servono.
+#
+# Dalla 1.3.0 il motore conosce da sé accendi, spegni, bevi, aspetta, tocca,
+# spingi, tira, premi, gira, rompi, colpisci, indossa, togli, dai, mostra,
+# annusa e ascolta (vedi il manuale): qui restano solo i verbi che il motore
+# non ha. Dichiarare di nuovo uno di quei verbi lo renderebbe tuo, e perderebbe
+# il comportamento di libreria (accendi non accenderebbe più la lampada).
 
 # --- LUCE E FUOCO ------------------------------------------------------------
-"accendi" è un comando.
-"spegni" è un comando.
 "brucia" è un comando.
 
 # --- FORZA FISICA ------------------------------------------------------------
-"spingi" è un comando.
-"tira" è un comando.
-"premi" è un comando.
-"gira" è un comando.
-"rompi" è un comando.
-"colpisci" è un comando.
 "scava" è un comando.
 
 # --- CONTATTO E SENSI --------------------------------------------------------
-"tocca" è un comando.
 "bussa" è un comando.
-"annusa" è un comando.
-"ascolta" è un comando.
 "assaggia" è un comando.
-
-# --- OGGETTI INDOSSABILI / CONSUMABILI --------------------------------------
-"indossa" è un comando.
-"togli" è un comando.
-"bevi" è un comando.
 
 # --- SUONO E VOCE ------------------------------------------------------------
 "suona" è un comando.
@@ -193,9 +183,8 @@ Viva e morta sono opposte.
 "chiama" è un comando.
 
 # --- AZIONI SENZA OGGETTO (intransitive) ------------------------------------
-# Si digitano da sole ('aspetta', 'salta') e si gestiscono con una regola
-# globale: 'Invece di aspetta: dire "…".'.
-"aspetta" è un comando senza oggetto.
+# Si digitano da sole ('salta', 'urla') e si gestiscono con una regola
+# globale: 'Invece di salta: dire "…".'.
 "salta" è un comando senza oggetto.
 "urla" è un comando senza oggetto.
 `,

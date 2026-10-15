@@ -56,7 +56,9 @@ export const SITE_URL = "https://favella.eu";
 //   nelle cassette, download e numeri allineati.
 // · 2.9.1 = Favella Studio 1.2.3: dentro c'è il motore 1.5.0, e i pannelli non perdono le frasi
 //   nuove; guida a 46 pagine.
-export const SITE_VERSION = "2.9.1";
+// · 2.9.2 = il manuale cartaceo, terza edizione (96 pagine, FAVELLA 1.4.4), è su Amazon: l'ultima
+//   edizione su carta. Verifica completa del sito contro lo stato del progetto.
+export const SITE_VERSION = "2.9.2";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -75,7 +77,8 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: il gioco si aggiorna (1.12.0, la versione definitiva, col motore FAVELLA 1.4.4).
+// Sempre l'ultima release: oggi la 1.13.0 (desktop; la versione web su GitHub Pages è alla 1.13.2). La storia è
+// quella della 1.12.0, la definitiva, col motore FAVELLA 1.4.4; le 1.13 ritoccano solo l'app.
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
@@ -107,16 +110,16 @@ export const MANUAL_PRICE = "13,51 €";
 // Il PDF gratuito (documentazione/manuale/manuale.pdf) è sempre l'ultima edizione.
 export const MANUAL_PDF_PAGES = 102;
 export const MANUAL_PDF_EDITION = "Terza edizione";
-// Ciò che oggi si compra su Amazon.it (verificato sulla scheda del libro: 84 pagine,
-// 13,51 €, pubblicato il 27 giugno 2026). La terza edizione è stata inviata a KDP il
-// 6 ottobre 2026 (in verifica). Appena Amazon la pubblica: far salire qui
-// edizione/versione/pagine, mettere MANUAL_PRICE a quello nuovo, togliere `next`, e
-// controllare che AMAZON_PAPERBACK_URL punti ancora alla scheda giusta.
+// Ciò che oggi si compra su Amazon.it, verificato sulla scheda del libro il 15 ottobre 2026: la
+// terza edizione (96 pagine, FAVELLA 1.4.4), stessa scheda e stesso ASIN della seconda. Il prezzo
+// è 13,51 €: i 12,99 € impostati su KDP più l'IVA dei libri (4%). È l'ultima edizione su carta:
+// Simone non ne farà altre, salvo cambiamenti davvero radicali. Il PDF gratuito resta aggiornato
+// a ogni versione (oggi 1.5.0, MANUAL_PDF_PAGES); `next` serve solo se un'edizione è in uscita.
 export const PAPERBACK = {
-  edition: "Seconda edizione",
-  version: "1.0.0",
-  pages: 84,
-  next: { edition: "Terza edizione", version: "1.4.4", pages: 96, price: "12,99 €" } as { edition: string; version: string; pages: number; price: string } | null,
+  edition: "Terza edizione",
+  version: "1.4.4",
+  pages: 96,
+  next: null as { edition: string; version: string; pages: number; price: string } | null,
 };
 
 export const AUTHOR_NAME = "Simone Pizzi";
@@ -202,6 +205,14 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    tag: "Manuale",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Il manuale cartaceo, terza edizione, è su Amazon",
+    body: "La terza edizione del Manuale di Programmazione è in vendita su Amazon.it, sulla stessa scheda della seconda: 96 pagine a colori, copertina flessibile, 13,51 €, allineata a FAVELLA 1.4.4 (salvataggi, collaudo che gioca, sinonimi d'autore, pulsanti-verbo). Prima della stampa il manuale è stato riletto contro il motore: ogni esempio di codice e ogni comportamento descritto è stato provato. È l'ultima edizione su carta: tutto ciò che insegna vale anche nella 1.5.0, che aggiunge senza togliere, e le frasi nuove stanno nel PDF gratuito, che resta aggiornato a ogni versione (oggi 102 pagine).",
+    cta: { label: `Acquista su Amazon (${MANUAL_PRICE})`, href: AMAZON_PAPERBACK_URL },
+  },
+  {
     tag: "Studio",
     date: "Ottobre 2026",
     emphasis: "normal",
@@ -216,6 +227,14 @@ export const NEWS: NewsItem[] = [
     title: "FAVELLA 1.5.0: le lezioni del Relitto",
     body: "La 1.4.4 doveva essere l'ultima versione. Poi il remake de «Il Relitto Silente», il gioco più grande mai scritto in FAVELLA, ha mostrato che cosa costa ancora fatica a chi scrive una storia lunga, e la 1.5.0 lo raccoglie in una versione sola. Un divieto che vale per tutto si scrive una volta: «Prima di sintonizza qualcosa se la protezione è attiva: dire \"PROTEZIONE VITALE.\" e basta.». Uno stato si calcola da solo: «La protezione è attiva quando l'aria è meno di 30.». Le cose che succedono una volta sola dicono «per la prima volta»; un testo usato dieci volte ha un nome; una porta si apre «se la botola è aperta»; «Quando il giocatore entra nella stiva» scatta prima della descrizione; «e poi dire» racconta le cifre giuste; l'apostrofo curvo resta curvo. Per chi collauda c'è «favella1 trascrivi» e i percorsi con le attese. Tutto facoltativo: le storie scritte con la 1.4 girano identiche, provate comando per comando su undici storie ufficiali. Il manuale PDF è aggiornato (102 pagine); la terza edizione cartacea resta valida.",
     cta: { label: "Scarica FAVELLA 1.5.0", href: "/download" },
+  },
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Il Viaggiatore 1.13: un tasto per uscire, e la musica nel browser",
+    body: "Tre ritocchi all'app, la storia resta quella della 1.12.0. Nella versione desktop, in partita e nella schermata finale c'è il tasto «✕ esci», che chiude il gioco dopo aver salvato il posto automatico. Nel browser la musica del trailer non partiva, perché il clic che chiude l'avviso arrivava prima del trailer: ora parte da sola. E la versione web su GitHub Pages ha la sua anteprima quando la si condivide. Anche la prova qui sul sito è aggiornata.",
+    cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
   },
   {
     tag: "Il Viaggiatore",
@@ -240,14 +259,6 @@ export const NEWS: NewsItem[] = [
     title: "Favella Studio 1.2.2: una scritta più onesta, e la guida rivista",
     body: "Una correzione piccola. Nel pannello dei demoni, la scelta «appena la condizione diventa vera» diceva «(una volta)», ma il motore fa scattare il demone a ogni passaggio da falsa a vera: ora la scritta dice «(ogni volta che lo diventa)». Il comportamento non cambia, cambia ciò che l'app ne dice. Anche la guida all'uso è stata riletta contro l'app, riga per riga, e ritoccata in tre punti.",
     cta: { label: "Scopri Favella Studio", href: "/studio" },
-  },
-  {
-    tag: "Manuale",
-    date: "Ottobre 2026",
-    emphasis: "primary",
-    title: "Il manuale cartaceo, terza edizione, è in arrivo su Amazon",
-    body: "La terza edizione del Manuale di Programmazione è stata inviata ad Amazon e, dopo la verifica di rito, sarà in vendita fra pochi giorni: 96 pagine a colori, copertina flessibile, 12,99 €, allineata a FAVELLA 1.4.4 (salvataggi, collaudo che gioca, sinonimi d'autore, pulsanti-verbo). Prima di mandarla in stampa il manuale è stato riletto contro il motore: ogni esempio di codice e ogni comportamento descritto è stato provato sulla 1.4.4, e i pochi punti imprecisi sono stati corretti. Fino all'uscita, su Amazon resta in vendita la seconda edizione (1.0.0). Il PDF gratuito è già quello nuovo, e resta gratuito.",
-    cta: { label: "Scarica il manuale (PDF gratuito)", href: MANUAL_PDF_URL },
   },
   {
     tag: "Studio",
@@ -747,7 +758,7 @@ Una regola può cambiare il mondo aggiungendo \`e adesso …\`:
 Invece di usa la chiave su la porta: dire "Click!" e adesso la porta è aperta.
 \`\`\`
 
-Tra le conseguenze: spostare un oggetto (\`e adesso la chiave è in inventario\`), mutare uno stato o un contatore (\`e adesso aumenta il punteggio di 5\`), teletrasportare il giocatore (\`e adesso il giocatore è in la Sala del Trono\`) e chiudere la partita con un testo (\`e adesso vinci "Sei libero!"\`).
+Tra le conseguenze: spostare un oggetto (\`e adesso la chiave è in inventario\`), mutare uno stato o un contatore (\`e adesso aumenta il punteggio di 5\`), teletrasportare il giocatore (\`e adesso il giocatore è in la Sala del Trono\`; dalla 1.5 \`va in\` mostra sempre la stanza d'arrivo e \`si ritrova in\` mai) e chiudere la partita con un testo (\`e adesso vinci "Sei libero!"\`).
 
 ---
 
@@ -761,7 +772,7 @@ Ogni 1 turno: dire "La tensione cresce." e adesso aumenta la tensione.
 Quando la tensione è almeno 8: dire "Il portale ti risucchia." e adesso perdi.
 \`\`\`
 
-«Quando» scatta ogni volta che la condizione **diventa** vera: se torna falsa e poi di nuovo vera, scatta ancora. Per un evento che deve accadere una volta sola, guardalo con uno stato (\`… e la visita è nuova: … e adesso la visita è fatta.\`).
+«Quando» scatta ogni volta che la condizione **diventa** vera: se torna falsa e poi di nuovo vera, scatta ancora. Per un evento che deve accadere una volta sola in tutta la partita, dalla 1.5 basta aggiungere \`per la prima volta\`: \`Quando la tensione è almeno 8 per la prima volta: …\`.
 
 ---
 
@@ -774,6 +785,36 @@ L'Anziano al nodo "saluto" dice "Sei tu, finalmente.".
 Al nodo "saluto" l'opzione "Chi sei?" conduce al nodo "verità".
 Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 \`\`\`
+
+---
+
+## 7. Le frasi della 1.5
+
+La 1.5 aggiunge frasi per le storie lunghe. Sono tutte facoltative: le storie scritte prima girano identiche.
+
+\`\`\`favella
+Prima di sintonizza qualcosa se la protezione è attiva: dire "PROTEZIONE VITALE." e basta.
+La protezione è attiva quando l'aria è meno di 30.
+Invece di usa oppure accendi il faro per la prima volta: dire "Il faro si accende." e adesso il faro è acceso; altrimenti dire "È già acceso.".
+Invece di respira: dire "Respiri." e adesso diminuisci l'aria di 15 e poi dire "Aria: [aria].".
+La plancia collega giù a la cantina se la botola è aperta; altrimenti "La botola è chiusa.".
+Quando il giocatore entra nella stiva per la prima volta: dire "Fa freddo.".
+I ganci si chiamano anche "uncini", "rampini" e "arpioni".
+Il testo "allarme" è "Una voce: aria al [aria] per cento.".
+"esamina" non fa passare il tempo.
+La riga di stato è "Aria: [aria] · Turno [turno]".
+\`\`\`
+
+- **\`e basta\`** chiude una regola «Prima di» e ferma l'azione: un divieto che vale per tutto si scrive una volta sola.
+- **Stati calcolati**: \`… è attiva quando …\` dà allo stato il valore della prima condizione vera, da solo.
+- **\`oppure\`** fra i verbi fa una regola per più azioni; **\`per la prima volta\`** vale una volta, poi tocca all'\`altrimenti\`.
+- **\`e poi dire\`** parla dopo le conseguenze, quindi legge i valori nuovi.
+- Un'**uscita con \`se\`** c'è solo mentre la condizione è vera; con un testo dopo \`altrimenti\`, chi prova a passare lo legge.
+- **\`Quando il giocatore entra in …\`** scatta all'arrivo, prima della descrizione.
+- Un **testo con un nome** si richiama con \`[allarme]\` in qualunque altro testo.
+- **\`non fa passare il tempo\`** rende gratis i verbi che guardano senza toccare; la **riga di stato** compare in cima allo schermo (nel sito e nella pagina esportata).
+
+Il resto (\`segnala\`, l'IFID, \`I demoni guardano la fine del turno.\`) è nel manuale, con la spiegazione di ogni frase.
 
 ---
 

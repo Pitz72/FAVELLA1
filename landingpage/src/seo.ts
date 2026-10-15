@@ -57,14 +57,14 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/progetto": {
     title: "Il progetto — FAVELLA 1",
     description:
-      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 1180 test — al servizio della narrativa interattiva.",
+      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 1292 test — al servizio della narrativa interattiva.",
     og: "/og/progetto.png",
     type: "article",
   },
   "/aggiornamenti": {
     title: "Novità e roadmap — FAVELLA 1",
     description:
-      "Le ultime novità di FAVELLA 1, il changelog e la roadmap: dalla v1.0.0 (linguaggio completo) all'ecosistema con pacchetto pip, libreria di moduli e galleria di storie.",
+      "Le ultime novità di FAVELLA 1, il changelog e la roadmap: dalla v1.0.0 (linguaggio completo) alla 1.5.0, con l'ecosistema: pacchetto pip, libreria di moduli, galleria di storie, Favella Studio e il manuale anche su carta.",
     og: "/og/aggiornamenti.png",
     type: "website",
   },

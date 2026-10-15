@@ -6,7 +6,7 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ✅ **STATO AL 2026-10-15: motore 1.5.0, sito 2.9.0.**
+> ✅ **STATO AL 2026-10-15: motore 1.5.0, sito 2.9.2.**
 > I cinque moduli in `engine/` sono il motore **1.5.0**: il motore parla per
 > eventi e propone i pulsanti-verbo, e `src/lib/favellaRuntime.ts` li usa
 > (cassette-gioco con i pulsanti, `src/components/PulsantiVerbo.tsx`). Sono
@@ -16,7 +16,7 @@ progetto FAVELLA 1.
 > fallisce se queste copie non sono identiche ai sorgenti, un altro
 > (`test_elenchi_dei_moduli_del_motore_allineati`) se gli elenchi dei moduli di
 > sito, esperimento e validatore non coincidono. `scripts/valida_checkpoint.py`:
-> 53/53. `src/constants.tsx` punta alla release v1.5.0 (GitHub e PyPI). Dalla 1.5.0 le cassette aprono la partita con `apri_partita` (vedi `src/lib/favellaRuntime.ts`) e mostrano la riga di stato. `galleria/il-viaggiatore/` e `esperimento/` sono *Il Viaggiatore* 1.12.0.
+> 53/53. `src/constants.tsx` punta alla release v1.5.0 (GitHub e PyPI). Dalla 1.5.0 le cassette aprono la partita con `apri_partita` (vedi `src/lib/favellaRuntime.ts`) e mostrano la riga di stato. `galleria/il-viaggiatore/` è la storia di *Il Viaggiatore* 1.12.0 (invariata nelle 1.13), `esperimento/` l'app web alla 1.13.2 (allineata il 2026-10-15).
 > `galleria/il-viaggiatore/` richiede almeno la 1.1.0.
 
 > ⚠️ **Dal motore 1.0.1** il modulo di utilità si chiama `favella_utils` (prima
