@@ -8,6 +8,11 @@
 # ║  Nomi propri definitivi (audit anti-LLM svolto).                           ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
+# Titolo e autore: li stampa il motore quando apre la partita (terminale, galleria del
+# sito, Favella Studio). L'app ha la sua apertura e il nome sul titolo del trailer.
+Il titolo è "Il Viaggiatore".
+L'autore è "Simone Pizzi".
+
 # ============================================================================
 # STATO GLOBALE DEL VIAGGIATORE  [il corpo (sete/fame) e le scorte (acqua/cibo)]
 # ============================================================================
@@ -34,11 +39,13 @@ La generosità parte da 0.
 # riferisce in faccia (Rosaria, Ciro, Imma): l'interfaccia la scrive a lato dello schermo
 # solo allora, come una cosa che hai sentito, non come un contatore. Se ne aggiungi una,
 # aggiungi la sua riga in app/src/gioco/testo.ts (VOCI): lo verifica collaudo/testo.py.
-Lo stato della voce del sangue è uno stato.
+# Le legge solo l'interfaccia, mai una condizione: «(voluto)» lo dice al compilatore
+# (dal motore 1.5.0 avvisa degli stati che si scrivono e non si leggono).
+Lo stato della voce del sangue è uno stato (voluto).
 Lo stato della voce del sangue è ignota.
-Lo stato della voce della generosità è uno stato.
+Lo stato della voce della generosità è uno stato (voluto).
 Lo stato della voce della generosità è ignota.
-Lo stato della voce del bluff è uno stato.
+Lo stato della voce del bluff è uno stato (voluto).
 Lo stato della voce del bluff è ignota.
 
 # ============================================================================

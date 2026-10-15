@@ -1,48 +1,51 @@
 // ====================================================================
-//  I loghi all'avvio: Runtime, poi FAVELLA, poi il trailer.
+//  I loghi all'avvio: Runtime Multimedia, poi FAVELLA 1, poi l'avviso.
 // --------------------------------------------------------------------
-//  Per ogni schermata: 1 s di nero, 1 s di dissolvenza in entrata, 3 s pieni,
-//  1 s di dissolvenza in uscita; dopo l'ultima, 1 s di nero e il trailer.
-//  Un solo orologio (requestAnimationFrame) per tutto; le immagini si
-//  decodificano prima di partire, così la prima dissolvenza non scatta.
+//  Due loghi che si creano davanti a chi guarda (src/loghi/): lo schermo di
+//  Runtime che si accende, scrive il marchio e si spegne come un tubo
+//  catodico; il simbolo di FAVELLA che si compone pezzo per pezzo, con la
+//  scritta e il motto battuto a macchina. Un solo orologio
+//  (requestAnimationFrame) per tutti e due: ogni logo riceve il suo tempo e
+//  scrive soltanto stili e attributi. Il suono (src/loghi/suono.ts) si
+//  programma tutto all'inizio sul clock dell'audio, e l'orologio delle
+//  immagini parte con lui. Si parte a caratteri caricati, perché scritta e
+//  motto di FAVELLA si misurano su Sora e Inter.
 //  Esc salta i loghi. Con «riduci movimento» non si mostrano.
+//  Solo in sviluppo: ?loghi=3.2 ferma l'orologio a quel secondo (muto);
+//  window.__loghiT lo sposta, window.__rendiSuonoLoghi rende l'audio in un
+//  file (vedi src/loghi/esporta.ts): servono a esportare i video dei loghi.
 // ====================================================================
 import { useEffect, useRef, useState } from "react";
-import logoRuntime from "../assets/loghi/runtime.webp";
-import logoFavella from "../assets/loghi/favella.webp";
+import LogoRuntime, { DURATA_RUNTIME, type Animabile } from "../loghi/LogoRuntime";
+import LogoFavella, { DURATA_FAVELLA } from "../loghi/LogoFavella";
+import { SuonoLoghi } from "../loghi/suono";
 
-const NERO = 1, DISSOLVENZA = 1, PIENO = 3;
-const SCHERMATE = [
-  { src: logoRuntime, alt: "Runtime — la radio geek", larghezza: "min(40vw, 90vh)" },
-  { src: logoFavella, alt: "FAVELLA 1 — programmare storie interattive in linguaggio naturale italiano", larghezza: "min(64vw, 180vh)" },
-];
-const PERIODO = NERO + DISSOLVENZA + PIENO + DISSOLVENZA;
-const DURATA = SCHERMATE.length * PERIODO + NERO;
+const CODA = 0.35;   // nero dopo l'ultimo logo
+const DURATA = DURATA_RUNTIME + DURATA_FAVELLA + CODA;
+const CARATTERI = ["700 100px Sora", "400 40px Inter"];
 
-/** Opacità della schermata i al tempo t (secondi). */
-function opacita(i: number, t: number) {
-  const u = t - i * PERIODO - NERO;
-  if (u <= 0 || u >= DISSOLVENZA * 2 + PIENO) return 0;
-  if (u < DISSOLVENZA) return u / DISSOLVENZA;
-  if (u < DISSOLVENZA + PIENO) return 1;
-  return 1 - (u - DISSOLVENZA - PIENO) / DISSOLVENZA;
-}
-// dissolvenze morbide: la luminosità percepita non è lineare
-const morbida = (x: number) => x * x * (3 - 2 * x);
+const fermo = (() => {
+  if (!import.meta.env.DEV) return null;
+  const v = new URLSearchParams(location.search).get("loghi");
+  return v !== null && v !== "" && !Number.isNaN(Number(v)) ? Number(v) : null;
+})();
+if (import.meta.env.DEV) import("../loghi/esporta").then((m) => m.installa());
 
 export default function Loghi({ onFine }: { onFine: () => void }) {
-  const immagini = useRef<(HTMLImageElement | null)[]>([]);
+  const runtime = useRef<Animabile>(null);
+  const favella = useRef<Animabile>(null);
   const [pronti, setPronti] = useState(false);
   const fatto = useRef(false);
   const fine = useRef(onFine);
   fine.current = onFine;
-  const chiudi = () => { if (!fatto.current) { fatto.current = true; fine.current(); } };
+  const chiudi = () => { if (!fatto.current && fermo === null) { fatto.current = true; fine.current(); } };
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { chiudi(); return; }
     let vivo = true;
-    Promise.all(SCHERMATE.map((s) => { const im = new Image(); im.src = s.src; return im.decode().catch(() => null); }))
-      .then(() => { if (vivo) setPronti(true); });
+    const caratteri = Promise.all(CARATTERI.map((f) => document.fonts?.load(f).catch(() => null)));
+    Promise.race([caratteri, new Promise((r) => setTimeout(r, 1500))])
+      .then(() => { if (vivo) { favella.current?.prepara?.(); setPronti(true); } });
     const tasto = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); chiudi(); } };
     window.addEventListener("keydown", tasto);
     return () => { vivo = false; window.removeEventListener("keydown", tasto); };
@@ -51,29 +54,28 @@ export default function Loghi({ onFine }: { onFine: () => void }) {
 
   useEffect(() => {
     if (!pronti) return;
+    const suono = fermo === null ? SuonoLoghi.avvia() : null;
     let raf = 0;
-    const t0 = performance.now();
+    const t0 = performance.now() + (suono?.anticipo ?? 0) * 1000;
     const passo = (ora: number) => {
-      const t = (ora - t0) / 1000;
-      SCHERMATE.forEach((_, i) => {
-        const el = immagini.current[i];
-        if (el) el.style.opacity = String(morbida(opacita(i, t)));
-      });
-      if (t >= DURATA) { chiudi(); return; }
+      const t = fermo !== null ? ((window as unknown as { __loghiT?: number }).__loghiT ?? fermo) : (ora - t0) / 1000;
+      // in sviluppo, per esportare un logo alla volta: window.__loghiSolo = "runtime" | "favella"
+      const solo = import.meta.env.DEV ? (window as unknown as { __loghiSolo?: string }).__loghiSolo : undefined;
+      if (solo !== "favella") runtime.current?.aggiorna(t);
+      if (solo !== "runtime") favella.current?.aggiorna(t - DURATA_RUNTIME);
+      if (t >= DURATA) { chiudi(); if (fermo === null) return; }
       raf = requestAnimationFrame(passo);
     };
     raf = requestAnimationFrame(passo);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); suono?.sfuma(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pronti]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000", cursor: "none" }} aria-label="Loghi di apertura">
-      {SCHERMATE.map((s, i) => (
-        <img key={s.alt} ref={(el) => { immagini.current[i] = el; }} src={s.src} alt={s.alt} draggable={false}
-          style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: s.larghezza,
-            height: "auto", opacity: 0, userSelect: "none", pointerEvents: "none" }} />
-      ))}
+    <div style={{ position: "fixed", inset: 0, background: "#000", cursor: "none", overflow: "hidden", userSelect: "none" }}
+      aria-label="Loghi di apertura">
+      <LogoRuntime ref={runtime} />
+      <LogoFavella ref={favella} />
     </div>
   );
 }

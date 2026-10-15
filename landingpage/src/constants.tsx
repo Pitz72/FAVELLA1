@@ -58,7 +58,9 @@ export const SITE_URL = "https://favella.eu";
 //   nuove; guida a 46 pagine.
 // · 2.9.2 = il manuale cartaceo, terza edizione (96 pagine, FAVELLA 1.4.4), è su Amazon: l'ultima
 //   edizione su carta. Verifica completa del sito contro lo stato del progetto.
-export const SITE_VERSION = "2.9.2";
+// · 2.9.3 = Il Viaggiatore 1.14.0: il motore 1.5.0 dentro il gioco, i loghi d'apertura animati e
+//   sonori, il nome dell'autore. Notizia, banner e /esperimento allineati.
+export const SITE_VERSION = "2.9.3";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -77,8 +79,8 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: oggi la 1.13.0 (desktop; la versione web su GitHub Pages è alla 1.13.2). La storia è
-// quella della 1.12.0, la definitiva, col motore FAVELLA 1.4.4; le 1.13 ritoccano solo l'app.
+// Sempre l'ultima release: oggi la 1.14.0 (desktop e web), col motore FAVELLA 1.5.0. La storia è quella della
+// 1.12.0, la definitiva (la 1.14.0 aggiunge solo titolo, autore e «(voluto)» alle dichiarazioni).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
@@ -204,6 +206,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Il Viaggiatore 1.14.0: il motore 1.5.0, e i loghi che si creano",
+    body: "Il Viaggiatore porta dentro FAVELLA 1.5.0, lo stesso motore del sito: la storia resta quella della 1.12.0, e le storie della 1.4 girano identiche, provate comando per comando. All'avvio i due loghi si creano davanti a chi guarda, con il loro suono nella versione desktop: lo schermo di Runtime Multimedia si accende come un vecchio televisore, una testina scrive il marchio lettera per lettera e il triangolo «play» lancia i suoi pixel; il simbolo di FAVELLA si compone pezzo per pezzo, dalla scintilla della gemma alle pagine che si aprono a ventaglio, fino al motto battuto a macchina. Sotto il titolo del trailer, ora, c'è il nome dell'autore. Le partite salvate si ricostruiscono, e il gioco lo dice; chi ha il gioco installato riceve l'aggiornamento da solo. Anche la prova qui sul sito è aggiornata.",
+    cta: { label: "Scarica Il Viaggiatore", href: VIAGGIATORE_RELEASE_URL },
+  },
   {
     tag: "Manuale",
     date: "Ottobre 2026",

@@ -308,6 +308,9 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       tit.style.backgroundPosition = `${100 - seg(t, 83.4, 85.8) * 100}% 0`;
       sub.style.opacity = String(clamp(seg(t, 84.3, 85.4)));
     }
+    // il nome dell'autore, ultimo: resta sul menu d'avvio
+    const aut = extraRef.current.autore;
+    if (aut) aut.style.opacity = String(clamp(seg(t, 85.1, 86.3)));
 
     // letterbox: si apre sul titolo
     const apre = easeOut(seg(t, 81.8, 84.2));
@@ -531,6 +534,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               textShadow: "0 0 60px rgba(255,190,130,.18)", paddingLeft: "0.14em",
             }}>IL VIAGGIATORE</h1>
             <div ref={reg("sottotitolo")} style={mono(22, { color: "#ffe0bd", fontWeight: 500, letterSpacing: "0.5em", marginTop: 26, opacity: 0, textShadow: "0 1px 3px rgba(20,8,10,.85), 0 1px 22px rgba(0,0,0,.85)" })}>un esperimento in favella 1</div>
+            <div ref={reg("autore")} style={serif(28, { color: "rgba(244,236,224,.86)", fontStyle: "italic", marginTop: 18, opacity: 0, textShadow: "0 1px 3px rgba(20,8,10,.85), 0 1px 22px rgba(0,0,0,.85)" })}>un gioco di Simone Pizzi</div>
           </div>
 
           {/* letterbox */}
@@ -538,7 +542,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           <div ref={reg("bandaGiu")} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: BANDA, background: "#000" }} />
           {/* schermata d'avvio */}
           {finito && !compatto && (
-            <section style={{ position: "absolute", left: 0, right: 0, top: 470, textAlign: "center", pointerEvents: "auto", animation: "kf-launch 1.2s ease .3s both" }}>
+            <section style={{ position: "absolute", left: 0, right: 0, top: 500, textAlign: "center", pointerEvents: "auto", animation: "kf-launch 1.2s ease .3s both" }}>
               <div style={{ position: "absolute", left: "50%", top: -140, width: 1500, height: 720, transform: "translateX(-50%)", background: "radial-gradient(50% 50% at 50% 50%, rgba(6,5,10,.78) 0%, rgba(6,5,10,.5) 50%, rgba(6,5,10,0) 100%)", pointerEvents: "none", zIndex: -1 }} />
               <p style={{ margin: 0, ...serif(40, { color: "#f4ece0" }) }}>Si parte a piedi.</p>
               <p style={{ margin: "22px auto 0", maxWidth: 820, ...serif(27, { color: "rgba(230,222,208,.72)", lineHeight: 1.5 }) }}>
