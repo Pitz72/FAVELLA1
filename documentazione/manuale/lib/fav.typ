@@ -33,7 +33,7 @@
   "è", "sono", "collega", "comincia", "inizia", "parte",
   "dice", "conduce", "diventa", "ha", "dà", "chiama", "anche", "si",
   // regole
-  "Invece", "se", "dire", "oppure", "non", "adesso", "chiude",
+  "Invece", "Prima", "Dopo", "altrimenti", "se", "dire", "oppure", "non", "adesso", "chiude",
   // conseguenze
   "aumenta", "diminuisci", "vinci", "perdi", "termina", "portare", "può",
   // quantificatori / confronti / proprietà speciali
@@ -42,6 +42,8 @@
   "Al", "turno", "turni", "Ogni", "Quando", "vera",
   // varie
   "Includi", "nodo", "opzione", "nulla", "inventario", "giocatore", "oggetti", "spazi",
+  // [1.5.0]
+  "chiamano", "quando", "basta", "poi", "volta", "ritrova", "segnala", "entra", "testo",
   // direzioni di base
   "nord", "sud", "est", "ovest",
 )

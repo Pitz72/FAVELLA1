@@ -50,7 +50,7 @@ try:
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
-    from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti
+    from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti, apri_partita
     from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
@@ -193,8 +193,9 @@ def _intro(mondo):
     """Apertura della console: banner + descrizione della stanza iniziale, come
     raccolta di eventi (vedi favella_utils.raccogli_uscita)."""
     with raccogli_uscita(mondo) as uscita:
-        intestazione(mondo, "Scrivi un comando, oppure 'esci' per terminare.")
-        mostra_stanza(mondo)
+        # [1.5.0 / L18] L'apertura comune (il punto di partenza dei salvataggi
+        # dopo la prima stanza).
+        apri_partita(mondo, "Scrivi un comando, oppure 'esci' per terminare.")
     return uscita
 
 

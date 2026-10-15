@@ -10,7 +10,11 @@
 #   favella1 compila <storia.fav>     compila e mostra errori/avvisi (non gioca)
 #   favella1 collaudo <storia.fav>    collaudatore statico (catena della vittoria)
 #   favella1 collaudo <storia.fav> --finali   [1.2.0] quali finali si raggiungono
+#   favella1 collaudo <storia.fav> --percorsi a.txt …  [1.5.0] percorsi e attese
+#                                     (--traccia NOME, --riprese)
 #   favella1 esplora <storia.fav>     [1.2.0] partite a caso: anomalie e copertura
+#   favella1 trascrivi <storia.fav> <percorso.txt>  [1.5.0] la partita di un percorso
+#   favella1 ifid                     [1.5.0] un IFID nuovo per 'L'IFID è "…".'
 #   favella1 playground [storia.fav]  apre l'editor+motore nel browser (offline)
 #   favella1 esporta  <storia.fav>    genera un .html autoportante giocabile
 #   favella1 versione                 stampa la versione del motore
@@ -94,7 +98,16 @@ def cmd_compila(args):
 
 def cmd_collaudo(args):
     """Collaudatore statico: catena della vittoria + avvisi del linter.
-    [1.2.0] Con --finali gioca invece partite vere (vedi esploratore.py)."""
+    [1.2.0] Con --finali gioca invece partite vere (vedi esploratore.py).
+    [1.5.0 / L15] Con --percorsi gioca i percorsi e controlla le loro attese."""
+    if getattr(args, "percorsi", None):
+        from esploratore import collauda_percorsi
+        testo, falliti = collauda_percorsi(args.storia, args.percorsi, args.traccia, args.riprese)
+        print(testo)
+        if args.rapporto:
+            with open(args.rapporto, "w", encoding="utf-8") as f:
+                f.write(testo + "\n")
+        return 1 if falliti else 0
     if args.finali:
         from esploratore import esegui
         return esegui(args.storia, args.partite, args.turni, args.seme,
@@ -108,6 +121,32 @@ def cmd_esplora(args):
     from esploratore import esegui
     return esegui(args.storia, args.partite, args.turni, args.seme,
                   args.percorso, solo_finali=False, rapporto=args.rapporto)
+
+
+def cmd_trascrivi(args):
+    """[1.5.0 / L15] Gioca un percorso e scrive la partita come la vede chi gioca."""
+    from esploratore import trascrivi
+    if not os.path.isfile(args.storia):
+        print(f"[FAVELLA 1] File non trovato: '{args.storia}'.")
+        return 1
+    ok, testo = trascrivi(args.storia, args.percorso, args.seme, args.traccia)
+    if args.output and ok:
+        with open(args.output, "w", encoding="utf-8", newline="\n") as f:
+            f.write(testo)
+        print(f"[FAVELLA 1] Trascrizione scritta in '{args.output}'.")
+    else:
+        print(testo)
+    return 0 if ok else 2
+
+
+def cmd_ifid(args):
+    """[1.5.0] Un IFID nuovo (Treaty of Babel), da scrivere una volta nella
+    storia: 'L'IFID è "…".'. Non cambia più, anche quando la storia cambia."""
+    import uuid
+    ifid = str(uuid.uuid4()).upper()
+    print(ifid)
+    print(f"Scrivilo una volta nella storia:  L'IFID è \"{ifid}\".")
+    return 0
 
 
 def cmd_playground(args):
@@ -304,8 +343,27 @@ def costruisci_parser():
     t.add_argument("storia", help="percorso del file .fav radice")
     t.add_argument("--finali", action="store_true",
                    help="gioca partite vere e dice quali finali dichiarati si raggiungono")
+    t.add_argument("--percorsi", nargs="+", default=None, metavar="FILE",
+                   help="gioca i percorsi e controlla le loro attese ('# atteso: …')")
+    t.add_argument("--traccia", action="append", default=[], metavar="NOME",
+                   help="con --percorsi: il valore di uno stato o contatore dopo ogni comando")
+    t.add_argument("--riprese", action="store_true",
+                   help="con --percorsi: lascia e riprende ogni oggetto portato, a ogni stanza")
     argomenti_comuni(t)
     t.set_defaults(func=cmd_collaudo)
+
+    tr = sub.add_parser("trascrivi", aliases=["transcript"],
+                        help="gioca un percorso e scrive la partita come la vede chi gioca")
+    tr.add_argument("storia", help="percorso del file .fav radice")
+    tr.add_argument("percorso", help="file di comandi, uno per riga ('#' commenta)")
+    tr.add_argument("-o", "--output", default=None, help="file in cui scrivere la trascrizione")
+    tr.add_argument("--seme", type=int, default=1, help="seme del caso (predefinito 1)")
+    tr.add_argument("--traccia", action="append", default=[], metavar="NOME",
+                    help="mostra il valore di uno stato o contatore dopo ogni comando")
+    tr.set_defaults(func=cmd_trascrivi)
+
+    ifid = sub.add_parser("ifid", help="genera un IFID nuovo per la storia")
+    ifid.set_defaults(func=cmd_ifid)
 
     x = sub.add_parser("esplora", aliases=["explore"],
                        help="partite a caso: anomalie, copertura, finali")

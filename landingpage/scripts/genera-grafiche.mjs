@@ -130,7 +130,7 @@ const bannerFavella = () =>
     <h1 class="marchio" style="font-size:132px;margin-top:20px">FAVELLA 1</h1>
     <div class="riga">
       <span class="versione ink">${MOTORE}</span>
-      <span class="chip" style="font-size:12px">versione definitiva</span>
+      <span class="chip" style="font-size:12px">le lezioni del Relitto</span>
     </div>
     <p class="serif" style="font-size:27px;margin-top:22px">L'italiano è il linguaggio di programmazione.</p>
     <p class="meta" style="font-size:12.5px;margin-top:26px"><b>${TEST}</b> test · <b>0</b> ambiguità · manuale di <b>${PAGINE_MANUALE}</b> pagine · <b>favella.eu</b></p>
@@ -305,7 +305,7 @@ const infograficaManuale = () =>
     <p class="ed">Terza edizione · 2026</p>
     <ul class="punti">
       <li><b>${PAGINE_MANUALE}</b> pagine, <b>${CAPITOLI.length}</b> capitoli</li>
-      <li>allineato al motore <b>${MOTORE}</b>, la versione definitiva</li>
+      <li>allineato al motore <b>${MOTORE}</b></li>
       <li>un esempio dall'inizio alla fine: <i>La Casa di Via Stradivari</i></li>
       <li>PDF <b>gratuito</b> · anche su carta, su Amazon.it</li>
     </ul>

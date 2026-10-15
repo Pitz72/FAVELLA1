@@ -109,6 +109,46 @@ si eseguono nell'ordine in cui le scrivi.
   giocatore la nuova stanza, come se ci fosse entrato.
 ]
 
+=== Spostare il giocatore: mostrare o no la stanza
+
+`e adesso il giocatore è in [stanza]` sposta il giocatore, e la stanza d'arrivo si
+mostra dopo una regola su un oggetto ma non dopo una regola `Invece di vai`, un
+evento o un demone. Dalla versione 1.5 puoi dire che cosa vuoi: `va in` la mostra
+sempre, `si ritrova in` non la mostra mai (quando la racconti tu):
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di vai giù: dire "Ti cali nel buio." e adesso il giocatore va nella cantina.
+Invece di dormi: dire "Ti risvegli in cucina, con il collo indolenzito." e adesso il giocatore si ritrova nella cucina.
+```)
+]
+
+=== Il testo dopo le conseguenze: `e poi dire`
+
+Il testo di `dire` si scrive prima delle conseguenze, quindi un segnaposto vi legge il
+valore di prima. Per dire la cifra nuova c'è `e poi dire`, in fondo:
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di bevi la grappa: dire "Brucia." e adesso aumenta il coraggio di 2 e poi dire "Coraggio: [coraggio].".
+```)
+]
+
+`e poi dire` va dopo tutte le conseguenze e vale anche negli eventi, nei demoni e negli
+argomenti di conversazione.
+
+=== Un segnale per chi ospita la storia
+
+Un gioco con suoni o immagini, costruito intorno al motore, a volte ha bisogno di
+sapere che è successo qualcosa. `segnala "nome"` manda quel nome all'applicazione (o
+alla pagina) e nel terminale non scrive niente:
+
+#esempio(da: "un esempio")[
+#fav(```
+Ogni turno se càpita (1 su 8): dire "La casa scricchiola." e adesso segnala "scricchiolio".
+```)
+]
+
 == Dove stanno le cose
 
 Dalla versione 1.3 una condizione può chiedere dove sta un oggetto o un

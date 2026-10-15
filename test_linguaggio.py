@@ -1,5 +1,5 @@
 # test_linguaggio.py
-# Suite di test del LINGUAGGIO FAVELLA 1 (v1.0.0)
+# Suite di test del LINGUAGGIO FAVELLA 1 (v1.5.0)
 #
 # Blocca le regressioni della grammatica e della semantica del compilatore.
 # In particolare "congela" la disambiguazione delle frasi che la grammatica
@@ -3319,7 +3319,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.4.0.md")
+                          "grammatica-1.5.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3336,7 +3336,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.4.0.md è presente")
+           "documentazione/grammatica-1.5.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -7452,6 +7452,616 @@ def test_copie_del_motore_nel_sito_allineate():
     _check(not diverse, f"copie identiche (diverse: {diverse}); risincronizza con SYNC.md")
 
 
+# ==============================================================================
+# [1.5.0] LE LEZIONI DEL RELITTO E LE IDEE RIMASTE (documentazione/piano-1.5.0.md)
+# ==============================================================================
+
+class _Archivio150:
+    """Un archivio dei salvataggi in memoria (scrivi/leggi), per i test."""
+    def __init__(self):
+        self.dati = {}
+
+    def scrivi(self, nome, testo):
+        self.dati[nome] = testo
+        return nome
+
+    def leggi(self, nome):
+        return self.dati.get(nome)
+
+
+def _partita(src, seme=None):
+    """Compila e apre una partita come un ospite (gioco.nuova_partita).
+    Restituisce (mondo, testo dell'apertura)."""
+    from gioco import nuova_partita
+    mondo, _ = compila(src)
+    if mondo is None:
+        return None, ""
+    m, apertura, stanza = nuova_partita(mondo, seme=seme)
+    m.archivio_salvataggi = _Archivio150()
+    return m, "".join(e.come_testo() for e in apertura + stanza)
+
+
+def _avvisi(src):
+    _m, log = compila(src)
+    return log
+
+
+_L18 = (
+    "La plancia è una stanza.\nLa descrizione della plancia è \"Plancia.\".\n"
+    "La stiva è una stanza.\nLa descrizione della stiva è \"Stiva.\".\n"
+    "La plancia collega ovest a la stiva.\n"
+    "Il giocatore comincia nella plancia.\n"
+    "Le uscite nominano solo le stanze visitate.\n"
+)
+
+
+def test_150_l18_punto_di_partenza_dei_salvataggi():
+    print("[1.5.0 / L18: un salvataggio dopo la prima stanza si carica identico]")
+    for come in ("ospite", "vecchio flusso"):
+        if come == "ospite":
+            m, _ = _partita(_L18)
+        else:
+            from gioco import mostra_stanza
+            m = runtime(_L18)
+            m.archivio_salvataggi = _Archivio150()
+            with contextlib.redirect_stdout(io.StringIO()):
+                mostra_stanza(m)
+        esegui(m, "ovest")
+        esegui(m, "salva prova")
+        out = esegui(m, "carica prova")
+        _check("Partita caricata: turno 1." in out and "non è identica" not in out,
+               f"{come}: il caricamento non dice che la storia è cambiata")
+        _check("Est (La plancia)" in out, f"{come}: dopo il caricamento le uscite nominano la plancia")
+
+
+def test_150_l18_salvataggi_della_1_4_accettati():
+    print("[1.5.0 / L18: l'impronta di partenza della 1.4 resta accettata]")
+    import json as _json
+    m, _ = _partita(_L18)
+    esegui(m, "ovest")
+    esegui(m, "salva prova")
+    dati = _json.loads(m.archivio_salvataggi.leggi("prova"))
+    m2 = runtime(_L18)
+    vecchia = None
+    m2.stanze_visitate.clear()
+    vecchia = m2.impronta_stato()        # come la calcolava la 1.4, prima della prima stanza
+    dati["storia"] = vecchia
+    dati["motore"] = "1.4.4"
+    m.archivio_salvataggi.scrivi("vecchio", _json.dumps(dati))
+    out = esegui(m, "carica vecchio")
+    _check("Partita caricata: turno 1." in out, "un salvataggio con l'impronta della 1.4 si carica identico")
+
+
+def test_150_l19_caricare_non_segna_la_stanza():
+    print("[1.5.0 / L19: caricare non segna come vista la stanza in cui si è]")
+    src = (
+        "Il santuario è una stanza.\nLa descrizione del santuario è \"Santuario.\".\n"
+        "La gola è una stanza.\nLa descrizione della gola è \"La gola, ripida e nera.\".\n"
+        "Il giocatore comincia nel santuario.\nLe uscite nominano solo le stanze visitate.\n"
+        "Invece di vai giù: dire \"Ti cali nella gola.\" e adesso il giocatore è nella gola.\n"
+    )
+    m, _ = _partita(src)
+    esegui(m, "giù")
+    _check("gola" not in m.stanze_visitate, "una regola 'vai' che sposta in silenzio non segna la gola")
+    impronta = m.impronta_stato()
+    esegui(m, "salva x")
+    out = esegui(m, "carica x")
+    _check("La gola, ripida e nera." in out, "dopo CARICA la stanza si mostra")
+    _check("gola" not in m.stanze_visitate and m.impronta_stato() == impronta,
+           "ma la partita non cambia: la gola resta non vista, l'impronta è la stessa")
+
+
+def test_150_n1_opzione_con_collega():
+    print("[1.5.0 / N1: un'opzione di dialogo con «collega» compila e funziona]")
+    src = (
+        "La sala è una stanza.\nLa gola è una stanza.\nIl giocatore comincia nella sala.\n"
+        "L'anziano è un personaggio.\nL'anziano è nella sala.\n"
+        "Il dialogo dell'anziano comincia con \"addio\".\n"
+        "L'anziano al nodo \"addio\" dice \"Va'.\".\n"
+        "Al nodo \"addio\" l'opzione \"Vado.\" chiude il dialogo e adesso la sala collega est a la gola.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, f"compila (era «nome non valido» alla riga 1) {log[-200:] if not mondo else ''}")
+    m, _ = _partita(src)
+    esegui(m, "parla con l'anziano")
+    esegui(m, "1")
+    _check(m.stanze["sala"].uscite.get("est") == "gola", "scelta l'opzione, il varco a est c'è")
+    _check(set(m.stanze) == {"sala", "gola"}, "nessuna stanza dal nome impossibile")
+
+
+def test_150_n2_testi_condizionali_sbilanciati_e_annidati():
+    print("[1.5.0 / N2, L14: [se] sbilanciati sono errori; annidati funzionano]")
+    base = "La stanza buona è una stanza.\nLa fuga è uno stato.\nLa fuga è lontana.\n"
+    _m, log = compila(base + "La descrizione della stanza buona è \"A[se la fuga è vicina] B.\".\n")
+    _check(_m is None and "[fine]" in log, "un [se] senza [fine] è un errore che lo dice")
+    _m, log = compila(base + "La descrizione della stanza buona è \"A[fine] B.\".\n")
+    _check(_m is None and "senza il suo [se" in log, "un [fine] senza [se] è un errore")
+    _m, log = compila(base + "La descrizione della stanza buona è \"A[altrimenti]B\".\n")
+    _check(_m is None and "[altrimenti]" in log, "un [altrimenti] fuori posto è un errore")
+    src = (base + "La tuta è uno stato.\nLa tuta è vestita.\nL'ora è uno stato.\nL'ora è notte.\n"
+           "La descrizione della stanza buona è \"Plancia.[se la fuga è lontana] Trema."
+           "[se la tuta è vestita] Sei protetto.[se l'ora è notte] È buio.[fine][altrimenti] Esposto.[fine]"
+           " Fine blocco.[fine]\".\n")
+    m, apertura = _partita(src)
+    _check(m is not None and "Plancia. Trema. Sei protetto. È buio. Fine blocco." in apertura,
+           "tre livelli di [se]: si legge il testo giusto, senza codice")
+    m.variabili["tuta"] = "tolta"
+    out = esegui(m, "guarda")
+    _check("Plancia. Trema. Esposto. Fine blocco." in out, "il ramo [altrimenti] del blocco interno")
+
+
+def test_150_n3_stato_letto_solo_in_un_testo():
+    print("[1.5.0 / N3: uno stato letto solo dentro un [se] non è «mai usato»]")
+    log = _avvisi("La plancia è una stanza.\nLa fuga è uno stato.\nLa fuga è lontana.\n"
+                  "La descrizione della plancia è \"Plancia.[se la fuga è vicina] Trema.[fine]\".\n")
+    _check("mai usato" not in log, "nessun falso avviso")
+
+
+def test_150_l3_avviso_oggetto_che_non_si_riprende():
+    print("[1.5.0 / L3: avviso per un oggetto che entra in inventario ma non è prendibile]")
+    src = ("La sala è una stanza.\nIl risuonatore è una cosa.\nIl risuonatore è nella sala.\n"
+           "\"stacca\" è un comando.\n"
+           "Invece di stacca il risuonatore: dire \"Lo stacchi.\" e adesso il risuonatore è in inventario.\n")
+    _check("non potrà riprenderlo" in _avvisi(src), "l'avviso c'è")
+    _check("non potrà riprenderlo" not in _avvisi(src.replace(
+        "in inventario.\n", "in inventario e adesso il risuonatore è prendibile.\n")),
+        "con «e adesso … è prendibile» l'avviso sparisce")
+
+
+def test_150_l4_stati_scritti_e_mai_letti():
+    print("[1.5.0 / L4: stati e contatori che si scrivono e non si leggono mai]")
+    src = ("La sala è una stanza.\nGli echi sono un contatore.\n\"ascolta\" è un comando senza oggetto.\n"
+           "Invece di ascolta: dire \"Un'eco.\" e adesso aumenta gli echi.\n")
+    log = _avvisi(src)
+    _check("'echi' cambia ma nessuno lo legge" in log, "l'avviso c'è")
+    _check("nessuno lo legge" not in _avvisi(src.replace("contatore.", "contatore (voluto).")),
+           "«(voluto)» lo zittisce")
+    _check("nessuno lo legge" not in _avvisi(src + "Invece di guarda: dire \"Echi: [echi].\".\n"),
+           "un segnaposto è una lettura")
+
+
+def test_150_c1_vincoli_che_fermano():
+    print("[1.5.0 / C1: 'Prima di … e basta' ferma l'azione, prima di ogni altra regola]")
+    src = ("La plancia è una stanza.\nLa stiva è una stanza.\nLa plancia collega ovest a la stiva.\n"
+           "Il giocatore comincia nella plancia.\nL'aria è un contatore.\nL'aria parte da 20.\n"
+           "Le piante sono una cosa.\nLe piante sono nella plancia.\n\"sintonizza\" è un comando.\n"
+           "Invece di sintonizza le piante: dire \"Le piante cantano.\".\n"
+           "Prima di sintonizza qualcosa se l'aria è meno di 30: dire \"PROTEZIONE VITALE.\" e basta.\n"
+           "Prima di vai se l'aria è meno di 10: dire \"Troppo debole.\" e basta.\n")
+    m, _ = _partita(src)
+    out = esegui(m, "sintonizza le piante")
+    _check("PROTEZIONE VITALE." in out and "cantano" not in out,
+           "il vincolo per categoria vince sulla regola dell'oggetto")
+    _check(m.turno_corrente == 1, "il turno passa, come per ogni regola che scatta")
+    m.variabili["aria"] = 40
+    _check("Le piante cantano." in esegui(m, "sintonizza le piante"), "con la condizione falsa vale la regola dell'oggetto")
+    m.variabili["aria"] = 5
+    out = esegui(m, "ovest")
+    _check("Troppo debole." in out and m.posizione_giocatore == "plancia", "un vincolo globale su 'vai' ferma il passo")
+    _m, log = compila(src + "Invece di guarda: dire \"x\" e basta.\n")
+    _check(_m is None and "vale solo nelle regole «Prima di" in log, "«e basta» in un 'Invece di' è un errore")
+
+
+def test_150_c2_stati_calcolati():
+    print("[1.5.0 / C2: gli stati calcolati ('… è attiva quando …')]")
+    src = ("La plancia è una stanza.\nL'aria è un contatore.\nL'aria parte da 40.\n"
+           "La fuga è uno stato.\nLa fuga è lontana.\n"
+           "La protezione è attiva quando l'aria è meno di 30 e la fuga è lontana.\n"
+           "La protezione è spenta quando la fuga è vicina.\n"
+           "La descrizione della plancia è \"Visore: [se la protezione è attiva]ROSSO[altrimenti]verde[fine] ([protezione]).\".\n"
+           "Quando la protezione è attiva: dire \"Allarme.\".\n"
+           "\"respira\" è un comando senza oggetto.\n"
+           "Invece di respira se la protezione non è attiva: dire \"Respiri.\" e adesso diminuisci l'aria di 15.\n")
+    m, apertura = _partita(src)
+    _check(m is not None and "Visore: verde ()." in apertura, "senza condizioni vere lo stato non ha valore")
+    out = esegui(m, "respira")
+    _check("Respiri." in out and "Allarme." in out, "'non è attiva' e il demone che vede lo stato calcolato")
+    _check("Visore: ROSSO (attiva)." in esegui(m, "guarda"), "nel [se] e nel segnaposto")
+    m.variabili["fuga"] = "vicina"
+    _check(m.valore_variabile("protezione") == "spenta", "più frasi: vale la prima vera")
+    _m, log = compila(src + "Invece di guarda: dire \"x\" e adesso la protezione è attiva.\n")
+    _check(_m is None and "stato calcolato" in log, "assegnarlo è un errore")
+    _m, log = compila("La sala è una stanza.\nA è vero quando B è vero.\nB è vero quando A è vero.\n")
+    _check(_m is None and "in cerchio" in log, "un ciclo fra stati calcolati è un errore")
+
+
+def test_150_c3_per_la_prima_volta():
+    print("[1.5.0 / C3: «per la prima volta» su regole, demoni, arrivi]")
+    src = ("La serra è una stanza.\nL'atrio è una stanza.\nL'atrio collega nord a la serra.\n"
+           "Il giocatore comincia nell'atrio.\nIl disco è una cosa.\nIl disco è nell'atrio.\n"
+           "Il disco è prendibile.\n"
+           "Invece di prendi oppure tocca il disco per la prima volta: dire \"Tiepido.\" e adesso il disco è in inventario; "
+           "altrimenti: dire \"Di nuovo.\" e adesso il disco è in inventario.\n"
+           "Quando il giocatore è nella serra per la prima volta: dire \"Odore dolciastro.\".\n")
+    m, _ = _partita(src)
+    _check("Tiepido." in esegui(m, "tocca il disco"), "la prima volta vale il ramo principale")
+    esegui(m, "lascia il disco")
+    _check("Di nuovo." in esegui(m, "prendi il disco"), "poi vale l'altrimenti (memoria comune ai due verbi)")
+    esegui(m, "annulla")
+    esegui(m, "annulla")
+    esegui(m, "annulla")
+    _check("Tiepido." in esegui(m, "prendi il disco"), "ANNULLA riporta indietro anche la memoria")
+    _check("prime_volte" in m.stato_essenziale(), "la memoria entra nell'impronta")
+    esegui(m, "nord")
+    _check(sum(1 for _ in [0] if "Odore" in esegui(m, "aspetta")) == 0, "il demone non riscatta")
+    esegui(m, "sud")
+    _check("Odore" not in esegui(m, "nord"), "rientrando, il demone 'per la prima volta' tace")
+    _check("prime_volte" not in runtime("La sala è una stanza.\n").stato_essenziale(),
+           "le storie che non lo usano hanno l'impronta di sempre")
+
+
+def test_150_c4_spostare_il_giocatore():
+    print("[1.5.0 / C4: 'va in' mostra sempre la stanza, 'si ritrova in' mai, 'è in' come prima]")
+    src = ("La stiva è una stanza.\nLa descrizione della stiva è \"Stiva.\".\n"
+           "La gola è una stanza.\nLa descrizione della gola è \"Gola nera.\".\n"
+           "Il buio è una cosa.\nIl buio è nella stiva.\nIl buio è di scena.\n\"entra\" è un comando.\n"
+           "Il giocatore comincia nella stiva.\n"
+           "Invece di vai giù: dire \"Ti cali.\" e adesso il giocatore va nella gola.\n"
+           "Invece di entra il buio: dire \"Ti cali.\" e adesso il giocatore si ritrova nella gola.\n"
+           "Invece di vai su: dire \"Risali.\" e adesso il giocatore è nella stiva.\n")
+    m, _ = _partita(src)
+    out = esegui(m, "giù")
+    _check("Ti cali." in out and "Gola nera." in out, "'va in' dopo una regola 'vai' mostra la stanza")
+    out = esegui(m, "su")
+    _check("Risali." in out and "Stiva." not in out, "'è in' dopo una regola 'vai' come sempre: tace")
+    out = esegui(m, "entra il buio")
+    _check("Ti cali." in out and "Gola nera." not in out and m.posizione_giocatore == "gola",
+           "'si ritrova in' dopo una regola su un oggetto tace")
+
+
+def test_150_c5_e_poi_dire():
+    print("[1.5.0 / C5: 'e poi dire' legge i valori dopo le conseguenze]")
+    src = ("La sala è una stanza.\nL'aria è un contatore.\nL'aria parte da 30.\n\"usa\" è come usa.\n"
+           "La cella è una cosa.\nLa cella è nella sala.\n"
+           "Invece di usa la cella: dire \"Aria: [aria].\" e adesso aumenta l'aria di 20 e poi dire \"Ora: [aria].\".\n"
+           "Ogni 2 turni: diminuisci l'aria e poi dire \"Tick: [aria].\".\n")
+    m, _ = _partita(src)
+    out = esegui(m, "usa la cella")
+    _check("Aria: 30." in out and "Ora: 50." in out and out.index("Aria") < out.index("Ora"),
+           "il testo di prima e quello di dopo, in ordine")
+    _check("Tick: 49." in esegui(m, "aspetta"), "anche negli eventi")
+    _m, log = compila("La sala è una stanza.\nL'aria è un contatore.\n"
+                      "Invece di guarda: dire \"a\" e poi dire \"b\" e adesso aumenta l'aria.\n")
+    _check(_m is None and "dopo tutte le conseguenze" in log, "«e poi dire» prima di una conseguenza è un errore")
+
+
+def test_150_c6_si_chiamano_anche_e_elenco():
+    print("[1.5.0 / L12: 'si chiamano anche' e più nomi in una riga]")
+    src = ("La sala è una stanza.\nI ganci sono una cosa.\nI ganci sono nella sala.\n"
+           "I ganci si chiamano anche \"casse\", \"uncini\" e \"rampini\".\n"
+           "La matrice è una cosa.\nLa matrice è nella sala.\n"
+           "La matrice si chiama anche \"arnese\".\n")
+    m, _ = _partita(src)
+    _check(m is not None and {"casse", "uncini", "rampini", "arnese"} <= set(m.alias), "tutti gli alias")
+    _check("Non" in esegui(m, "prendi i rampini"), "il giocatore li usa (i ganci non sono prendibili)")
+
+
+def test_150_c7_tipografia_italiana():
+    print("[1.5.0 / L13: la tipografia italiana passa intatta nei testi]")
+    src = ("La stanza è una stanza.\n"
+           "La descrizione della stanza è \"Un po’ buia. Il cartello dice “ATTENZIONE”.\".\n"
+           "L’ancora è una cosa.\nL’ancora è nella stanza.\nL’ancora è prendibile.\n"
+           "L'aria è un contatore.\n"
+           "La descrizione dell'ancora è “Pesante, dell’Ottocento.[se l’aria è almeno 0] Fredda.[fine]”.\n")
+    m, apertura = _partita(src)
+    _check(m is not None and "Un po’ buia. Il cartello dice “ATTENZIONE”." in apertura,
+           "apostrofi e virgolette curve dentro una stringa restano come sono")
+    _check("Pesante, dell'Ottocento. Fredda." in esegui(m, "esamina l'ancora"),
+           "una stringa fra virgolette curve resta una stringa, come prima; la condizione con ’ si capisce")
+    _check("Preso" in esegui(m, "prendi l’ancora"), "il giocatore può scrivere l’apostrofo curvo")
+
+
+def test_150_c9_testi_con_un_nome_e_piu_verbi():
+    print("[1.5.0 / L10: testi con un nome e regole su più verbi]")
+    src = ("La sala è una stanza.\nL'aria è un contatore.\nL'aria parte da 7.\n"
+           "Il faro è una cosa.\nIl faro è nella sala.\n"
+           "Il testo \"presa di servizio\" è \"Una voce. Aria: [aria].[se l'aria è almeno 5] Basta.[fine]\".\n"
+           "Invece di usa oppure accendi il faro: dire \"[presa di servizio]\".\n")
+    m, _ = _partita(src)
+    _check("Una voce. Aria: 7. Basta." in esegui(m, "usa il faro"), "il testo con un nome si rende con segnaposto e [se]")
+    _check("Una voce." in esegui(m, "accendi il faro"), "la stessa regola vale per l'altro verbo")
+    _m, log = compila(src + "Il testo \"aria\" è \"x\".\n")
+    _check(_m is None and "nome di un testo" in log, "un testo con il nome di uno stato è un errore")
+
+
+def test_150_c10_la_consultazione_non_fa_passare_il_tempo():
+    print("[1.5.0 / L5: '\"esamina\" non fa passare il tempo.']")
+    src = ("La sala è una stanza.\nL'aria è un contatore.\nL'aria parte da 40.\n"
+           "Il visore è una cosa.\nIl visore è nella sala.\nLa leva è una cosa.\nLa leva è nella sala.\n"
+           "\"esamina\" non fa passare il tempo.\n\"inventario\" non fa passare il tempo.\n"
+           "Ogni turno se l'aria è più di 0: diminuisci l'aria di 4.\n"
+           "Invece di esamina il visore: dire \"Aria: [aria].\".\n"
+           "Invece di esamina la leva: dire \"Clic.\" e adesso aumenta l'aria.\n")
+    m, _ = _partita(src)
+    esegui(m, "esamina il visore")
+    esegui(m, "guarda il visore")
+    esegui(m, "inventario")
+    _check(m.turno_corrente == 0 and m.variabili["aria"] == 40,
+           "esamina (anche con 'guarda X' e una regola che dice soltanto) e inventario: nessun turno")
+    esegui(m, "esamina la leva")
+    _check(m.turno_corrente == 1, "una regola che cambia il mondo fa passare il turno")
+    esegui(m, "salva c")
+    esegui(m, "carica c")
+    _check(m.turno_corrente == 1, "i salvataggi ricordano anche le consultazioni")
+    _m, log = compila("La sala è una stanza.\n\"prendi\" non fa passare il tempo.\n")
+    _check(_m is None and "cambia il mondo" in log, "per un verbo che cambia il mondo è un errore")
+
+
+def test_150_c11_segnala():
+    print("[1.5.0 / N6: 'segnala' manda un evento all'ospite; il terminale tace]")
+    src = ("La sala è una stanza.\n\"ascolta\" è un comando senza oggetto.\n"
+           "Invece di ascolta: dire \"La nave geme.\" e adesso segnala \"gemito\".\n")
+    m, _ = _partita(src)
+    from favella_utils import raccogli_uscita
+    with raccogli_uscita(m) as u:
+        from gioco import elabora_comando
+        elabora_comando(m, "ascolta")
+    segnali = [e for e in u.eventi if e.tipo == "segnale"]
+    _check(len(segnali) == 1 and segnali[0].dati.get("nome") == "gemito", "un evento 'segnale' con il nome")
+    _check("gemito" not in u.testo(), "nel testo del terminale non c'è")
+
+
+def test_150_c12_arrivi():
+    print("[1.5.0 / L16: 'Quando il giocatore entra in …' scatta prima della descrizione]")
+    src = ("La plancia è una stanza.\nLa stiva è una stanza.\nLa descrizione della stiva è \"Stiva.\".\n"
+           "Il kit è una cosa.\nIl kit è nella stiva.\nLa plancia collega ovest a la stiva.\n"
+           "Il giocatore comincia nella plancia.\nIl risuonatore è una cosa.\n"
+           "Quando il giocatore entra nella stiva se il giocatore ha il risuonatore: dire \"Ti svegli.\" e adesso vinci.\n"
+           "Quando il giocatore entra nella stiva per la prima volta: dire \"Freddo.\".\n")
+    m, _ = _partita(src)
+    out = esegui(m, "ovest")
+    _check("Freddo." in out and out.index("Freddo.") < out.index("Stiva."), "prima della descrizione")
+    esegui(m, "est")
+    _check("Freddo." not in esegui(m, "ovest"), "'per la prima volta'")
+    esegui(m, "est")
+    m.inventario.add("risuonatore")
+    m.oggetti["risuonatore"].posizione = "inventario"
+    out = esegui(m, "ovest")
+    _check("Ti svegli." in out and "Puoi vedere qui" not in out and m.stato_partita == "vinta",
+           "se chiude la partita, la stanza non si stampa")
+
+
+def test_150_c13_uscite_con_una_condizione():
+    print("[1.5.0 / L7: le uscite con una condizione]")
+    src = ("La sala è una stanza.\nLa gola è una stanza.\nLa cantina è una stanza.\n"
+           "La fuga è uno stato.\nLa fuga è lontana.\nLa botola è una cosa.\nLa botola è nella sala.\n"
+           "La sala collega est a la gola se la fuga è iniziata.\n"
+           "La sala collega giù a la cantina se la botola è aperta; altrimenti \"La botola è chiusa.\".\n"
+           "Il giocatore comincia nella sala.\n"
+           "\"fuggi\" è un comando senza oggetto.\nInvece di fuggi: dire \"Via!\" e adesso la fuga è iniziata.\n")
+    m, apertura = _partita(src)
+    _check(m is not None and "Uscite" not in apertura, "chiuse, le uscite non si vedono")
+    esegui(m, "est")
+    _check(m.turno_corrente == 0 and m.posizione_giocatore == "sala", "senza testo: come un'uscita che non c'è")
+    out = esegui(m, "giù")
+    _check("La botola è chiusa." in out and m.turno_corrente == 1, "con il testo: lo si legge, ed è un turno")
+    esegui(m, "fuggi")
+    out = esegui(m, "guarda")
+    _check("Est (La gola)" in out and "Giù" not in out, "aperta, l'uscita compare")
+    esegui(m, "est")
+    _check(m.posizione_giocatore == "gola", "e si passa")
+    _check("Ovest (La sala)" in esegui(m, "guarda"), "nelle due direzioni")
+
+
+def test_150_n4_interfaccia_per_gli_ospiti():
+    print("[1.5.0 / N4: nuova_partita, prova e mostra_situazione]")
+    from gioco import prova, mostra_situazione
+    from strutture import Mondo
+    src = ("La sala è una stanza.\nLa descrizione della sala è una di: \"Uno.\", \"Due.\", \"Tre.\".\n"
+           "La stiva è una stanza.\nLa sala collega ovest a la stiva.\nIl giocatore comincia nella sala.\n"
+           "La mela è una cosa.\nLa mela è nella sala.\nLa mela è prendibile.\n"
+           "La guardia è un personaggio.\nLa guardia è nella sala.\n"
+           "Il dialogo della guardia comincia con \"a\".\nLa guardia al nodo \"a\" dice \"Ehi.\".\n"
+           "Al nodo \"a\" l'opzione \"Ciao.\" chiude il dialogo.\n")
+    m, apertura = _partita(src, seme=5)
+    _check(m is not None and "--- La sala ---" in apertura, "nuova_partita apre la partita")
+    esegui(m, "prendi la mela")
+    prima_impronta, prima_campi = m.impronta_stato(), set(m.__dict__)
+    prima_sessione = {k: repr(m.__dict__[k]) for k in Mondo._CAMPI_VOLATILI
+                      if k in m.__dict__ and k not in ("uscita", "azioni", "_storia_stati", "_stato_iniziale")}
+    for cmd in ("ovest", "parla con la guardia", "lascia la mela", "esci", "annulla", "prendi"):
+        r = prova(m, cmd)
+    _check(m.impronta_stato() == prima_impronta and set(m.__dict__) == prima_campi,
+           "dopo le prove la partita è la stessa (impronta e campi)")
+    dopo = {k: repr(m.__dict__[k]) for k in prima_sessione}
+    _check(dopo == prima_sessione, "anche la sessione (ogni campo volatile) è com'era")
+    r = prova(m, "ovest")
+    _check(r["turno"] == m.turno_corrente + 1 and "stiva" in r["testo"].lower(), "prova dice che cosa succederebbe")
+    stato = repr(m.rng.getstate())
+    with contextlib.redirect_stdout(io.StringIO()):
+        mostra_situazione(m)
+    _check(repr(m.rng.getstate()) == stato, "mostra_situazione non pesca le varianti a caso")
+    ospiti = {
+        "favella_playground.py": "apri_partita(", "favella_server.py": "apri_partita(",
+        "esportazione.py": "apri_partita(", "esploratore.py": "apri_partita(",
+        os.path.join("landingpage", "src", "lib", "favellaRuntime.ts"): "apri_partita(",
+    }
+    base = os.path.dirname(os.path.abspath(__file__))
+    for nome, cosa in ospiti.items():
+        with open(os.path.join(base, nome), encoding="utf-8") as f:
+            _check(cosa in f.read(), f"{nome} usa l'apertura comune")
+
+
+def test_150_l15_strumenti_di_collaudo():
+    print("[1.5.0 / L15: trascrivi, percorsi con le attese, traccia, riprese]")
+    from esploratore import trascrivi, collauda_percorsi
+    src = ("Il titolo è \"Prova\".\nLa sala è una stanza.\nLa stiva è una stanza.\n"
+           "La sala collega ovest a la stiva.\nIl giocatore comincia nella sala.\n"
+           "L'aria è un contatore.\nL'aria parte da 30.\nOgni turno se l'aria è più di 0: diminuisci l'aria di 4.\n"
+           "Il risuonatore è una cosa.\nIl risuonatore è nella sala.\n\"stacca\" è un comando.\n"
+           "Invece di stacca il risuonatore: dire \"Staccato.\" e adesso il risuonatore è in inventario.\n")
+    cartella = tempfile.mkdtemp()
+    storia = os.path.join(cartella, "s.fav")
+    with open(storia, "w", encoding="utf-8") as f:
+        f.write(src)
+    buono = os.path.join(cartella, "buono.txt")
+    with open(buono, "w", encoding="utf-8") as f:
+        f.write("# atteso: esito in_corso\n# atteso: aria >= 20\nstacca il risuonatore\n"
+                "# atteso: l'aria è almeno 26\novest\n# atteso: stanza la stiva\n# atteso: mai «Non puoi»\n")
+    cattivo = os.path.join(cartella, "cattivo.txt")
+    with open(cattivo, "w", encoding="utf-8") as f:
+        f.write("# atteso: aria >= 25\nstacca il risuonatore\novest\naspetta\n")
+    with contextlib.redirect_stdout(io.StringIO()):
+        ok, testo = trascrivi(storia, buono, tracce=["aria"])
+    _check(ok and "--- PROVA ---" in testo and "> ovest" in testo and "[aria=22]" in testo,
+           "trascrivi: l'apertura, i comandi, la traccia")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rapporto, falliti = collauda_percorsi(storia, [buono, cattivo], tracce=["aria"], riprese=True)
+    _check(falliti == 2 and "[NO]" in rapporto, f"il percorso cattivo fallisce, la ripresa trova il risuonatore ({falliti})")
+    _check("ripresa di «risuonatore»" in rapporto, "la prova di ripresa: posato, non si riprende")
+    _check("aria >= 25: aria vale 18" in rapporto, "l'attesa in testa vale alla fine e dice perché")
+
+
+def test_150_l20_i_fatti_nei_pulsanti():
+    print("[1.5.0 / L20: pulsanti() dice i verbi con una regola e i loro effetti]")
+    from gioco import pulsanti
+    src = ("La sala è una stanza.\nIl faro è una cosa.\nIl faro è nella sala.\n\"alza\" è un comando.\n"
+           "Invece di alza il faro: dire \"Su.\" e adesso il faro è pieno.\n"
+           "Invece di leggi il faro: dire \"Scritte.\".\n\"medita\" è un comando senza oggetto.\n"
+           "Invece di medita: dire \"Om.\".\n")
+    m, _ = _partita(src)
+    f = pulsanti(m)["fatti"]
+    _check(f["per_cosa"].get("faro") == ["alza", "esamina"], f"i verbi del pulsante ({f['per_cosa']})")
+    _check(f["effetti"].get("faro") == {"alza": ["pien"]}, "gli effetti, per radice")
+    _check(f["senza_cosa"] == ["medita"], "i verbi senza cosa")
+
+
+def test_150_d_fronti_a_fine_turno_e_alla_chiusura_del_dialogo():
+    print("[1.5.0 / D: i fronti vedono la fine del turno e la chiusura del dialogo]")
+    src = ("La plancia è una stanza.\nL'aria è un contatore.\nL'aria parte da 64.\n"
+           "Quando l'aria è al massimo 60: dire \"La cifra passa all'ambra: [aria].\".\n"
+           "Ogni turno se l'aria è più di 0: diminuisci l'aria di 4.\n"
+           "Ogni turno se l'aria è più di 0: diminuisci l'aria di 4.\n")
+    m, _ = _partita(src)
+    _check("ambra" not in esegui(m, "aspetta") and "ambra: 56." in esegui(m, "aspetta"),
+           "senza la frase, come sempre: la soglia arriva un turno dopo")
+    m, _ = _partita("I demoni guardano la fine del turno.\n" + src)
+    out = esegui(m, "aspetta")
+    _check("ambra: 56." in out, "la soglia dichiarata prima dei consumi scatta nel turno giusto, con la cifra di fine turno")
+    _check("ambra" not in esegui(m, "aspetta"), "e non riscatta")
+    src = ("La sala è una stanza.\nIl giocatore comincia nella sala.\nLa voce è uno stato.\nLa voce è muta.\n"
+           "L'anziano è un personaggio.\nL'anziano è nella sala.\n"
+           "Il dialogo dell'anziano comincia con \"addio\".\nL'anziano al nodo \"addio\" dice \"Va'.\".\n"
+           "Al nodo \"addio\" l'opzione \"Vado.\" chiude il dialogo e adesso la voce è libera.\n"
+           "Quando la voce è libera: dire \"Una voce, dal fondo.\".\n")
+    m, _ = _partita(src)
+    esegui(m, "parla con l'anziano")
+    _check("Una voce" not in esegui(m, "1"), "senza la frase, come sempre: la voce aspetta un turno")
+    m, _ = _partita("I demoni guardano la fine del turno.\n" + src)
+    esegui(m, "parla con l'anziano")
+    out = esegui(m, "1")
+    _check("Una voce, dal fondo." in out and m.turno_corrente == 0,
+           "chiuso il dialogo, il fronte scatta subito (senza un turno)")
+
+
+def test_150_riga_di_stato_e_ifid():
+    print("[1.5.0: la riga di stato e l'IFID]")
+    from gioco import riga_di_stato
+    from esportazione import esporta_html
+    src = ("La plancia è una stanza.\nIl giocatore comincia nella plancia.\nL'aria è un contatore.\n"
+           "L'aria parte da 9.\nLa riga di stato è \"[luogo] · Aria [aria]\".\n"
+           "L'IFID è \"0F3C2A1B-1111-4222-8333-944455556666\".\n")
+    m, apertura = _partita(src)
+    _check(riga_di_stato(m) == "La plancia · Aria 9", "la riga di stato interpolata")
+    _check("Aria 9" not in apertura, "il terminale non la scrive nel testo")
+    from favella_utils import raccogli_uscita
+    from gioco import elabora_comando
+    with raccogli_uscita(m) as u:
+        elabora_comando(m, "aspetta")
+    _check(any(e.tipo == "stato" and e.testo == "La plancia · Aria 9" for e in u.eventi),
+           "un evento 'stato' dopo ogni comando")
+    cartella = tempfile.mkdtemp()
+    storia = os.path.join(cartella, "s.fav")
+    with open(storia, "w", encoding="utf-8") as f:
+        f.write(src)
+    res = esporta_html(storia)
+    _check(res.get("ok") and 'property="ifiction:ifid" content="0F3C2A1B-1111-4222-8333-944455556666"' in res["html"],
+           "la pagina esportata porta l'IFID nei metadati")
+    _check('id="stato"' in res["html"] and 'e.tipo === "segnale"' in res["html"],
+           "la pagina esportata ha la riga di stato e non scrive i segnali")
+    _m, log = compila("La sala è una stanza.\nL'IFID è \"abc\".\n")
+    _check(_m is None and "IFID" in log, "un IFID non valido è un errore")
+
+
+def test_150_studio_regge_le_frasi_nuove():
+    print("[1.5.0: gli strumenti di Studio leggono e riscrivono le frasi nuove]")
+    from strumenti_ide import serializza_frase
+    src = ("La sala è una stanza.\nIl faro è una cosa.\nIl faro è nella sala.\nL'aria è un contatore.\n"
+           "La stiva è una stanza.\n"
+           "Invece di usa oppure accendi il faro per la prima volta: dire \"Luce.\" e adesso aumenta l'aria "
+           "e adesso il giocatore va nella stiva e adesso segnala \"faro\" e poi dire \"[aria].\".\n"
+           "Prima di prendi qualcosa se l'aria è almeno 9: dire \"No.\" e basta.\n")
+    d = regole_strutturate(src)
+    _check(d.get("ok"), "analizza_regole regge")
+    r = d["rules"][0] if d.get("ok") else {}
+    _check(r.get("verbs") == ["usa", "accendi"] and r.get("firstTime") and r.get("thenSay") == "[aria].",
+           "una frase su due verbi è una regola sola, con le frasi nuove")
+    _check(len(d.get("rules", [])) == 2 and d["rules"][1].get("stops"), "'e basta' si legge")
+    frase = serializza_frase(dict(r, op="rule")).get("text", "")
+    _check("usa oppure accendi il faro per la prima volta" in frase.lower() and "il giocatore va in stiva" in frase
+           and "segnala \"faro\"" in frase and "e poi dire \"[aria].\"" in frase,
+           f"e si riscrive ({frase})")
+    m2, log = compila(src.replace(src.splitlines()[5] + "\n", frase + "\n"))
+    _check(m2 is not None, "la frase riscritta compila")
+    t = serializza_frase({"op": "rule", "verb": "esamina", "response": "Un po’ “strano”.", "consequences": []})
+    _check("Un po’ “strano”." in t.get("text", ""), "il serializzatore conserva la tipografia")
+
+
+_CORPUS_GUARDIA_150 = (
+    "La plancia è una stanza.\nLa stiva è una stanza.\nLa gola è una stanza.\n"
+    "La plancia collega ovest a la stiva.\n"
+    "La stiva collega giù a la gola se la fuga è iniziata; altrimenti \"Sbarrato.\".\n"
+    "La stiva collega est a la plancia se la fuga è lontana, altrimenti \"No.\".\n"
+    "La plancia collega nord a la gola se la fuga è iniziata.\n"
+    "L'aria è un contatore (voluto).\nL'aria parte da 40.\nGli echi sono un contatore.\n"
+    "La fuga è uno stato (voluto).\nLa fuga è lontana.\n"
+    "La protezione è attiva quando l'aria è meno di 30 e la fuga è lontana.\n"
+    "Le luci sono accese quando la fuga è lontana.\n"
+    "I ganci sono una cosa.\nI ganci sono nella plancia.\n"
+    "I ganci si chiamano anche \"casse\", \"uncini\" e \"rampini\".\n"
+    "La tuta si chiama anche \"scafandro\".\nLa tuta è una cosa.\nLa tuta è nella plancia.\n"
+    "Il testo \"presa\" è \"Una voce. [aria].\".\n"
+    "\"sintonizza\" è un comando.\n\"esamina\" non fa passare il tempo.\n"
+    "La riga di stato è \"[luogo] · [aria]\".\nL'IFID è \"0F3C2A1B-1111-4222-8333-944455556666\".\n"
+    "Prima di sintonizza qualcosa se la protezione è attiva: dire \"PROTEZIONE.\" e basta.\n"
+    "Prima di sintonizza i ganci se la fuga è lontana: dire \"a\"; altrimenti: dire \"b\" e basta.\n"
+    "Prima di vai se l'aria è meno di 5: dire \"Fermo.\" e basta.\n"
+    "Invece di sintonizza oppure tocca oppure usa i ganci per la prima volta se l'aria è almeno 3: "
+    "dire \"I ganci cantano.\" e adesso aumenta gli echi e poi dire \"[echi]\"; altrimenti: dire \"Zitti.\".\n"
+    "Invece di aspetta per la prima volta: dire \"Attendi.\".\n"
+    "Invece di usa la tuta: dire \"x\" e poi dire \"y\".\n"
+    "Prima di prendi la tuta: aumenta l'aria e poi dire \"[aria]\" e basta.\n"
+    "Invece di tocca la tuta: dire \"x\" e adesso il giocatore va nella gola.\n"
+    "Invece di usa i ganci su la tuta: il giocatore si ritrova nella stiva e adesso segnala \"gemito\".\n"
+    "Quando la protezione è attiva per la prima volta: dire \"Allarme.\".\n"
+    "Quando l'aria è meno di 10 diventa vera per la prima volta: segnala \"rosso\".\n"
+    "Quando il giocatore entra nella gola per la prima volta se la fuga è iniziata: dire \"Eco.\" e poi dire \"Fine.\".\n"
+    "Quando il giocatore entra nella stiva: dire \"Freddo.\".\n"
+    "Ogni 3 turni: diminuisci l'aria e poi dire \"Aria [aria].\".\n"
+    "L'anziano è un personaggio.\nL'anziano è nella plancia.\n"
+    "Il dialogo dell'anziano comincia con \"addio\".\nL'anziano al nodo \"addio\" dice \"Va'.\".\n"
+    "Al nodo \"addio\" l'opzione \"Vado.\" chiude il dialogo e adesso la plancia collega est a la gola.\n"
+    "Se chiedi all'anziano di \"nave\": dire \"Grande.\" e poi dire \"Molto.\".\n"
+    "I demoni guardano la fine del turno.\n"
+)
+
+
+def test_150_guardia_lalr_frasi_nuove():
+    print("[1.5.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
+    simboli = costruisci_symbol_table(_CORPUS_GUARDIA_150)
+    try:
+        costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli))
+        ok, msg = True, ""
+    except GrammarError as e:
+        ok, msg = False, str(e)
+    _check(ok, f"LALR(1) senza conflitti ({msg})")
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli))
+    albero = Lark(grammatica, start="start", parser="earley", ambiguity="explicit").parse(_CORPUS_GUARDIA_150)
+    _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
+    mondo, log = compila(_CORPUS_GUARDIA_150)
+    _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
+
+
 def main():
     # [1.4.3] Con l'uscita rediretta su file, in Windows la console è cp1252 e le
     # descrizioni dei test con «→» o simili interrompevano la suite a metà.
@@ -7942,9 +8552,37 @@ def main():
         test_robustezza_console_cp1252_non_crasha,
         # [1.4.4] riga degli errori semantici
         test_riga_degli_errori_semantici,
+        # [1.5.0] le lezioni del Relitto e le idee rimaste
+        test_150_l18_punto_di_partenza_dei_salvataggi,
+        test_150_l18_salvataggi_della_1_4_accettati,
+        test_150_l19_caricare_non_segna_la_stanza,
+        test_150_n1_opzione_con_collega,
+        test_150_n2_testi_condizionali_sbilanciati_e_annidati,
+        test_150_n3_stato_letto_solo_in_un_testo,
+        test_150_l3_avviso_oggetto_che_non_si_riprende,
+        test_150_l4_stati_scritti_e_mai_letti,
+        test_150_c1_vincoli_che_fermano,
+        test_150_c2_stati_calcolati,
+        test_150_c3_per_la_prima_volta,
+        test_150_c4_spostare_il_giocatore,
+        test_150_c5_e_poi_dire,
+        test_150_c6_si_chiamano_anche_e_elenco,
+        test_150_c7_tipografia_italiana,
+        test_150_c9_testi_con_un_nome_e_piu_verbi,
+        test_150_c10_la_consultazione_non_fa_passare_il_tempo,
+        test_150_c11_segnala,
+        test_150_c12_arrivi,
+        test_150_c13_uscite_con_una_condizione,
+        test_150_n4_interfaccia_per_gli_ospiti,
+        test_150_l15_strumenti_di_collaudo,
+        test_150_l20_i_fatti_nei_pulsanti,
+        test_150_d_fronti_a_fine_turno_e_alla_chiusura_del_dialogo,
+        test_150_riga_di_stato_e_ifid,
+        test_150_studio_regge_le_frasi_nuove,
+        test_150_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.4.4)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")
     print("=" * 60)
     for t in tests:
         t()

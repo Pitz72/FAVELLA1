@@ -27,14 +27,14 @@ porta a est` è un nome valido, anche se `est` è riservata).
   [Mondo], [#kw[descrizione · posto · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza · scena · anche · uscite · nominano · solo · stanze · visitate · qui]],
   [Buio e luce], [#kw[buia · buio · illumina]],
   [Trasporto], [#kw[può · portare · oggetti · dà · spazi]],
-  [Regole e logica], [#kw[Invece · Prima · Dopo · se · dire · e · adesso · oppure · non · ha · come · altrimenti · qualcosa]],
+  [Regole e logica], [#kw[Invece · Prima · Dopo · se · dire · e · adesso · oppure · non · ha · come · altrimenti · qualcosa · basta · poi · volta · ritrova · segnala]],
   [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · partono · almeno · massimo · meno · più · moltiplica · dividi · riduci · modulo · per · resta · turno]],
   [Quantità e caso], [#kw[fra · numero · càpita]],
   [Fine partita], [#kw[vinci · perdi · termina]],
-  [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · anche · come]],
-  [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera · dopo · che]],
+  [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · chiamano · anche · come]],
+  [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera · dopo · che · entra]],
   [Personaggi e dialoghi], [#kw[dialogo · nodo · dice · opzione · conduce · chiude · va · cambia · Se · chiedi]],
-  [Presentazione], [#kw[titolo · autore · prologo · messaggio · comandi · scrivono · scelgono · pulsanti]],
+  [Presentazione], [#kw[titolo · autore · prologo · messaggio · comandi · scrivono · scelgono · pulsanti · ifid]],
   [Moduli], [#kw[Includi]],
   [Nomi speciali], [#kw[nulla · inventario]],
   [Direzioni di base], [#kw[nord · sud · est · ovest · n · s · e · o · su · giù · nordest · nordovest · sudest · sudovest]],
@@ -66,6 +66,10 @@ Il prologo è "...".
 Il messaggio "non capisco" è "...".
 I comandi si scrivono.
 I comandi si scelgono con i pulsanti.
+La cucina collega giù a la cantina se [condizione]; altrimenti "...".
+La riga di stato è "[luogo] · turno [turno]".
+L'IFID è "...".
+Il testo "voce" è "...".   # poi [voce] in qualunque testo
 ```)
 
 *Oggetti, proprietà, contenitori*
@@ -75,7 +79,8 @@ La torcia è prendibile.
 La torcia è sul tavolino.
 La torcia è spenta.
 La torcia illumina.
-La torcia si chiama anche "pila".
+La torcia si chiama anche "pila", "lampada".
+I ganci si chiamano anche "uncini".
 Il posto della torcia è "Sul tavolino, una TORCIA a manovella.".
 Il giocatore ha la torcia.
 La torcia è accendibile.   # anche: apribile, commestibile, bevibile
@@ -99,6 +104,8 @@ La calma parte da 3.
 Le vite sono un contatore.
 Le vite partono da 3.
 La temperatura parte da -5.
+L'aria è un contatore (voluto).   # lo legge l'interfaccia
+La protezione è attiva quando [condizione].
 ```)
 
 *Regole e conseguenze*
@@ -111,6 +118,11 @@ Prima di [verbo] [oggetto]: dire "...".   # poi l'azione prosegue
 Dopo di [verbo] [oggetto]: dire "...".    # se l'azione è riuscita
 Invece di [verbo] qualcosa di [proprietà]: dire "...".
 Invece di dai [oggetto] a [personaggio]: dire "...".
+Prima di [verbo] qualcosa se [condizione]: dire "..." e basta.
+Invece di [verbo] [oggetto] per la prima volta: dire "...".
+Invece di usa oppure accendi [oggetto]: dire "...".
+Invece di [verbo] [oggetto]: dire "..." e adesso [conseguenza] e poi dire "...".
+"esamina" non fa passare il tempo.
 # operando (quantità):
 #   N · [contatore] · un numero fra A e B
 # conseguenze:
@@ -127,6 +139,8 @@ Invece di dai [oggetto] a [personaggio]: dire "...".
 #   [stanza] collega D a [stanza]
 #   [stanza] non collega più D
 #   il giocatore è in [stanza]
+#   il giocatore va in [stanza] · si ritrova in [stanza]
+#   segnala "..."
 #   [personaggio] va nel [stanza]
 #   [personaggio] cambia stanza · [personaggio] ha [ogg]
 #   vinci/perdi/termina "..."
@@ -140,7 +154,8 @@ Invece di dai [oggetto] a [personaggio]: dire "...".
 #   A e B · A oppure B · non [...] · non ( A e B )
 # testi:
 #   \n · \[ \] · [turno] · [luogo]
-#   [se ...]...[altrimenti]...[fine]
+#   [se ...]...[altrimenti]...[fine]   (anche annidati)
+#   [nome di un testo]
 ```)
 
 *Tempo, demoni, dialoghi, moduli*
@@ -151,6 +166,9 @@ Ogni 3 turni: diminuisci il carburante.
 Ogni turno se [condizione]: dire "..." e adesso [conseguenza].
 Quando [condizione] diventa vera: dire "...".
 Tre turni dopo che [condizione]: dire "...".
+Quando [condizione] per la prima volta: dire "...".
+Quando il giocatore entra in [stanza] se [condizione]: dire "...".
+I demoni guardano la fine del turno.
 Il notaio è un personaggio.
 Il dialogo del notaio comincia con "tavolo".
 Il notaio al nodo "tavolo" dice "...".

@@ -130,6 +130,25 @@ basta una frase:
   `Le uscite nominano solo le stanze visitate.`
 ]
 
+== Uscite che dipendono da qualcosa
+
+Una porta che si apre solo a una condizione si può scrivere direttamente nel
+collegamento. Finché la condizione è falsa l'uscita non compare fra le «Uscite» e non
+si passa, in tutte e due le direzioni; con `altrimenti` scegli che cosa leggere chi
+prova a passare comunque:
+
+#esempio(da: "un esempio")[
+#fav(```
+La cucina collega giù a la cantina se la botola è aperta; altrimenti "La botola è chiusa.".
+La sala collega est a la serra se il giocatore ha la chiave della serra.
+```)
+]
+
+Senza `altrimenti`, chi prova a passare legge la risposta di un'uscita che non c'è,
+e il turno non passa. Una conseguenza `collega` o `non collega più` sulla stessa uscita
+toglie la condizione. È la forma da preferire a una regola `Invece di vai` che fa da
+porta: l'uscita chiusa non si vede, e il collaudo la conosce.
+
 #prova[
   Aggiungi una nuova stanza, il `sottoscala`, e collegala alla cantina con una
   coppia di direzioni tutta tua (per esempio `dentro` e `fuori`). Poi parti

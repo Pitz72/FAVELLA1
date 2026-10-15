@@ -317,6 +317,52 @@ Invece di annusa qualcosa: dire "Sa di polvere.".
 ```)
 ]
 
+== Divieti che valgono per tutto: `e basta`
+
+Proprio perché la regola su un oggetto vince su quella per categoria, un divieto
+generale («al buio non si legge niente») andrebbe ripetuto per ogni oggetto che ha
+una regola sua. Dalla versione 1.5 basta una regola `Prima di` che finisce con `e
+basta`: ferma l'azione, e viene controllata *prima* di tutte le altre regole, qualunque
+sia il loro bersaglio.
+
+#esempio(da: "un esempio")[
+#fav(```
+Prima di leggi qualcosa se la torcia è spenta: dire "Al buio le righe non si vedono." e basta.
+Prima di vai se la febbre è alta: dire "Le gambe non ti reggono." e basta.
+```)
+]
+
+I divieti si guardano nell'ordine in cui li hai scritti; il turno passa, come per
+ogni regola che scatta. `e basta` vale solo nelle regole `Prima di`: in una regola
+`Invece di` l'azione è già sostituita.
+
+== La prima volta
+
+Molte cose succedono una volta sola: la prima volta che apri il diario ci trovi un biglietto,
+dopo è solo un diario. `per la prima volta`, subito dopo il bersaglio, fa valere la
+regola finché non è scattata una volta; il ramo `altrimenti`, se c'è, vale dalla
+seconda in poi:
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di esamina il diario per la prima volta: dire "Tra le pagine c'è un biglietto." e adesso il biglietto è nella cucina; altrimenti dire "Il diario. Lo conosci a memoria.".
+```)
+]
+
+Il motore ricorda da sé che cosa è già successo (anche ANNULLA e i salvataggi lo
+sanno): non serve uno stato di guardia per ogni evento.
+
+== Più verbi, una regola
+
+Quando lo stesso gesto si dice in più modi, i verbi stanno nella stessa regola,
+separati da `oppure` (non da `o`, che vuol dire ovest):
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di usa oppure accendi il grammofono: dire "Il disco gira, gracchiando.".
+```)
+]
+
 == A chi, da dove
 
 Nelle regole a due oggetti valgono anche le preposizioni `a`, `da` (con tutte le

@@ -32,7 +32,7 @@ la copertina vera del manuale. Servono ImageMagick e `pdfinfo` nel PATH.
 
 | File | Formato | Uso |
 |---|---|---|
-| `banner-favella1-v1.4.3.png` | 2520×1080 | banner del linguaggio (copiato in `assets/banner.png`) |
+| `banner-favella1-v1.5.0.png` | 2520×1080 | banner del linguaggio (copiato in `assets/banner.png`) |
 | `banner-favella-studio-v1.2.0.png` | 2520×1080 | banner di Favella Studio |
 | `social-preview-github.jpg` | 2560×1280 | anteprima social del repository (GitHub → Settings → Social preview) |
 | `infografica-favella1-v1.4.3.png` | 2160×3840 | la versione definitiva e le dieci tappe |

@@ -1,5 +1,5 @@
 # esportazione.py
-# Esportazione di una storia FAVELLA 1 (v1.4.4) in una pagina HTML giocabile.
+# Esportazione di una storia FAVELLA 1 (v1.5.0) in una pagina HTML giocabile.
 #
 # [1.4.0 / L-7] Fino alla 1.3.0 stava in compilatore.py (che così conteneva
 # anche la pagina HTML, e la incorporava in ogni pagina esportata). Ora ha un
@@ -37,7 +37,7 @@ import json, sys
 if '/engine' not in sys.path:
     sys.path.insert(0, '/engine')
 from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti
+from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti, apri_partita
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import raccogli_uscita, UscitaRaccolta
 _mondo = None
@@ -63,9 +63,8 @@ def fav_boot(entry):
         _mondo.carica_azioni(LIBRERIA_AZIONI)
         _mondo.imposta_posizione_iniziale()
         with raccogli_uscita(_mondo, uscita):
-            if getattr(_mondo, "titolo", None) or getattr(_mondo, "prologo", None):
-                intestazione(_mondo)
-            mostra_stanza(_mondo)
+            apri_partita(_mondo, con_intestazione=bool(
+                getattr(_mondo, "titolo", None) or getattr(_mondo, "prologo", None)))
     except Exception as e:
         return _risposta(uscita, False, "[ERRORE DI COMPILAZIONE] " + str(e))
     return _risposta(uscita, True)
@@ -126,6 +125,12 @@ def esporta_html(percorso_file, sorgente=None, titolo=None):
                       ensure_ascii=False).replace("<", "\\u003c")
     html = _HTML_EXPORT_TEMPLATE.replace("/*__TITLE__*/", _escape_html(tit))
     html = html.replace("/*__DATA__*/", dati)
+    # [1.5.0] L'IFID della storia ('L'IFID è "…".') nei metadati del Treaty of
+    # Babel: IFDB e gli archivi riconoscono la storia anche da una pagina.
+    ifid = getattr(mondo, "ifid", None)
+    meta = (f'<meta prefix="ifiction: http://babel.ifarchive.org/protocol/iFiction/" '
+            f'property="ifiction:ifid" content="{_escape_html(ifid)}">' if ifid else "")
+    html = html.replace("<!--__IFID__-->", meta)
     return {"ok": True, "html": html, "title": tit}
 
 
@@ -139,6 +144,7 @@ _HTML_EXPORT_TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>/*__TITLE__*/ — FAVELLA</title>
+<!--__IFID__-->
 <style>
   :root { --bg:#0c1018; --fg:#cfe3ff; --dim:#6b7b95; --accent:#7ad0ff; --panel:#0a0e16;
     --line:#1d2740; --btn:#15233e; --btn-line:#2a3a5c; --warm:#ffd27a; --voce:#e3cfff;
@@ -164,6 +170,10 @@ _HTML_EXPORT_TEMPLATE = r"""<!DOCTYPE html>
   #out .ev-dialogo, #out .ev-opzione { color:var(--voce); }
   #out .ev-fine { color:var(--ok); font-weight:700; }
   #out .ev-errore { color:var(--err); }
+  /* [1.5.0] La riga di stato della storia ('La riga di stato è "…".'). */
+  #stato { border:1px solid var(--line); border-radius:8px; background:var(--panel);
+    padding:6px 12px; color:var(--warm); font-size:13.5px; }
+  #stato[hidden] { display:none; }
   #bar { display:flex; gap:8px; }
   #bar[hidden] { display:none; }
   #bar input { flex:1; min-width:0; background:var(--panel); border:1px solid var(--line); color:var(--fg);
@@ -202,6 +212,7 @@ _HTML_EXPORT_TEMPLATE = r"""<!DOCTYPE html>
     <h1>/*__TITLE__*/</h1>
     <button id="interruttore" type="button" hidden aria-pressed="true">Pulsanti: sì</button>
   </header>
+  <div id="stato" role="note" aria-label="Riga di stato" hidden></div>
   <div id="out" aria-live="polite"><span class="sys">Caricamento del motore FAVELLA…</span></div>
   <div id="pulsanti" hidden></div>
   <div id="bar">
@@ -221,6 +232,7 @@ const send = document.getElementById("send");
 const bar = document.getElementById("bar");
 const pan = document.getElementById("pulsanti");
 const interruttore = document.getElementById("interruttore");
+const rigaStato = document.getElementById("stato");
 const CHIAVE = "favella-pulsanti:" + DATA.title;
 let py = null, running = false, P = null, scelta = null;
 let mostra = true;
@@ -240,6 +252,13 @@ function append(text, cls) {
 function mostraEventi(r) {
   if (!r.eventi) { append(r.text); return; }
   for (const e of r.eventi) {
+    // [1.5.0] Due eventi non vanno nel testo: la riga di stato (in cima) e i
+    // segnali per chi ospita la pagina ('segnala "…"': un evento del browser).
+    if (e.tipo === "stato") { rigaStato.textContent = e.testo; rigaStato.hidden = !e.testo; continue; }
+    if (e.tipo === "segnale") {
+      window.dispatchEvent(new CustomEvent("favella-segnale", { detail: e.dati || {} }));
+      continue;
+    }
     if (e.stacco) out.appendChild(document.createTextNode("\n"));
     append(e.testo, "ev-" + e.tipo);
   }

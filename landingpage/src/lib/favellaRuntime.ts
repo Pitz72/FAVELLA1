@@ -52,7 +52,9 @@ export type StatoPartita = "in_corso" | "vinta" | "persa" | "terminata" | string
 // [motore 1.4.0] Un evento dell'uscita del motore (favella_utils.Evento).
 export type TipoEvento =
   | "intestazione" | "stanza" | "testo" | "elenco" | "domanda"
-  | "dialogo" | "opzione" | "sistema" | "fine" | "errore";
+  | "dialogo" | "opzione" | "sistema" | "fine" | "errore"
+  // [motore 1.5.0] silenziosi: la riga di stato e i segnali per l'ospite
+  | "stato" | "segnale";
 export interface EventoMotore {
   tipo: TipoEvento;
   testo: string;
@@ -102,7 +104,7 @@ import json, sys
 if '/engine' not in sys.path:
     sys.path.insert(0, '/engine')
 from compilatore import compila_mondo
-from gioco import elabora_comando, mostra_stanza, pulsanti
+from gioco import elabora_comando, mostra_stanza, pulsanti, apri_partita
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import raccogli_uscita, UscitaRaccolta
 
@@ -141,7 +143,9 @@ def fav_boot(entry):
         _mondo.carica_azioni(LIBRERIA_AZIONI)
         _mondo.imposta_posizione_iniziale()
         with raccogli_uscita(_mondo, uscita):
-            mostra_stanza(_mondo)
+            # [motore 1.5.0] L'apertura comune: dopo la prima stanza si fissa il
+            # punto di partenza dei salvataggi (L18).
+            apri_partita(_mondo, con_intestazione=False)
     except Exception as e:
         return _esito(uscita, False, "[ERRORE DI COMPILAZIONE] " + str(e))
     return _esito(uscita, True)

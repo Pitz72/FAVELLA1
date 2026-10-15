@@ -84,6 +84,16 @@ sinonimi che valgono solo per quello che lui scrive.
   `[oggetto] si chiama anche "[sinonimo]".`
 ]
 
+Dalla versione 1.5 i nomi possono essere più d'uno nella stessa frase, e con un nome
+plurale si scrive `si chiamano anche`:
+
+#esempio(da: "un esempio")[
+#fav(```
+I ganci si chiamano anche "casse", "uncini" e "rampini".
+La matrice si chiama anche "arnese", "macchina".
+```)
+]
+
 L'alias è vocabolario nuovo, quindi va *tra virgolette*. La Casa ne usa parecchi:
 
 #esempio[

@@ -82,10 +82,82 @@ _RE_PLACEHOLDER = re.compile(r"\[([^\[\]]+)\]")
 QUADRA_APERTA = "\ue000"
 QUADRA_CHIUSA = "\ue001"
 # [1.3.0 / M-6] Testo CONDIZIONALE: '[se la porta è aperta]…[altrimenti]…[fine]'.
-# Non si annida. La condizione è compilata dal compilatore (mondo.condizioni_testo).
+# La condizione è compilata dal compilatore (mondo.condizioni_testo).
+# [1.5.0 / L14, N2] I blocchi si ANNIDANO, a ogni profondità: li legge un
+# analizzatore a pila (struttura_condizionale), non più un'espressione regolare.
+# Un marcatore senza il suo compagno è un errore di compilazione: prima il
+# giocatore leggeva pezzi di codice («[se …]», «[fine]»).
 RE_TESTO_CONDIZIONALE = re.compile(
     r"\[se\s+([^\[\]]+?)\s*\](.*?)(?:\[altrimenti\](.*?))?\[fine\]", re.DOTALL | re.IGNORECASE)
 _MARCATORI_CONDIZIONALI = re.compile(r"^(?:se\s.+|altrimenti|fine)$", re.IGNORECASE | re.DOTALL)
+_RE_MARCATORE = re.compile(r"\[(?:(se)\s+([^\[\]]+?)\s*|(altrimenti)|(fine))\]", re.IGNORECASE)
+
+
+class TestoCondizionaleSbilanciato(ValueError):
+    """[1.5.0 / N2] Un testo con un [se] senza [fine], un [fine] o un
+    [altrimenti] fuori posto."""
+
+
+class _Blocco:
+    """[1.5.0 / L14] Un blocco [se …]…[altrimenti]…[fine] del testo."""
+    __slots__ = ("fonte", "vero", "falso", "inizio", "fine")
+
+    def __init__(self, fonte, inizio):
+        self.fonte = fonte          # la condizione come l'ha scritta l'autore
+        self.vero = []              # pezzi del ramo vero (stringhe e blocchi)
+        self.falso = None           # pezzi del ramo 'altrimenti' (None = nessuno)
+        self.inizio = inizio        # posizione del '[se' nel testo
+        self.fine = None            # posizione subito dopo il '[fine]'
+
+
+def struttura_condizionale(testo: str) -> list:
+    """[1.5.0 / L14] Il testo come elenco di pezzi: stringhe e blocchi [se],
+    annidati a ogni profondità. Solleva TestoCondizionaleSbilanciato se un
+    marcatore non ha il suo compagno."""
+    radice = []
+    pila = []                       # (blocco, ramo corrente)
+    corrente = radice
+    pos = 0
+    for m in _RE_MARCATORE.finditer(testo):
+        if m.start() > pos:
+            corrente.append(testo[pos:m.start()])
+        pos = m.end()
+        if m.group(1):              # [se …]
+            blocco = _Blocco(m.group(2), m.start())
+            corrente.append(blocco)
+            pila.append(blocco)
+            corrente = blocco.vero
+        elif m.group(3):            # [altrimenti]
+            if not pila:
+                raise TestoCondizionaleSbilanciato(
+                    "c'è un [altrimenti] fuori da un [se …]")
+            blocco = pila[-1]
+            if blocco.falso is not None:
+                raise TestoCondizionaleSbilanciato(
+                    f"il blocco [se {blocco.fonte}] ha due [altrimenti]")
+            blocco.falso = []
+            corrente = blocco.falso
+        else:                       # [fine]
+            if not pila:
+                raise TestoCondizionaleSbilanciato("c'è un [fine] senza il suo [se …]")
+            blocco = pila.pop()
+            blocco.fine = m.end()
+            corrente = (pila[-1].falso if pila and pila[-1].falso is not None
+                        else pila[-1].vero) if pila else radice
+    if pila:
+        raise TestoCondizionaleSbilanciato(f"il blocco [se {pila[-1].fonte}] non ha il suo [fine]")
+    if pos < len(testo):
+        corrente.append(testo[pos:])
+    return radice
+
+
+def _blocchi(pezzi):
+    for p in pezzi:
+        if isinstance(p, _Blocco):
+            yield p
+            yield from _blocchi(p.vero)
+            if p.falso:
+                yield from _blocchi(p.falso)
 # [1.3.0 / M-6] I MESSAGGI DEL MOTORE che l'autore può ridefinire con
 # 'Il messaggio "chiave" è "…".'. Nel testo, [oggetto] è l'oggetto del comando
 # e [cosa] la parola che il giocatore ha scritto; valgono gli altri segnaposto.
@@ -103,6 +175,12 @@ MESSAGGI_MOTORE = {
     "mani piene": "Hai le mani troppo piene: lascia qualcosa prima di prenderlo.",
     "inventario vuoto": "Non stai portando nulla.",
 }
+
+# [1.5.0 / N4] I tipi d'evento che il terminale non stampa: parlano solo agli
+# ospiti che li sanno mostrare (un suono, una barra in cima alla pagina).
+#   'segnale'  la conseguenza 'segnala "gemito"' (C11); dati: nome
+#   'stato'    la riga di stato della storia, già interpolata
+EVENTI_SILENZIOSI = ("segnale", "stato")
 
 
 def messaggio(mondo, chiave: str, predefinito: str, **valori) -> str:
@@ -141,6 +219,8 @@ TIPI_EVENTO = (
     "sistema",        # servizio: salvataggi, annulla, aiuto, «A presto!»
     "fine",           # l'esito della partita; dati: esito
     "errore",         # un errore interno del motore
+    "segnale",        # [1.5.0 / N6] 'segnala "…"': solo per l'ospite; dati: nome
+    "stato",          # [1.5.0] la riga di stato ('La riga di stato è "…".')
 )
 
 
@@ -158,7 +238,10 @@ class Evento:
 
     def come_testo(self) -> str:
         """L'evento come lo scriveva print(): l'eventuale riga vuota, il testo,
-        l'a capo."""
+        l'a capo. [1.5.0] Un evento silenzioso (un segnale, la riga di stato)
+        nel terminale non si scrive."""
+        if self.tipo in EVENTI_SILENZIOSI:
+            return ""
         return ("\n" if self.stacco else "") + self.testo + "\n"
 
     def come_dizionario(self) -> dict:
@@ -185,7 +268,7 @@ class UscitaTerminale(Uscita):
     redirect_stdout e la TRASCRIZIONE della riga di comando."""
     def emetti(self, evento: Evento):
         flusso = sys.stdout
-        if flusso is not None:
+        if flusso is not None and evento.tipo not in EVENTI_SILENZIOSI:
             flusso.write(evento.come_testo())
 
 
@@ -261,13 +344,41 @@ def estrai_placeholder(testo: str) -> list:
 
 
 def condizioni_nel_testo(testo: str) -> list:
-    """[1.3.0 / M-6] Le condizioni scritte nei testi condizionali ('[se …]')."""
+    """[1.3.0 / M-6] Le condizioni scritte nei testi condizionali ('[se …]').
+    [1.5.0 / L14] Anche quelle dei blocchi annidati. Un testo sbilanciato
+    solleva TestoCondizionaleSbilanciato (lo intercetta il compilatore)."""
     if not testo or "[" not in testo:
         return []
-    return [m.group(1).strip() for m in RE_TESTO_CONDIZIONALE.finditer(testo)]
+    return [b.fonte.strip() for b in _blocchi(struttura_condizionale(testo))]
 
 
-def rendi_testo(mondo, testo: str) -> str:
+def chiave_condizione(fonte: str) -> str:
+    """[1.5.0] La forma con cui una condizione di testo è conservata in
+    mondo.condizioni_testo: spazi singoli e (C7) la tipografia dei nomi
+    normalizzata, così '[se l’aria è meno di 30]' vale '[se l'aria …]'."""
+    return " ".join(normalizza_apostrofi(fonte).split())
+
+
+def _rendi_pezzi(pezzi, mondo, compilate, testo):
+    """[1.5.0 / L14] Ricompone i pezzi di struttura_condizionale tenendo, di ogni
+    blocco, il ramo della condizione vera (o 'altrimenti', o niente). Un blocco
+    la cui condizione il compilatore non conosce resta com'è scritto."""
+    out = []
+    for p in pezzi:
+        if isinstance(p, str):
+            out.append(p)
+            continue
+        condizione = compilate.get(chiave_condizione(p.fonte))
+        if condizione is None:
+            out.append(testo[p.inizio:p.fine])
+        elif condizione.valuta(mondo):
+            out.append(_rendi_pezzi(p.vero, mondo, compilate, testo))
+        elif p.falso:
+            out.append(_rendi_pezzi(p.falso, mondo, compilate, testo))
+    return "".join(out)
+
+
+def rendi_testo(mondo, testo: str, _profondita: int = 0) -> str:
     """
     [Livello 5] Sostituisce i segnaposto [nome] nel testo con il loro valore
     corrente. Ordine di risoluzione:
@@ -290,13 +401,17 @@ def rendi_testo(mondo, testo: str) -> str:
     compilate = getattr(mondo, "condizioni_testo", None) or {}
 
     def _ramo(match):
-        condizione = compilate.get(" ".join(match.group(1).split()))
+        condizione = compilate.get(chiave_condizione(match.group(1)))
         if condizione is None:
             return match.group(0)
         return match.group(2) if condizione.valuta(mondo) else (match.group(3) or "")
 
     if compilate:
-        testo = RE_TESTO_CONDIZIONALE.sub(_ramo, testo)
+        try:
+            testo = _rendi_pezzi(struttura_condizionale(testo), mondo, compilate, testo)
+        except TestoCondizionaleSbilanciato:
+            # Un testo che non viene dal compilatore (un ospite): come prima.
+            testo = RE_TESTO_CONDIZIONALE.sub(_ramo, testo)
 
     def _sostituisci(match):
         grezzo = match.group(1).strip()
@@ -307,8 +422,10 @@ def rendi_testo(mondo, testo: str) -> str:
         maiuscolo = grezzo[:1].isupper()
         a_inizio = maiuscolo or _apre_la_frase(testo, match.start())
         variabili = getattr(mondo, "variabili", {})
-        if norm in variabili:
-            valore = variabili[norm]
+        calcolati = getattr(mondo, "stati_calcolati", None) or {}
+        if norm in variabili or norm in calcolati:
+            # [1.5.0 / C2] Uno stato calcolato ha il valore della sua condizione vera.
+            valore = mondo.valore_variabile(norm) if norm in calcolati else variabili[norm]
             valore = "" if valore is None else str(valore)
             return prima_maiuscola(valore) if maiuscolo else valore
         trova = getattr(mondo, "trova_oggetto", None)
@@ -316,6 +433,12 @@ def rendi_testo(mondo, testo: str) -> str:
         if ogg is not None:
             nome = nome_in_frase(ogg.nome_visualizzato)
             return prima_maiuscola(nome) if a_inizio else nome
+        testi = getattr(mondo, "testi", None) or {}
+        if norm in testi and _profondita < 10:
+            # [1.5.0 / C9] Un testo con un nome ('Il testo "presa" è "…".'): si
+            # rende a sua volta (segnaposto e [se] compresi).
+            reso = rendi_testo(mondo, testi[norm], _profondita + 1)
+            return prima_maiuscola(reso) if maiuscolo else reso
         if norm == "turno":   # [1.3.0 / M-7]
             return str(getattr(mondo, "turno_corrente", 0))
         if norm == "luogo":   # [1.3.0 / M-6] il nome della stanza del giocatore
@@ -530,9 +653,53 @@ def normalizza_tipografia(testo: str) -> str:
     ENTITA, parsing) vede la stessa forma. Idempotente.
     """
     testo = unicodedata.normalize("NFC", testo)
-    return (testo
-            .replace('’', "'").replace('‘', "'")
-            .replace('“', '"').replace('”', '"'))
+    # [1.5.0 / L13] La tipografia italiana passa intatta: DENTRO le stringhe fra
+    # virgolette dritte l'apostrofo ’ e le virgolette “ ” restano come l'autore
+    # le ha scritte («po’», "Il cartello dice “ATTENZIONE”."). Fuori dalle stringhe
+    # (nomi, parole del linguaggio) tutto si raddrizza come prima, e una stringa
+    # delimitata da virgolette curve (“…”, il copia-incolla da un editor di testo)
+    # resta una stringa, con il suo contenuto raddrizzato come prima.
+    if not any(c in testo for c in _CURVE):
+        return testo
+    out = []
+    i, n = 0, len(testo)
+    while i < n:
+        c = testo[i]
+        if c == '"':                          # stringa dritta: si conserva com'è
+            j = i + 1
+            while j < n and testo[j] != '"':
+                j += 2 if testo[j] == "\\" else 1
+            out.append(testo[i:j + 1])
+            i = j + 1
+        elif c == "“":                        # stringa curva: come prima
+            j = i + 1
+            while j < n and testo[j] not in "”\"":
+                j += 2 if testo[j] == "\\" else 1
+            out.append('"' + normalizza_apostrofi(testo[i + 1:j]) + ('"' if j < n else ""))
+            i = j + 1
+        elif c == "#":                        # commento: fino all'a capo
+            j = testo.find("\n", i)
+            j = n if j == -1 else j
+            out.append(normalizza_apostrofi(testo[i:j]))
+            i = j
+        else:
+            out.append(_DRITTE.get(c, c))
+            i += 1
+    return "".join(out)
+
+
+_CURVE = "’‘“”"
+_DRITTE = {"’": "'", "‘": "'", "“": '"', "”": '"'}
+
+
+def normalizza_apostrofi(testo: str) -> str:
+    """[1.5.0 / L13] Raddrizza apostrofi e virgolette curve: serve dove la
+    tipografia non deve contare (nomi, segnaposto, condizioni dei testi, parole
+    che il giocatore scrive). Il comando del giocatore passa da qui: chi gioca dal
+    telefono scrive «l’ancora», e vale «l'ancora»."""
+    if not testo or not any(c in testo for c in _CURVE):
+        return testo
+    return "".join(_DRITTE.get(c, c) for c in testo)
 
 
 def normalizza_nome(nome: str) -> str:
@@ -555,7 +722,7 @@ def normalizza_nome(nome: str) -> str:
     #    Unicode in NFC, così l'id è indipendente dalla forma (precomposta o
     #    decomposta) con cui gli accenti arrivano dal sorgente o dall'input del
     #    giocatore a runtime: 'comò' digitato come 'o'+◌̀ risolve l'oggetto 'comò'.
-    nome_processato = unicodedata.normalize("NFC", nome).lower()
+    nome_processato = normalizza_apostrofi(unicodedata.normalize("NFC", nome)).lower()
 
     # 2. Rimuovi l'articolo iniziale. Gli articoli con apostrofo ("l'", "un'")
     #    sono attaccati al nome; gli altri richiedono lo spazio separatore.

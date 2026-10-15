@@ -53,7 +53,10 @@ nella cartella dove tieni le tue storie.
   [#cmd[favella1 compila storia.fav]], [Controlla la storia e segnala errori e avvisi, senza giocarla.],
   [#cmd[favella1 collaudo storia.fav]], [Verifica che la storia sia vincibile, ragionando sulle frasi senza giocarla.],
   [#cmd[favella1 collaudo storia.fav --finali]], [Gioca partite vere e dice quali finali si raggiungono.],
+  [#cmd[favella1 collaudo storia.fav --percorsi a.txt]], [Gioca i tuoi percorsi e controlla le attese che ci hai scritto (vedi sotto).],
   [#cmd[favella1 esplora storia.fav]], [Gioca molte partite a caso e segnala dove la storia si rompe.],
+  [#cmd[favella1 trascrivi storia.fav a.txt]], [Gioca un percorso e scrive la partita come la vede chi gioca.],
+  [#cmd[favella1 ifid]], [Ti dà un identificatore nuovo per la storia (vedi il capitolo sulle stanze).],
   [#cmd[favella1 playground]], [Apre il laboratorio nel browser: scrivi e provi sul posto.],
   [#cmd[favella1 esporta storia.fav]], [Crea un singolo file `.html` giocabile, da regalare a chi vuoi (si gioca scrivendo o toccando i pulsanti-verbo).],
   [#cmd[favella1 libreria]], [Elenca i moduli `.fav` riusabili della libreria standard; `favella1 libreria copia verbi` ne copia uno accanto alla tua storia.],
@@ -69,6 +72,30 @@ rimasto nel testo, un'uscita elencata che poi non si apre), con i comandi per
 riprodurlo. Un giocatore a caso però non arriva in fondo a una storia lunga: con
 `--percorso soluzione.txt` gli dai un file con un comando per riga, e lui lo
 gioca per intero e poi esplora da ogni stanza che il percorso ha toccato.
+
+Dalla versione 1.5 un percorso può dire anche che cosa ti aspetti, in righe di
+commento che cominciano con `# atteso:`. Scritte in testa valgono alla fine della
+partita, scritte fra i comandi valgono in quel punto:
+
+#esempio(da: "un esempio")[
+#fav(```
+# atteso: esito vinta
+# atteso: mai «Non puoi prenderlo»
+prendi la torcia
+est
+# atteso: l'aria è almeno 20
+# atteso: stanza la cantina
+```)
+]
+
+Un'attesa può essere un esito (`vinta`, `persa`, `in_corso`), la stanza in cui ti
+trovi, un confronto (`aria >= 20`), una condizione scritta come dopo un `se`, un
+testo che deve comparire (`compare «…»`), non comparire mai (`mai «…»`) o chiudere
+la partita (`finale «…»`). #cmd[favella1 collaudo storia.fav --percorsi a.txt b.txt]
+li gioca e ti dice quali attese non tornano, e perché. Con `--traccia aria` vedi il
+valore di un contatore dopo ogni comando; con `--riprese`, a ogni stanza nuova, il
+collaudo prova a posare e riprendere ogni oggetto che porti: trova le cose che, una
+volta lasciate, non si riprendono più.
 
 Una storia, qui, è semplicemente un file di testo con estensione `.fav`: lo puoi
 scrivere con qualunque editor. Quando una storia è fatta di più file legati da

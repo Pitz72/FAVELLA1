@@ -70,7 +70,7 @@ const Home = () => {
         <GlyphField />
         <div className="relative mx-auto max-w-[1240px]">
           <Reveal>
-            <Pill tone="emerald">FAVELLA 1 · {ENGINE_VERSION} · la versione definitiva</Pill>
+            <Pill tone="emerald">FAVELLA 1 · {ENGINE_VERSION} · le lezioni del Relitto</Pill>
           </Reveal>
           <Reveal delay={90}>
             <h1 className="mt-8 font-display text-[clamp(52px,10.4vw,164px)] font-bold leading-[0.9] tracking-[-0.06em] text-favella-text-primary">

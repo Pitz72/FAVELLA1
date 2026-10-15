@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 # eventi, raccolti per ogni chiamata sul mondo della partita. Prima si dirottava
 # stdout, che è globale al processo e quindi fragile sotto un server a thread.
 from compilatore import analizza_file_strutturato, compila_mondo
-from gioco import elabora_comando, mostra_stanza, intestazione
+from gioco import elabora_comando, mostra_stanza, intestazione, apri_partita
 from libreria_azioni import LIBRERIA_AZIONI
 from strutture import VERSIONE_MOTORE
 from favella_utils import rendi_testo, raccogli_uscita
@@ -80,8 +80,9 @@ def _avvia_partita(sorgente):
                 "errors": [{"message": "Nessuna stanza definita: impossibile "
                                        "avviare il gioco.", "severity": "error"}]}
     with raccogli_uscita(mondo) as uscita:
-        intestazione(mondo, "Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
-        mostra_stanza(mondo)
+        # [1.5.0 / L18] L'apertura comune: il punto di partenza dei salvataggi
+        # si fissa dopo la prima stanza.
+        apri_partita(mondo, "Scrivi un comando qui sotto. Comandi utili: ANNULLA, ANCORA, SALVA, CARICA.")
     _SESSIONE.mondo = mondo
     return {"ok": True, "output": uscita.testo(), "events": uscita.come_dizionari(),
             "running": True, "state": _stato_partita(mondo)}

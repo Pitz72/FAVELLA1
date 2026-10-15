@@ -173,6 +173,35 @@ Per confrontare due stati, invece, c'è `è come`:
   te lo dice indicando la forma giusta.
 ]
 
+== Stati che si calcolano da soli
+
+A volte uno stato non va impostato da nessuno: è il riassunto di altre cose. «La
+protezione è attiva quando l'aria scende sotto 30 e la fuga non è cominciata» si
+scrive così, una volta sola:
+
+#esempio(da: "un esempio")[
+#fav(```
+La protezione è attiva quando l'aria è meno di 30 e la fuga è lontana.
+La protezione è spenta quando la fuga è vicina.
+Invece di ascolta le voci se la protezione è attiva: dire "La tuta copre ogni suono.".
+La descrizione del visore è "[se la protezione è attiva]Luce rossa.[altrimenti]Luce verde.[fine]".
+```)
+]
+
+Lo stato *calcolato* si legge come ogni altro stato — `se la protezione è attiva`,
+`se la protezione non è attiva`, `[protezione]` in un testo, un demone `Quando la
+protezione è attiva` — ma non si dichiara e non si assegna: il suo valore è quello
+della prima frase la cui condizione è vera, e se nessuna è vera non ne ha. Così la
+stessa soglia non va riscritta in venti regole, e non può capitare di scriverla in
+due modi diversi.
+
+#nota[
+  Il compilatore avvisa quando uno stato o un contatore *cambia ma nessuno lo legge*:
+  di solito è un residuo, o un nome sbagliato. Se a leggerlo è l'interfaccia di un
+  gioco (un visore che mostra l'aria, un suono), aggiungi `(voluto)` alla
+  dichiarazione: `L'aria è un contatore (voluto).`, e l'avviso sparisce.
+]
+
 == Numeri negativi, in lettere, e un po' di aritmetica
 
 Dalla versione 1.3 un contatore può partire sotto zero (`La temperatura parte da

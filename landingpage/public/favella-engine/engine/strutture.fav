@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.4.4"
+VERSIONE_MOTORE = "1.5.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -142,7 +142,7 @@ class CondizioneVariabile(Condizione):
         self.valore = valore
 
     def valuta(self, mondo: 'Mondo') -> bool:
-        return mondo.variabili.get(self.nome) == self.valore
+        return mondo.valore_variabile(self.nome) == self.valore
 
 class CondizioneVariabileUguali(Condizione):
     """[0.34.0 / Tema 3] Confronto stato↔stato per INDIREZIONE: 'se il corteggiato
@@ -158,7 +158,7 @@ class CondizioneVariabileUguali(Condizione):
         self.altro = altro
 
     def valuta(self, mondo: 'Mondo') -> bool:
-        return mondo.variabili.get(self.nome) == mondo.variabili.get(self.altro)
+        return mondo.valore_variabile(self.nome) == mondo.valore_variabile(self.altro)
 
 class CondizioneContatore(Condizione):
     """[Livello 3] Confronto numerico su un contatore: 'se [contatore] è almeno
@@ -352,18 +352,24 @@ class ConseguenzaCollegamento(Conseguenza):
         if stanza is None:
             return
         opposta = mondo.opposta_di(self.direzione)
+        # [1.5.0 / C13] Un'uscita che cambia in partita perde la sua condizione.
+        condizioni = mondo.condizioni_uscite
         if self.destinazione is None:
             vecchia = stanza.uscite.pop(self.direzione, None)
+            condizioni.pop((self.id_stanza, self.direzione), None)
             dest = mondo.trova_stanza(vecchia) if vecchia else None
             if dest is not None and opposta and dest.uscite.get(opposta) == self.id_stanza:
                 dest.uscite.pop(opposta, None)
+                condizioni.pop((dest.nome, opposta), None)
             return
         dest = mondo.trova_stanza(self.destinazione)
         if dest is None:
             return
         stanza.uscite[self.direzione] = self.destinazione
+        condizioni.pop((self.id_stanza, self.direzione), None)
         if opposta:
             dest.uscite[opposta] = self.id_stanza
+            condizioni.pop((dest.nome, opposta), None)
 
 
 class ConseguenzaPngRiceve(Conseguenza):
@@ -409,7 +415,7 @@ class ConseguenzaVariabileCopia(Conseguenza):
         self.sorgente = sorgente
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = mondo.variabili.get(self.sorgente)
+        mondo.variabili[self.nome] = mondo.valore_variabile(self.sorgente)
 
 class ConseguenzaSceltaStato(Conseguenza):
     """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso
@@ -537,12 +543,27 @@ class ConseguenzaSpostamentoGiocatore(Conseguenza):
     connessioni (`collega`). La stanza dev'essere esistente (validata in
     valida_post); a stanza inesistente l'effetto è nullo. Il loop di gioco mostra
     la nuova stanza quando il movimento avviene per una regola del giocatore."""
-    def __init__(self, id_stanza: str):
+    def __init__(self, id_stanza: str, modo: Optional[str] = None):
         self.id_stanza = id_stanza
+        # [1.5.0 / C4] None: come sempre ('è in': la stanza si mostra dopo una
+        # regola su un oggetto, non dopo una regola 'vai', un demone, un evento,
+        # un'opzione); 'mostra' ('va in'): sempre; 'tace' ('si ritrova in'): mai.
+        self.modo = modo
 
     def esegui(self, mondo: 'Mondo'):
         if mondo.trova_stanza(self.id_stanza):
             mondo.posizione_giocatore = self.id_stanza
+            mondo._modo_spostamento = self.modo
+
+
+class ConseguenzaSegnala(Conseguenza):
+    """[1.5.0 / N6] 'segnala "gemito"': manda un segnale a chi ospita il motore
+    (un evento 'segnale', silenzioso nel terminale). Non cambia il mondo."""
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def esegui(self, mondo: 'Mondo'):
+        mondo.segnali.append(self.nome)
 
 class ConseguenzaMovimentoPNG(Conseguenza):
     """[0.25.0 / A5] Movimento di un PERSONAGGIO (o altro oggetto) da una stanza a
@@ -569,10 +590,12 @@ class ConseguenzaMovimentoPNG(Conseguenza):
         stanza_orig = mondo.trova_stanza(origine) if origine else None
         direzione = None
         if self.adiacente:
-            if not stanza_orig or not stanza_orig.uscite:
+            # [1.5.0 / C13] Le uscite chiuse da una condizione non si passano.
+            uscite = mondo.uscite_visibili(origine) if stanza_orig else {}
+            if not uscite:
                 return  # nessuna uscita: il personaggio non si muove
-            direzione = mondo.rng.choice(sorted(stanza_orig.uscite.keys()))
-            destinazione = stanza_orig.uscite[direzione]
+            direzione = mondo.rng.choice(sorted(uscite.keys()))
+            destinazione = uscite[direzione]
         else:
             destinazione = self.destinazione
             if stanza_orig:
@@ -661,6 +684,19 @@ class Regola:
         # [1.3.0 / M-9] Ramo 'altrimenti': (risposta, conseguenze) quando la
         # condizione è falsa. None = nessun ramo.
         self.altrimenti = altrimenti
+        # [1.5.0 / C3] 'per la prima volta': la regola vale finché il suo ramo
+        # principale non è scattato una volta (poi vale il ramo 'altrimenti', se
+        # c'è). La memoria è nel mondo (Mondo.prime_volte), alla chiave
+        # 'chiave_prima_volta' (condivisa dalle regole nate da una frase su più verbi).
+        self.prima_volta: bool = False
+        self.chiave_prima_volta: Optional[tuple] = None
+        # [1.5.0 / C5] 'e poi dire "…"': il testo dopo le conseguenze, per ramo.
+        self.poi_dire: Optional[str] = None
+        self.poi_dire_altrimenti: Optional[str] = None
+        # [1.5.0 / C1] 'e basta' (solo 'Prima di'): il ramo ferma l'azione. Una
+        # regola che ferma è un VINCOLO: si controlla prima di tutte le altre.
+        self.basta: bool = False
+        self.basta_altrimenti: bool = False
 
     @property
     def globale(self) -> bool:
@@ -677,6 +713,30 @@ class Regola:
     def risposta_di(self, altrimenti: bool = False) -> str:
         return self.altrimenti[0] if altrimenti and self.altrimenti else self.risposta
 
+    def poi_dire_di(self, altrimenti: bool = False) -> Optional[str]:
+        """[1.5.0 / C5] Il testo di 'e poi dire' del ramo."""
+        return self.poi_dire_altrimenti if altrimenti else self.poi_dire
+
+    def ferma(self, altrimenti: bool = False) -> bool:
+        """[1.5.0 / C1] Il ramo finisce con 'e basta'."""
+        return self.basta_altrimenti if altrimenti else self.basta
+
+    @property
+    def vincolo(self) -> bool:
+        """[1.5.0 / C1] Una regola 'Prima di' con almeno un ramo che ferma."""
+        return self.fase == "prima" and (self.basta or self.basta_altrimenti)
+
+    def condizionata(self) -> bool:
+        """[1.5.0 / C3] Ha una condizione da valutare: un 'se' o 'per la prima volta'."""
+        return self.condizione is not None or self.prima_volta
+
+    def vale(self, mondo: 'Mondo') -> bool:
+        """[1.5.0 / C3] La condizione della regola, compresa 'per la prima volta'
+        (falsa dopo che il ramo principale è scattato una volta)."""
+        if self.prima_volta and self.chiave_prima_volta in mondo.prime_volte:
+            return False
+        return self.condizione is None or self.condizione.valuta(mondo)
+
 class Evento:
     """[Livello 3] Evento temporale: scatta in base al contatore dei turni.
     Tipo 'al' -> una sola volta al turno N; tipo 'ogni' -> a ogni multiplo di N.
@@ -687,6 +747,7 @@ class Evento:
         self.n = n
         self.risposta = risposta
         self.conseguenze: List[Conseguenza] = conseguenze or []
+        self.poi_dire: Optional[str] = None     # [1.5.0 / C5]
 
     def scatta_a(self, turno: int) -> bool:
         """Vero se l'evento deve attivarsi al turno dato."""
@@ -726,6 +787,11 @@ class Demone:
         # (vedi compilatore.inizializza_demoni): così una condizione già vera alla
         # partenza NON genera un falso fronte. Irrilevante per i demoni 'ogni_turno'.
         self.era_vera: bool = False
+        # [1.5.0 / C3, C5] 'Quando … per la prima volta' (una volta sola in tutta
+        # la partita; memoria in Mondo.prime_volte) e 'e poi dire'.
+        self.prima_volta: bool = False
+        self.indice: int = 0
+        self.poi_dire: Optional[str] = None
 
     def esegui_conseguenze(self, mondo: 'Mondo'):
         for conseguenza in self.conseguenze:
@@ -830,6 +896,28 @@ class Argomento:
         self.risposta = risposta
         self.condizione = condizione
         self.conseguenze: List[Conseguenza] = conseguenze or []
+        self.poi_dire: Optional[str] = None     # [1.5.0 / C5]
+
+    def esegui_conseguenze(self, mondo: 'Mondo'):
+        for c in self.conseguenze:
+            c.esegui(mondo)
+
+
+class Arrivo:
+    """[1.5.0 / C12] 'Quando il giocatore entra nella stiva [per la prima volta]
+    [se …]: …'. Scatta quando il giocatore arriva nella stanza (un movimento, una
+    regola, un demone), PRIMA che la stanza sia descritta; se chiude la partita
+    la stanza non si stampa. Diverso dal demone 'Quando il giocatore è nella
+    stiva', che guarda la fine del turno."""
+    def __init__(self, id_stanza: str, condizione: Optional['Condizione'], risposta: str,
+                 conseguenze: Optional[List[Conseguenza]] = None):
+        self.id_stanza = id_stanza
+        self.condizione = condizione
+        self.risposta = risposta
+        self.conseguenze: List[Conseguenza] = conseguenze or []
+        self.prima_volta: bool = False
+        self.indice: int = 0
+        self.poi_dire: Optional[str] = None
 
     def esegui_conseguenze(self, mondo: 'Mondo'):
         for c in self.conseguenze:
@@ -967,6 +1055,13 @@ class Mondo:
         # [1.4.3] Nel comando in corso è scattata una regola dell'autore: il turno
         # non può più essere «libero» (vedi gioco._senza_turno).
         self._regola_scattata: bool = False
+        # [1.5.0 / C4] Come l'ultima conseguenza ha spostato il giocatore
+        # (None, 'mostra', 'tace'): vedi ConseguenzaSpostamentoGiocatore.
+        self._modo_spostamento: Optional[str] = None
+        # [1.5.0 / C10] Il comando è una consultazione «senza tempo»; una regola
+        # scattata nel comando ha cambiato qualcosa (allora il tempo passa).
+        self._consultazione: bool = False
+        self._regola_cambia: bool = False
         self.posizione_giocatore: str | None = None
         # ID della stanza di partenza dichiarata esplicitamente dall'autore
         # tramite "Il giocatore comincia in [stanza].". None se non dichiarata.
@@ -1141,6 +1236,60 @@ class Mondo:
         # giocatore, non del mondo: ANNULLA non la cancella.
         self.verbi_scoperti: Set[str] = set()
         self.argomenti_scoperti: Set[tuple] = set()
+        # [1.5.0 / L18] Le impronte di partenza che un salvataggio può portare.
+        self._impronte_accettate: Set[str] = set()
+        self._partenza_dopo_apertura: bool = False
+        # [1.5.0 / C2] Stati CALCOLATI: 'La protezione è attiva quando …'. Nome ->
+        # elenco di (valore, Condizione) nell'ordine della storia: vale il primo la
+        # cui condizione è vera, altrimenti nessuno (None). Dato statico.
+        self.stati_calcolati: Dict[str, List[tuple]] = {}
+        # [1.5.0 / C9] Testi con un nome: 'Il testo "presa" è "…".' (nome -> testo).
+        self.testi: Dict[str, str] = {}
+        # [1.5.0 / C3] Ciò che 'per la prima volta' ha già consumato: coppie
+        # (tipo, indice) con tipo 'regola', 'demone' o 'arrivo'. Stato del mondo:
+        # entra in ANNULLA, nei salvataggi e, per le storie che lo usano,
+        # nell'impronta.
+        self.prime_volte: Set[tuple] = set()
+        self._calcolo_in_corso: Set[str] = set()
+        # [1.5.0 / C10] Le azioni che non fanno passare il tempo
+        # ('"esamina" non fa passare il tempo.'). Dato statico.
+        self.azioni_senza_tempo: Set[str] = set()
+        # [1.5.0 / C11] Segnali per l'ospite accodati dalle conseguenze
+        # ('segnala "gemito"'): sessione, come gli annunci.
+        self.segnali: List[str] = []
+        # [1.5.0 / C13] Uscite con una condizione: (stanza, direzione) ->
+        # (Condizione, testo per chi prova a passare quando è chiusa, o None).
+        self.condizioni_uscite: Dict[tuple, tuple] = {}
+        # [1.5.0 / C12] Gli arrivi: 'Quando il giocatore entra nella stiva: …'.
+        self.arrivi: List['Arrivo'] = []
+        # [1.5.0] La riga di stato ('La riga di stato è "…".') e l'IFID.
+        self.riga_stato: Optional[str] = None
+        self.ifid: Optional[str] = None
+        # [1.5.0 / D] 'I demoni guardano la fine del turno.': i fronti dei demoni si
+        # rivalutano sullo stato di fine turno e alla chiusura di un dialogo (vedi
+        # gioco._rivaluta_fronti). Spento senza la frase: cambierebbe il ritmo di
+        # storie già scritte (Il Viaggiatore, Cuori al caffè).
+        self.fronti_a_fine_turno: bool = False
+
+    def valore_variabile(self, nome: str):
+        """[1.5.0 / C2] Il valore di uno stato: quello assegnato o, per uno stato
+        calcolato, il valore della prima delle sue condizioni che è vera (None se
+        nessuna lo è). Un ciclo fra stati calcolati (rifiutato dal compilatore)
+        qui vale None invece di non finire."""
+        regole = self.stati_calcolati.get(nome)
+        if regole is None:
+            return self.variabili.get(nome)
+        in_corso = self._calcolo_in_corso
+        if nome in in_corso:
+            return None
+        in_corso.add(nome)
+        try:
+            for valore, condizione in regole:
+                if condizione.valuta(self):
+                    return valore
+            return None
+        finally:
+            in_corso.discard(nome)
 
     def nodo_dialogo_di(self, etichetta: str) -> 'NodoDialogo':
         """Restituisce il nodo con quell'etichetta, creandolo se non esiste."""
@@ -1203,11 +1352,18 @@ class Mondo:
                        # [1.3.0] sessione del comando in corso
                        "_turno_libero", "_in_conferma", "_uscita_richiesta",
                        "_azione_riuscita", "_ambiguita", "_usa_in_sospeso",
-                       "_regola_scattata",
+                       "_regola_scattata", "_modo_spostamento",
+                       "_consultazione", "_regola_cambia",
                        # [1.2.0] sessione di SALVA/CARICA
                        "_registro_comandi", "_pos_registro", "_reg_ingresso_dialogo",
                        "_stato_iniziale", "_impronta_iniziale", "_senza_istantanee",
                        "archivio_salvataggi",
+                       # [1.5.0 / L18] le impronte di partenza che un salvataggio
+                       # può portare (anche quella che dava la 1.4)
+                       "_impronte_accettate",
+                       # [1.5.0] i segnali per l'ospite (come gli annunci) e il
+                       # calcolo in corso degli stati calcolati
+                       "segnali", "_calcolo_in_corso", "_partenza_dopo_apertura",
                        # [1.4.0] l'uscita dell'host e ciò che il giocatore ha scoperto
                        "uscita", "verbi_scoperti", "argomenti_scoperti")
 
@@ -1219,7 +1375,11 @@ class Mondo:
                       "messaggi", "titolo", "autore", "prologo", "_stato_esteso",
                       "verbi_personalizzati", "verbi_intransitivi", "sinonimi_verbo",
                       "alias", "opposti", "direzioni", "opposte_direzioni", "file_storia",
-                      "modo_comandi")
+                      "modo_comandi",
+                      # [1.5.0] le frasi nuove che non cambiano in partita
+                      "stati_calcolati", "testi", "azioni_senza_tempo",
+                      "arrivi", "riga_stato", "ifid",
+                      "fronti_a_fine_turno")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
@@ -1313,11 +1473,22 @@ class Mondo:
         # la posizione ancora vuota, e 'Quando il giocatore è in <partenza>'
         # scattava al primo turno.
         self.azzera_memoria_demoni()
+        # [1.5.0 / L18] La stanza di partenza è vista fin dall'inizio (come la
+        # segnerebbe la prima stanza mostrata, se non è al buio). Prima il punto di
+        # partenza dei salvataggi la dava per mai vista: con 'Le uscite nominano
+        # solo le stanze visitate' ogni salvataggio si caricava dicendo, a torto,
+        # che la storia era cambiata. L'impronta di prima (1.4) resta accettata.
+        impronta_della_1_4 = self.impronta_stato()
+        if self.posizione_giocatore and self.c_e_luce():
+            self.stanze_visitate.add(self.posizione_giocatore)
         # [1.2.0] Il mondo a partita non ancora cominciata: CARICA riparte da qui
         # e rigioca la sequenza salvata. L'impronta dice se un salvataggio è stato
-        # fatto su questa stessa storia.
+        # fatto su questa stessa storia. [1.5.0] Gli ospiti che mostrano l'apertura
+        # con gioco.apri_partita fissano il punto di partenza DOPO l'apertura.
         self._stato_iniziale = self.cattura_stato()
         self._impronta_iniziale = self.impronta_stato()
+        self._impronte_accettate = {impronta_della_1_4, self._impronta_iniziale}
+        self._partenza_dopo_apertura = False
         self._registro_comandi = []
         self._pos_registro = []
         self._reg_ingresso_dialogo = None
@@ -1364,6 +1535,10 @@ class Mondo:
         estesi = getattr(self, "_stato_esteso", ())
         if "uscite" in estesi:
             dati["uscite"] = sorted([s.nome, sorted(s.uscite.items())] for s in self.stanze.values())
+            if self.condizioni_uscite:   # [1.5.0 / C13]
+                dati["uscite_con_condizione"] = sorted(list(k) for k in self.condizioni_uscite)
+        if "prime_volte" in estesi:      # [1.5.0 / C3]
+            dati["prime_volte"] = sorted(list(k) for k in self.prime_volte)
         if "prendibile" in estesi:
             dati["prendibili"] = sorted(o.nome for o in self.oggetti.values() if o.prendibile)
         if getattr(self, "uscite_solo_visitate", False):
@@ -1466,7 +1641,38 @@ class Mondo:
         self.eventi.append(evento)
 
     def aggiungi_demone(self, demone: 'Demone'):
+        demone.indice = len(self.demoni)   # [1.5.0 / C3] chiave di 'per la prima volta'
         self.demoni.append(demone)
+
+    def aggiungi_arrivo(self, arrivo: 'Arrivo'):
+        """[1.5.0 / C12] 'Quando il giocatore entra in …'."""
+        arrivo.indice = len(self.arrivi)
+        self.arrivi.append(arrivo)
+
+    def uscita_aperta(self, id_stanza: str, direzione: str) -> bool:
+        """[1.5.0 / C13] L'uscita c'è e, se ha una condizione, la condizione è
+        vera adesso. Un'uscita chiusa non si vede e non si passa."""
+        stanza = self.stanze.get(id_stanza)
+        if stanza is None or direzione not in stanza.uscite:
+            return False
+        regola = self.condizioni_uscite.get((id_stanza, direzione))
+        if regola is None:
+            return True
+        # Guardare le uscite non consuma il caso (una condizione con 'càpita').
+        stato_caso = self.rng.getstate()
+        try:
+            return bool(regola[0].valuta(self))
+        finally:
+            self.rng.setstate(stato_caso)
+
+    def uscite_visibili(self, id_stanza: str) -> Dict[str, str]:
+        """[1.5.0 / C13] Le uscite della stanza che il giocatore vede adesso."""
+        stanza = self.stanze.get(id_stanza)
+        if stanza is None:
+            return {}
+        if not self.condizioni_uscite:
+            return stanza.uscite
+        return {d: s for d, s in stanza.uscite.items() if self.uscita_aperta(id_stanza, d)}
 
     def aggiungi_stanza(self, stanza: Stanza):
         self.stanze[stanza.nome] = stanza

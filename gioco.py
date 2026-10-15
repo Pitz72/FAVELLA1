@@ -1,18 +1,19 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.4.4)
+# Interprete Interattivo per FAVELLA 1 (v1.5.0)
 
 import copy
 import json
 import os
+import random
 import re
 import sys
 import traceback
 from compilatore import analizza_file
-from strutture import Mondo
+from strutture import Mondo, ConseguenzaProprieta
 from favella_utils import (normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola,
                            assicura_console_utf8, nome_in_frase, con_preposizione,
                            radice_proprieta, messaggio, scrivi, raccogli_uscita, UscitaMuta,
-                           _scomponi_articolo)
+                           _scomponi_articolo, normalizza_apostrofi)
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -70,9 +71,10 @@ def mostra_stanza(mondo: Mondo):
     # Mostra le uscite disponibili. [1.3.0 / M-8] Con 'Le uscite nominano solo
     # le stanze visitate.' una stanza mai vista resta senza nome.
     mondo.stanze_visitate.add(stanza_corrente.nome)
-    if stanza_corrente.uscite:
+    uscite = mondo.uscite_visibili(stanza_corrente.nome)   # [1.5.0 / C13]
+    if uscite:
         voci = []
-        for d, id_s in stanza_corrente.uscite.items():
+        for d, id_s in uscite.items():
             dest = mondo.trova_stanza(id_s)
             if dest is None or (mondo.uscite_solo_visitate and id_s not in mondo.stanze_visitate):
                 voci.append(prima_maiuscola(d))
@@ -487,6 +489,12 @@ def _stampa_annunci(mondo: Mondo):
         for annuncio in annunci:
             scrivi(mondo, rendi_testo(mondo, annuncio))
         annunci.clear()
+    # [1.5.0 / N6] I segnali per l'ospite ('segnala "gemito"'): eventi silenziosi.
+    segnali = getattr(mondo, "segnali", None)
+    if segnali:
+        for nome in segnali:
+            scrivi(mondo, nome, "segnale", nome=nome)
+        segnali.clear()
 
 
 def partita_finita(mondo: Mondo) -> bool:
@@ -525,8 +533,12 @@ def avanza_turno_e_processa(mondo: Mondo) -> bool:
             # se c'è del testo, poi applica comunque le conseguenze.
             if evento.risposta:
                 scrivi(mondo, rendi_testo(mondo, evento.risposta))
+            pos_prima = mondo.posizione_giocatore
+            mondo._modo_spostamento = None
             evento.esegui_conseguenze(mondo)
-            if partita_finita(mondo):
+            if evento.poi_dire:   # [1.5.0 / C5]
+                scrivi(mondo, rendi_testo(mondo, evento.poi_dire))
+            if partita_finita(mondo) or not _dopo_lo_spostamento(mondo, pos_prima, False):
                 _stampa_annunci(mondo)   # [A5] eventuali movimenti prima della fine
                 return True
     finita = _processa_demoni(mondo)
@@ -542,8 +554,14 @@ def _processa_demoni(mondo: Mondo) -> bool:
     lo stato e quindi influenzare i demoni SUCCESSIVI nello stesso passaggio
     (cascata deterministica e utile), ma nessuno viene ri-valutato: i loop infiniti
     sono impossibili per costruzione («un demone, una valutazione per turno»).
-    Restituisce True se un demone ha terminato la partita."""
+    Restituisce True se un demone ha terminato la partita.
+    [1.5.0 / D1] Dopo il passaggio, i fronti ('Quando', 'N turni dopo che') che
+    non sono scattati si rivalutano sullo stato di fine turno (_rivaluta_fronti).
+    [1.5.0 / C3] Un demone 'per la prima volta' già scattato non conta più."""
+    scattati = set()
     for demone in mondo.demoni:
+        if demone.prima_volta and ("demone", demone.indice) in mondo.prime_volte:
+            continue
         ora_vera = demone.condizione.valuta(mondo)
         if demone.tipo == "ogni_turno":
             # A LIVELLO: scatta a OGNI turno in cui la condizione è vera.
@@ -565,13 +583,83 @@ def _processa_demoni(mondo: Mondo) -> bool:
             scatta = ora_vera and not demone.era_vera
         demone.era_vera = ora_vera
         if scatta:
-            # [0.19.0 / A9] Battuta opzionale (tick silenzioso).
-            if demone.risposta:
-                scrivi(mondo, rendi_testo(mondo, demone.risposta))
-            demone.esegui_conseguenze(mondo)
-            if partita_finita(mondo):
+            scattati.add(demone.indice)
+            if _fa_scattare(mondo, demone):
                 return True
+    if getattr(mondo, "fronti_a_fine_turno", False):
+        return _rivaluta_fronti(mondo, scattati)
     return False
+
+
+def _fa_scattare(mondo: Mondo, demone) -> bool:
+    """Il demone scatta: battuta (opzionale, A9), conseguenze, 'e poi dire', la
+    stanza d'arrivo se il giocatore 'va' altrove. True se la partita è finita."""
+    if demone.prima_volta:   # [1.5.0 / C3]
+        mondo.prime_volte.add(("demone", demone.indice))
+    if demone.risposta:
+        scrivi(mondo, rendi_testo(mondo, demone.risposta))
+    pos_prima = mondo.posizione_giocatore
+    mondo._modo_spostamento = None
+    demone.esegui_conseguenze(mondo)
+    if demone.poi_dire:      # [1.5.0 / C5]
+        scrivi(mondo, rendi_testo(mondo, demone.poi_dire))
+    if partita_finita(mondo):
+        return True
+    return not _dopo_lo_spostamento(mondo, pos_prima, False)
+
+
+def _contiene_caso(mondo: Mondo, condizione, visti=None) -> bool:
+    """[1.5.0 / D1] La condizione pesca dal caso ('càpita', anche dentro uno
+    stato calcolato): rivalutarla consumerebbe il generatore."""
+    from strutture import (CondizioneProbabilita, CondizioneAnd, CondizioneOr,
+                           CondizioneNot, CondizioneVariabile, CondizioneVariabileUguali)
+    if condizione is None:
+        return False
+    if isinstance(condizione, CondizioneProbabilita):
+        return True
+    if isinstance(condizione, CondizioneNot):
+        return _contiene_caso(mondo, condizione.condizione, visti)
+    if isinstance(condizione, (CondizioneAnd, CondizioneOr)):
+        return any(_contiene_caso(mondo, c, visti) for c in condizione.condizioni)
+    if isinstance(condizione, (CondizioneVariabile, CondizioneVariabileUguali)):
+        visti = set() if visti is None else visti
+        for nome in {condizione.nome, getattr(condizione, "altro", None)}:
+            if nome in mondo.stati_calcolati and nome not in visti:
+                visti.add(nome)
+                if any(_contiene_caso(mondo, c, visti) for _, c in mondo.stati_calcolati[nome]):
+                    return True
+    return False
+
+
+def _rivaluta_fronti(mondo: Mondo, scattati: set) -> bool:
+    """[1.5.0 / D1, D2] Un fronte vede lo stato di fine turno: i demoni 'Quando'
+    (e l'apertura dei conti di 'N turni dopo che') che in questo turno non sono
+    scattati si rivalutano finché nessuno scatta più. Ogni demone scatta al più
+    una volta per turno: niente cicli. Le condizioni con 'càpita' non si
+    rivalutano (non consumano il caso due volte). True se la partita è finita."""
+    while True:
+        altro_giro = False
+        for demone in mondo.demoni:
+            if demone.indice in scattati or demone.tipo not in ("quando", "dopo"):
+                continue
+            if demone.era_vera or (demone.tipo == "dopo" and demone.conto is not None):
+                continue
+            if demone.prima_volta and ("demone", demone.indice) in mondo.prime_volte:
+                continue
+            if _contiene_caso(mondo, demone.condizione) or not demone.condizione.valuta(mondo):
+                continue
+            demone.era_vera = True
+            scattati.add(demone.indice)
+            if demone.tipo == "dopo":
+                demone.conto = demone.ritardo
+                if demone.conto > 0:
+                    continue          # il conto alla rovescia è aperto
+                demone.conto = None
+            altro_giro = True
+            if _fa_scattare(mondo, demone):
+                return True
+        if not altro_giro:
+            return False
 
 
 def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
@@ -580,7 +668,17 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     avanza il contatore dei turni elaborando gli eventi temporali (Livello 3).
     Restituisce True se il gioco deve continuare, False se deve terminare
     (uscita del giocatore, fine partita o evento terminale).
+    [1.5.0] Dopo ogni comando, se la storia ha una riga di stato, la si manda
+    all'ospite (un evento 'stato', silenzioso nel terminale).
     """
+    # [1.5.0 / L13] «l’ancora» scritto dal telefono vale «l'ancora».
+    comando_grezzo = normalizza_apostrofi(comando_grezzo)
+    continua = _elabora_comando(mondo, comando_grezzo)
+    emetti_riga_di_stato(mondo)
+    return continua
+
+
+def _elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     comando_pulito = comando_grezzo.strip().lower()
     # [Audit 0.17.0] A partita conclusa non passano turni né scattano eventi o
     # demoni. [1.3.0] Ma si può ancora tornare indietro: ANNULLA, RICOMINCIA,
@@ -681,6 +779,8 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     lunghezza_registro = len(mondo._registro_comandi)
 
     mondo._turno_libero = False
+    mondo._consultazione = False
+    mondo._regola_cambia = False
     try:
         continua = _esegui_comando(mondo, comando_grezzo)
     except Exception:
@@ -702,6 +802,14 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
     # [1.2.0] Il comando è andato a buon fine: entra nella sequenza salvabile
     # (ANCORA vi entra già risolto nel comando che ripete).
     mondo._registro_comandi.append(comando_grezzo)
+    # [1.5.0 / C10] '"esamina" non fa passare il tempo.': una consultazione che non
+    # ha cambiato niente (nessuna regola con conseguenze) non è un turno. Entra
+    # nella sequenza salvabile (guardare può pescare una variante a caso), ma non
+    # in ANNULLA, e non fa scattare eventi né demoni.
+    if (getattr(mondo, "_consultazione", False) and not getattr(mondo, "_regola_cambia", False)
+            and continua and not era_in_dialogo and not mondo.in_dialogo()):
+        mondo.ultimo_comando = comando_grezzo
+        return True
     if not continua:
         if getattr(mondo, "stato_partita", "in_corso") != "in_corso":
             # [1.3.0] La partita è finita con questo comando: il turno entra
@@ -735,6 +843,16 @@ def elabora_comando(mondo: Mondo, comando_grezzo: str) -> bool:
                                  lunghezza_registro if ingresso is None else ingresso)
             mondo._snap_dialogo = None
         mondo._reg_ingresso_dialogo = None
+        # [1.5.0 / D2] Chiuso il dialogo, i fronti dei demoni 'Quando' guardano lo
+        # stato che il dialogo ha lasciato (senza turno e senza eventi a tempo):
+        # prima la voce che doveva seguire una conversazione arrivava solo dopo
+        # 'aspetta'.
+        if getattr(mondo, "fronti_a_fine_turno", False):
+            finita = _rivaluta_fronti(mondo, set())
+            _stampa_annunci(mondo)
+            if finita:
+                scrivi(mondo, _INVITO_DOPO_LA_FINE, "sistema", stacco=True)
+                return False
         # ultimo_comando NON aggiornato: ANCORA non deve ripetere un comando di dialogo.
         return True
     if mondo.in_dialogo():
@@ -795,7 +913,13 @@ def _ricomincia(mondo: Mondo) -> bool:
         scrivi(mondo, f"({messaggio})", "sistema")
         return mondo.stato_partita == "in_corso"
     scrivi(mondo, "(Si ricomincia da capo.)", "sistema")
-    mostra_stanza(mondo)
+    # [1.5.0 / L18] Se il punto di partenza è stato fissato dopo l'apertura
+    # (apri_partita), la prima stanza ha già lasciato i suoi segni: la si mostra
+    # senza cambiare la partita. Altrimenti, come sempre.
+    if getattr(mondo, "_partenza_dopo_apertura", False):
+        mostra_situazione(mondo)
+    else:
+        mostra_stanza(mondo)
     return True
 
 
@@ -939,7 +1063,10 @@ def carica_da_dati(mondo: Mondo, dati: dict):
         return False, "Il salvataggio viene da una versione più recente di FAVELLA."
     if mondo._stato_iniziale is None:
         return False, "Questa partita non ha un punto di partenza da cui ricaricare."
-    stessa_versione = dati.get("storia") == mondo._impronta_iniziale
+    # [1.5.0 / L18] Anche l'impronta di partenza che dava la 1.4 (il punto di
+    # partenza fissato prima della prima stanza): la partita si rigioca uguale.
+    stessa_versione = (dati.get("storia") == mondo._impronta_iniziale
+                       or dati.get("storia") in getattr(mondo, "_impronte_accettate", ()))
     if not stessa_versione:
         # [1.3.0 / L-6] Fino alla 1.2 un salvataggio valeva solo per la versione
         # esatta della storia: una correzione che aggiungeva un oggetto rendeva
@@ -1051,10 +1178,10 @@ def _gestisci_carica(mondo: Mondo, nome: str):
     ok, messaggio = carica_da_dati(mondo, dati)
     scrivi(mondo, f"({messaggio})", "sistema")
     if ok:
-        if mondo.in_dialogo():
-            _mostra_nodo(mondo)
-        else:
-            mostra_stanza(mondo)
+        # [1.5.0 / L19] Rimostrare la stanza non cambia la partita: prima la
+        # segnava come vista (e pescava le varianti a caso), e una stanza
+        # raggiunta in silenzio diventava vista solo nella partita caricata.
+        mostra_situazione(mondo)
 
 
 def _comando_di_archivio(mondo: Mondo, parole):
@@ -1172,10 +1299,12 @@ def _gestisci_scelta_dialogo(mondo: Mondo, comando: str) -> bool:
         return True
 
     # Conseguenze della scelta (riuso della coda del Livello 3), poi transizione.
+    pos_prima = mondo.posizione_giocatore
+    mondo._modo_spostamento = None
     for conseguenza in scelta.conseguenze:
         conseguenza.esegui(mondo)
     _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze di una scelta
-    if partita_finita(mondo):
+    if partita_finita(mondo) or not _dopo_lo_spostamento(mondo, pos_prima, False):
         mondo.termina_dialogo()
         return False
 
@@ -1215,17 +1344,21 @@ def _cerca_regola(mondo: Mondo, verbi, con_oggetto: bool, id_oggetto1=None,
     def vera(regola):
         chiave = id(regola)
         if chiave not in valutate:
-            valutate[chiave] = regola.condizione.valuta(mondo)
+            valutate[chiave] = regola.vale(mondo)   # [1.5.0 / C3] anche 'per la prima volta'
         return valutate[chiave]
 
     def scegli(gruppo):
         for regola in gruppo:            # condizionali soddisfatte
-            if regola.condizione and vera(regola):
+            if regola.condizionata() and vera(regola):
+                if regola.ferma(False):  # [1.5.0 / C1] i vincoli si cercano prima
+                    continue
                 return regola, False
         for regola in gruppo:            # poi semplici e rami 'altrimenti'
-            if not regola.condizione:
+            if not regola.condizionata():
+                if regola.ferma(False):
+                    continue
                 return regola, False
-            if regola.altrimenti and not vera(regola):
+            if regola.altrimenti and not vera(regola) and not regola.ferma(True):
                 return regola, True
         return None
 
@@ -1264,10 +1397,59 @@ def _cerca_regola(mondo: Mondo, verbi, con_oggetto: bool, id_oggetto1=None,
 
     for regola in candidate:
         if regola.globale:
-            if regola.condizione is None or vera(regola):
+            if vera(regola):
+                if regola.ferma(False):
+                    continue
                 return regola, False
-            if regola.altrimenti:
+            if regola.altrimenti and not regola.ferma(True):
                 return regola, True
+    return None, False
+
+
+def _cerca_vincolo(mondo: Mondo, verbi, con_oggetto: bool, id_oggetto1=None, id_oggetto2=None):
+    """[1.5.0 / C1] Il primo VINCOLO che ferma il comando: una regola 'Prima di …
+    e basta' scritta per uno dei `verbi`, qualunque sia il suo bersaglio (un
+    oggetto, una categoria, nessuno), nell'ordine in cui le regole sono scritte.
+    I vincoli vengono prima della precedenza delle altre regole: un divieto
+    generale ('Prima di sintonizza qualcosa se …: … e basta.') vale anche per gli
+    oggetti che hanno regole loro. (regola, altrimenti) oppure (None, False)."""
+    for regola in mondo.regole:
+        if not regola.vincolo or regola.verbo not in verbi:
+            continue
+        if not regola.globale:
+            if not con_oggetto or regola.id_oggetto_bersaglio in mondo.opposte_direzioni:
+                continue
+            if regola.categoria is not None:
+                if not _nella_categoria(mondo, id_oggetto1, regola.categoria):
+                    continue
+            elif regola.id_oggetto_bersaglio != id_oggetto1:
+                continue
+            if regola.id_oggetto_secondario is not None and regola.id_oggetto_secondario != id_oggetto2:
+                continue
+            if (regola.categoria_secondaria is not None
+                    and not _nella_categoria(mondo, id_oggetto2, regola.categoria_secondaria)):
+                continue
+        vera = regola.vale(mondo)
+        if vera and regola.basta:
+            return regola, False
+        if not vera and regola.altrimenti and regola.basta_altrimenti:
+            return regola, True
+    return None, False
+
+
+def _cerca_vincolo_movimento(mondo: Mondo, direzione: str):
+    """[1.5.0 / C1] Un vincolo sul movimento: 'Prima di vai nord se …: … e
+    basta.' o, per ogni direzione, 'Prima di vai se …: … e basta.'."""
+    for regola in mondo.regole:
+        if not regola.vincolo or regola.verbo != "vai":
+            continue
+        if not (regola.globale or regola.id_oggetto_bersaglio == direzione):
+            continue
+        vera = regola.vale(mondo)
+        if vera and regola.basta:
+            return regola, False
+        if not vera and regola.altrimenti and regola.basta_altrimenti:
+            return regola, True
     return None, False
 
 
@@ -1291,16 +1473,72 @@ def _applica_regola(mondo: Mondo, regola, altrimenti: bool, mostra: bool = True)
     le conseguenze, annuncia i movimenti; se il giocatore si è spostato mostra
     la nuova stanza. Restituisce False se la partita è finita."""
     mondo._regola_scattata = True   # [1.4.3] il comando ha agito: niente turno libero
+    # [1.5.0 / C3] Il ramo principale di una regola 'per la prima volta' scatta
+    # una volta sola; [C10] una regola che cambia qualcosa fa passare il tempo
+    # anche a un verbo di consultazione.
+    if regola.prima_volta and not altrimenti:
+        mondo.prime_volte.add(regola.chiave_prima_volta)
+        mondo._regola_cambia = True
+    if (regola.altrimenti[1] if altrimenti and regola.altrimenti else regola.conseguenze):
+        mondo._regola_cambia = True
     risposta = regola.risposta_di(altrimenti)
     if risposta:   # [0.30.0/A3] regola muta: niente riga vuota
         scrivi(mondo, rendi_testo(mondo, risposta))
     pos_prima = mondo.posizione_giocatore
+    mondo._modo_spostamento = None
     regola.esegui_conseguenze(mondo, altrimenti)
     _stampa_annunci(mondo)   # [A5] movimenti NPC dalle conseguenze della regola
+    poi = regola.poi_dire_di(altrimenti)
+    if poi:   # [1.5.0 / C5] il testo che legge i valori dopo le conseguenze
+        scrivi(mondo, rendi_testo(mondo, poi))
     if partita_finita(mondo):
         return False
-    if mostra and mondo.posizione_giocatore != pos_prima:
+    return _dopo_lo_spostamento(mondo, pos_prima, mostra)
+
+
+def _dopo_lo_spostamento(mondo: Mondo, pos_prima, mostra_come_oggi: bool) -> bool:
+    """[1.5.0 / C4, C12] Dopo le conseguenze di una regola, di un evento, di un
+    demone o di un'opzione: se il giocatore è arrivato altrove scattano gli
+    arrivi ('Quando il giocatore entra in …'), poi si mostra la stanza secondo la
+    forma usata: 'va in' sempre, 'si ritrova in' mai, 'è in' come sempre (cioè
+    se `mostra_come_oggi`). False se la partita è finita."""
+    if mondo.posizione_giocatore == pos_prima:
+        return True
+    modo = getattr(mondo, "_modo_spostamento", None)
+    if not _arriva(mondo):
+        return False
+    if modo == "mostra" or (modo is None and mostra_come_oggi):
         mostra_stanza(mondo)
+    return True
+
+
+def _arriva(mondo: Mondo, profondita: int = 0) -> bool:
+    """[1.5.0 / C12] Il giocatore è appena arrivato nella sua stanza: scattano, in
+    ordine, gli arrivi di quella stanza la cui condizione è vera, prima della
+    descrizione. False se uno di loro ha chiuso la partita."""
+    stanza = mondo.posizione_giocatore
+    for arrivo in mondo.arrivi:
+        if arrivo.id_stanza != stanza:
+            continue
+        if arrivo.prima_volta and ("arrivo", arrivo.indice) in mondo.prime_volte:
+            continue
+        if arrivo.condizione is not None and not arrivo.condizione.valuta(mondo):
+            continue
+        if arrivo.prima_volta:
+            mondo.prime_volte.add(("arrivo", arrivo.indice))
+        mondo._regola_scattata = True
+        if arrivo.risposta:
+            scrivi(mondo, rendi_testo(mondo, arrivo.risposta))
+        pos = mondo.posizione_giocatore
+        arrivo.esegui_conseguenze(mondo)
+        _stampa_annunci(mondo)
+        if arrivo.poi_dire:
+            scrivi(mondo, rendi_testo(mondo, arrivo.poi_dire))
+        if partita_finita(mondo):
+            return False
+        if mondo.posizione_giocatore != pos:
+            # Un arrivo ha portato il giocatore altrove: lì scattano i suoi arrivi.
+            return profondita >= 5 or _arriva(mondo, profondita + 1)
     return True
 
 
@@ -1311,14 +1549,16 @@ def _cerca_regola_movimento(mondo: Mondo, direzione: str, fase: str):
     gruppo = [r for r in mondo.regole if r.verbo == "vai"
               and r.id_oggetto_bersaglio == direzione and getattr(r, "fase", "invece") == fase]
     for regola in gruppo:
-        if regola.condizione:
-            valutate[id(regola)] = regola.condizione.valuta(mondo)
-            if valutate[id(regola)]:
+        if regola.condizionata():
+            valutate[id(regola)] = regola.vale(mondo)   # [1.5.0 / C3]
+            if valutate[id(regola)] and not regola.ferma(False):
                 return regola, False
     for regola in gruppo:
-        if not regola.condizione:
-            return regola, False
-        if regola.altrimenti and not valutate.get(id(regola), True):
+        if not regola.condizionata():
+            if not regola.ferma(False):
+                return regola, False
+            continue
+        if regola.altrimenti and not valutate.get(id(regola), True) and not regola.ferma(True):
             return regola, True
     return None, False
 
@@ -1447,6 +1687,10 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
         # [Livello 4 / L1] La mappa forma->canonica vive sul mondo (base + custom).
         direzione_normalizzata = mondo.direzioni.get(verbo_giocatore)
         if direzione_normalizzata:
+            # [1.5.0 / C1] Un vincolo ('Prima di vai nord … e basta') ferma il passo.
+            regola, altrimenti = _cerca_vincolo_movimento(mondo, direzione_normalizzata)
+            if regola is not None:
+                return _applica_regola(mondo, regola, altrimenti, mostra=False)
             # [1.3.0 / M-9] 'Prima di vai nord': scatta, poi il movimento prosegue.
             regola, altrimenti = _cerca_regola_movimento(mondo, direzione_normalizzata, "prima")
             if regola is not None and not _applica_regola(mondo, regola, altrimenti, mostra=False):
@@ -1459,8 +1703,23 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
                 return _applica_regola(mondo, regola, altrimenti, mostra=False)
 
             vecchia_posizione = mondo.posizione_giocatore
+            # [1.5.0 / C13] Un'uscita con una condizione falsa: chi prova a passare
+            # legge il testo dell'autore (ed è un turno); senza testo è come
+            # un'uscita che non c'è.
+            regola_uscita = mondo.condizioni_uscite.get((vecchia_posizione, direzione_normalizzata))
+            if regola_uscita is not None and not mondo.uscita_aperta(vecchia_posizione,
+                                                                     direzione_normalizzata):
+                if regola_uscita[1]:
+                    scrivi(mondo, rendi_testo(mondo, regola_uscita[1]))
+                else:
+                    scrivi(mondo, messaggio(mondo, "direzione", "Non puoi andare in quella direzione."))
+                    _senza_turno(mondo)
+                return True
             muovi_logica_default(mondo, direzione_normalizzata)
             if mondo.posizione_giocatore != vecchia_posizione: # Se il movimento è avvenuto
+                # [1.5.0 / C12] Gli arrivi scattano prima della descrizione.
+                if not _arriva(mondo):
+                    return False
                 mostra_stanza(mondo)
                 # [1.3.0 / M-9] 'Dopo di vai nord': dopo che ci si è mossi.
                 regola, altrimenti = _cerca_regola_movimento(mondo, direzione_normalizzata, "dopo")
@@ -1485,6 +1744,12 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
             # [1.4.0] Il giocatore ha trovato un verbo d'autore: da ora può
             # averne il pulsante anche accanto al campo di testo (vedi pulsanti).
             mondo.verbi_scoperti.add(verbo_giocatore)
+        # [1.5.0 / C10] Un verbo di consultazione dichiarato «senza tempo».
+        senza_tempo = getattr(mondo, "azioni_senza_tempo", ())
+        if senza_tempo and (nome_azione in senza_tempo
+                            or (nome_azione in Mondo.AZIONI_PERSONALIZZATE
+                                and verbo_giocatore in senza_tempo)):
+            mondo._consultazione = True
         azione = mondo.azioni[nome_azione]
 
         id_oggetto1 = None
@@ -1556,6 +1821,17 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
                     trovata = _cerca_regola(mondo, {principale}, azione.richiede_oggetto,
                                             id_oggetto1, id_oggetto2, preposizione_trovata, fase)
             return trovata
+
+        # [1.5.0 / C1] I VINCOLI ('Prima di … e basta'), prima di ogni altra
+        # regola e qualunque sia il loro bersaglio: il primo che vale ferma l'azione.
+        verbi_dei_vincoli = set(verbi_scritti)
+        principale = mondo.verbo_principale(nome_azione)
+        if principale:
+            verbi_dei_vincoli.add(principale)
+        regola, altrimenti = _cerca_vincolo(mondo, verbi_dei_vincoli, azione.richiede_oggetto,
+                                            id_oggetto1, id_oggetto2)
+        if regola is not None:
+            return _applica_regola(mondo, regola, altrimenti)
 
         # [1.3.0 / M-9] 'Prima di': scatta, poi l'azione prosegue (a meno che la
         # regola non abbia chiuso la partita o spostato il giocatore).
@@ -1680,13 +1956,14 @@ def _chiedi(mondo: Mondo, parole) -> bool:
             if arg.risposta:
                 scrivi(mondo, rendi_testo(mondo, arg.risposta))
             pos_prima = mondo.posizione_giocatore
+            mondo._modo_spostamento = None
             arg.esegui_conseguenze(mondo)
             _stampa_annunci(mondo)
+            if arg.poi_dire:   # [1.5.0 / C5]
+                scrivi(mondo, rendi_testo(mondo, arg.poi_dire))
             if partita_finita(mondo):
                 return False
-            if mondo.posizione_giocatore != pos_prima:
-                mostra_stanza(mondo)
-            return True
+            return _dopo_lo_spostamento(mondo, pos_prima, True)
     scrivi(mondo, f"{prima_maiuscola(nome_in_frase(png.nome_visualizzato))} non sa niente di questo.")
     return True
 
@@ -1914,7 +2191,7 @@ def _uscite_a_pulsante(mondo: Mondo, solo_pulsanti: bool):
     if not luce and not solo_pulsanti:
         return []   # al buio il testo non mostra le uscite: i pulsanti nemmeno
     uscite = []
-    for d, id_s in stanza.uscite.items():
+    for d, id_s in mondo.uscite_visibili(stanza.nome).items():   # [1.5.0 / C13]
         dest = mondo.trova_stanza(id_s)
         nota = luce and dest is not None and not (
             mondo.uscite_solo_visitate and id_s not in mondo.stanze_visitate)
@@ -1974,6 +2251,14 @@ def pulsanti(mondo: Mondo) -> dict:
                   + ' ' + secondo.testo se c'è; senza oggetto è il solo verbo
       uscite    [{comando, etichetta, stanza}]
       servizio  [{comando, etichetta}]: guarda, inventario, aspetta, annulla…
+      fatti     [1.5.0 / L20] le regole dell'autore per le cose in vista, perché
+                un'interfaccia possa filtrare i verbi senza leggere le strutture
+                interne del motore: {per_cosa: {id: [verbo]}, in_coppia: {id:
+                [verbo]}, senza_cosa: [verbo], effetti: {id: {verbo: [radice]}}}.
+                Il verbo è quello del pulsante («leggi» è «esamina»); gli effetti
+                sono le proprietà che le regole di quel verbo danno alla cosa.
+                Il motore non filtra da sé: i pulsanti propongono solo ciò che
+                il giocatore sa già (spec §23.2); scegliere è dell'ospite.
     """
     stato_caso = mondo.rng.getstate()
     try:
@@ -2116,10 +2401,61 @@ def _pulsanti(mondo: Mondo) -> dict:
 
     risultato["verbi"] = verbi
     risultato["uscite"] = _uscite_a_pulsante(mondo, solo_pulsanti)
+    risultato["fatti"] = _fatti_delle_regole(mondo, {o.nome for o in ordinati})
     risultato["servizio"] = [{"comando": c, "etichetta": e} for c, e in (
         ("guarda", "Guarda"), ("inventario", "Inventario"), ("aspetta", "Aspetta"),
         ("annulla", "Annulla"), ("salva", "Salva"), ("carica", "Carica"))]
     return risultato
+
+
+def _verbo_del_pulsante(mondo: Mondo, parola: str) -> str:
+    """[1.5.0 / L20] Il verbo con cui un pulsante gioca una regola scritta con
+    `parola`: per un verbo della libreria il nome principale della sua azione
+    («leggi» → «esamina»), a meno che l'autore non abbia preso per sé quella
+    parola; per un verbo d'autore la parola stessa."""
+    azioni = mondo.azioni_del_verbo.get(parola, ())
+    di_libreria = [a for a in azioni if a not in Mondo.AZIONI_PERSONALIZZATE]
+    if di_libreria and mondo.azioni.get(di_libreria[0]) is not None and mondo.azioni[di_libreria[0]].nomi:
+        verbo = mondo.azioni[di_libreria[0]].nomi[0]
+        if mondo.azione_del_verbo(verbo, con_oggetto=True) in Mondo.AZIONI_PERSONALIZZATE:
+            return parola
+        return verbo
+    return parola
+
+
+def _fatti_delle_regole(mondo: Mondo, in_vista) -> dict:
+    """[1.5.0 / L20] Per le cose in vista: i verbi che hanno una regola scritta
+    sulla cosa sola, quelli con una regola a due cose (la cosa è la prima), i verbi
+    con una regola senza cosa, e gli effetti (le proprietà, per radice, che le
+    regole di un verbo danno alla cosa in qualche ramo). Le condizioni non si
+    guardano: una regola scritta è un fatto anche quando oggi direbbe di no."""
+    per_cosa, in_coppia, senza_cosa, effetti = {}, {}, set(), {}
+    for r in mondo.regole:
+        if r.verbo == "vai":
+            continue
+        verbo = _verbo_del_pulsante(mondo, r.verbo)
+        if r.globale:
+            senza_cosa.add(verbo)
+            continue
+        if r.categoria is not None:
+            continue
+        cosa = r.id_oggetto_bersaglio
+        if cosa not in in_vista:
+            continue
+        if r.id_oggetto_secondario is not None or r.categoria_secondaria is not None:
+            in_coppia.setdefault(cosa, set()).add(verbo)
+            continue
+        per_cosa.setdefault(cosa, set()).add(verbo)
+        rami = list(r.conseguenze) + (list(r.altrimenti[1]) if r.altrimenti else [])
+        for c in rami:
+            if (isinstance(c, ConseguenzaProprieta) and c.id_oggetto == cosa
+                    and c.proprieta != "prendibile"):
+                effetti.setdefault(cosa, {}).setdefault(verbo, set()).add(radice_proprieta(c.proprieta))
+    return {"per_cosa": {k: sorted(v) for k, v in sorted(per_cosa.items())},
+            "in_coppia": {k: sorted(v) for k, v in sorted(in_coppia.items())},
+            "senza_cosa": sorted(senza_cosa),
+            "effetti": {k: {v: sorted(r) for v, r in sorted(e.items())}
+                        for k, e in sorted(effetti.items())}}
 
 
 def _verbi_di_dialogo(mondo, personaggi, solo_pulsanti, aggiungi):
@@ -2187,6 +2523,133 @@ def intestazione(mondo: Mondo, invito: str = ""):
         scrivi(mondo, rendi_testo(mondo, prologo), stacco=True)
 
 
+# ==============================================================================
+# [1.5.0 / N4] L'INTERFACCIA PER GLI OSPITI
+# ------------------------------------------------------------------------------
+# Ogni ospite del motore (terminale, playground, esploratore, pagina esportata,
+# Studio, sito, le app dei giochi) apriva la partita a modo suo: il seme,
+# l'intestazione, la prima stanza, il punto di partenza dei salvataggi. E per
+# provare un comando senza giocarlo copiava a mano i campi di sessione del
+# mondo: se il motore ne aggiungeva uno, l'ospite si rompeva in silenzio. Qui le
+# funzioni che servono, una volta sola.
+# ==============================================================================
+
+def fissa_punto_di_partenza(mondo: Mondo):
+    """Il punto da cui CARICA e RICOMINCIA rigiocano la partita: lo stato di
+    adesso, a partita non ancora cominciata (dopo l'apertura)."""
+    mondo._stato_iniziale = mondo.cattura_stato()
+    mondo._impronta_iniziale = mondo.impronta_stato()
+    mondo._impronte_accettate = set(getattr(mondo, "_impronte_accettate", ())) | {mondo._impronta_iniziale}
+    mondo._partenza_dopo_apertura = True
+    mondo._registro_comandi = []
+    mondo._pos_registro = []
+    mondo._reg_ingresso_dialogo = None
+
+
+def apri_partita(mondo: Mondo, invito: str = "", con_intestazione: bool = True):
+    """L'apertura della partita: intestazione (titolo, autore, invito, prologo),
+    la prima stanza, la riga di stato; POI il punto di partenza dei salvataggi
+    [L18]. Il mondo deve avere le azioni e la posizione iniziale."""
+    if con_intestazione:
+        intestazione(mondo, invito)
+    mostra_stanza(mondo)
+    emetti_riga_di_stato(mondo)
+    fissa_punto_di_partenza(mondo)
+
+
+def nuova_partita(mondo_base: Mondo, seme=None, invito: str = ""):
+    """Una partita nuova, copia del mondo compilato `mondo_base` (che resta
+    intatto), con il seme del caso dato (None: quello del motore) e l'apertura
+    già detta. Restituisce (mondo, eventi_dell_intestazione, eventi_della_stanza):
+    un ospite può mostrare l'intestazione a parte (per esempio in una schermata
+    d'apertura)."""
+    m = copy.deepcopy(mondo_base)
+    m.carica_azioni(LIBRERIA_AZIONI)
+    if seme is not None:
+        m.rng = random.Random(seme)
+    m.imposta_posizione_iniziale()
+    with raccogli_uscita(m) as apertura:
+        intestazione(m, invito)
+    with raccogli_uscita(m) as stanza:
+        mostra_stanza(m)
+        emetti_riga_di_stato(m)
+    fissa_punto_di_partenza(m)
+    return m, apertura.eventi, stanza.eventi
+
+
+def _salva_ramo(mondo: Mondo):
+    """Tutto ciò che un comando può cambiare: lo stato (come per ANNULLA) e la
+    sessione (i campi volatili, che ANNULLA non tocca), più l'elenco dei campi
+    presenti. Copre da sé ogni campo che il motore aggiungerà."""
+    # Liste, dizionari e insiemi si copiano (il comando li cambia sul posto); gli
+    # altri oggetti dell'ospite (l'archivio dei salvataggi) restano gli stessi.
+    sessione = {k: copy.copy(v) if isinstance(v, (list, dict, set)) else v
+                for k, v in mondo.__dict__.items()
+                if k in Mondo._CAMPI_VOLATILI and k != "uscita"}
+    return mondo.cattura_stato(), sessione, set(mondo.__dict__)
+
+
+def _ripristina_ramo(mondo: Mondo, ramo):
+    stato, sessione, campi = ramo
+    mondo.ripristina_stato(stato)
+    mondo.__dict__.update(sessione)
+    for k in set(mondo.__dict__) - campi:
+        if k != "uscita":
+            del mondo.__dict__[k]
+
+
+def prova(mondo: Mondo, comando: str) -> dict:
+    """Gioca `comando` su un RAMO della partita e torna indietro: la partita
+    resta esattamente com'era. Restituisce che cosa sarebbe successo: impronta
+    dello stato d'arrivo, testo ed eventi della risposta, se il gioco continua,
+    l'esito e il turno."""
+    ramo = _salva_ramo(mondo)
+    try:
+        with raccogli_uscita(mondo) as uscita:
+            continua = elabora_comando(mondo, comando)
+        return {"impronta": mondo.impronta_stato(), "testo": uscita.testo(),
+                "eventi": list(uscita.eventi), "continua": bool(continua),
+                "esito": mondo.stato_partita, "turno": mondo.turno_corrente}
+    finally:
+        _ripristina_ramo(mondo, ramo)
+
+
+def mostra_situazione(mondo: Mondo):
+    """La stanza (o, in un dialogo, la battuta e le opzioni) mostrata SENZA
+    cambiare la partita: niente stanza segnata come vista, niente varianti
+    pescate, niente pronomi. La usano CARICA, ANNULLA e RICOMINCIA [L19], e gli
+    ospiti che vogliono ridisegnare lo schermo."""
+    ramo = _salva_ramo(mondo)
+    try:
+        if mondo.in_dialogo():
+            _mostra_nodo(mondo)
+        else:
+            mostra_stanza(mondo)
+    finally:
+        _ripristina_ramo(mondo, ramo)
+
+
+def riga_di_stato(mondo: Mondo):
+    """[1.5.0] La riga di stato della storia ('La riga di stato è "…".'), già
+    interpolata, o None. Leggerla non cambia la partita."""
+    modello = getattr(mondo, "riga_stato", None)
+    if not modello or not mondo.posizione_giocatore:
+        return None
+    stato_caso = mondo.rng.getstate()
+    try:
+        return rendi_testo(mondo, modello)
+    finally:
+        mondo.rng.setstate(stato_caso)
+
+
+def emetti_riga_di_stato(mondo: Mondo):
+    """[1.5.0] Manda all'ospite la riga di stato (evento 'stato', silenzioso nel
+    terminale), se la storia ne ha una."""
+    testo = riga_di_stato(mondo)
+    if testo is not None:
+        scrivi(mondo, testo, "stato")
+
+
 # [0.21.0 / A3] TRASCRIZIONE: duplica l'output del gioco su un file di testo,
 # così il giocatore può conservare il resoconto della partita. È una funzione
 # della SESSIONE da riga di comando (vive nel loop, non nel mondo): scrive sia
@@ -2224,9 +2687,8 @@ def gioca(mondo: Mondo):
         return
 
     print("")
-    intestazione(mondo, "Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, "
+    apri_partita(mondo, "Scrivi 'esci' per terminare. Comandi utili: ANNULLA, ANCORA, "
                         "SALVA, CARICA, RICOMINCIA, TRASCRIZIONE.")
-    mostra_stanza(mondo)
 
     trascrizione = None   # file aperto della trascrizione, o None
     # Flusso (già riconfigurato a UTF-8) a cui tornare quando la trascrizione si
@@ -2236,8 +2698,10 @@ def gioca(mondo: Mondo):
     try:
         while True:
             print("")
+            # [1.5.0] La riga di stato della storia, se c'è, sta davanti al prompt.
+            stato = riga_di_stato(mondo)
             try:
-                comando_grezzo = input("> ")
+                comando_grezzo = input(f"[{stato}] > " if stato else "> ")
             except EOFError:
                 print("\nA presto!"); break
 

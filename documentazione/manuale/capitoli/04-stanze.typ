@@ -51,9 +51,12 @@ La descrizione dello studio è "Una scrivania ordinata. Un cassetto chiuso a chi
 ```)
 ]
 
-Il testo sta sempre fra virgolette dritte `"..."`. Se ti serve una virgoletta
-dentro la descrizione, falla precedere da una barra rovescia (`\"`); è un caso
-raro, ma sapere che si può torna utile.
+Il testo sta sempre fra virgolette dritte `"..."`. Dentro, dalla versione 1.5, la
+tipografia italiana passa intatta: l'apostrofo curvo resta curvo («po’»), e le
+virgolette curve si usano liberamente: `"Il cartello dice “ATTENZIONE”."`. Se ti
+serve proprio una virgoletta dritta dentro la descrizione, falla precedere da una
+barra rovescia (`\"`). Fuori dalle virgolette, nei nomi, apostrofi dritti e curvi
+valgono uguale, e così nei comandi del giocatore.
 
 == Descrizioni che cambiano
 
@@ -142,6 +145,7 @@ più.
   [`[luogo]`], [il nome della stanza in cui si trova il giocatore (con l'articolo: scrivi «Sei qui: [luogo].», non «in [luogo]»)],
   [`[mela]`, `[Mela]`], [il nome di un oggetto: con l'articolo minuscolo a metà frase, maiuscolo a inizio frase o se il segnaposto è maiuscolo],
   [`[se …]…[altrimenti]…[fine]`], [un pezzo di testo che dipende da una condizione],
+  [`[presa di servizio]`], [un testo con un nome, dichiarato una volta sola (vedi sotto)],
 )
 
 Il testo condizionale evita di scrivere due descrizioni quasi uguali:
@@ -152,8 +156,22 @@ La descrizione della cucina è "Una cucina stretta[se la finestra è aperta], pi
 ```)
 ]
 
-La condizione si scrive come dopo un `se`; `[altrimenti]` è facoltativo. Non si
-annida: un `[se …]` dentro un altro non vale.
+La condizione si scrive come dopo un `se`; `[altrimenti]` è facoltativo. Dalla
+versione 1.5 i blocchi si annidano, un `[se …]` dentro l'altro, a ogni profondità;
+ogni `[se …]` si chiude con il suo `[fine]`. Se ne dimentichi uno, il compilatore te
+lo dice: il giocatore non vedrà mai pezzi di codice.
+
+Un testo che ti serve in più punti puoi scriverlo una volta sola, dargli un nome e
+richiamarlo con il segnaposto `[nome]` dentro qualunque altro testo. Un testo
+corretto una volta è corretto ovunque:
+
+#esempio(da: "un esempio")[
+#fav(```
+Il testo "voce di Adele" è "Una voce, poi il silenzio. Sono le [turno] e la casa respira.".
+Invece di ascolta il grammofono: dire "[voce di Adele]".
+Invece di accendi la radio: dire "Fruscio. [voce di Adele]".
+```)
+]
 
 == Titolo, autore, prologo
 
@@ -164,6 +182,19 @@ Tre frasi presentano la storia al giocatore, prima della prima stanza:
 Il titolo è "La casa di via Stradivari".
 L'autore è "Simone Pizzi".
 Il prologo è "Sono passati sei mesi dal funerale di Adele.\nLa casa è rimasta com'era.".
+```)
+]
+
+Dalla versione 1.5 altre due frasi parlano della storia. La *riga di stato* sta in
+cima alla pagina esportata e alle cassette del sito (nel terminale, davanti al
+prompt), e si aggiorna dopo ogni comando; l'*IFID* è l'identificatore della storia
+per gli archivi della narrativa interattiva, come IFDB: si scrive una volta (il
+comando `favella1 ifid` te ne dà uno nuovo) e non si cambia più.
+
+#esempio(da: "un esempio")[
+#fav(```
+La riga di stato è "[luogo] · turno [turno]".
+L'IFID è "8C6B459B-B098-436A-BD28-67E32375E98D".
 ```)
 ]
 

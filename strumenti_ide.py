@@ -1,5 +1,5 @@
 # strumenti_ide.py
-# Strumenti d'autore di FAVELLA 1 (v1.4.4), costruiti sopra il nucleo del
+# Strumenti d'autore di FAVELLA 1 (v1.5.0), costruiti sopra il nucleo del
 # compilatore: ciò che serve agli editor visuali di Favella Studio e al riordino
 # del sorgente.
 #
@@ -24,7 +24,7 @@ from strutture import (
     ConseguenzaFinePartita, ConseguenzaMovimentoPNG, ConseguenzaPngRiceve,
     ConseguenzaProprieta, ConseguenzaSceltaStato, ConseguenzaSpostamento,
     ConseguenzaSpostamentoGiocatore, ConseguenzaTogliProprieta, ConseguenzaVariabile,
-    ConseguenzaVariabileCopia,
+    ConseguenzaVariabileCopia, ConseguenzaSegnala,
     OperandoCasuale, OperandoNumero, OperandoVariabile,
 )
 from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QUADRA_CHIUSA
@@ -196,6 +196,8 @@ def analizza_outline(percorso_file, sorgente=None):
                         break
             exits.append({
                 "direction": direzione,
+                # [1.5.0 / C13] L'uscita vale solo mentre una condizione è vera.
+                "conditional": (rid, direzione) in getattr(mondo, "condizioni_uscite", {}),
                 "to": dest,
                 "toName": mondo.stanze[dest].nome_visualizzato if dest in mondo.stanze else dest,
                 "span": span,
@@ -247,7 +249,9 @@ def analizza_outline(percorso_file, sorgente=None):
             ents = f["tok"].get("ENTITA", [])
             quotati = f["tok"].get("TESTO_QUOTATO", [])
             if ents and quotati and _norm_token(ents[0]) == oid:
-                aliases.append({"name": _spoglia_quotato(str(quotati[0])), "span": f["span"]})
+                # [1.5.0 / L12] Più nomi nella stessa frase: tutti, con lo stesso span.
+                for q in quotati:
+                    aliases.append({"name": _spoglia_quotato(str(q)), "span": f["span"]})
         # Posizione: 'X è PREP_LUOGO Y.' (ENTITA[0]=oggetto, ENTITA[1]=luogo).
         location = None
         pos = getattr(o, "posizione", None)
@@ -545,7 +549,12 @@ def _conseq_to_json(c, mondo):
                 "dest": dest, "destName": dest_name}
     if isinstance(c, ConseguenzaSpostamentoGiocatore):
         # [0.18.0 / B2] Teletrasporto: 'e adesso il giocatore è in [stanza]'.
-        return {"op": "teleport", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza)}
+        # [1.5.0 / C4] mode: None ('è in'), 'mostra' ('va in'), 'tace' ('si ritrova in').
+        return {"op": "teleport", "room": c.id_stanza, "name": _nome_stanza(mondo, c.id_stanza),
+                "mode": getattr(c, "modo", None)}
+    if isinstance(c, ConseguenzaSegnala):
+        # [1.5.0 / N6] 'segnala "gemito"'.
+        return {"op": "signal", "name": c.nome}
     if isinstance(c, ConseguenzaTogliProprieta):
         # [1.3.0 / M-2] 'X non è più P'.
         return {"op": "unprop", "id": c.id_oggetto,
@@ -686,7 +695,14 @@ def analizza_regole(percorso_file, sorgente=None):
     # REGOLE compilate → JSON.
     rules = []
     usate_r = set()
+    gruppi_visti = set()
     for r in getattr(mondo, "regole", []):
+        # [1.5.0 / L10] Una frase su più verbi è una regola sola per l'editor.
+        gruppo = getattr(r, "gruppo", None)
+        if gruppo is not None and len(getattr(r, "verbi_frase", ())) > 1:
+            if gruppo in gruppi_visti:
+                continue
+            gruppi_visti.add(gruppo)
         target = None
         bid = getattr(r, "id_oggetto_bersaglio", None)
         if bid:
@@ -722,8 +738,15 @@ def analizza_regole(percorso_file, sorgente=None):
             "response": r.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(r, "conseguenze", [])],
             "otherwise": ({"response": altrimenti[0],
-                           "consequences": [_conseq_to_json(c, mondo) for c in altrimenti[1]]}
+                           "consequences": [_conseq_to_json(c, mondo) for c in altrimenti[1]],
+                           "thenSay": getattr(r, "poi_dire_altrimenti", None),
+                           "stops": bool(getattr(r, "basta_altrimenti", False))}
                           if altrimenti else None),
+            # [1.5.0] Le frasi nuove: più verbi, 'per la prima volta', 'e poi dire', 'e basta'.
+            "verbs": list(getattr(r, "verbi_frase", None) or [r.verbo]),
+            "firstTime": bool(getattr(r, "prima_volta", False)),
+            "thenSay": getattr(r, "poi_dire", None),
+            "stops": bool(getattr(r, "basta", False)),
         })
 
     # EVENTI compilati → JSON.
@@ -736,6 +759,7 @@ def analizza_regole(percorso_file, sorgente=None):
             "n": e.n,
             "response": e.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(e, "conseguenze", [])],
+            "thenSay": getattr(e, "poi_dire", None),   # [1.5.0 / C5]
         })
 
     # DEMONI compilati → JSON (Livello 8: 'Ogni turno se …' / 'Quando … diventa vera').
@@ -750,6 +774,8 @@ def analizza_regole(percorso_file, sorgente=None):
             "condition": _cond_to_json(getattr(d, "condizione", None), mondo),
             "response": d.risposta,
             "consequences": [_conseq_to_json(c, mondo) for c in getattr(d, "conseguenze", [])],
+            "firstTime": bool(getattr(d, "prima_volta", False)),   # [1.5.0 / C3]
+            "thenSay": getattr(d, "poi_dire", None),               # [1.5.0 / C5]
         })
 
     # Menu per i costruttori (6c.2+): verbi validi, entità, stanze, direzioni,
@@ -1655,7 +1681,12 @@ def _serializza_conseguenza(c):
         return f"{c['npcName']} ha {c['name']}"
     if op == "playerIn" or op == "teleport":
         # [0.18.0 / B2] Teletrasporto del giocatore: 'il giocatore è in [stanza]'.
-        return f"il giocatore è in {_nucleo_nome(c['name'])}"
+        # [1.5.0 / C4] 'va in' mostra sempre la stanza, 'si ritrova in' mai.
+        verbo = {"mostra": "va", "tace": "si ritrova"}.get(c.get("mode"), "è")
+        return f"il giocatore {verbo} in {_nucleo_nome(c['name'])}"
+    if op == "signal":
+        # [1.5.0 / N6] 'segnala "gemito"'.
+        return f"segnala {_quota(c['name'])}"
     if op == "end":
         esiti = {"vinci": "vinci", "perdi": "perdi", "termina": "termina"}
         if c["outcome"] not in esiti:
@@ -1697,24 +1728,36 @@ def _serializza_regola(spec):
     [e adesso …].»."""
     verbo = str(spec["verb"]).strip()
     fase = {"prima": "Prima", "dopo": "Dopo"}.get(spec.get("phase"), "Invece")   # [1.3.0 / M-9]
-    parti = [f"{fase} di {verbo}"]
+    # [1.5.0 / L10] Più verbi: 'Invece di usa oppure accendi …'.
+    verbi = [str(v).strip() for v in (spec.get("verbs") or [verbo]) if str(v).strip()] or [verbo]
+    parti = [f"{fase} di {' oppure '.join(verbi)}"]
     target = spec.get("target")
     if target:
         parti.append(" " + str(target["name"]))
         if target.get("prep") and target.get("secondaryName"):
             parti.append(f" {target['prep']} {target['secondaryName']}")
+    if spec.get("firstTime"):   # [1.5.0 / C3]
+        parti.append(" per la prima volta")
     cond = spec.get("condition")
     if cond:
         parti.append(" se " + _serializza_condizione(cond))
     parti.append(f": dire {_quota(spec.get('response', ''))}")
-    for c in spec.get("consequences", []):
-        parti.append(" e adesso " + _serializza_conseguenza(c))
+    parti.append(_coda_esito(spec))
     altrimenti = spec.get("otherwise")   # [1.3.0 / M-9]
     if altrimenti:
         parti.append(f" altrimenti dire {_quota(altrimenti.get('response', ''))}")
-        for c in altrimenti.get("consequences", []):
-            parti.append(" e adesso " + _serializza_conseguenza(c))
+        parti.append(_coda_esito(altrimenti))
     parti.append(".")
+    return "".join(parti)
+
+
+def _coda_esito(spec) -> str:
+    """[1.5.0] Le conseguenze, poi 'e poi dire "…"' e 'e basta'."""
+    parti = [" e adesso " + _serializza_conseguenza(c) for c in spec.get("consequences", [])]
+    if spec.get("thenSay"):
+        parti.append(f" e poi dire {_quota(spec['thenSay'])}")
+    if spec.get("stops"):
+        parti.append(" e basta")
     return "".join(parti)
 
 
@@ -1723,10 +1766,7 @@ def _serializza_evento(spec):
     mode = spec["mode"]
     n = int(spec["n"])
     testa = f"Al turno {n}" if mode == "al" else f"Ogni {n} turni"
-    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]
-    for c in spec.get("consequences", []):
-        parti.append(" e adesso " + _serializza_conseguenza(c))
-    parti.append(".")
+    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}", _coda_esito(spec), "."]
     return "".join(parti)
 
 
@@ -1744,10 +1784,9 @@ def _serializza_demone(spec):
         testa = f"{n} {'turno' if n == 1 else 'turni'} dopo che " + _serializza_condizione(cond)
     else:
         testa = "Quando " + _serializza_condizione(cond) + " diventa vera"
-    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}"]
-    for c in spec.get("consequences", []):
-        parti.append(" e adesso " + _serializza_conseguenza(c))
-    parti.append(".")
+        if spec.get("firstTime"):   # [1.5.0 / C3]
+            testa += " per la prima volta"
+    parti = [f"{testa}: dire {_quota(spec.get('response', ''))}", _coda_esito(spec), "."]
     return "".join(parti)
 
 

@@ -20,10 +20,19 @@ const STILE_EVENTO: Record<string, string> = {
   errore: "text-favella-flame",
 };
 
+// [motore 1.5.0] Due eventi non vanno sullo schermo: la riga di stato (sta in
+// cima alla cassetta) e i segnali per chi ospita il motore ('segnala "…"').
+const SILENZIOSI = new Set(["stato", "segnale"]);
+
+const rigaDiStato = (eventi?: EventoMotore[]): string | null | undefined => {
+  const ultimo = (eventi ?? []).filter((e) => e.tipo === "stato").pop();
+  return ultimo ? ultimo.testo : undefined;
+};
+
 const Uscita = ({ riga }: { riga: Riga }) =>
   riga.eventi ? (
     <div>
-      {riga.eventi.map((e, i) => (
+      {riga.eventi.filter((e) => !SILENZIOSI.has(e.tipo)).map((e, i) => (
         <pre key={i} className={`whitespace-pre-wrap break-words ${e.stacco ? "mt-3" : ""} ${STILE_EVENTO[e.tipo] ?? ""}`}>
           {e.testo}
         </pre>
@@ -64,6 +73,11 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
   const [finita, setFinita] = useState(false);
   const [pulsanti, setPulsanti] = useState<Pulsantiera | null>(null);
   const [mostraPulsanti, setMostraPulsanti] = useState(leggiPreferenza);
+  const [rigaStato, setRigaStato] = useState<string | null>(null);
+  const aggiornaStato = (eventi?: EventoMotore[]) => {
+    const r = rigaDiStato(eventi);
+    if (r !== undefined) setRigaStato(r);
+  };
 
   const sessioneRef = useRef<SessioneGioco | null>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -84,6 +98,7 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
         if (!vivo) return;
         setRighe([{ kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
         setPulsanti(esito.pulsanti ?? null);
+        aggiornaStato(esito.eventi);
         setPhase("playing");
       } catch (e) {
         if (vivo) {
@@ -109,6 +124,7 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
   const applica = (cmd: string, esito: TurnoEsito) => {
     setRighe((r) => [...r, { kind: "cmd", text: cmd }, { kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
     if (esito.pulsanti) setPulsanti(esito.pulsanti);
+    aggiornaStato(esito.eventi);
     if (esito.chiusa) setFinita(true);
   };
 
@@ -147,6 +163,8 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
     const esito = sessioneRef.current.boot();
     setRighe([{ kind: "out", text: esito.text.trim(), eventi: esito.eventi }]);
     setPulsanti(esito.pulsanti ?? null);
+    setRigaStato(null);
+    aggiornaStato(esito.eventi);
     setFinita(false);
   };
 
@@ -181,6 +199,17 @@ const GamePlayer = ({ game, onExit }: { game: GameCassette; onExit: () => void }
             ⏏ Espelli
           </button>
         </div>
+
+        {/* Riga di stato della storia (motore 1.5.0) */}
+        {phase === "playing" && rigaStato && (
+          <div
+            role="note"
+            aria-label="Riga di stato"
+            className="border border-b-0 border-favella-cyan/15 bg-favella-panel/70 px-4 py-1.5 font-mono text-[13px] text-favella-amber"
+          >
+            {rigaStato}
+          </div>
+        )}
 
         {/* Schermo */}
         <div

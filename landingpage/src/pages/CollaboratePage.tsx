@@ -79,10 +79,10 @@ const CollaboratePage = () => (
       eyebrow="Collabora"
       title={
         <>
-          Un progetto concluso, aperto a <Ink>chiunque.</Ink>
+          Un linguaggio completo, aperto a <Ink>chiunque.</Ink>
         </>
       }
-      lead={`FAVELLA 1 è finito: la ${VERSION} è la versione definitiva e non verrà più modificata. Ma è interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.`}
+      lead={`FAVELLA 1 è completo e cresce solo aggiungendo: la ${VERSION} raccoglie le lezioni del remake de «Il Relitto Silente», senza toccare le storie già scritte. È interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.`}
     >
       <Btn href={GITHUB_URL} size="lg">
         Apri il repository

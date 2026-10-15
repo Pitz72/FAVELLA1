@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.4.4)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.5.0)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.4.4";
-export const VERSION_LABEL = "v1.4.4 — Scrivi o tocca";
+export const VERSION = "1.5.0";
+export const VERSION_LABEL = "v1.5.0 — Le lezioni del Relitto";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.4.4";
+export const ENGINE_VERSION = "1.5.0";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -52,7 +52,9 @@ export const SITE_URL = "https://favella.eu";
 // · 2.8.7 = Il Viaggiatore 1.11.1 (col motore FAVELLA 1.4.4, al posto della 1.4.1).
 // · 2.8.8 = Il Viaggiatore 1.12.0, la versione definitiva: le chiusure raccolgono il viaggio, «chi hai
 //   incontrato», il gioco concluso.
-export const SITE_VERSION = "2.8.8";
+// · 2.9.0 = motore 1.5.0, «le lezioni del Relitto»: frasi nuove, manuale a 102 pp., riga di stato
+//   nelle cassette, download e numeri allineati.
+export const SITE_VERSION = "2.9.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -61,10 +63,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.4.4";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.4.4-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.4.4-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.4.4-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.5.0";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.5.0-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.5.0-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.5.0-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -101,7 +103,7 @@ export const MANUAL_PDF_URL = "https://github.com/Pitz72/FAVELLA1/raw/main/docum
 export const AMAZON_PAPERBACK_URL = "https://www.amazon.it/dp/B0H6SKM9JR";
 export const MANUAL_PRICE = "13,51 €";
 // Il PDF gratuito (documentazione/manuale/manuale.pdf) è sempre l'ultima edizione.
-export const MANUAL_PDF_PAGES = 95;
+export const MANUAL_PDF_PAGES = 102;
 export const MANUAL_PDF_EDITION = "Terza edizione";
 // Ciò che oggi si compra su Amazon.it (verificato sulla scheda del libro: 84 pagine,
 // 13,51 €, pubblicato il 27 giugno 2026). La terza edizione è stata inviata a KDP il
@@ -131,7 +133,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1180, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1286, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -198,6 +200,14 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    tag: "Linguaggio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "FAVELLA 1.5.0: le lezioni del Relitto",
+    body: "La 1.4.4 doveva essere l'ultima versione. Poi il remake de «Il Relitto Silente», il gioco più grande mai scritto in FAVELLA, ha mostrato che cosa costa ancora fatica a chi scrive una storia lunga, e la 1.5.0 lo raccoglie in una versione sola. Un divieto che vale per tutto si scrive una volta: «Prima di sintonizza qualcosa se la protezione è attiva: dire \"PROTEZIONE VITALE.\" e basta.». Uno stato si calcola da solo: «La protezione è attiva quando l'aria è meno di 30.». Le cose che succedono una volta sola dicono «per la prima volta»; un testo usato dieci volte ha un nome; una porta si apre «se la botola è aperta»; «Quando il giocatore entra nella stiva» scatta prima della descrizione; «e poi dire» racconta le cifre giuste; l'apostrofo curvo resta curvo. Per chi collauda c'è «favella1 trascrivi» e i percorsi con le attese. Tutto facoltativo: le storie scritte con la 1.4 girano identiche, provate comando per comando su undici storie ufficiali. Il manuale PDF è aggiornato (102 pagine); la terza edizione cartacea resta valida.",
+    cta: { label: "Scarica FAVELLA 1.5.0", href: "/download" },
+  },
+  {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
     emphasis: "normal",
@@ -256,7 +266,7 @@ export const NEWS: NewsItem[] = [
   {
     tag: "Linguaggio",
     date: "Ottobre 2026",
-    emphasis: "primary",
+    emphasis: "normal",
     title: "FAVELLA 1 è finito: la 1.4.4 è la versione definitiva",
     body: "Dopo la 1.0 il linguaggio è cresciuto soltanto aggiungendo, una storia vera dopo l'altra: i salvataggi, il collaudo che gioca, le regole «Prima di» e «Dopo di», i pulsanti-verbo. Adesso non manca più niente. La 1.4.4 è l'ultima versione di FAVELLA 1 e non verrà più toccata: il linguaggio, il motore, il manuale (nella sua terza edizione, anche cartacea) e il sito restano com'è. Le storie che scrivi oggi funzioneranno uguali fra dieci anni. Il repository resta aperto, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.",
     cta: { label: "Scarica FAVELLA 1.4.4", href: "/download" },
@@ -436,8 +446,8 @@ export const DONE_EVOLUTIONS: RoadmapItem[] = [
 export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
-    title: "Il lavoro è finito",
-    body: "FAVELLA 1 è completo: la 1.4.4 è la versione definitiva e non verrà più modificata. Il linguaggio, il motore, il manuale (terza edizione, anche cartacea), Favella Studio e questo sito restano com'è. Quello che funziona oggi funzionerà anche fra dieci anni.",
+    title: "Si cresce solo aggiungendo",
+    body: "FAVELLA 1 è completo. La 1.5.0 ha aggiunto ciò che ha insegnato il remake de «Il Relitto Silente», e le storie già scritte girano identiche: è la regola da sempre. Il linguaggio si muove solo quando una storia vera ne mostra il bisogno; quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
     area: "ecosistema",
@@ -457,7 +467,7 @@ Con l'avvento dei Large Language Models quel sogno è diventato un progetto conc
 
 Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di 95 pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto, FAVELLA 1 è concluso: la 1.4.4 è la versione definitiva e non verrà più modificata. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di ${MANUAL_PDF_PAGES} pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto. Nell'autunno del 2026 il remake de «Il Relitto Silente», il gioco più grande scritto in FAVELLA, ha insegnato ancora qualcosa, e la 1.5.0 l'ha raccolto senza toccare le storie già scritte. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -469,6 +479,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.5.0",
+    title: "Le lezioni del Relitto",
+    content: "Il remake de «Il Relitto Silente» ha lasciato venti lezioni per il motore, e la 1.5.0 le raccoglie. Frasi nuove, tutte facoltative: «e basta» per un divieto che vale per tutto, gli stati calcolati («… è attiva quando …»), «per la prima volta», «il giocatore va in» e «si ritrova in», «e poi dire», «si chiamano anche» con più nomi, i testi con un nome, le regole su più verbi, «non fa passare il tempo», «segnala», «Quando il giocatore entra in …», le uscite con una condizione, «I demoni guardano la fine del turno.», la riga di stato e l'IFID. Corretti i salvataggi che si dichiaravano diversi a torto, il caricamento che segnava le stanze come viste, le opzioni di dialogo con «collega», i [se] sbilanciati; i [se] si annidano e la tipografia italiana passa intatta. Le storie della 1.4 girano identiche.",
+  },
   {
     version: "1.4.4",
     title: "Gli errori indicano la riga giusta",
@@ -621,7 +636,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.4.4**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 95 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.5.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 102 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -754,7 +769,7 @@ Al nodo "saluto" l'opzione "Addio." chiude il dialogo.
 
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.4.4**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.5.0**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
@@ -888,4 +903,4 @@ Nei **nomi** (di stanze, oggetti, stati, contatori) puoi usare solo lettere — 
 
 ---
 
-> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (95 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
+> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (102 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;

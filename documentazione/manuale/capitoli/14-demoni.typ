@@ -102,3 +102,45 @@ Quando il giocatore è nell'orto e la visita è nuova: dire "Tra i filari c'è a
   `Quando la batteria è al massimo 0 diventa vera` che spenga la torcia. Hai appena
   costruito una torcia che si scarica.
 ]
+
+== Una volta sola
+
+Un demone `Quando` scatta ogni volta che la sua condizione torna vera. Se deve
+scattare una volta sola in tutta la partita, aggiungi `per la prima volta`:
+
+#esempio(da: "un esempio")[
+#fav(```
+Quando il giocatore è nello studio per la prima volta: dire "Odore di carta e di tabacco.".
+```)
+]
+
+== Appena entri: `Quando il giocatore entra in`
+
+Il demone guarda la fine del turno: quando scatta, la stanza in cui sei entrato è già
+stata descritta. Per far succedere qualcosa *all'arrivo*, prima della descrizione,
+c'è una frase apposta:
+
+#esempio(da: "un esempio")[
+#fav(```
+Quando il giocatore entra nella cantina se la torcia è spenta: dire "Inciampi nel primo gradino." e adesso diminuisci il coraggio.
+Quando il giocatore entra nell'orto per la prima volta: dire "La luce ti abbaglia.".
+```)
+]
+
+Vale per ogni arrivo, con un movimento o portato da una regola. Se chiude la partita,
+la stanza non viene descritta affatto: il finale arriva pulito.
+
+== Demoni che guardano la fine del turno
+
+I demoni si guardano uno alla volta, nell'ordine in cui li hai scritti: una soglia
+scritta prima del demone che consuma l'aria se ne accorge solo al turno dopo, e le
+voci che devono seguire un dialogo arrivano dopo il primo comando. Con una frase cambi
+questo comportamento per tutta la storia:
+
+#sintassi[
+  `I demoni guardano la fine del turno.`
+]
+
+Allora un demone `Quando` vede lo stato di fine turno, qualunque sia l'ordine delle
+frasi, e scatta anche appena si chiude un dialogo. Non è il comportamento predefinito
+perché cambierebbe il ritmo delle storie già scritte.

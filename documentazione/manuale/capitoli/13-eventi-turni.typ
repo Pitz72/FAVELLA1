@@ -62,6 +62,25 @@ Ogni 3 turni: diminuisci il carburante.
   intendevi `Al turno 8`, o un evento che doveva essere unico tornerà a ogni giro.
 ]
 
+== Guardare non costa tempo
+
+Ogni comando che agisce fa passare un turno, anche `esamina` e `inventario`. In una
+storia a tempo, a volte, è un prezzo che non vuoi far pagare: controllare quanta aria
+resta non dovrebbe consumare aria. Una frase per verbo lo cambia:
+
+#esempio(da: "un esempio")[
+#fav(```
+"esamina" non fa passare il tempo.
+"inventario" non fa passare il tempo.
+```)
+]
+
+Vale per il verbo e per i suoi sinonimi (`guarda il visore`, `x il visore`), e anche
+per le tue regole su quel verbo, purché si limitino a dire qualcosa: una regola che
+cambia il mondo fa passare il turno lo stesso. Si può dire dei verbi che guardano
+(esamina, guarda, inventario, ascolta, annusa, tocca) e dei verbi tuoi. Parlare con un
+personaggio, invece, non consuma mai turni.
+
 == Un conto alla rovescia che parte da un fatto
 
 `Al turno N` e `Ogni N turni` contano dall'inizio della partita. Per un tempo che

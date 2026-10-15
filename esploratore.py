@@ -1,11 +1,16 @@
 # esploratore.py
-# Collaudo DINAMICO per FAVELLA 1 (v1.4.4): partite vere, giocate dal motore.
+# Collaudo DINAMICO per FAVELLA 1 (v1.5.0): partite vere, giocate dal motore.
 #
 # Il collaudo statico (collaudo.py) ragiona sulle frasi senza giocare; questo
-# modulo gioca. Due usi, dalla CLI:
+# modulo gioca. Gli usi, dalla CLI:
 #
 #   favella1 esplora storia.fav          partite a caso con «caratteri» diversi
 #   favella1 collaudo storia.fav --finali  quali finali dichiarati si raggiungono
+#   favella1 collaudo storia.fav --percorsi a.txt b.txt   [1.5.0] i percorsi e
+#                                        le loro attese (# atteso: …), con
+#                                        --traccia NOME e --riprese
+#   favella1 trascrivi storia.fav percorso.txt   [1.5.0] la partita come la
+#                                        vede chi gioca
 #
 # Metodo nato con «Il Viaggiatore» (collaudo/esploratore.py e finali.py del
 # gioco), reso generico: qui non si sa niente della storia, se non quello che il
@@ -41,7 +46,7 @@ class Partita:
     """Un mondo giocabile più la sua storia: (comando, risposta) e le eccezioni
     del motore, che non interrompono la partita ma vengono registrate."""
 
-    def __init__(self, mondo_base, seme=None):
+    def __init__(self, mondo_base, seme=None, con_intestazione=False):
         from libreria_azioni import LIBRERIA_AZIONI
         self.m = copy.deepcopy(mondo_base)
         self.m.carica_azioni(LIBRERIA_AZIONI)
@@ -52,9 +57,9 @@ class Partita:
         self.eccezioni = []
         # [1.4.0 / L-7] Ciò che il motore dice si raccoglie come eventi sul
         # mondo della partita, non più dirottando stdout.
-        from gioco import mostra_stanza
+        from gioco import apri_partita
         with raccogli_uscita(self.m) as uscita:
-            mostra_stanza(self.m)
+            apri_partita(self.m, con_intestazione=con_intestazione)   # [1.5.0 / L18]
         self.risposte = [uscita.testo()]
 
     def esegui(self, cmd):
@@ -267,6 +272,46 @@ class Esploratore:
 _RE_SEGNAPOSTO = re.compile(r"\[[a-zà-ù_ ']{2,}\]", re.IGNORECASE)
 _RIFIUTO_USCITA = "Non puoi andare in quella direzione."
 
+def prova_sinonimi(p, cmd, reg, visti):
+    """[1.5.0] Il collaudo dei sinonimi (analisi-critica-1.2.1, §8.4): prima di
+    giocare `cmd`, su un ramo della partita, lo si confronta con lo stesso comando
+    detto con un altro verbo della stessa azione ('prendi' / 'raccogli'). Due
+    verbi equivalenti che portano a stati diversi sono un difetto (così erano
+    GS-1 e GS-2). Non si confrontano i verbi che l'autore usa in una regola sua:
+    una regola scritta con 'leggi' vale solo per 'leggi'."""
+    from gioco import prova
+    m = p.m
+    parole = cmd.split()
+    if not parole or m.dialogo_attivo or not p.in_corso:
+        return
+    verbo, resto = parole[0], " ".join(parole[1:])
+    azioni = m.azioni_del_verbo.get(verbo, ())
+    if len(azioni) != 1 or azioni[0] not in m.azioni or azioni[0].startswith("_"):
+        return
+    azione = m.azioni[azioni[0]]
+    if not resto and azione.richiede_oggetto:
+        return
+    chiave = (azioni[0], resto, m.posizione_giocatore)
+    if chiave in visti:
+        return
+    visti.add(chiave)
+    verbi_delle_regole = {r.verbo for r in m.regole}
+    if verbo in verbi_delle_regole and verbo != azione.nomi[0]:
+        return
+    equivalenti = [v for v in azione.nomi
+                   if v != verbo and len(v) > 1 and v not in verbi_delle_regole
+                   and len(m.azioni_del_verbo.get(v, ())) == 1
+                   and v not in m.verbi_personalizzati and v not in m.sinonimi_verbo][:2]
+    if not equivalenti:
+        return
+    base = prova(m, cmd)
+    for v in equivalenti:
+        altro = f"{v} {resto}".strip()
+        if prova(m, altro)["impronta"] != base["impronta"]:
+            reg.segnala("SINONIMO", f"«{cmd}» e «{altro}» portano a stati diversi", p,
+                        ("SINONIMO", azioni[0], v))
+
+
 # Anomalie gravi (fanno uscire con codice 1) e segnalazioni da guardare a mano.
 GRAVI = ("ECCEZIONE", "ERRORE", "SEGNAPOSTO", "INVISIBILE", "USCITA")
 
@@ -350,7 +395,7 @@ def _prima(p):
                            if isinstance(v, int) and not isinstance(v, bool)})
 
 
-def gioca_a_caso(partenza, carattere, seme, turni, provati, reg, cop):
+def gioca_a_caso(partenza, carattere, seme, turni, provati, reg, cop, sinonimi=None):
     rng = random.Random(seme)
     p = copy.deepcopy(partenza)
     p.m.rng = random.Random(seme)
@@ -361,6 +406,8 @@ def gioca_a_caso(partenza, carattere, seme, turni, provati, reg, cop):
             break
         prima = _prima(p)
         cmd = es.scegli(p)
+        if sinonimi is not None:   # [1.5.0] su un ramo: la partita non cambia
+            prova_sinonimi(p, cmd, reg, sinonimi)
         provati[(p.m.posizione_giocatore, cmd)] += 1
         out = p.esegui(cmd)
         controlla(p, cmd, out, reg, prima)
@@ -382,7 +429,7 @@ def _chiave_esito(m):
     return (m.stato_partita, getattr(m, "messaggio_esito", None) or "")
 
 
-def esplora(mondo_base, partite=10, turni=200, seme=1, percorsi=()):
+def esplora(mondo_base, partite=10, turni=200, seme=1, percorsi=(), sinonimi=True):
     """Il giro completo: percorsi a mano + partite a caso da ogni partenza.
     Restituisce un dizionario con anomalie, copertura, finali raggiunti."""
     reg = Registro()
@@ -403,11 +450,13 @@ def esplora(mondo_base, partite=10, turni=200, seme=1, percorsi=()):
         partenze = {"inizio": Partita(mondo_base, seme=1)}
     nomi = list(partenze)
     esiti = collections.Counter()
+    visti_sinonimi = set() if sinonimi else None
     for ci, carattere in enumerate(CARATTERI):
         for i in range(partite):
             s = seme * 100000 + ci * 1000 + i
             partenza = partenze[nomi[i % len(nomi)]]
-            p = gioca_a_caso(partenza, carattere, s, turni, provati, reg, cop)
+            p = gioca_a_caso(partenza, carattere, s, turni, provati, reg, cop,
+                             sinonimi=visti_sinonimi)
             comandi_giocati += len(p.comandi) - len(partenza.comandi)
             esiti[p.m.stato_partita] += 1
             if not p.in_corso:
@@ -508,10 +557,227 @@ def rapporto_esplorazione(r):
     R.append("Legenda: ECCEZIONE errore Python del motore · ERRORE messaggio d'errore interno · "
              "SEGNAPOSTO [nome] non sostituito · INVISIBILE oggetto elencato che il parser non "
              "vede · USCITA uscita elencata ma rifiutata · NEGATIVO contatore sotto zero · "
-             "CAPIENZA più oggetti dei posti · SILENZIO comando senza risposta.")
+             "CAPIENZA più oggetti dei posti · SILENZIO comando senza risposta · "
+             "SINONIMO due verbi della stessa azione portano a stati diversi.")
     R.append("=" * 70)
     gravi = sum(1 for a in r["anomalie"] if a["tipo"] in GRAVI)
     return "\n".join(R), gravi
+
+
+# ------------------------------------------------------------------------------
+# 5bis. [1.5.0 / L15] TRASCRIZIONE, PERCORSI CON LE ATTESE, TRACCIA, RIPRESE
+# ------------------------------------------------------------------------------
+# Portati nel motore dai prototipi del remake de «Il Relitto Silente»
+# (collaudo/trascrivi.py, collaudo/regressioni.py): il collaudo dei finali dice
+# se un finale si raggiunge, non con quanta aria; e due difetti (una cosa posata
+# che non si riprende; un invariante che reggeva per un errore) erano sfuggiti a
+# percorsi e partite a caso.
+#
+# Un percorso dichiara le sue attese in commenti:
+#   # atteso: esito vinta              (vinta, persa, terminata, in_corso)
+#   # atteso: stanza la sala           (dove sta il giocatore)
+#   # atteso: aria >= 20               (uno stato o un contatore: = != < <= > >=)
+#   # atteso: l'aria è almeno 20       (una condizione di FAVELLA, come dopo un «se»)
+#   # atteso: finale «Rotta ripresa»   (l'ultima risposta contiene il testo)
+#   # atteso: compare «perdi»          (almeno una risposta contiene il testo)
+#   # atteso: mai «Non puoi prender»   (nessuna risposta contiene il testo)
+# Le attese scritte in testa al percorso valgono alla fine; quelle scritte fra
+# i comandi valgono in quel punto.
+
+_RE_ATTESA = re.compile(r"\s*#\s*atteso:\s*(.+?)\s*$", re.IGNORECASE)
+_OPERATORI = {"=": lambda a, b: a == b, "==": lambda a, b: a == b, "!=": lambda a, b: a != b,
+              "<": lambda a, b: a < b, "<=": lambda a, b: a <= b,
+              ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
+
+
+def leggi_percorso_con_attese(percorso):
+    """(comandi, attese): le attese sono coppie (posizione, testo), dove la
+    posizione è il numero di comandi che le precedono (None se stanno in testa)."""
+    comandi, attese = [], []
+    with open(percorso, encoding="utf-8") as f:
+        for riga in f:
+            m = _RE_ATTESA.match(riga)
+            if m:
+                attese.append((len(comandi) if comandi else None, m.group(1)))
+                continue
+            r = riga.strip()
+            if r and not r.startswith("#"):
+                comandi.append(r)
+    return comandi, attese
+
+
+def condizione_della_storia(storia, testo):
+    """Una condizione di FAVELLA ('l'aria è almeno 20') compilata con i nomi della
+    storia, o None se non si capisce."""
+    from compilatore import (espandi_inclusioni, costruisci_symbol_table,
+                             costruisci_parser_condizioni, valida_direzioni_dichiarate,
+                             FavellaTransformer)
+    from favella_utils import normalizza_tipografia
+    sorgente, _mappa, _errori = espandi_inclusioni(storia)
+    simboli = costruisci_symbol_table(sorgente)
+    coppie, nomi_dir, _ = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+    try:
+        parser = costruisci_parser_condizioni(simboli.tutti, simboli.variabili, nomi_dir,
+                                              simboli.verbi_multi)
+        return FavellaTransformer(coppie).transform(parser.parse(normalizza_tipografia(testo)))
+    except Exception:
+        return None
+
+
+def controlla_attesa(attesa, p, storia=None):
+    """None se l'attesa è rispettata, altrimenti il motivo."""
+    m = p.m
+    r = re.match(r"esito\s+(\w+)$", attesa)
+    if r:
+        return None if m.stato_partita == r.group(1) else f"l'esito è {m.stato_partita}"
+    r = re.match(r"stanza\s+(.+)$", attesa)
+    if r:
+        from favella_utils import normalizza_nome
+        voluta = normalizza_nome(r.group(1))
+        return None if m.posizione_giocatore == voluta else f"il giocatore è in «{m.posizione_giocatore}»"
+    r = re.match(r"finale\s+«(.+)»$", attesa)
+    if r:
+        return None if r.group(1) in p.risposte[-1] else "l'ultima risposta non lo contiene"
+    r = re.match(r"compare\s+«(.+)»$", attesa)
+    if r:
+        return None if any(r.group(1) in out for out in p.risposte[1:]) else "non compare mai"
+    r = re.match(r"mai\s+«(.+)»$", attesa)
+    if r:
+        for cmd, out in zip(p.comandi, p.risposte[1:]):
+            if r.group(1) in out:
+                return f"compare dopo «{cmd}»"
+        return None
+    r = re.match(r"([\w' ]+?)\s*(==|!=|<=|>=|=|<|>)\s*(\S+)$", attesa)
+    if r:
+        from favella_utils import normalizza_nome
+        nome, op, valore = normalizza_nome(r.group(1)), r.group(2), r.group(3)
+        if nome not in m.variabili and nome not in m.stati_calcolati:
+            return f"«{nome}» non è uno stato né un contatore"
+        attuale = m.valore_variabile(nome)
+        atteso = int(valore) if re.fullmatch(r"-?\d+", valore) else normalizza_nome(valore)
+        try:
+            ok = _OPERATORI[op](attuale, atteso)
+        except TypeError:
+            ok = False
+        return None if ok else f"{nome} vale {attuale}"
+    condizione = condizione_della_storia(storia, attesa) if storia else None
+    if condizione is not None:
+        stato_caso = m.rng.getstate()
+        try:
+            return None if condizione.valuta(m) else "la condizione è falsa"
+        finally:
+            m.rng.setstate(stato_caso)
+    return "attesa non riconosciuta"
+
+
+def prova_riprese(mondo_base, comandi):
+    """A ogni cambio di stanza lungo il percorso, su un ramo della partita:
+    lascia e riprendi ogni oggetto portato. {oggetto: (stanza, passo, risposta)}
+    per quelli che si posano e poi non si riprendono."""
+    from gioco import _salva_ramo, _ripristina_ramo
+    difetti = {}
+    p = Partita(mondo_base, seme=1)
+    stanza = p.m.posizione_giocatore
+    for i, cmd in enumerate(comandi):
+        if not p.in_corso:
+            break
+        p.esegui(cmd)
+        if p.m.posizione_giocatore == stanza or p.m.dialogo_attivo or not p.in_corso:
+            continue
+        stanza = p.m.posizione_giocatore
+        for oggetto in sorted(p.m.inventario):
+            ramo = _salva_ramo(p.m)
+            n_comandi, n_risposte = len(p.comandi), len(p.risposte)
+            nome = p.m.oggetti[oggetto].nome_visualizzato.lower()
+            p.esegui(f"lascia {nome}")
+            if oggetto not in p.m.inventario and p.in_corso and p.m.posizione_giocatore == stanza:
+                risposta = p.esegui(f"prendi {nome}")
+                if oggetto not in p.m.inventario:
+                    righe = risposta.strip().splitlines()
+                    difetti.setdefault(oggetto, (stanza, i + 1, righe[0] if righe else ""))
+            _ripristina_ramo(p.m, ramo)
+            del p.comandi[n_comandi:]
+            del p.risposte[n_risposte:]
+    return difetti
+
+
+def collauda_percorsi(storia, percorsi, tracce=(), riprese=False):
+    """Gioca i percorsi e controlla le loro attese. (testo, quanti falliti)."""
+    from favella_utils import normalizza_nome
+    mondo = _compila(storia)
+    if mondo is None:
+        return "Compilazione fallita.", len(percorsi) or 1
+    tracce = [normalizza_nome(t) for t in tracce]
+    R = ["=" * 70, f"COLLAUDO DEI PERCORSI — FAVELLA 1 (motore v{VERSIONE_MOTORE})", "=" * 70]
+    falliti = 0
+    for percorso in percorsi:
+        comandi, attese = leggi_percorso_con_attese(percorso)
+        p = Partita(mondo, seme=1)
+        problemi, tabella = [], []
+
+        def verifica(posizione):
+            for pos, attesa in attese:
+                if pos == posizione:
+                    motivo = controlla_attesa(attesa, p, storia)
+                    if motivo:
+                        problemi.append((attesa, motivo + (f" (dopo il comando {posizione})"
+                                                           if posizione is not None else "")))
+        for n, cmd in enumerate(comandi, 1):
+            if not p.in_corso:
+                break
+            p.esegui(cmd)
+            if tracce:
+                valori = ", ".join(f"{t}={p.m.valore_variabile(t)}" for t in tracce)
+                tabella.append(f"     {n:>4}. {cmd}  →  {valori}")
+            verifica(n)
+        verifica(None)
+        if p.eccezioni:
+            problemi.append(("nessuna eccezione del motore", f"{len(p.eccezioni)} eccezioni"))
+        if riprese:
+            for oggetto, (stanza, passo, risposta) in prova_riprese(mondo, comandi).items():
+                problemi.append((f"ripresa di «{oggetto}»", f"in «{stanza}», al passo {passo}: {risposta}"))
+        stato = f"{len(p.comandi)} comandi, esito {p.m.stato_partita}, {len(attese)} attese"
+        if problemi:
+            falliti += 1
+            R.append(f"[NO] {percorso} ({stato})")
+            R += [f"     {a}: {motivo}" for a, motivo in problemi]
+        else:
+            R.append(f"[OK] {percorso} ({stato})")
+        R += tabella
+    R.append("")
+    R.append(f"Percorsi: {len(percorsi)}; falliti: {falliti}.")
+    R.append("=" * 70)
+    return "\n".join(R), falliti
+
+
+def trascrivi(storia, percorso, seme=1, tracce=()):
+    """La partita giocata da un percorso, come la vede chi gioca: apertura, poi
+    «> comando» e risposta; in fondo l'esito e i contatori. (ok, testo)."""
+    from favella_utils import normalizza_nome
+    mondo = _compila(storia)
+    if mondo is None:
+        return False, "Compilazione fallita."
+    p = Partita(mondo, seme=seme, con_intestazione=True)
+    tracce = [normalizza_nome(t) for t in tracce]
+    righe = [p.risposte[0].rstrip() + "\n"]
+    for cmd in leggi_percorso(percorso):
+        if not p.in_corso:
+            righe.append(f"(partita finita: «{cmd}» e i comandi seguenti non sono stati giocati)")
+            break
+        out = p.esegui(cmd)
+        coda = ("\n   [" + ", ".join(f"{t}={p.m.valore_variabile(t)}" for t in tracce) + "]"
+                if tracce else "")
+        righe.append(f"> {cmd}\n{out.rstrip()}{coda}\n")
+    contatori = {k: v for k, v in p.m.variabili.items()
+                 if isinstance(v, int) and not isinstance(v, bool)}
+    righe.append("=" * 60)
+    righe.append(f"Esito: {p.m.stato_partita} · stanza: {p.m.posizione_giocatore} · "
+                 f"comandi: {len(p.comandi)} · eccezioni del motore: {len(p.eccezioni)}")
+    if contatori:
+        righe.append("Contatori: " + ", ".join(f"{k}={v}" for k, v in sorted(contatori.items())))
+    for cmd, tb in p.eccezioni:
+        righe.append(f"[ECCEZIONE] «{cmd}»\n{tb}")
+    return True, "\n".join(righe) + "\n"
 
 
 # ------------------------------------------------------------------------------

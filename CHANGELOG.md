@@ -4,6 +4,86 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.5.0] - 2026-10-15
+### 🛰️ Le lezioni del Relitto
+Il remake de «Il Relitto Silente» (quattordici moduli, 362 regole, una risorsa che cala a
+ogni turno, sei finali) è il banco di prova più duro che FAVELLA abbia avuto. Ha lasciato
+venti lezioni per il motore, verificate una per una sul codice e con storie di prova; la
+1.5.0 le raccoglie tutte in una versione sola, insieme alle idee rimaste aperte nella
+documentazione di lavoro. Il piano, con il motivo di ogni scelta, è in
+`documentazione/piano-1.5.0.md`; la semantica precisa nella specifica
+`documentazione/grammatica-1.5.0.md`, §28.
+
+**Compatibilità.** Tutte le frasi della 1.4 restano valide e significano la stessa cosa.
+Undici storie ufficiali (La Casa, Il Relitto Silente, Salerno-Reggio, Notte di gara, La
+notte lunga, Cuori al caffè, La cripta del lich, I tre sigilli, Il faro, Il giardino
+murato, Il Viaggiatore) giocate con la 1.4.4 e con la 1.5.0: impronta e testo identici a
+ogni comando, 23.477 comandi. I salvataggi della 1.4 si caricano.
+
+#### Correzioni
+- **Salvataggi che si dichiaravano «diversi».** Con «Le uscite nominano solo le stanze
+  visitate», un salvataggio fatto dopo la prima stanza si caricava dicendo che la storia
+  era cambiata, ed era falso: il punto di partenza dava la prima stanza per mai vista.
+- **Caricare segnava come vista la stanza** in cui si era: dopo CARICA la stanza si mostra
+  senza cambiare la partita.
+- **Un'opzione di dialogo con «collega»** non compilava («nome non valido», alla riga 1).
+- **`[se]` senza `[fine]`** (o un `[fine]` di troppo) compilava, e il giocatore leggeva i
+  marcatori: ora è un errore che dice dove. E i `[se]` si possono annidare.
+- **Il linter** non segnala più come «mai usato» uno stato letto solo in un `[se]`; avvisa
+  quando uno stato si scrive e non si legge mai (`(voluto)` lo zittisce, per ciò che legge
+  l'interfaccia) e quando un oggetto entra in inventario ma, se lo si lascia, non si può
+  riprendere.
+
+#### Frasi nuove
+- `Prima di … : dire "…" e basta.` — un vincolo che ferma l'azione, prima di tutte le
+  altre regole: `Prima di sintonizza qualcosa se la protezione è attiva: dire "PROTEZIONE
+  VITALE." e basta.`
+- `La protezione è attiva quando l'aria è meno di 30 e la fuga è lontana.` — uno stato
+  calcolato, che si legge come ogni stato (`se la protezione è attiva`, `[protezione]`).
+- `per la prima volta` — sulle regole (poi vale l'`altrimenti`), sui demoni `Quando` e
+  sugli arrivi.
+- `e adesso il giocatore va nella gola` (mostra la stanza) e `… si ritrova nella gola`
+  (non la mostra); `è nella gola` resta com'era.
+- `e poi dire "…"` — un testo dopo le conseguenze, che legge i valori nuovi.
+- `I ganci si chiamano anche "casse", "uncini" e "rampini".`
+- `Il testo "presa di servizio" è "…".` e poi `[presa di servizio]` in qualunque testo;
+  `Invece di usa oppure accendi il faro: …`.
+- `"esamina" non fa passare il tempo.` — per i verbi che guardano.
+- `e adesso segnala "gemito"` — un segnale per l'app o la pagina; il terminale tace.
+- `Quando il giocatore entra nella stiva: …` — scatta all'arrivo, prima della
+  descrizione; se chiude la partita, la stanza non si stampa.
+- `La cucina collega nord a la cantina se la botola è aperta; altrimenti "La botola è
+  chiusa.".` — un'uscita che si vede e si passa solo quando la condizione è vera.
+- `I demoni guardano la fine del turno.` — i fronti dei demoni guardano lo stato di fine
+  turno e la chiusura di un dialogo. È una frase d'autore e non il comportamento di tutti
+  perché avrebbe cambiato storie già scritte (Il Viaggiatore, Cuori al caffè).
+- `La riga di stato è "[luogo] · Aria [aria]".` — una riga in cima alla pagina esportata e
+  alle cassette del sito, davanti al prompt nel terminale.
+- `L'IFID è "…".` — l'identificatore della storia per gli archivi (IFDB); `favella1 ifid`
+  ne genera uno.
+
+#### Tipografia
+Dentro le stringhe l'apostrofo `’` e le virgolette `“ ”` restano come l'autore le ha
+scritte: «po’» esce «po’», e `"Il cartello dice “ATTENZIONE”."` compila. Nei nomi e nei
+comandi del giocatore la tipografia non conta: chi scrive «l’ancora» dal telefono viene
+capito.
+
+#### Per chi ospita il motore e per chi collauda
+- In `gioco.py`: `apri_partita`, `nuova_partita`, `prova` (un comando su un ramo, poi
+  disfatto), `mostra_situazione`, `riga_di_stato`. Terminale, playground, Studio, pagina
+  esportata e sito aprono la partita nello stesso modo.
+- `pulsanti()` dice anche, per ogni cosa in vista, i verbi che hanno una regola e i loro
+  effetti (`fatti`): un'interfaccia può filtrare senza leggere le strutture interne.
+- `favella1 trascrivi storia.fav percorso.txt`; `favella1 collaudo storia.fav --percorsi
+  … [--traccia aria] [--riprese]`, con le attese nei commenti (`# atteso: aria >= 20`, `#
+  atteso: mai «…»`, o una condizione di FAVELLA); l'esploratore prova anche i verbi
+  equivalenti sulle stesse cose.
+
+**Test.** `test_linguaggio.py`: 1286 asserzioni (erano 1180), con la guardia LALR(1)
+estesa a ogni frase nuova; collaudo 50.
+
+---
+
 ## [Manuale] - 2026-10-06
 ### Revisione di aderenza alla 1.4.4 (prima della stampa su KDP)
 Solo testo del manuale (`documentazione/manuale/`): nessun cambio al motore né alla
