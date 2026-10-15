@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
 import type {
   RuleCondition,
-  RuleConsequence,
   DialoguesMenu,
   DialogueNode,
   DialogueOptionView,
@@ -10,7 +9,7 @@ import type {
   OutlineSpan
 } from '../../../shared/protocol'
 import { DialogueNodeForm, DialogueOptionForm } from './DialogueForms'
-import { CMP_LABELS, operandoText, conseqRepresentable } from './logicBuilder'
+import { CMP_LABELS, operandoText, conseqRepresentable, conseqText } from './logicBuilder'
 import { NonPronto, Vuoto } from './Elenco'
 import { IconaAggiorna, IconaCestino, IconaChiudi, IconaIngranaggio, IconaMatita, IconaPersona, IconaPiu, IconaStella } from './Icone'
 
@@ -49,35 +48,6 @@ function condText(c: RuleCondition): string {
       return c.terms.map(gruppo).join(' e ')
     case 'or':
       return c.terms.map(gruppo).join(' oppure ')
-    default:
-      return '…'
-  }
-}
-
-function conseqText(c: RuleConsequence): string {
-  switch (c.op) {
-    case 'prop':
-      return `${c.name} → ${c.prop}`
-    case 'var':
-      return `${c.name} → ${c.value}`
-    case 'count':
-      return c.mode === 'diventa'
-        ? `${c.name} diventa ${operandoText(c.value)}`
-        : `${c.mode} ${c.name}${c.value !== 1 ? ' di ' + operandoText(c.value) : ''}`
-    case 'move':
-      return `sposta ${c.name} → ${c.destName}`
-    case 'teleport':
-      return `il giocatore → ${c.name}`
-    case 'end':
-      return c.message ? `${c.outcome} “${c.message}”` : c.outcome
-    case 'varCopy':
-      return `${c.name} → (come) ${c.from}`
-    case 'pick':
-      return `${c.name} → uno fra ${c.values.join(', ')}`
-    case 'dark':
-      return c.dark ? `${c.name} → buia` : `${c.name} → illuminata`
-    case 'movePNG':
-      return c.adjacent ? `${c.name} → cambia stanza` : `${c.name} → ${c.destName ?? '?'}`
     default:
       return '…'
   }

@@ -46,6 +46,16 @@ function initTarget(rule?: Rule | null): { sel: string; prep: string; obj: strin
   return { sel: 'd:' + t.name, prep: '', obj: '' }
 }
 
+/** [1.2.3 / motore 1.5] Le parti della frase che il modulo non cambia ma conserva. */
+function PartiDalTesto({ parti }: { parti: string[] }): JSX.Element | null {
+  if (parti.length === 0) return null
+  return (
+    <p className="aiuto" role="note">
+      Restano come sono scritte nel testo: {parti.join('; ')}. Le cambi nell’editor di testo (sezione Storia).
+    </p>
+  )
+}
+
 export default function RuleForm({
   menu,
   rule,
@@ -98,6 +108,15 @@ export default function RuleForm({
       : null
   )
   const [altrAddKind, setAltrAddKind] = useState<ConsKind>('prop')
+  // [1.2.3 / motore 1.5] Le frasi nuove che il modulo non sa ancora cambiare: si
+  // conservano come sono nel testo e si riscrivono uguali («Scrivi» non le perde).
+  const altriVerbi = (rule?.verbs ?? []).filter((v) => v !== rule?.verb)
+  const primaVolta = !!(rule?.firstTime ?? demon?.firstTime)
+  const poiDire = rule?.thenSay ?? event?.thenSay ?? demon?.thenSay ?? null
+  const basta = !!rule?.stops
+  const altrPoiDire = rule?.otherwise?.thenSay ?? null
+  const altrBasta = !!rule?.otherwise?.stops
+  const conAltrimenti = condition !== null || (kind === 'rule' && primaVolta)
 
   const targetIsObject = targetSel.startsWith('o:')
 
@@ -127,7 +146,7 @@ export default function RuleForm({
         ? response.trim().length > 0 && condition !== null
         : verb.trim().length > 0 &&
           response.trim().length > 0 &&
-          (!altr || (condition !== null && altr.response.trim().length > 0))
+          (!altr || (conAltrimenti && altr.response.trim().length > 0))
 
   const salva = async (): Promise<void> => {
     if (!valido) return
@@ -138,7 +157,8 @@ export default function RuleForm({
           mode: evMode,
           n: evN,
           response: response.trim(),
-          consequences: cons
+          consequences: cons,
+          thenSay: poiDire
         },
         span ?? undefined
       )
@@ -152,7 +172,10 @@ export default function RuleForm({
           mode: demonMode,
           condition: semplifica(condition),
           response: response.trim(),
-          consequences: cons
+          consequences: cons,
+          // «per la prima volta» vale solo con «appena diventa vera».
+          firstTime: demonMode === 'quando' && primaVolta,
+          thenSay: poiDire
         },
         span ?? undefined
       )
@@ -178,12 +201,25 @@ export default function RuleForm({
       {
         op: 'rule',
         phase,
-        otherwise: altr && condition ? { response: altr.response.trim(), consequences: altr.cons } : null,
+        otherwise:
+          altr && conAltrimenti
+            ? {
+                response: altr.response.trim(),
+                consequences: altr.cons,
+                thenSay: altrPoiDire,
+                stops: phase === 'prima' && altrBasta
+              }
+            : null,
         verb: verb.trim(),
+        verbs: altriVerbi.length > 0 ? [verb.trim(), ...altriVerbi.filter((v) => v !== verb.trim())] : undefined,
+        firstTime: primaVolta,
         target,
         condition: semplifica(condition),
         response: response.trim(),
-        consequences: cons
+        consequences: cons,
+        thenSay: poiDire,
+        // «e basta» vale solo nelle «Prima di».
+        stops: phase === 'prima' && basta
       },
       span ?? undefined
     )
@@ -416,9 +452,9 @@ export default function RuleForm({
             </div>
           </div>
 
-          {kind === 'rule' && condition !== null && (
+          {kind === 'rule' && conAltrimenti && (
             <div className="objed-field">
-              <label>Altrimenti (se la condizione NON è vera)</label>
+              <label>{condition !== null ? 'Altrimenti (se la condizione NON è vera)' : 'Altrimenti (dalla seconda volta)'}</label>
               {altr === null ? (
                 <button className="btn btn-quieto btn-piccolo" onClick={() => setAltr({ response: '', cons: [] })}>
                   + aggiungi un «altrimenti»
@@ -469,6 +505,20 @@ export default function RuleForm({
               )}
             </div>
           )}
+
+          <PartiDalTesto
+            parti={[
+              ...(altriVerbi.length > 0 ? [`vale anche per «${altriVerbi.join('», «')}»`] : []),
+              ...(primaVolta
+                ? [kind === 'demon' && demonMode === 'ogni' ? '«per la prima volta» (vale solo con «appena diventa vera»: così si perde)' : '«per la prima volta»']
+                : []),
+              ...(poiDire ? [`«e poi dire “${poiDire}”»`] : []),
+              ...(basta || altrBasta
+                ? [phase === 'prima' ? '«e basta»' : '«e basta» (vale solo con «Prima di»: così si perde)']
+                : []),
+              ...(altrPoiDire && altr ? [`nell’altrimenti, «e poi dire “${altrPoiDire}”»`] : [])
+            ]}
+          />
         </div>
     </Finestra>
   )

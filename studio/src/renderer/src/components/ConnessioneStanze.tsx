@@ -46,6 +46,7 @@ export function ConnessioneStanze({
             valore={e.direction}
             direzioni={outline.directions}
             usate={a.exits.map((x) => x.direction)}
+            disabilitato={!!e.conditional}
             onScegli={(direzione, opposta) => void cambiaUscita({ daId: a.id, uscita: e, direzione, opposta })}
           />
           <span className="uscita-freccia" aria-hidden="true">
@@ -66,6 +67,12 @@ export function ConnessioneStanze({
           </button>
         </div>
       ))}
+      {daA.some((e) => e.conditional) && (
+        <p className="aiuto">
+          Questo collegamento c’è solo mentre una condizione è vera: la direzione la cambi nel testo, così la
+          condizione resta.
+        </p>
+      )}
       {daB.length > 0 && (
         <p className="aiuto">
           Da {b.name} si torna verso {daB.map((e) => e.direction).join(', ')}: il ritorno si aggiorna da solo.

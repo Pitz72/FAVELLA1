@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStudio } from '../store'
 import type { OutlineExit, OutlineRoom } from '../../../shared/protocol'
-import { IconaChiudi } from './Icone'
+import { IconaChiudi, IconaMatita } from './Icone'
 
 // Le uscite di una stanza, modificabili: lo stesso pezzo sta nel pannello Stanze e nella
 // scheda che compare sulla Mappa quando si clicca una stanza. Si cambia la direzione, si
@@ -19,7 +19,8 @@ export function DirezioneSelect({
   direzioni,
   usate = [],
   vuota,
-  onScegli
+  onScegli,
+  disabilitato
 }: {
   valore?: string
   direzioni: string[]
@@ -27,6 +28,7 @@ export function DirezioneSelect({
   /** Testo della voce vuota (per «aggiungi»); senza, la direzione è sempre una. */
   vuota?: string
   onScegli: (direzione: string, opposta?: string) => void
+  disabilitato?: boolean
 }): JSX.Element {
   const [nuova, setNuova] = useState(false)
   const [nome, setNome] = useState('')
@@ -83,6 +85,7 @@ export function DirezioneSelect({
   return (
     <select
       aria-label="Direzione"
+      disabled={disabilitato}
       value={valore ?? ''}
       onChange={(e) => {
         if (e.target.value === NUOVA) setNuova(true)
@@ -112,7 +115,11 @@ function UscitaRiga({ stanza, uscita, rooms, direzioni }: {
 }): JSX.Element {
   const cambiaUscita = useStudio((s) => s.cambiaUscita)
   const eliminaUscita = useStudio((s) => s.eliminaUscita)
+  const requestReveal = useStudio((s) => s.requestReveal)
   const usate = stanza.exits.map((e) => e.direction)
+  // [1.2.3 / motore 1.5] Un'uscita con una condizione («… se la botola è aperta»): i menu
+  // la riscriverebbero senza la condizione, quindi si cambia nel testo.
+  const condizionata = !!uscita.conditional
   return (
     <div className="uscita-riga">
       <div className="uscita-coppia">
@@ -120,12 +127,14 @@ function UscitaRiga({ stanza, uscita, rooms, direzioni }: {
           valore={uscita.direction}
           direzioni={direzioni}
           usate={usate}
+          disabilitato={condizionata}
           onScegli={(direzione, opposta) => void cambiaUscita({ daId: stanza.id, uscita, direzione, opposta })}
         />
         <span className="uscita-freccia" aria-hidden="true">
           →
         </span>
         <select
+          disabled={condizionata}
           value={uscita.to}
           onChange={(e) => void cambiaUscita({ daId: stanza.id, uscita, versoId: e.target.value })}
           aria-label="Stanza dall'altra parte"
@@ -146,6 +155,21 @@ function UscitaRiga({ stanza, uscita, rooms, direzioni }: {
         >
           ritorno
         </span>
+      )}
+      {condizionata && (
+        <span className="distintivo" title="Quest’uscita c’è solo mentre una condizione è vera: la cambi nel testo.">
+          con una condizione
+        </span>
+      )}
+      {condizionata && uscita.span && (
+        <button
+          className="btn btn-quieto btn-piccolo"
+          title="Apre la frase nel testo"
+          onClick={() => requestReveal(uscita.span!.file, uscita.span!.line, 1)}
+        >
+          <IconaMatita />
+          Nel testo
+        </button>
       )}
       <button
         className="btn-icona"

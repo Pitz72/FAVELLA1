@@ -135,6 +135,8 @@ interface DatiUscita {
   andata?: string
   /** La direzione per chi parte dall'altra stanza (es. «ovest»), se c'è il ritorno. */
   ritorno?: string
+  /** [1.2.3 / motore 1.5] L'uscita c'è solo mentre una condizione è vera. */
+  condizionata?: boolean
 }
 
 /** Dove la retta dal centro di `nodo` verso il centro di `altro` esce dal bordo di `nodo`. */
@@ -179,6 +181,8 @@ function ArcoUscita(props: EdgeProps<DatiUscita>): JSX.Element | null {
   const vicinoA = { x: pa.x + (dx / lung) * passo, y: pa.y + (dy / lung) * passo }
   const vicinoB = { x: pb.x - (dx / lung) * passo, y: pb.y - (dy / lung) * passo }
   const unaVia = !data?.ritorno
+  const se = data?.condizionata ? ' · se…' : ''
+  const titolo = data?.condizionata ? 'C’è solo mentre una condizione è vera' : undefined
   return (
     <>
       <BaseEdge
@@ -188,19 +192,21 @@ function ArcoUscita(props: EdgeProps<DatiUscita>): JSX.Element | null {
         style={{
           stroke: selected ? 'var(--mappa-linea-scelta)' : 'var(--mappa-linea)',
           strokeWidth: selected ? 3 : 2,
-          // Un'uscita senza ritorno (a senso unico) è tratteggiata.
-          strokeDasharray: unaVia ? '7 6' : undefined
+          // Un'uscita senza ritorno (a senso unico) è tratteggiata; una con una
+          // condizione (motore 1.5) è a puntini.
+          strokeDasharray: data?.condizionata ? '2 5' : unaVia ? '7 6' : undefined,
+          strokeLinecap: data?.condizionata ? 'round' : undefined
         }}
       />
       <EdgeLabelRenderer>
         {data?.andata && (
-          <div className="arco-etichetta" style={{ transform: `translate(-50%, -50%) translate(${vicinoA.x}px, ${vicinoA.y}px)` }}>
-            {data.andata}
+          <div className="arco-etichetta" title={titolo} style={{ transform: `translate(-50%, -50%) translate(${vicinoA.x}px, ${vicinoA.y}px)` }}>
+            {data.andata + se}
           </div>
         )}
         {data?.ritorno && (
-          <div className="arco-etichetta" style={{ transform: `translate(-50%, -50%) translate(${vicinoB.x}px, ${vicinoB.y}px)` }}>
-            {data.ritorno}
+          <div className="arco-etichetta" title={titolo} style={{ transform: `translate(-50%, -50%) translate(${vicinoB.x}px, ${vicinoB.y}px)` }}>
+            {data.ritorno + se}
           </div>
         )}
       </EdgeLabelRenderer>
@@ -212,13 +218,14 @@ const TIPI_ARCO = { uscita: ArcoUscita }
 
 /** Unisce andata e ritorno fra due stanze in un solo arco con due etichette. */
 function costruisciArchi(graph: WorldGraph): Edge<DatiUscita>[] {
-  const aggregati = new Map<string, { a: string; b: string; daA?: string; daB?: string }>()
+  const aggregati = new Map<string, { a: string; b: string; daA?: string; daB?: string; se?: boolean }>()
   for (const e of graph.edges) {
     const [a, b] = [e.from, e.to].sort()
     const k = `${a}|${b}`
     const agg = aggregati.get(k) ?? { a, b }
     if (e.from === a) agg.daA = e.direction
     else agg.daB = e.direction
+    if (e.conditional) agg.se = true
     aggregati.set(k, agg)
   }
   const archi: Edge<DatiUscita>[] = []
@@ -230,7 +237,7 @@ function costruisciArchi(graph: WorldGraph): Edge<DatiUscita>[] {
       type: 'uscita',
       source: daA ? agg.a : agg.b,
       target: daA ? agg.b : agg.a,
-      data: { andata: daA ? agg.daA : agg.daB, ritorno: daA ? agg.daB : undefined }
+      data: { andata: daA ? agg.daA : agg.daB, ritorno: daA ? agg.daB : undefined, condizionata: agg.se }
     })
   }
   return archi

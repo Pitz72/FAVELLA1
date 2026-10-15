@@ -50,7 +50,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/": {
     title: "FAVELLA 1 — Scrivi storie, non codice",
     description:
-      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.5.0: il linguaggio è completo e cresce solo aggiungendo. Parser LALR(1), 1286 test.",
+      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.5.0: il linguaggio è completo e cresce solo aggiungendo. Parser LALR(1), 1292 test.",
     og: "/og/home.png",
     type: "website",
   },
@@ -92,7 +92,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/studio": {
     title: "Favella Studio — FAVELLA 1",
     description:
-      "Favella Studio 1.2.2: l'ambiente di scrittura visuale per FAVELLA 1, con la sua guida all'uso. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, con tema notte o carta e contrasto alto, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
+      "Favella Studio 1.2.3: l'ambiente di scrittura visuale per FAVELLA 1, col motore 1.5.0 e la sua guida all'uso. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, con tema notte o carta e contrasto alto, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
     og: "/og/studio.png",
     type: "website",
   },

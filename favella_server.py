@@ -50,12 +50,13 @@ try:
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
-    from gioco import elabora_comando, mostra_stanza, intestazione, pulsanti, apri_partita
+    from gioco import (elabora_comando, mostra_stanza, intestazione, pulsanti, apri_partita,
+                       riga_di_stato)
     from strutture import Mondo, VERSIONE_MOTORE
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.11.0"  # Studio 1.1: + sorgenti vive ('sources'), story.reorder, entity.rename, entity.references
+VERSIONE_SIDECAR = "0.12.0"  # Studio 1.2.3 / motore 1.5: + riga di stato, uscite con una condizione, stati calcolati
 
 
 # ==============================================================================
@@ -176,7 +177,18 @@ def _stato_partita(mondo):
         "dialogueOptions": opzioni,
         "room": stanza.nome_visualizzato if stanza else None,
         "turn": getattr(mondo, "turno_corrente", 0),
+        # [Studio 1.2.3 / motore 1.5] 'La riga di stato è "…".', già resa (None se la
+        # storia non ne ha una). Il motore la manda anche come evento 'stato', che il
+        # testo della console non contiene: qui la si legge senza toccare la partita.
+        "statusLine": _riga_di_stato(mondo),
     }
+
+
+def _riga_di_stato(mondo):
+    try:
+        return riga_di_stato(mondo)
+    except Exception:  # pragma: no cover - la riga di stato è un di più, mai un guasto
+        return None
 
 
 def _pulsanti(mondo):
@@ -332,9 +344,12 @@ def _grafo_mondo(mondo):
               "isStart": rid == start}
              for rid, st in mondo.stanze.items()]
     edges = []
+    # [Studio 1.2.3 / motore 1.5] Un'uscita che vale solo mentre una condizione è vera.
+    condizionate = getattr(mondo, "condizioni_uscite", None) or {}
     for rid, st in mondo.stanze.items():
         for direzione, dest in getattr(st, "uscite", {}).items():
-            edges.append({"from": rid, "to": dest, "direction": direzione})
+            edges.append({"from": rid, "to": dest, "direction": direzione,
+                          "conditional": (rid, direzione) in condizionate})
     return {"ok": True, "rooms": rooms, "edges": edges, "errors": []}
 
 
@@ -365,6 +380,14 @@ def _snapshot_mondo(mondo):
         # I contatori hanno valore int (lo 0 iniziale); gli stati str/None.
         tipo = "contatore" if isinstance(val, int) and not isinstance(val, bool) else "stato"
         variabili.append({"name": nome, "value": val, "kind": tipo})
+    # [Studio 1.2.3 / motore 1.5] Gli stati calcolati ('La protezione è attiva quando …'):
+    # il valore della prima condizione vera, in sola lettura.
+    for nome in getattr(mondo, "stati_calcolati", None) or {}:
+        try:
+            val = mondo.valore_variabile(nome)
+        except Exception:  # pragma: no cover - difensivo come il resto dello snapshot
+            val = None
+        variabili.append({"name": nome, "value": val, "kind": "stato", "computed": True})
 
     inventario = [{"id": oid, "name": mondo.oggetti[oid].nome_visualizzato}
                   for oid in getattr(mondo, "inventario", set()) if oid in mondo.oggetti]

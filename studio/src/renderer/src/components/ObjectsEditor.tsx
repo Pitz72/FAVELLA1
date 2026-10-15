@@ -33,6 +33,7 @@ export default function ObjectsEditor(): JSX.Element {
   const applyStatement = useStudio((s) => s.applyStatement)
   const appendStatements = useStudio((s) => s.appendStatements)
   const deleteStatement = useStudio((s) => s.deleteStatement)
+  const togliNome = useStudio((s) => s.togliNome)
   const spostaInCoda = useStudio((s) => s.spostaInCoda)
   const nomeOccupato = useStudio((s) => s.nomeOccupato)
   const selezione = useStudio((s) => s.selezione)
@@ -522,7 +523,7 @@ export default function ObjectsEditor(): JSX.Element {
                   <li key={a.name} className="gettone">
                     {a.name}
                     {a.span && (
-                      <button aria-label={`Togli il nome ${a.name}`} title="Togli" onClick={() => void deleteStatement(a.span!, `Nome «${a.name}» tolto`)}>
+                      <button aria-label={`Togli il nome ${a.name}`} title="Togli" onClick={() => void togliNome(sel.name, a, sel.aliases)}>
                         <IconaChiudi size={13} />
                       </button>
                     )}

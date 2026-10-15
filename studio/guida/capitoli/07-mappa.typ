@@ -19,6 +19,8 @@ fare anche dalla scheda di una stanza (capitolo 5), con la tastiera.
   all'ingresso e «sud» vicino al salotto.
 - Una linea tratteggiata è un'uscita a senso unico: si va, ma non si torna per la stessa
   strada.
+- Una linea a puntini, con «· se…» accanto alla direzione, è un'uscita che c'è solo
+  mentre una condizione è vera: si cambia nel testo (capitolo 5).
 - In basso a sinistra ci sono #ui[\+] e #ui[−] per ingrandire e rimpicciolire e un
   pulsante per vedere tutta la mappa; in basso a destra, la mappa in piccolo.
 

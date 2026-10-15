@@ -106,6 +106,8 @@ export interface GameState {
   dialogueOptions: DialogueOption[]
   room: string | null
   turn: number
+  // [sidecar 0.12.0 / motore 1.5] 'La riga di stato è "…".', già resa; null se non c'è.
+  statusLine?: string | null
 }
 
 // [motore 1.4.0 / sidecar 0.9.12] Ciò che il motore dice, come evento tipizzato
@@ -178,6 +180,8 @@ export interface GraphEdge {
   from: string
   to: string
   direction: string
+  // [sidecar 0.12.0 / motore 1.5] L'uscita vale solo mentre una condizione è vera.
+  conditional?: boolean
 }
 
 export interface WorldGraph {
@@ -195,6 +199,8 @@ export interface SnapVariable {
   name: string
   value: string | number | null
   kind: VariableKind
+  // [sidecar 0.12.0 / motore 1.5] Uno stato calcolato ('… è attiva quando …'): sola lettura.
+  computed?: boolean
 }
 
 export interface SnapObject {
@@ -259,6 +265,9 @@ export interface OutlineExit {
   span: OutlineSpan | null
   // True = auto-ritorno implicito (nessuna frase propria; si edita l'originale).
   implicit: boolean
+  // [motore 1.5] L'uscita vale solo mentre una condizione è vera ('… se …'): i pannelli
+  // non sanno riscriverla, si cambia nel testo.
+  conditional?: boolean
 }
 
 export interface OutlineRoom {
@@ -350,23 +359,36 @@ export type SerializeSpec =
   | { op: 'verb_decl'; word: string; noObject?: boolean }
   | { op: 'synonym'; word: string; target: string; voluto?: boolean }
   | { op: 'commands_mode'; mode: CommandsMode }
-  | {
+  // [motore 1.5] verbs/firstTime/thenSay/stops: le frasi nuove, che il serializzatore
+  // riscrive (i pannelli le conservano da com'erano nel testo).
+  | ({
       op: 'rule'
       phase?: RulePhase
-      otherwise?: { response: string; consequences: RuleConsequence[] } | null
+      otherwise?: ({ response: string; consequences: RuleConsequence[] } & CodaEsito) | null
       verb: string
+      verbs?: string[]
+      firstTime?: boolean
       target: SerializeRuleTarget | null
       condition?: RuleCondition | null
       response: string
       consequences: RuleConsequence[]
+    } & CodaEsito)
+  | {
+      op: 'event'
+      mode: 'al' | 'ogni'
+      n: number
+      response: string
+      consequences: RuleConsequence[]
+      thenSay?: string | null
     }
-  | { op: 'event'; mode: 'al' | 'ogni'; n: number; response: string; consequences: RuleConsequence[] }
   | {
       op: 'demon'
       mode: 'ogni' | 'quando'
       condition: RuleCondition | null
       response: string
       consequences: RuleConsequence[]
+      firstTime?: boolean
+      thenSay?: string | null
     }
   // Stati & contatori. 'state_decl'/'counter_decl' dichiarano la variabile;
   // 'state_init' (ri)assegna il valore iniziale di uno stato; 'state_values_comment'
@@ -485,7 +507,10 @@ export type RuleConsequence =
   // ripiega su dest/destName). dest: id stanza/oggetto, o 'inventario'/'nulla'.
   | { op: 'move'; id: string; name: string; dest: string; destName: string; prep?: string; place?: string }
   // [0.18.0 / B2] teletrasporto del giocatore: «e adesso il giocatore è in [stanza]».
-  | { op: 'teleport'; room: string; name: string }
+  // [motore 1.5] mode: 'mostra' = «va in» (mostra la stanza), 'tace' = «si ritrova in».
+  | { op: 'teleport'; room: string; name: string; mode?: 'mostra' | 'tace' | null }
+  // [motore 1.5] «segnala "gemito"»: un segnale per chi ospita la storia, niente testo.
+  | { op: 'signal'; name: string }
   // [0.18.0 / B3] 'message' opzionale = testo d'esito personalizzato («vinci "…"»).
   | { op: 'end'; outcome: 'vinci' | 'perdi' | 'termina'; message?: string | null }
   // [v1.0.0 / Tema 3] copia stato↔stato: «X diventa Y» (Y è un altro stato).
@@ -550,18 +575,32 @@ export interface WorldWords {
 
 export type RulePhase = 'invece' | 'prima' | 'dopo'
 
+// [motore 1.5] Le code di un ramo: «e poi dire "…"» (dopo le conseguenze) e «e basta»
+// (ferma l'azione, solo nelle «Prima di»). I pannelli le mostrano e le conservano;
+// si cambiano nel testo.
+export interface CodaEsito {
+  thenSay?: string | null
+  stops?: boolean
+}
+
 // [motore 1.3] Il ramo «altrimenti» di una regola con condizione.
-export interface RuleOtherwise {
+export interface RuleOtherwise extends CodaEsito {
   response: string
   consequences: RuleConsequence[]
 }
 
-export interface Rule {
+export interface Rule extends CodaEsito {
   span: OutlineSpan | null
   // [motore 1.3] 'invece' (default), 'prima' (poi l'azione prosegue), 'dopo'.
   phase?: RulePhase
   otherwise?: RuleOtherwise | null
   verb: string
+  // [motore 1.5] Una frase su più verbi («Invece di usa oppure accendi …»): tutti, il
+  // primo è 'verb'.
+  verbs?: string[]
+  // [motore 1.5] «per la prima volta»: una condizione in più, vera finché il ramo
+  // principale non è scattato una volta.
+  firstTime?: boolean
   target: RuleTarget | null
   condition: RuleCondition | null
   response: string
@@ -574,6 +613,7 @@ export interface GameEvent {
   n: number
   response: string
   consequences: RuleConsequence[]
+  thenSay?: string | null // [motore 1.5]
 }
 
 // [Livello 8] Demone (sentinella): sorveglia una condizione a ogni turno e scatta
@@ -584,6 +624,8 @@ export interface Demon {
   condition: RuleCondition | null
   response: string
   consequences: RuleConsequence[]
+  firstTime?: boolean // [motore 1.5] solo con 'quando': una volta in tutta la partita
+  thenSay?: string | null // [motore 1.5]
 }
 
 export interface RulesMenu {

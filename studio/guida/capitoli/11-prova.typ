@@ -20,7 +20,8 @@ la barra di stato e il pannello #ui[Problemi] ti dicono dove (capitolo 4).
 
 A sinistra c'è il *racconto*: il titolo della stanza, quello che il giocatore legge, i
 comandi che hai dato (preceduti da ›) e le risposte. In alto, il nome della stanza e il
-turno.
+turno. Se la storia ha una riga di stato («La riga di stato è “Aria: [aria]”.»), la vedi
+in una striscia sopra il racconto, aggiornata a ogni turno, come nella pagina esportata.
 
 Sotto c'è il campo #ui[Che cosa fai?]: scrivi un comando («esamina il tavolino», «vai a
 nord», «parla con il notaio») e premi #tasto("Invio") o #ui[Invia].
@@ -62,7 +63,8 @@ A destra ci sono tre linguette.
 )
 
 - #ui[Partita]: dove sei, il turno, i contatori e gli stati coi loro valori, l'inventario
-  e tutti gli oggetti, ciascuno col suo posto e le sue proprietà (aperto, chiuso…).
+  e tutti gli oggetti, ciascuno col suo posto e le sue proprietà (aperto, chiuso…). Gli
+  stati calcolati («La protezione è attiva quando…») hanno accanto #ui[(calcolato)].
 - #ui[Mappa]: le stanze e dove si trova il giocatore adesso.
 - #ui[Passo passo]: turno per turno, il comando dato e che cosa è cambiato («preso: La
   torcia»). È lo strumento giusto quando una regola non fa quello che ti aspetti.

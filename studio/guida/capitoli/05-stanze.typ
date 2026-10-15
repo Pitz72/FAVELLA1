@@ -81,6 +81,12 @@ nell'ultima riga e poi #ui[Aggiungi l'uscita].
 Il ritorno si scrive da solo: se dall'ingresso vai a nord nel salotto, dal salotto torni
 a sud nell'ingresso. Un'uscita scritta dall'altra parte ha il segno #ui[ritorno].
 
+Un'uscita che c'è solo mentre una condizione è vera («La cucina collega giù a la cantina
+se la botola è aperta», dalla versione 1.5 del linguaggio) ha il segno #ui[con una
+condizione]. I suoi menu sono fermi, perché riscrivendo la frase Studio perderebbe la
+condizione: #ui[Nel testo] ti porta alla frase, e la cambi lì. La #ui[×] la toglie tutta,
+condizione compresa.
+
 Le direzioni di sempre sono nord, sud, est, ovest, le diagonali, su e giù. Se ne vuoi
 un'altra puoi inventarla (la Casa ha due coppie sue, «alto» e «basso», «sopra» e
 «sotto», ed è per questo che le trovi nel menu): nel menu della direzione scegli

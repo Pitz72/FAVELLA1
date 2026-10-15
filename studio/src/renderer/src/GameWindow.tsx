@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStudio } from './store'
 import MapView from './components/MapView'
 import PulsantiGioco from './components/PulsantiGioco'
-import { RigheRacconto } from './components/GamePanel'
+import { RigheRacconto, RigaDiStato } from './components/GamePanel'
 import Riparo from './components/Riparo'
 import { applicaAspetto } from './aspetto'
 import { QUESTA_FINESTRA } from './store'
@@ -141,6 +141,7 @@ export default function GameWindow(): JSX.Element {
 
       <div className="gw-body">
         <main className="gw-main">
+          {state?.statusLine && <RigaDiStato testo={state.statusLine} />}
           {altrove && (
             <div className="striscia striscia-info" role="status">
               <span>La partita adesso è nello Studio, nella Prova.</span>

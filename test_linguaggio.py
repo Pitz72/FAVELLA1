@@ -8007,6 +8007,42 @@ def test_150_studio_regge_le_frasi_nuove():
     _check("Un po’ “strano”." in t.get("text", ""), "il serializzatore conserva la tipografia")
 
 
+def test_studio_123_il_sidecar_e_le_frasi_nuove():
+    print("[Studio 1.2.3 / sidecar 0.12.0: riga di stato, uscite con una condizione, stati calcolati]")
+    import favella_server
+    src = ("La sala è una stanza.\nLa gola è una stanza.\nLa stiva è una stanza.\n"
+           "La fuga è uno stato.\nLa fuga è lontana.\nL'aria è un contatore.\nL'aria parte da 40.\n"
+           "La sala collega est a la gola se la fuga è iniziata.\nLa sala collega ovest a la stiva.\n"
+           "Il giocatore comincia nella sala.\n"
+           "La protezione è attiva quando l'aria è meno di 30.\n"
+           "La riga di stato è \"Aria: [aria]\".\n"
+           "\"respira\" è un comando senza oggetto.\n"
+           "Invece di respira: dire \"Respiri.\" e adesso diminuisci l'aria di 15 e adesso segnala \"fiato\".\n")
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "prova.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write(src)
+        avvio = favella_server.rpc_session_start({"path": percorso})
+        turno = favella_server.rpc_session_send({"command": "respira"})
+        snap = favella_server.rpc_world_snapshot({})
+        grafo = favella_server.rpc_world_graph({"path": percorso})
+        salvataggio = favella_server.rpc_session_save({})
+        caricata = favella_server.rpc_session_load({"save": salvataggio})
+    _check(avvio["state"].get("statusLine") == "Aria: 40" and "Aria: 40" not in avvio["output"],
+           "la riga di stato arriva a parte, non nel racconto")
+    _check(turno["state"].get("statusLine") == "Aria: 25" and "fiato" not in turno["output"]
+           and any(e["tipo"] == "segnale" for e in turno["events"]),
+           "dopo un comando la riga di stato è aggiornata; il segnale non è testo")
+    _check(caricata["state"].get("statusLine") == "Aria: 25", "anche dopo aver caricato una partita")
+    protezione = [v for v in snap["variables"] if v["name"] == "protezione"]
+    _check(protezione == [{"name": "protezione", "value": "attiva", "kind": "stato", "computed": True}],
+           f"lo stato calcolato è nell'ispettore, in sola lettura ({protezione})")
+    archi = {(e["from"], e["direction"]): e.get("conditional") for e in grafo["edges"]}
+    _check(archi.get(("sala", "est")) is True and archi.get(("gola", "ovest")) is True
+           and archi.get(("sala", "ovest")) is False, f"la mappa sa quali uscite hanno una condizione ({archi})")
+    _check(favella_server.rpc_engine_version({}).get("sidecar") == "0.12.0", "sidecar 0.12.0")
+
+
 _CORPUS_GUARDIA_150 = (
     "La plancia è una stanza.\nLa stiva è una stanza.\nLa gola è una stanza.\n"
     "La plancia collega ovest a la stiva.\n"
@@ -8579,6 +8615,7 @@ def main():
         test_150_d_fronti_a_fine_turno_e_alla_chiusura_del_dialogo,
         test_150_riga_di_stato_e_ifid,
         test_150_studio_regge_le_frasi_nuove,
+        test_studio_123_il_sidecar_e_le_frasi_nuove,
         test_150_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)

@@ -41,6 +41,16 @@ export function RigheRacconto({ righe }: { righe: string[] }): JSX.Element {
   )
 }
 
+/** [1.2.3 / motore 1.5] 'La riga di stato è "…".': in cima al racconto, come nella pagina
+ * esportata. Il motore la manda a parte (non è testo del racconto). */
+export function RigaDiStato({ testo }: { testo: string }): JSX.Element {
+  return (
+    <div className="riga-stato" aria-label="Riga di stato">
+      {testo}
+    </div>
+  )
+}
+
 export default function GamePanel(): JSX.Element {
   const lines = useStudio((s) => s.gameLines)
   const state = useStudio((s) => s.gameState)
@@ -122,6 +132,8 @@ export default function GamePanel(): JSX.Element {
           Finestra a parte
         </button>
       </div>
+
+      {state?.statusLine && <RigaDiStato testo={state.statusLine} />}
 
       {altrove && (
         <div className="striscia striscia-info" role="status">

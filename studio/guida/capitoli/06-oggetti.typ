@@ -59,6 +59,8 @@ opposti…] (per esempio «compatta» e «scavata»), compare in tutte le schede
 
 *Altri nomi.* Le parole con cui il giocatore può chiamare l'oggetto: «lanterna» per «la
 torcia». Più nomi metti, meno il giocatore resta bloccato a cercare la parola giusta.
+Se una frase ne dà diversi insieme («I ganci si chiamano anche “uncini”, “rampini” e
+“arpioni”»), la #ui[×] toglie solo quello e riscrive la frase con gli altri.
 
 #schermata("oggetti-nomi.png",
   alt: "Il riquadro Altri nomi, coi nomi già dati e il campo per aggiungerne uno.",

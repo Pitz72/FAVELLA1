@@ -65,8 +65,11 @@ export default function StateInspector(): JSX.Element {
             <p className="nota-riquadro">nessuno</p>
           ) : (
             stati.map((v) => (
-              <div key={v.name} className="insp-var">
-                <span className="insp-var-name">{v.name}</span>
+              <div key={v.name} className="insp-var" title={v.computed ? 'Stato calcolato: vale la prima condizione vera' : undefined}>
+                <span className="insp-var-name">
+                  {v.name}
+                  {v.computed && <span className="insp-calcolato"> (calcolato)</span>}
+                </span>
                 <span className="insp-var-val">{v.value === null ? '∅' : String(v.value)}</span>
               </div>
             ))

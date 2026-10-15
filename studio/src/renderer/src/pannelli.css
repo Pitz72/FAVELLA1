@@ -1199,6 +1199,19 @@
   white-space: nowrap;
 }
 
+/* [1.2.3 / motore 1.5] La riga di stato della storia ('La riga di stato è "…".'), in
+   cima al racconto come nella pagina esportata. */
+.riga-stato {
+  flex: 0 0 auto;
+  padding: 6px var(--s-6);
+  border-bottom: var(--spessore) solid var(--linea-tenue);
+  background: var(--superficie-2);
+  color: var(--testo-2);
+  font-family: var(--font-codice);
+  font-size: var(--t-s);
+  white-space: pre-wrap;
+}
+
 /* Il racconto: una pagina da leggere, in serif, con misura di riga comoda. */
 .racconto {
   flex: 1 1 auto;
@@ -1540,6 +1553,10 @@
 }
 .insp-var-val {
   color: var(--ambra);
+}
+.insp-calcolato {
+  color: var(--testo-2);
+  font-style: italic;
 }
 .insp-obj-icon {
   display: inline-flex;

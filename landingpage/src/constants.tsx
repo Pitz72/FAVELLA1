@@ -54,7 +54,9 @@ export const SITE_URL = "https://favella.eu";
 //   incontrato», il gioco concluso.
 // · 2.9.0 = motore 1.5.0, «le lezioni del Relitto»: frasi nuove, manuale a 102 pp., riga di stato
 //   nelle cassette, download e numeri allineati.
-export const SITE_VERSION = "2.9.0";
+// · 2.9.1 = Favella Studio 1.2.3: dentro c'è il motore 1.5.0, e i pannelli non perdono le frasi
+//   nuove; guida a 46 pagine.
+export const SITE_VERSION = "2.9.1";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -78,7 +80,7 @@ export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.2.2";
+export const STUDIO_VERSION = "1.2.3";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -87,7 +89,7 @@ export const STUDIO_MAC_URL = "https://github.com/Pitz72/FAVELLA1/blob/main/stud
 export const STUDIO_SOURCE_URL = "https://github.com/Pitz72/FAVELLA1/tree/main/studio";
 // La guida all'uso di Studio (PDF accessibile): sempre l'ultima, dal repository.
 export const STUDIO_GUIDE_URL = "https://github.com/Pitz72/FAVELLA1/raw/main/studio/guida/guida-favella-studio.pdf";
-export const STUDIO_GUIDE_PAGES = 45;
+export const STUDIO_GUIDE_PAGES = 46;
 export const GITHUB_IDE_URL = `${_REPO}/studio`;
 export const GITHUB_MOTORE_URL = `${_REPO}#-il-cuore-del-linguaggio`;
 export const GITHUB_MANUALE_URL = `${_REPO}/documentazione/manuale`;
@@ -133,7 +135,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1286, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1292, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -199,6 +201,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "Favella Studio 1.2.3: dentro c'è FAVELLA 1.5.0",
+    body: "Studio ora porta il motore 1.5.0, con le frasi nuove delle lezioni del Relitto. Le frasi si scrivono nel testo; i pannelli le mostrano e, quando riscrivono una regola, un'uscita o i nomi di un oggetto, non le perdono più. Una regola riaperta con «Modifica» conserva «oppure accendi», «per la prima volta», «e poi dire» e «e basta»; un'uscita che vale «se la botola è aperta» ha il segno «con una condizione» e, sulla mappa, una linea a puntini; togliere un nome da «si chiamano anche \"uncini\", \"rampini\" e \"arpioni\"» toglie solo quello. Nella Prova c'è la riga di stato della storia, come nella pagina esportata, e l'ispettore mostra gli stati calcolati. Le storie scritte con la 1.4 si aprono e si giocano come prima. La guida all'uso è aggiornata: 46 pagine.",
+    cta: { label: "Scarica Favella Studio 1.2.3", href: "/studio" },
+  },
   {
     tag: "Linguaggio",
     date: "Ottobre 2026",

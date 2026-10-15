@@ -160,7 +160,7 @@ const bannerStudio = (largo) =>
     <h1 class="marchio" style="font-size:${largo ? 90 : 84}px;margin-top:${largo ? 24 : 22}px">Favella<br><span class="ink">Studio</span></h1>
     <div class="riga">
       <span class="versione ink">${STUDIO}</span>
-      <span class="chip" style="font-size:11.5px">ridisegno «Scrittoio»</span>
+      <span class="chip" style="font-size:11.5px">col motore FAVELLA ${MOTORE}</span>
     </div>
     <p class="serif" style="font-size:${largo ? 23 : 21}px;margin-top:18px;max-width:${largo ? 640 : 430}px">Scrivi la tua avventura, guardala diventare un mondo.</p>
     <p class="meta" style="font-size:12px;margin-top:18px">Windows · Linux · macOS da sorgente · <b>gratuito, MIT</b></p>

@@ -1,8 +1,60 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.2 c'è il motore **v1.4.4**).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.3 c'è il motore **v1.5.0**).
 Schema: [SemVer](https://semver.org/lang/it/).
+
+## [1.2.3] — 2026-10-15 — Il motore FAVELLA 1.5.0
+
+Patch: dentro c'è il motore **1.5.0**, «le lezioni del Relitto». Le frasi nuove si scrivono
+nell'editor di testo; i pannelli le mostrano e, quando riscrivono una frase, non le perdono.
+Le storie scritte con la 1.4 si aprono e si giocano come prima.
+
+### Motore
+- **FAVELLA 1.5.0**: «e basta», gli stati calcolati («… è attiva quando …»), «per la prima
+  volta», «il giocatore va in» / «si ritrova in», «e poi dire», più nomi in una frase, i
+  testi con un nome, le regole su più verbi («usa oppure accendi»), «non fa passare il
+  tempo», «segnala», «Quando il giocatore entra in», le uscite con una condizione, la riga
+  di stato, l'IFID. Il sidecar passa alla 0.12.0.
+
+### Corretto (con le frasi della 1.5.0)
+- **Una regola riaperta con «Modifica» perdeva le frasi nuove.** «Scrivi la regola» la
+  riscriveva senza i verbi in più, senza «per la prima volta», «e poi dire "…"» e «e basta»;
+  eventi e demoni perdevano «e poi dire» e «per la prima volta». Ora la finestra cambia
+  quello che sa cambiare e conserva il resto, e in fondo elenca che cosa resta com'è scritto
+  nel testo. Una regola con «per la prima volta» e un «altrimenti» non si poteva riscrivere
+  affatto (il pulsante restava spento): ora l'«altrimenti» vale dalla seconda volta, come
+  nel motore.
+- **Un'uscita con una condizione** («La cucina collega giù a la cantina se la botola è
+  aperta.») cambiata dal riquadro Uscite o dalla mappa perdeva la condizione. Ora ha il
+  segno «con una condizione», i suoi menu sono fermi e «Nel testo» porta alla frase; sulla
+  mappa è una linea a puntini con «· se…» accanto alla direzione.
+- **Togliere un nome** da una frase che ne dà diversi («I ganci si chiamano anche "uncini",
+  "rampini" e "arpioni".») cancellava la frase intera: ora toglie solo quel nome e riscrive
+  la frase con gli altri.
+- «segnala "…"» compariva nel modulo come una riga vuota e nelle schede come «…»; «il
+  giocatore va in» e «si ritrova in» tornavano «è in» se si cambiava la stanza.
+
+### Aggiunto
+- Le schede di regole, eventi e demoni mostrano le frasi nuove: i verbi in più, «per la
+  prima volta», «poi di' "…"», «e basta», «segnala», «va in» e «si ritrova in». Un evento
+  senza «dire» non mostra più un «di' ""» vuoto.
+- Nella Prova, la **riga di stato** della storia («La riga di stato è "…".») in una
+  striscia sopra il racconto, come nella pagina esportata (anche nella finestra a parte);
+  nella linguetta Partita, gli **stati calcolati**, segnati «(calcolato)».
+- La guida (46 pagine) racconta tutto questo nei capitoli delle stanze, degli oggetti,
+  della mappa, delle regole e della prova.
+
+### Limiti noti
+- Gli arrivi («Quando il giocatore entra in …»), gli stati calcolati, i testi con un nome,
+  «non fa passare il tempo», la riga di stato e l'IFID non hanno un pannello: si scrivono
+  nel testo, e Studio non li tocca. «Riordina» li mette in fondo al file, nell'ordine in
+  cui erano.
+- Un evento che non dice niente subito ma ha «e poi dire» («Ogni 5 turni: diminuisci
+  l'aria e poi dire "…".») non ha «Modifica»: si cambia nel testo.
+
+
+---
 
 ## [1.2.2] — 2026-10-06 — Una scritta più onesta, e la guida rivista
 

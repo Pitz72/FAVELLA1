@@ -101,6 +101,46 @@ export const CMP_LABELS: Record<CountCmp, string> = {
   '<=': 'è al massimo'
 }
 
+// [1.2.3 / motore 1.5] Come la conseguenza sposta il giocatore: «è in» (come sempre),
+// «va in» (mostra la stanza d'arrivo), «si ritrova in» (non la mostra).
+export const TELETRASPORTO: Record<string, string> = {
+  '': 'il giocatore',
+  mostra: 'il giocatore va in',
+  tace: 'il giocatore si ritrova in'
+}
+
+/** [1.2.3] Una conseguenza in breve, per le schede di Regole e Dialoghi. */
+export function conseqText(c: RuleConsequence): string {
+  switch (c.op) {
+    case 'prop':
+      return `${c.name} → ${c.prop}`
+    case 'var':
+      return `${c.name} → ${c.value}`
+    case 'count':
+      return c.mode === 'diventa'
+        ? `${c.name} diventa ${operandoText(c.value)}`
+        : `${c.mode} ${c.name}${c.value !== 1 ? ' di ' + operandoText(c.value) : ''}`
+    case 'move':
+      return `sposta ${c.name} → ${c.destName}`
+    case 'teleport':
+      return c.mode ? `${TELETRASPORTO[c.mode] ?? 'il giocatore'} ${c.name}` : `il giocatore → ${c.name}`
+    case 'signal':
+      return `segnala “${c.name}”`
+    case 'end':
+      return c.message ? `${c.outcome} “${c.message}”` : c.outcome
+    case 'varCopy':
+      return `${c.name} → (come) ${c.from}`
+    case 'pick':
+      return `${c.name} → uno fra ${c.values.join(', ')}`
+    case 'dark':
+      return c.dark ? `${c.name} → buia` : `${c.name} → illuminata`
+    case 'movePNG':
+      return c.adjacent ? `${c.name} → cambia stanza` : `${c.name} → ${c.destName ?? '?'}`
+    default:
+      return '…'
+  }
+}
+
 // [v1.0.0 / Tema 1] Rende leggibile la quantità di un contatore: un letterale è il
 // numero; le forme dinamiche (introdotte dai Temi) si descrivono a parole.
 export function operandoText(v: Operando): string {
@@ -937,12 +977,13 @@ export function ConsRow({
       )}
       {c.op === 'teleport' && (
         <>
-          <span className="cons-arrow">il giocatore →</span>
+          <span className="cons-arrow">{TELETRASPORTO[c.mode ?? ''] ?? TELETRASPORTO['']} →</span>
           <select
             value={c.room}
             onChange={(e) => {
               const r = menu.rooms.find((x) => x.id === e.target.value)
-              if (r) onChange({ op: 'teleport', room: r.id, name: r.name })
+              // [1.2.3] Il modo («va in», «si ritrova in») resta quello scritto.
+              if (r) onChange({ ...c, room: r.id, name: r.name })
             }}
           >
             {menu.rooms.map((r) => (
@@ -952,6 +993,13 @@ export function ConsRow({
             ))}
           </select>
         </>
+      )}
+      {c.op === 'signal' && (
+        // [1.2.3 / motore 1.5] Un segnale per chi ospita la storia: si legge e si toglie
+        // qui, si scrive nel testo.
+        <span className="cons-arrow" title="Un segnale per chi ospita la storia (un suono, un effetto): il giocatore non legge niente">
+          segnala “{c.name}”
+        </span>
       )}
       {c.op === 'end' && (
         <>

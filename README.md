@@ -16,7 +16,7 @@
 > copiati dieci volte. La **1.5.0** raccoglie quelle lezioni in un'unica versione, con le
 > correzioni che le hanno accompagnate. Si cresce solo aggiungendo: **tutte le storie scritte
 > con la 1.4 girano identiche** (provato su undici storie ufficiali, comando per comando).
-> **Favella Studio 1.2.2** resta la casa di scrittura. Licenza MIT.
+> **Favella Studio 1.2.3** è la casa di scrittura, col motore 1.5.0 dentro. Licenza MIT.
 
 ---
 
@@ -196,9 +196,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1286
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1292
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-452 passati). Spec tecnica: [`documentazione/grammatica-1.5.0.md`](documentazione/grammatica-1.5.0.md).
+453 passati). Spec tecnica: [`documentazione/grammatica-1.5.0.md`](documentazione/grammatica-1.5.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -237,8 +237,8 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 | Collaudatore statico (`collaudo.py`) | **1.5.0** | usa `VERSIONE_MOTORE` |
 | Collaudatore dinamico (`esploratore.py`) | **1.5.0** | nuovo nella 1.2.0; trascrizione, percorsi con le attese e riprese nella 1.5.0 |
 | Specifica formale della grammatica | **1.5.0** | [`documentazione/grammatica-1.5.0.md`](documentazione/grammatica-1.5.0.md) — *1.4 + le lezioni del Relitto e le idee rimaste (§28)* |
-| Suite di test | **1.5.0** | 1286 asserzioni linguaggio + 50 collaudo (pytest 452) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.5.0 | protocollo 0.11.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1) |
+| Suite di test | **1.5.0** | 1292 asserzioni linguaggio + 50 collaudo (pytest 453) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.5.0 | protocollo 0.12.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1, + riga di stato, uscite con una condizione e stati calcolati per Studio 1.2.3) |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 102 pagine, allineato al linguaggio 1.5.0** (novità anche nella spec, §22, §23 e §28). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
@@ -384,20 +384,20 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 ## ✦ Favella Studio — l'ambiente di scrittura
 
 <p align="center">
-  <img src="branding/materiale/banner-favella-studio-v1.2.2.png" alt="Favella Studio 1.2.2 — l'ambiente di scrittura per FAVELLA 1" width="880">
+  <img src="branding/materiale/banner-favella-studio-v1.2.3.png" alt="Favella Studio 1.2.3 — l'ambiente di scrittura per FAVELLA 1" width="880">
 </p>
 
-In [`studio/`](studio/) c'è **Favella Studio 1.2.2**: l'ambiente di scrittura visuale per FAVELLA.
+In [`studio/`](studio/) c'è **Favella Studio 1.2.3**: l'ambiente di scrittura visuale per FAVELLA.
 Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
 oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
 comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra di gioco a parte per
-provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro l'app (Studio 1.2.2
-contiene il motore 1.4.4): non serve installarlo. Si legge in tema notte o carta, anche a contrasto alto, e si usa tutto da
+provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro l'app (Studio 1.2.3
+contiene il motore 1.5.0): non serve installarlo. Si legge in tema notte o carta, anche a contrasto alto, e si usa tutto da
 tastiera.
 
-- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.2).
+- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.3).
 - **macOS**: si costruisce in cinque minuti sul proprio Mac, con un comando: [`studio/BUILD-MACOS.md`](studio/BUILD-MACOS.md).
-- **La guida all'uso** (45 pagine, PDF accessibile): [`studio/guida/guida-favella-studio.pdf`](studio/guida/guida-favella-studio.pdf), anche dentro l'app.
+- **La guida all'uso** (46 pagine, PDF accessibile): [`studio/guida/guida-favella-studio.pdf`](studio/guida/guida-favella-studio.pdf), anche dentro l'app.
 - Presentazione e schermate: [favella.eu/studio](https://www.favella.eu/studio). Licenza MIT.
 
 Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).

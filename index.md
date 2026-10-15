@@ -77,7 +77,7 @@ Mappa di **dove sta ogni cosa**. Aggiornata al 2026-10-15 (motore 1.5.0).
 
 | Percorso | Git | Contenuto |
 |---|---|---|
-| `studio/` | tracciato | **Favella Studio** v1.2.2, IDE desktop (Electron + React + sidecar Python). Ambiente di scrittura visuale per FAVELLA 1 (Windows, Linux; macOS da sorgente). Licenza MIT. Fuori dal repo solo `node_modules/`, `out/`, `release/` |
+| `studio/` | tracciato | **Favella Studio** v1.2.3 (motore 1.5.0), IDE desktop (Electron + React + sidecar Python). Ambiente di scrittura visuale per FAVELLA 1 (Windows, Linux; macOS da sorgente). Licenza MIT. Fuori dal repo solo `node_modules/`, `out/`, `release/` |
 | `landingpage/` | tracciato (master grafici compresi) | Sito **favella.eu** (React/Vite + pre-rendering). Dal 2026-08-10 vive qui: non è più un repo a sé. I master grafici (`landingpage/immagini/`, ~51 MB) restano locali, come `branding/marchi/`; il sito usa le WebP in `landingpage/public/covers/`. Deploy: `npm run deploy` (FTPS, credenziali fuori dal repo) |
 | `newdesign/` | gitignored | Handoff redesign della landing (zip + estratto), materiale di lavorazione per `landingpage/` |
 | `presentazione/` | gitignored | Pitch deck Marp (sorgente, tema, `output/`): materiale di outreach **interno**, come `dove-presentare-favella.md` |
@@ -93,7 +93,7 @@ virtualenv, build e cache. Per rimetterlo in moto:
 ```bash
 # motore: serve solo Lark
 pip install lark
-python test_linguaggio.py     # 1286 asserzioni
+python test_linguaggio.py     # 1292 asserzioni
 python test_collaudo.py       # 50 asserzioni
 python favella.py gioca favella1/galleria/il-faro/il-faro.fav
 

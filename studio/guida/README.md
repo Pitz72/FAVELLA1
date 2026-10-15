@@ -1,7 +1,7 @@
 # Favella Studio — Guida all'uso
 
 La guida dell'app, in PDF: [`guida-favella-studio.pdf`](guida-favella-studio.pdf)
-(45 pagine, A4, PDF accessibile PDF/UA-1). Viaggia dentro gli installer di Studio (menu
+(46 pagine, A4, PDF accessibile PDF/UA-1). Viaggia dentro gli installer di Studio (menu
 **··· › Guida di Favella Studio (PDF)**, o **Leggi la guida** nella prima schermata) e si
 scarica da [www.favella.eu/studio](https://www.favella.eu/studio).
 

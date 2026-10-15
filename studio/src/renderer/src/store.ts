@@ -11,6 +11,7 @@ import type {
   DebugEntry,
   Outline,
   OutlineSpan,
+  OutlineProperty,
   SerializeSpec,
   WorldRules,
   WorldVariables,
@@ -309,6 +310,9 @@ interface StudioState {
   // Editor oggetti (6a.4): genera/sostituisce o elimina una frase.
   applyStatement: (spec: SerializeSpec, span?: OutlineSpan | null) => Promise<void>
   deleteStatement: (span: OutlineSpan, etichetta?: string) => Promise<void>
+  // [1.2.3 / motore 1.5] Toglie UN nome a un oggetto o a un personaggio. Se la frase ne
+  // elenca altri («si chiamano anche "a", "b" e "c"»), la riscrive con quelli che restano.
+  togliNome: (entita: string, nome: OutlineProperty, tutti: OutlineProperty[]) => Promise<void>
   // Editor dialoghi (6b): appende PIÙ frasi in un solo edit (es. un nodo = battuta
   // + nodo d'ingresso + opzioni), evitando lo staleness degli span fra edit separati.
   appendStatements: (specs: SerializeSpec[]) => Promise<void>
@@ -1413,6 +1417,26 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (ok && etichetta) avvisaConAnnulla(etichetta)
   },
 
+  togliNome: async (entita, nome, tutti) => {
+    const span = nome.span
+    if (!span) return
+    const etichetta = `Nome «${nome.name}» tolto`
+    const stessaFrase = (x: OutlineProperty): boolean =>
+      !!x.span && stessoFile(x.span.file, span.file) && x.span.line === span.line && x.span.endLine === span.endLine
+    const restano = tutti.filter((x) => x !== nome && stessaFrase(x)).map((x) => x.name)
+    if (restano.length === 0) {
+      await get().deleteStatement(span, etichetta)
+      return
+    }
+    // Come la scrive il serializzatore per un nome solo («X si chiama anche "a".»), con
+    // l'elenco «"a", "b" e "c"» e il verbo al plurale per «I ganci», «Gli attrezzi», «Le chiavi».
+    const elenco = restano.map((n) => `"${n}"`)
+    const coda = elenco.length > 1 ? elenco.slice(0, -1).join(', ') + ' e ' + elenco[elenco.length - 1] : elenco[0]
+    const verbo = /^(i|gli|le)\s/i.test(entita) ? 'si chiamano' : 'si chiama'
+    const ok = await get().applica([{ tipo: 'sostituisci', span, testo: `${entita} ${verbo} anche ${coda}.` }], etichetta)
+    if (ok) avvisaConAnnulla(etichetta)
+  },
+
   // Serializza N spec e le appende come UN UNICO blocco (una riga per frase): così non
   // ci sono span che slittano fra una frase e l'altra.
   appendStatements: async (specs) => {
@@ -1477,6 +1501,11 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (!stanza || !destinazione) return
     if (!uscita.span) {
       set({ editError: 'Questa uscita non ha una frase da cambiare: modificala nel testo.' })
+      return
+    }
+    // [1.2.3 / motore 1.5] Riscriverla perderebbe la condizione («… se …»).
+    if (uscita.conditional) {
+      set({ editError: 'Questa uscita ha una condizione: cambiala nel testo, così la condizione resta.' })
       return
     }
     const dir = (direzione ?? uscita.direction).trim().toLowerCase()

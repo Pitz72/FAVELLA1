@@ -5,11 +5,10 @@ import type {
   GameEvent,
   Demon,
   RuleCondition,
-  RuleConsequence,
   OutlineSpan
 } from '../../../shared/protocol'
 import RuleForm from './RuleForm'
-import { CMP_LABELS, operandoText, conseqRepresentable } from './logicBuilder'
+import { CMP_LABELS, operandoText, conseqRepresentable, conseqText } from './logicBuilder'
 import { NonPronto, Vuoto } from './Elenco'
 import { IconaAggiorna, IconaChiudi, IconaMatita, IconaPiu } from './Icone'
 
@@ -108,33 +107,22 @@ function demonRepresentable(d: Demon): boolean {
   return condRepresentable(d.condition) && d.consequences.every(conseqRepresentable)
 }
 
-function conseqText(c: RuleConsequence): string {
-  switch (c.op) {
-    case 'prop':
-      return `${c.name} → ${c.prop}`
-    case 'var':
-      return `${c.name} → ${c.value}`
-    case 'count':
-      return c.mode === 'diventa'
-        ? `${c.name} diventa ${operandoText(c.value)}`
-        : `${c.mode} ${c.name}${c.value !== 1 ? ' di ' + operandoText(c.value) : ''}`
-    case 'move':
-      return `sposta ${c.name} → ${c.destName}`
-    case 'teleport':
-      return `il giocatore → ${c.name}`
-    case 'end':
-      return c.message ? `${c.outcome} “${c.message}”` : c.outcome
-    case 'varCopy':
-      return `${c.name} → (come) ${c.from}`
-    case 'pick':
-      return `${c.name} → uno fra ${c.values.join(', ')}`
-    case 'dark':
-      return c.dark ? `${c.name} → buia` : `${c.name} → illuminata`
-    case 'movePNG':
-      return c.adjacent ? `${c.name} → cambia stanza` : `${c.name} → ${c.destName ?? '?'}`
-    default:
-      return '…'
-  }
+/** [1.2.3 / motore 1.5] Le code di un ramo, come stanno nel testo: «e poi dire "…"» e
+ * «e basta». Si leggono qui e si cambiano nel testo (i moduli le conservano). */
+function CodaRamo({ thenSay, stops }: { thenSay?: string | null; stops?: boolean }): JSX.Element | null {
+  if (!thenSay && !stops) return null
+  return (
+    <>
+      {thenSay && <div className="rule-say">poi di’ “{thenSay}”</div>}
+      {stops && (
+        <div className="rule-then">
+          <span className="rule-chip" title="La regola ferma l’azione: dopo di lei non succede altro">
+            e basta
+          </span>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function RulesEditor(): JSX.Element {
@@ -204,7 +192,7 @@ export default function RulesEditor(): JSX.Element {
               <span className={'rule-phase fase-' + (r.phase ?? 'invece')}>
                 {r.phase === 'prima' ? 'prima di' : r.phase === 'dopo' ? 'dopo di' : 'invece di'}
               </span>
-              <span className="rule-verb">{r.verb}</span>
+              <span className="rule-verb">{(r.verbs && r.verbs.length > 1 ? r.verbs : [r.verb]).join(' oppure ')}</span>
               {r.target ? (
                 <span className="rule-target">
                   {r.target.name}
@@ -233,6 +221,7 @@ export default function RulesEditor(): JSX.Element {
                 </button>
               )}
             </div>
+            {r.firstTime && <div className="rule-when">per la prima volta</div>}
             {r.condition && <div className="rule-when">se {condText(r.condition)}</div>}
             <div className="rule-say">di’ “{r.response}”</div>
             {r.consequences.length > 0 && (
@@ -244,6 +233,7 @@ export default function RulesEditor(): JSX.Element {
                 ))}
               </div>
             )}
+            <CodaRamo thenSay={r.thenSay} stops={r.stops} />
             {r.otherwise && (
               <div className="rule-else">
                 <div className="rule-when">altrimenti</div>
@@ -257,6 +247,7 @@ export default function RulesEditor(): JSX.Element {
                     ))}
                   </div>
                 )}
+                <CodaRamo thenSay={r.otherwise.thenSay} stops={r.otherwise.stops} />
               </div>
             )}
           </div>
@@ -286,7 +277,7 @@ export default function RulesEditor(): JSX.Element {
                 </button>
               )}
             </div>
-            <div className="rule-say">di’ “{e.response}”</div>
+            {e.response && <div className="rule-say">di’ “{e.response}”</div>}
             {e.consequences.length > 0 && (
               <div className="rule-then">
                 {e.consequences.map((c, j) => (
@@ -296,6 +287,7 @@ export default function RulesEditor(): JSX.Element {
                 ))}
               </div>
             )}
+            <CodaRamo thenSay={e.thenSay} />
           </div>
         ))}
 
@@ -306,6 +298,7 @@ export default function RulesEditor(): JSX.Element {
                 {d.mode === 'ogni' ? 'ogni turno se' : 'quando diventa vero'}
               </span>
               {d.condition && <span className="rule-target">{condText(d.condition)}</span>}
+              {d.firstTime && <span className="rule-global">per la prima volta</span>}
               {d.span &&
                 (demonRepresentable(d) ? (
                   <button className="btn btn-quieto btn-piccolo" onClick={() => setEditing({ demon: d, span: d.span })}>
@@ -334,6 +327,7 @@ export default function RulesEditor(): JSX.Element {
                 ))}
               </div>
             )}
+            <CodaRamo thenSay={d.thenSay} />
           </div>
         ))}
       </div>

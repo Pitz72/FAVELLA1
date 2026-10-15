@@ -105,6 +105,21 @@ menu e poi #ui[\+ conseguenza].
 condizione *non* è vera: un altro testo e altre conseguenze. #ui[Scrivi la regola]
 conferma, e la regola compare nella sua scheda e nel testo.
 
+== Le frasi nuove della 1.5
+
+La versione 1.5 del linguaggio ha frasi nuove per le regole, gli eventi e i demoni: più
+verbi in una regola sola («Invece di usa oppure accendi il faro»), «per la prima volta»,
+«e poi dire “…”» dopo le conseguenze, «e basta» per fermare l'azione in una «Prima di»,
+«il giocatore va in…» e «si ritrova in…», «segnala “…”». Si scrivono nella sezione
+#ui[Storia] (il manuale spiega come funzionano); qui le leggi nelle schede: #ui[usa oppure
+accendi], #ui[per la prima volta], #ui[poi di' “…”], #ui[e basta].
+
+Se apri una di queste regole con #ui[Modifica], la finestra cambia quello che sa cambiare
+(il verbo principale, il bersaglio, la condizione, il testo, le conseguenze) e conserva il
+resto: in fondo elenca, sotto #ui[Restano come sono scritte nel testo], le parti che
+#ui[Scrivi la regola] riscriverà uguali. Una regola con «per la prima volta» può avere un
+#ui[Altrimenti] anche senza condizione: vale dalla seconda volta.
+
 == Eventi e demoni
 
 #coppia("nuovo-evento.png", "nuovo-demone.png",
