@@ -60,7 +60,10 @@ export const SITE_URL = "https://favella.eu";
 //   edizione su carta. Verifica completa del sito contro lo stato del progetto.
 // · 2.9.3 = Il Viaggiatore 1.14.0: il motore 1.5.0 dentro il gioco, i loghi d'apertura animati e
 //   sonori, il nome dell'autore. Notizia, banner e /esperimento allineati.
-export const SITE_VERSION = "2.9.3";
+// · 2.10.0 = Il Viaggiatore 1.23.0, doppiato per intero: /esperimento con la voce (circa un'ora, sedici voci,
+//   trailer compreso) e il cartello delle licenze e dei crediti; la storia della galleria alla 1.23.0; il
+//   carattere del biglietto (Covered By Your Grace, OFL); notizia, banner e privacy aggiornati.
+export const SITE_VERSION = "2.10.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -79,8 +82,9 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: oggi la 1.14.0 (desktop e web), col motore FAVELLA 1.5.0. La storia è quella della
-// 1.12.0, la definitiva (la 1.14.0 aggiunge solo titolo, autore e «(voluto)» alle dichiarazioni).
+// Sempre l'ultima release: oggi la 1.23.0 (desktop e web), col motore FAVELLA 1.5.0 e il doppiaggio integrale. La
+// storia è quella della 1.12.0, la definitiva (con titolo, autore e «(voluto)» della 1.14.0 e le rifiniture di testo
+// della 1.15–1.16).
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
@@ -206,6 +210,14 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "Il Viaggiatore 1.23: il racconto ha una voce",
+    body: "Il Viaggiatore ora si ascolta: dalla 1.19 alla 1.23 il gioco è stato doppiato per intero con la sintesi vocale, circa un'ora di parlato in sedici voci. Il narratore legge le descrizioni e le scelte, ognuno dei quattordici personaggi ha la sua voce e il suo tono per ogni battuta, una voce di servizio dice i suggerimenti e le scorte d'acqua e di cibo, composte numero per numero; anche il trailer d'apertura è letto dal narratore, con la musica che gli scende sotto. La voce segue il testo che il motore FAVELLA stampa, si ferma al primo tasto e si ripete con F2; le risposte di un dialogo si ascoltano passandoci sopra. Chi usa un lettore di schermo può lasciare a lui la lettura, dal pulsante «♪ voce». Dopo i loghi c'è ora il cartello delle licenze e dei crediti: storia, testi, musica, grafica e voci Google Gemini sotto CC BY-SA 4.0, il codice e il motore sotto MIT; le voci ElevenLabs di Imma, Rosaria, Tore e Vito (elevenlabs.io) sono fuori dalla licenza libera e solo per uso non commerciale. La storia resta quella della 1.12.0, e la prova qui sul sito ha la voce anche lei.",
+    cta: { label: "Ascoltalo nel browser", href: "/esperimento/" },
+  },
   {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",

@@ -146,7 +146,7 @@ const ViaggiatoreBanner = () => (
 
     <div className="relative z-10 flex flex-col justify-end gap-4 px-6 pb-8 pt-[290px] md:min-h-[440px] md:justify-center md:px-12 md:py-12">
       <p className="m-0 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#f0b27a]">
-        Il gioco completo · scritto in FAVELLA 1
+        Il gioco completo · scritto in FAVELLA 1 · doppiato per intero
       </p>
       <div>
         <h2 className="m-0 font-display text-[clamp(32px,5vw,56px)] font-semibold uppercase leading-none tracking-[0.14em] text-[#f7f1e7]">
@@ -157,6 +157,10 @@ const ViaggiatoreBanner = () => (
       <p className="m-0 max-w-[500px] font-serif text-[16px] leading-[1.65] text-[#d9cfc2]">
         Un sud rimasto senz'acqua e la strada per tornare a casa. La sete detta il passo, l'acqua è la
         moneta, e chi incontri ricorda come l'hai trattato.
+      </p>
+      <p className="m-0 max-w-[500px] font-serif text-[16px] leading-[1.65] text-[#f3c89a]">
+        Ora si ascolta: il narratore, i quattordici personaggi e il trailer hanno la loro voce, circa
+        un'ora di parlato.
       </p>
       <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 font-mono text-[11.5px] uppercase tracking-[0.14em] text-[#e9e2d6]/75">
         {FATTI.map((f, i) => (
@@ -193,7 +197,11 @@ const ViaggiatoreBanner = () => (
         </a>
       </div>
       <p className="m-0 font-mono text-[10.5px] tracking-[0.08em] text-[#d9cfc2]/55">
-        Gratis e open source · trailer e colonna sonora originali · salvataggi · concluso (1.14)
+        Gratis e open source · trailer, colonna sonora e voci originali · salvataggi · 1.23
+      </p>
+      <p className="m-0 max-w-[560px] font-mono text-[10.5px] leading-[1.6] tracking-[0.04em] text-[#d9cfc2]/55">
+        Codice MIT · storia, testi, musica, grafica e voci Google Gemini CC BY-SA 4.0 · le voci ElevenLabs di
+        Imma, Rosaria, Tore e Vito (elevenlabs.io) solo per uso non commerciale
       </p>
     </div>
   </div>
