@@ -18,7 +18,9 @@ if (new URLSearchParams(location.search).has("autoverifica")) {
   rootElement.appendChild(pre);
   import("./autoverifica").then(({ autoverifica }) => autoverifica((r) => { pre.textContent += `${r}\n`; }));
 } else {
-  ReactDOM.createRoot(rootElement).render(
+  // onCaughtError: React ripeterebbe in console l'errore che ConfineErrori già scrive (nel desktop la
+  // console va nel registro tecnico: l'errore vi sarebbe due volte).
+  ReactDOM.createRoot(rootElement, { onCaughtError: () => {} }).render(
     <React.StrictMode>
       <App />
     </React.StrictMode>

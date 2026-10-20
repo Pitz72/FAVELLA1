@@ -13,12 +13,14 @@
 //     a 60 fps.
 //   · Colonna sonora: il brano src/assets/intro.mp3 (fa anche da orologio)
 //     più il rumorismo sintetizzato; senza brano, tutta sintetizzata. Sul
-//     desktop parte da sola; nel browser col primo tasto o clic.
+//     desktop parte da sola; nel browser col primo tasto o clic. Con la voce
+//     recitata (le impostazioni della voce del gioco) Enzo legge i testi sullo
+//     stesso orologio, e la musica gli scende sotto (trailer/audio.ts).
 // ====================================================================
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { W, H, BANDA, SCENE, DURATA, presenza, TAPPE_T0, TAPPE_PASSO, CINQUE_T0, CINQUE_PASSO, REGOLA_DUR } from "../trailer/scaletta";
 import { disegnaScena, avviaPreparazione, seguiPreparazione, tappaCorrente, REGOLE, FONT, cacheTrailer } from "../trailer/paesaggi";
-import { clamp, seg, easeOut, easeIn, expoOut, inviluppo } from "../trailer/tempo";
+import { clamp, seg, easeOut, easeIn, expoOut, inviluppo, rng } from "../trailer/tempo";
 import { ColonnaSonora } from "../trailer/audio";
 import branoIntro from "../assets/intro.mp3";
 import { inDesktop, esciDalGioco } from "../lib/desktop";
@@ -26,6 +28,7 @@ import Taccuino from "../gioco/Taccuino";
 import { piuRecente, type Salvataggio } from "../lib/salvataggi";
 import { etichettaVersione } from "../lib/versione";
 import ComeSiGioca from "../gioco/ComeSiGioca";
+import { leggiImpostazioni } from "../gioco/voce";
 
 // --------------------------------------------------------------------
 //  Testi (cue): tempi, posizione, tipo d'animazione
@@ -37,22 +40,36 @@ interface Cue {
   box: React.CSSProperties; righe: Riga[]; sfalsa?: number;
 }
 
+/** Un velo scuro e morbido dietro più righe: sta sotto TUTTI i testi (un velo per riga coprirebbe la riga vicina) e fuori
+ *  dalla maschera che taglia le righe (un'ombra larga verrebbe tagliata con un bordo duro). `cy` è il centro, in px di progetto. */
+interface Velo { id: string; da: number; a: number; entra: number; esce: number; cy: number; w: number; h: number; colore: string; alfa: number }
+
 const serif = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
   ({ fontFamily: FONT.serif, fontWeight: 500, fontSize: px, lineHeight: 1.16, letterSpacing: "-0.005em", ...extra });
 const display = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
-  ({ fontFamily: FONT.display, fontWeight: 600, fontSize: px, lineHeight: 1.08, letterSpacing: "-0.02em", ...extra });
+  ({ fontFamily: FONT.display, fontWeight: 600, fontSize: px, lineHeight: 1.08, letterSpacing: "-0.01em", ...extra });
 const mono = (px: number, extra: React.CSSProperties = {}): React.CSSProperties =>
   ({ fontFamily: FONT.mono, fontWeight: 500, fontSize: px, letterSpacing: "0.32em", textTransform: "uppercase", ...extra });
 
 const centro = (y: number): React.CSSProperties => ({ left: 0, right: 0, top: y, textAlign: "center" });
 
+// Dietro le parole che devono leggersi sul cielo acceso dell'alba (viola) e sulle nuvole color pesca del guado (rosso
+// cupo): un'ombra stretta, che sta dentro la maschera della riga, e un velo morbido del colore della scena, che sta
+// fuori (la maschera taglierebbe un'ombra larga con un bordo duro). Il colore della parola non cambia.
+const OMBRA_ALBA = "0 0 8px rgba(30,12,38,.8), 0 2px 3px rgba(22,8,28,.7)";
+const OMBRA_GUADO = "0 2px 8px rgba(20,4,10,.8), 0 0 2px rgba(20,4,10,.6)";
+const VELI: Velo[] = [
+  { id: "veloAlba", da: 10.6, a: 16.9, entra: 0.9, esce: 0.5, cy: 360, w: 1300, h: 470, colore: "30,12,38", alfa: 0.68 },
+  { id: "veloGuado", da: 61.8, a: 67.5, entra: 0.9, esce: 0.5, cy: 312, w: 1340, h: 440, colore: "34,6,14", alfa: 0.66 },
+];
+
 const regolaScura = { width: 120, height: 2, background: "#3b2415", display: "inline-block" } as const;
 
 const CUES: Cue[] = [
-  { id: "alba1", da: 10.6, a: 16.9, tipo: "maschera", box: centro(250), righe: [{ testo: "Un uomo torna a casa.", stile: serif(88, { color: "#f4ece0" }) }] },
-  { id: "alba2", da: 12.3, a: 16.9, tipo: "maschera", box: centro(360), righe: [{ testo: "A piedi.", stile: serif(88, { color: "#f6b77c", fontStyle: "italic" }) }] },
+  { id: "alba1", da: 10.6, a: 16.9, tipo: "maschera", box: centro(250), righe: [{ testo: "Un uomo torna a casa.", stile: serif(88, { color: "#f4ece0", textShadow: OMBRA_ALBA }) }] },
+  { id: "alba2", da: 12.3, a: 16.9, tipo: "maschera", box: centro(360), righe: [{ testo: "A piedi.", stile: serif(88, { color: "#f6b77c", fontStyle: "italic", textShadow: OMBRA_ALBA }) }] },
   { id: "terra", da: 18.3, a: 22.4, tipo: "maschera", sfalsa: 0.16, box: { left: 170, top: 196 },
-    righe: [{ testo: "Attraverso una terra", stile: serif(70, { color: "#2c1a0e" }) }, { testo: "che l'acqua ha svuotato.", stile: serif(70, { color: "#2c1a0e" }) }] },
+    righe: [{ testo: "Attraverso una terra", stile: serif(70, { color: "#2c1a0e" }) }, { testo: "che l’acqua ha svuotato.", stile: serif(70, { color: "#2c1a0e" }) }] },
   { id: "secca", da: 22.6, a: 25.1, entra: 0.3, tipo: "timbro", box: { left: 170, top: 400 },
     righe: [
       { testo: <span style={{ display: "inline-flex", alignItems: "center", gap: 30 }}>la secca<i style={regolaScura} /></span>, stile: mono(34, { color: "#3b2415", letterSpacing: "0.62em", fontWeight: 600 }) },
@@ -63,8 +80,8 @@ const CUES: Cue[] = [
   { id: "mappa", da: 33.6, a: 36.1, tipo: "dissolvi", box: centro(190), righe: [{ testo: "Sette tappe fino a casa.", stile: serif(64, { color: "#e8eef6" }) }] },
   { id: "cinque", da: 49.3, a: 52.4, tipo: "maschera", sfalsa: 0.18, box: centro(420),
     righe: [{ testo: "Cinque modi di stare", stile: serif(78, { color: "#eef2f8" }) }, { testo: "in un mondo che muore.", stile: serif(78, { color: "#eef2f8", fontStyle: "italic" }) }] },
-  { id: "guado1", da: 61.8, a: 67.5, tipo: "maschera", box: centro(214), righe: [{ testo: "E al guado, ad aspettarti,", stile: serif(76, { color: "#f6e6e2", textShadow: "0 2px 26px rgba(20,4,10,.75), 0 0 2px rgba(20,4,10,.5)" }) }] },
-  { id: "guado2", da: 63.7, a: 67.5, tipo: "maschera", box: centro(318), righe: [{ testo: "tuo fratello.", stile: serif(76, { color: "#ffa0a0", fontStyle: "italic", textShadow: "0 2px 26px rgba(20,4,10,.8), 0 0 2px rgba(20,4,10,.5)" }) }] },
+  { id: "guado1", da: 61.8, a: 67.5, tipo: "maschera", box: centro(214), righe: [{ testo: "E al guado, ad aspettarti,", stile: serif(76, { color: "#f6e6e2", textShadow: OMBRA_GUADO }) }] },
+  { id: "guado2", da: 64.0, a: 67.5, tipo: "maschera", box: centro(318), righe: [{ testo: "tuo fratello.", stile: serif(76, { color: "#ffa0a0", fontStyle: "italic", textShadow: OMBRA_GUADO }) }] },
   ...REGOLE.map((r, i): Cue => ({
     id: "regola" + i, da: 67.8 + i * REGOLA_DUR + 0.06, a: 67.8 + (i + 1) * REGOLA_DUR - 0.04, entra: 0.35, esce: 0.12, tipo: "maschera",
     box: { left: 150, top: 390, width: 980 },
@@ -74,7 +91,7 @@ const CUES: Cue[] = [
     ],
   })),
   { id: "numeritag", da: 78.9, a: 81.7, tipo: "dissolvi", box: centro(760),
-    righe: [{ testo: "Un'avventura testuale in italiano, scritta e giocata col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
+    righe: [{ testo: "Un’avventura testuale in italiano, scritta e giocata col motore vero.", stile: serif(34, { color: "#b9c4d4", fontStyle: "italic" }) }] },
 ];
 
 const STATS = [{ n: 7, l: "tappe" }, { n: 39, l: "luoghi" }, { n: 14, l: "personaggi" }, { n: 6, l: "finali" }];
@@ -100,7 +117,7 @@ const CINQUE = [
         "M100 36 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0", "M44 66 L36 76", "M27 78 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0"],
     riempi: ["M20 106 V58 H44 V106 Z", "M26 70 H38 V84 H26 Z"] },
   // Rosaria resta: un bicchiere d'acqua sul tavolo, con il suo menisco
-  { nome: "Rosaria", luogo: "l'osteria", verbo: "restare", a: "#ec7d54",
+  { nome: "Rosaria", luogo: "l’osteria", verbo: "restare", a: "#ec7d54",
     d: ["M38 34 L44 102 H76 L82 34", "M38 34 Q60 42 82 34 Q60 26 38 34", "M41 58 Q60 66 79 58", "M46 44 L50 92",
         "M30 106 H90", "M96 84 Q92 92 96 96 Q100 92 96 84 Z"],
     riempi: ["M41 58 Q60 66 79 58 L76 102 H44 Z"] },
@@ -121,27 +138,91 @@ const CINQUE = [
 ];
 
 // --------------------------------------------------------------------
-//  Grana: rumore generato una volta e fatto scorrere
+//  Grana di pellicola. Una tessera di rumore gaussiano appena sfumato (il grano è di 1–1,4 pixel VERI, qualunque sia
+//  lo schermo: la tessera si genera alla risoluzione dello schermo e non si ingrandisce), con un filo di colore. Due
+//  strati dalla stessa tessera, «soft-light» e «overlay», la rendono più viva nei mezzitoni che nelle ombre e nelle luci.
+//  Cambia a 24 fotogrammi al secondo, in modo deterministico dal tempo (niente Math.random: anche i video esportati
+//  escono uguali). Fa anche da dithering: copre il banding dei gradienti scuri.
 // --------------------------------------------------------------------
+const LATO_GRANA = 256;
+const AMPIEZZA_GRANA = 44, COLORE_GRANA = 0.3;
+const OPACITA_GRANA = { dolce: 0.3, forte: 0.035 };
+const FOTOGRAMMI_GRANA = 24;
+/** La tela non supera questa larghezza (px) se la misura non dice che si può: sopra, un quadro costa quanto i pixel in più. */
+const TETTO_TELA = 2560;
+/** Le larghezze oltre il tetto che si provano su uno schermo più grande (dalla più larga): la tela tiene la prima che la misura permette. */
+const TELE_GRANDI = [3840, 3200];
+/** Le inquadrature più pesanti (le lettere, l'alba, la terra, il guado, il titolo) e quanto può costare, al massimo, la peggiore (mediana, ms). */
+const ISTANTI_PESANTI = [8, 13, 24, 66, 86];
+const SOGLIA_MS = 14;                         // misurato a freddo, appena dopo la preparazione: a regime un fotogramma costa 2–3 ms in meno
+
+/**
+ * Un misuratore del costo dei fotogrammi: dà `n` fotogrammi consecutivi da `t` e restituisce i millisecondi (mediana, p95, massimo).
+ * La sincronia passa da WebGL: leggere i pixel dal canvas 2D farebbe passare Chrome al disegno su CPU e falserebbe la misura.
+ * Null se WebGL non c'è.
+ */
+function creaMisuratore(tela: HTMLCanvasElement) {
+  const gl = document.createElement("canvas").getContext("webgl");
+  if (!gl) return null;
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  const px = new Uint8Array(4);
+  return (disegnaF: (t: number) => void, t: number, n: number) => {
+    const ms: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = performance.now();
+      disegnaF(t + i / 60);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tela);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      ms.push(performance.now() - a);
+    }
+    ms.sort((x, y) => x - y);
+    return { mediana: ms[Math.floor(n / 2)], p95: ms[Math.floor(n * 0.95)], max: ms[n - 1] };
+  };
+}
+
 function faiGrana(): string {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = c.getContext("2d")!;
-  const img = g.createImageData(256, 256);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = Math.random() * 255;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
+  const n = LATO_GRANA, r = rng(20261020);
+  const gauss = () => { const u = Math.max(r(), 1e-9), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  // lo sfumo: tre punti [0,12 0,76 0,12] in x e poi in y, con il giro (la tessera si ripete)
+  const sfuma = (a: Float32Array) => {
+    const b = new Float32Array(n * n), c = new Float32Array(n * n);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) b[y * n + x] = 0.12 * a[y * n + (x + n - 1) % n] + 0.76 * a[y * n + x] + 0.12 * a[y * n + (x + 1) % n];
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) c[y * n + x] = 0.12 * b[((y + n - 1) % n) * n + x] + 0.76 * b[y * n + x] + 0.12 * b[((y + 1) % n) * n + x];
+    return c;
+  };
+  const campo = () => sfuma(Float32Array.from({ length: n * n }, gauss));
+  const L = campo(), R = campo(), G = campo(), B = campo();
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = n;
+  const g = cv.getContext("2d")!;
+  const img = g.createImageData(n, n);
+  for (let i = 0, p = 0; i < n * n; i++, p += 4) {
+    img.data[p] = 128 + AMPIEZZA_GRANA * (L[i] + COLORE_GRANA * R[i]);
+    img.data[p + 1] = 128 + AMPIEZZA_GRANA * (L[i] + COLORE_GRANA * G[i]);
+    img.data[p + 2] = 128 + AMPIEZZA_GRANA * (L[i] + COLORE_GRANA * B[i]);
+    img.data[p + 3] = 255;
   }
   g.putImageData(img, 0, 0);
-  return c.toDataURL("image/png");
+  return cv.toDataURL("image/png");
+}
+
+/** Lo scostamento della tessera a un dato fotogramma: pseudocasuale ma fisso (un hash del numero), in pixel veri. */
+function scostamentoGrana(q: number): [number, number] {
+  let h = Math.imul(q + 1, 0x9e3779b1);
+  h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  const a = h >>> 0;
+  return [a % LATO_GRANA, Math.floor(a / LATO_GRANA) % LATO_GRANA];
 }
 
 // ====================================================================
 const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLaunch: (carica?: Salvataggio | null) => void }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const telaRef = useRef<HTMLCanvasElement>(null);
-  const graneRef = useRef<HTMLDivElement>(null);
+  const granaDolceRef = useRef<HTMLDivElement>(null);
+  const granaForteRef = useRef<HTMLDivElement>(null);
+  const granaQuadro = useRef(-1);
+  const pixelVeri = useRef(1);                    // pixel veri per pixel CSS: la tessera si dimensiona su questo
   const cueRef = useRef<Record<string, HTMLDivElement | null>>({});
   const extraRef = useRef<Record<string, HTMLElement | null>>({});
   const tRef = useRef(startAtEnd ? DURATA : 0);
@@ -150,6 +231,8 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   const buffer = useRef<HTMLCanvasElement | null>(null);
   // la risoluzione del canvas cala (1 → .75 → .5) se il computer non regge i 30 fotogrammi: meglio meno nitido che a scatti
   const qualita = useRef(1);
+  // il tetto della larghezza della tela (px): 2560 di partenza; sale (3840) solo se la misura dice che il computer regge
+  const tetto = useRef(TETTO_TELA);
   const adattaRef = useRef<() => void>(() => {});
 
   const [scala, setScala] = useState(1);
@@ -161,6 +244,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   const [ultimo, setUltimo] = useState<Salvataggio | null>(null);
   const [guida, setGuida] = useState(false);
   const grana = useMemo(faiGrana, []);
+  pixelVeri.current = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
   const ridotto = useMemo(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, []);
 
   // palco 16:9 → scala della superficie di progetto + risoluzione del canvas
@@ -171,7 +255,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       const s = el.clientWidth / W;
       setScala(s);
       const dpr = Math.min(window.devicePixelRatio || 1, 2) * qualita.current;
-      const bw = Math.max(320, Math.min(Math.round(el.clientWidth * dpr), 2560));
+      const bw = Math.max(320, Math.min(Math.round(el.clientWidth * dpr), tetto.current));
       const bh = Math.round(bw * H / W);
       if (tela.width !== bw) { tela.width = bw; tela.height = bh; }
       if (!buffer.current) buffer.current = document.createElement("canvas");
@@ -193,9 +277,13 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     return () => { vivo = false; smetti(); };
   }, []);
 
-  // la colonna si crea subito, così il brano si precarica prima del tasto audio
+  // la colonna si crea subito, così il brano si precarica prima del tasto audio; con la voce recitata
+  // (le impostazioni della voce del gioco) Enzo legge il trailer sopra la musica
   useEffect(() => {
-    suono.current = new ColonnaSonora(branoIntro);
+    const imp = leggiImpostazioni();
+    const base = `${import.meta.env.BASE_URL}voce/`;
+    suono.current = new ColonnaSonora(branoIntro, imp.modo === "recitata"
+      ? { traccia: `${base}trailer.opus`, scaletta: `${base}trailer.json`, volume: imp.volume } : undefined);
     // Sul desktop l'audio parte da solo (Electron permette l'autoplay): il
     // trailer è il primo schermo del gioco, non una pagina web.
     // Nel browser il gesto che ha chiuso l'avviso (clic o Invio) è passato PRIMA che il trailer
@@ -230,6 +318,12 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
         bctx.restore();
         ctx.save(); ctx.globalAlpha = p; ctx.drawImage(buf, 0, 0); ctx.restore();
       }
+    }
+
+    // i veli dietro le parole chiave
+    for (const v of VELI) {
+      const el = extraRef.current[v.id];
+      if (el) el.style.opacity = String(inviluppo(t, v.da, v.a, v.entra, v.esce) * v.alfa);
     }
 
     // testi
@@ -302,7 +396,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     if (velo) velo.style.opacity = String(clamp(seg(t, 82.2, 84.0)));
     if (tit && sub) {
       const e = expoOut(seg(t, 82.3, 84.6));
-      tit.style.opacity = String(clamp(seg(t, 82.3, 83.2)));
+      tit.style.opacity = String(clamp(seg(t, 82.3, 82.65)));   // sul colpo grave del brano (82,21 · 82,61); poi spaziatura e sfocatura si assestano
       tit.style.letterSpacing = `${0.5 - e * 0.36}em`;
       tit.style.filter = e < 1 ? `blur(${(1 - e) * 14}px)` : "none";
       tit.style.backgroundPosition = `${100 - seg(t, 83.4, 85.8) * 100}% 0`;
@@ -324,9 +418,13 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     const barra = extraRef.current.barra;
     if (barra) barra.style.transform = `scaleX(${clamp(t / DURATA)})`;
 
-    // la grana della pellicola si muove a ogni fotogramma
-    const gr = graneRef.current;
-    if (gr) gr.style.backgroundPosition = `${Math.floor(Math.random() * 256)}px ${Math.floor(Math.random() * 256)}px`;
+    // la grana cambia a 24 fotogrammi al secondo, dal tempo del trailer (sul menu, fermo, dal tempo vero)
+    const quadro = Math.floor((t >= DURATA ? performance.now() / 1000 : t) * FOTOGRAMMI_GRANA);
+    if (quadro !== granaQuadro.current) {
+      granaQuadro.current = quadro;
+      const [ox, oy] = scostamentoGrana(quadro), dpr = pixelVeri.current;
+      for (const el of [granaDolceRef.current, granaForteRef.current]) if (el) el.style.backgroundPosition = `${-ox / dpr}px ${-oy / dpr}px`;
+    }
   }, [startAtEnd]);
 
   // solo in sviluppo: posizionare il tempo per controllare le inquadrature, e misurare quanto costa un fotogramma
@@ -336,6 +434,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     w.__trailer = {
       vai: (t: number) => { tRef.current = t; pausaRef.current = true; setFinito(t >= DURATA); },
       riprendi: () => { pausaRef.current = false; },
+      tetto: (n: number) => { tetto.current = n; adattaRef.current(); return telaRef.current?.width ?? 0; },
       t: () => tRef.current,
       brano: () => suono.current?.diagnosi(),
       // disegna n fotogrammi consecutivi da t e restituisce i millisecondi (la lettura di un pixel costringe la GPU a finire)
@@ -343,25 +442,45 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       prova: (t: number, n = 30) => {
         const tela = telaRef.current;
         if (!tela) return null;
-        const gl = document.createElement("canvas").getContext("webgl");
-        if (!gl) return null;
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        const px = new Uint8Array(4);
-        const ms: number[] = [];
-        for (let i = 0; i < n; i++) {
-          const a = performance.now();
-          disegna(t + i / 60);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tela);
-          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-          ms.push(performance.now() - a);
-        }
-        ms.sort((x, y) => x - y);
-        return { mediana: +ms[Math.floor(n / 2)].toFixed(1), p95: +ms[Math.floor(n * 0.95)].toFixed(1), max: +ms[n - 1].toFixed(1) };
+        const r = creaMisuratore(tela)?.(disegna, t, n);
+        return r && { mediana: +r.mediana.toFixed(1), p95: +r.p95.toFixed(1), max: +r.max.toFixed(1) };
       },
     };
     return () => { delete w.__trailer; };
   }, [disegna]);
+
+  // ── la tela più grande, se il computer la regge ────────────────────────
+  // Fino a 2560 px di larghezza non c'è niente da scegliere. Uno schermo più grande (4K) ne vorrebbe di più: si prova la
+  // larghezza maggiore sulle inquadrature più pesanti e la si tiene solo se la peggiore costa meno di SOGLIA_MS; se no si
+  // scende al gradino dopo, fino al tetto di sempre. Dura una frazione di secondo e avviene prima che il tempo cominci a scorrere.
+  useEffect(() => {
+    if (!pronto || ridotto) return;
+    if (import.meta.env.DEV && !location.search.includes("calibra")) return;   // in sviluppo catture e misure scelgono da sé (__trailer.tetto)
+    const el = palcoRef.current, tela = telaRef.current;
+    if (!el || !tela) return;
+    const voluta = Math.round(el.clientWidth * Math.min(window.devicePixelRatio || 1, 2));
+    const candidate = [...new Set([Math.min(voluta, TELE_GRANDI[0]), ...TELE_GRANDI])].filter((l) => l > TETTO_TELA && l <= voluta);
+    if (!candidate.length) return;
+    const misura = creaMisuratore(tela);
+    let scelta = TETTO_TELA;
+    const provati: string[] = [];
+    if (misura) {
+      for (const larg of candidate) {
+        tetto.current = larg; adattaRef.current();
+        misura(disegna, ISTANTI_PESANTI[0], 4);                         // il primo fotogramma di una tela nuova paga l'allocazione
+        let peggiore = 0;
+        for (const t of ISTANTI_PESANTI) {
+          misura(disegna, t, 2);
+          peggiore = Math.max(peggiore, misura(disegna, t, 5).mediana);
+          if (peggiore > SOGLIA_MS) break;
+        }
+        provati.push(`${larg}: ${peggiore.toFixed(1)} ms`);
+        if (peggiore <= SOGLIA_MS) { scelta = larg; break; }
+      }
+    }
+    tetto.current = scelta; adattaRef.current();
+    if (import.meta.env.DEV) console.info(`[trailer] tela di ${tela.width} px (voluta ${voluta}; provate: ${provati.join(", ") || "nessuna"}; soglia ${SOGLIA_MS} ms)`);
+  }, [pronto, ridotto, disegna]);
 
   // ── l'orologio ────────────────────────────────────────────────────
   useEffect(() => {
@@ -413,8 +532,7 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
   // (tasto o clic) accende anche la musica: i browser non la lasciano partire da sola.
   useEffect(() => {
     const tasto = (e: KeyboardEvent) => {
-      if (taccuino) return;   // il taccuino gestisce Esc da sé
-      if (e.key === "Escape" && guida) { setGuida(false); return; }
+      if (taccuino || guida) return;   // il taccuino e la guida gestiscono Esc da sé
       if (e.key === "Escape" && !finito) { e.preventDefault(); salta(); }
     };
     window.addEventListener("keydown", tasto);
@@ -447,8 +565,10 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
     ["--gl" as string]: "rgba(240,183,126,.55)", animation: "kf-pulse 1.9s ease-in-out infinite",
   } as React.CSSProperties;
   const bottone: React.CSSProperties = {
-    cursor: "pointer", border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.03)",
-    color: "#c9d2de", ...mono(15, { letterSpacing: "0.22em" }), padding: "11px 20px", borderRadius: 999,
+    // i pulsanti secondari della schermata d'avvio stanno sul prato e sulla strada: più corpo (18 px) e un fondo scuro, per leggersi a 4K
+    cursor: "pointer", border: "1px solid rgba(255,255,255,.36)", background: "rgba(10,8,18,.58)",
+    color: "#e4e9f0", ...mono(18, { letterSpacing: "0.2em" }), padding: "13px 26px", borderRadius: 999,
+    textShadow: "0 1px 2px rgba(0,0,0,.6)",
   };
 
   return (
@@ -456,11 +576,19 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
       <div ref={palcoRef} style={{ position: "relative", overflow: "hidden", width: "min(100vw, calc(100dvh * 16 / 9))", height: "min(100dvh, calc(100vw * 9 / 16))", background: "#000" }}>
         <canvas ref={telaRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
+        {/* la pellicola: vignetta e grana, sopra il disegno e sotto testi e comandi. Stanno fuori dalla superficie scalata, che
+            isolerebbe il fondersi (mix-blend-mode) dal disegno; la tessera ha un pixel vero per grano, a ogni schermo */}
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 48%, transparent 55%, rgba(0,0,0,.55) 100%)", pointerEvents: "none" }} />
+        {(["dolce", "forte"] as const).map((strato) => (
+          <div key={strato} ref={strato === "dolce" ? granaDolceRef : granaForteRef} data-grana="1" aria-hidden="true" style={{
+            position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: `url(${grana})`,
+            backgroundSize: `${LATO_GRANA / pixelVeri.current}px ${LATO_GRANA / pixelVeri.current}px`,
+            opacity: OPACITA_GRANA[strato], mixBlendMode: strato === "dolce" ? "soft-light" : "overlay",
+          }} />
+        ))}
+
         {/* superficie di progetto 1920×1080 per testi e controlli */}
         <div style={{ position: "absolute", left: 0, top: 0, width: W, height: H, transform: `scale(${scala})`, transformOrigin: "0 0", pointerEvents: "none" }}>
-          {/* la pellicola: vignetta e grana */}
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 48%, transparent 55%, rgba(0,0,0,.55) 100%)" }} />
-          <div ref={graneRef} style={{ position: "absolute", inset: 0, backgroundImage: `url(${grana})`, opacity: 0.075, mixBlendMode: "overlay" }} />
 
           {/* le tele si dipingono a pezzi mentre girano i loghi; su un computer lento possono servire ancora un momento */}
           {!pronto && (
@@ -471,6 +599,14 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
               </div>
             </div>
           )}
+
+          {/* i veli dietro le parole chiave */}
+          {VELI.map((v) => (
+            <div key={v.id} ref={reg(v.id)} aria-hidden="true" style={{
+              position: "absolute", left: "50%", top: v.cy, width: v.w, height: v.h, transform: "translate(-50%, -50%)", pointerEvents: "none", opacity: 0,
+              background: `radial-gradient(closest-side, rgba(${v.colore},1) 0%, rgba(${v.colore},.62) 45%, rgba(${v.colore},0) 100%)`,
+            }} />
+          ))}
 
           {/* testi */}
           {CUES.map((c) => (
@@ -494,15 +630,15 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           <div ref={reg("tappe")} style={{ position: "absolute", left: 150, top: BANDA + 44, opacity: 0, ...mono(18, { color: "rgba(214,224,238,.6)" }) }} />
 
           {/* F · cinque colonne */}
-          <div style={{ position: "absolute", left: 0, right: 0, top: 318, display: "flex", justifyContent: "center", gap: 26 }}>
+          <div style={{ position: "absolute", left: 0, right: 0, top: 318, display: "flex", justifyContent: "center", gap: 12 }}>
             {CINQUE.map((c, i) => (
-              <div key={c.nome} ref={reg("col" + i)} style={{ width: 300, textAlign: "center", opacity: 0, borderLeft: i ? "1px solid rgba(255,255,255,.07)" : "none" }}>
+              <div key={c.nome} ref={reg("col" + i)} style={{ width: 330, textAlign: "center", opacity: 0, borderLeft: i ? "1px solid rgba(255,255,255,.07)" : "none" }}>
                 <svg viewBox="0 0 120 120" width={196} height={196} style={{ display: "block", margin: "-14px auto -18px", overflow: "visible", filter: `drop-shadow(0 0 14px ${c.a}66)` }}>
                   {c.riempi.map((d, j) => <path key={"f" + j} d={d} fill={c.a} stroke="none" data-riempi="1" style={{ opacity: 0 }} />)}
                   {c.d.map((d, j) => <path key={j} d={d} pathLength={1} fill="none" stroke={c.a} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" style={{ strokeDasharray: 1, strokeDashoffset: 1 }} />)}
                 </svg>
                 <div style={mono(17, { color: c.a, marginTop: 34 })}>{c.nome}</div>
-                <div style={serif(62, { color: "#f1f3f7", fontStyle: "italic", marginTop: 16 })}>{c.verbo}</div>
+                <div style={serif(56, { color: "#f1f3f7", fontStyle: "italic", marginTop: 20 })}>{c.verbo}</div>
                 <div style={serif(26, { color: "rgba(214,224,238,.55)", marginTop: 14 })}>{c.luogo}</div>
               </div>
             ))}
@@ -511,8 +647,10 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           {/* I · i numeri */}
           <div ref={reg("numeri")} style={{ position: "absolute", left: 0, right: 0, top: 360, display: "flex", justifyContent: "center", opacity: 0 }}>
             {STATS.map((s, i) => (
-              <div key={s.l} style={{ width: 330, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,.1)" : "none" }}>
-                <div ref={reg("n" + i)} style={display(170, { fontWeight: 700, color: "#f4f1ea", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.04em" })}>0</div>
+              // a misura del contenuto: le cifre (tabulari: ognuna è 1ch) hanno la larghezza del numero finale, così lo
+              // spazio fra una cifra e il filetto è lo stesso in tutte le colonne e non si muove mentre si conta
+              <div key={s.l} style={{ padding: "0 78px", textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,.1)" : "none" }}>
+                <div ref={reg("n" + i)} style={display(170, { fontWeight: 700, color: "#f4f1ea", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.04em", minWidth: `${String(s.n).length}ch` })}>0</div>
                 <div style={mono(20, { color: "rgba(214,224,238,.6)", marginTop: 18 })}>{s.l}</div>
               </div>
             ))}
@@ -543,9 +681,9 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
           {/* schermata d'avvio */}
           {finito && !compatto && (
             <section style={{ position: "absolute", left: 0, right: 0, top: 500, textAlign: "center", pointerEvents: "auto", animation: "kf-launch 1.2s ease .3s both" }}>
-              <div style={{ position: "absolute", left: "50%", top: -140, width: 1500, height: 720, transform: "translateX(-50%)", background: "radial-gradient(50% 50% at 50% 50%, rgba(6,5,10,.78) 0%, rgba(6,5,10,.5) 50%, rgba(6,5,10,0) 100%)", pointerEvents: "none", zIndex: -1 }} />
+              <div style={{ position: "absolute", left: "50%", top: -190, width: 1760, height: 820, transform: "translateX(-50%)", background: "radial-gradient(50% 50% at 50% 50%, rgba(6,5,10,.86) 0%, rgba(6,5,10,.62) 52%, rgba(6,5,10,0) 100%)", pointerEvents: "none", zIndex: -1 }} />
               <p style={{ margin: 0, ...serif(40, { color: "#f4ece0" }) }}>Si parte a piedi.</p>
-              <p style={{ margin: "22px auto 0", maxWidth: 820, ...serif(27, { color: "rgba(230,222,208,.72)", lineHeight: 1.5 }) }}>
+              <p style={{ margin: "22px auto 0", maxWidth: 1000, ...serif(27, { color: "rgba(240,232,218,.88)", lineHeight: 1.5, textShadow: "0 1px 3px rgba(10,6,14,.85), 0 0 16px rgba(10,6,14,.7)" }) }}>
                 Da qui in poi comandi tu: scrivi in italiano o scegli con i pulsanti. Bevi quando hai sete, parla con chi incontri, decidi cosa portare fino a casa.
               </p>
               <div style={{ marginTop: 46, display: "flex", justifyContent: "center", alignItems: "center", gap: 22 }}>
@@ -559,8 +697,8 @@ const Trailer = ({ startAtEnd = false, onLaunch }: { startAtEnd?: boolean; onLau
                   {ultimo ? "Nuovo viaggio" : <>Inizia il viaggio <span>→</span></>}
                 </button>
               </div>
-              <div style={{ marginTop: 30, display: "flex", justifyContent: "center", gap: 18 }}>
-                <button onClick={() => setGuida(true)} style={{ ...bottone, color: "#f0b77e", borderColor: "rgba(240,183,126,.5)" }}>? come si gioca</button>
+              <div style={{ marginTop: 30, display: "flex", justifyContent: "center", gap: 20 }}>
+                <button onClick={() => setGuida(true)} style={{ ...bottone, color: "#f6c48e", borderColor: "rgba(240,183,126,.72)" }}>? come si gioca</button>
                 <button onClick={() => setTaccuino(true)} style={bottone}>carica</button>
                 <button onClick={rivedi} style={bottone}>↺ rivedi il trailer</button>
                 <button onClick={commutaAudio} style={bottone} aria-pressed={audio}>{audio ? "♪ audio sì" : "♪ audio no"}</button>

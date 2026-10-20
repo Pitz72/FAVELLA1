@@ -22,6 +22,16 @@
 "bevi tre sorsi" è un comando senza oggetto.
 "bevi 3" è come "bevi tre sorsi".
 "bevi 3 sorsi" è come "bevi tre sorsi".
+# Le stesse forme all'infinito («bere due sorsi»): chi scrive così non deve sentirsi rispondere
+# «Non vedo 'due sorsi' qui». Il «bere» solo lo completa il ponte dell'app.
+"bere un sorso" è come "bevi".
+"bere 1" è come "bevi".
+"bere due sorsi" è come "bevi due sorsi".
+"bere 2" è come "bevi due sorsi".
+"bere 2 sorsi" è come "bevi due sorsi".
+"bere tre sorsi" è come "bevi tre sorsi".
+"bere 3" è come "bevi tre sorsi".
+"bere 3 sorsi" è come "bevi tre sorsi".
 Invece di bevi se la sete è al massimo 1: dire "Non hai sete. Quest'acqua costa troppo per berla senza bisogno.".
 Invece di bevi se l'acqua è almeno 1: dire "Bevi a piccoli sorsi dalla tanica. La gola brucia meno." e adesso diminuisci l'acqua di 1 e adesso diminuisci la sete di 4.
 Invece di bevi: dire "Porti la tanica alle labbra: vuota. Solo il sapore del metallo caldo.".
@@ -49,6 +59,18 @@ Invece di bevi tre sorsi: dire "Porti la tanica alle labbra: vuota. Solo il sapo
 "mangia tre porzioni" è un comando senza oggetto.
 "mangia 3" è come "mangia tre porzioni".
 "mangia 3 porzioni" è come "mangia tre porzioni".
+# Le stesse forme all'infinito («mangiare una porzione»): senza, il parser risponderebbe
+# «Non vedo 'una porzione' qui».
+"mangiare qualcosa" è come "mangia qualcosa".
+"mangiare cibo" è come "mangia qualcosa".
+"mangiare una porzione" è come "mangia qualcosa".
+"mangiare 1" è come "mangia qualcosa".
+"mangiare due porzioni" è come "mangia due porzioni".
+"mangiare 2" è come "mangia due porzioni".
+"mangiare 2 porzioni" è come "mangia due porzioni".
+"mangiare tre porzioni" è come "mangia tre porzioni".
+"mangiare 3" è come "mangia tre porzioni".
+"mangiare 3 porzioni" è come "mangia tre porzioni".
 Invece di mangia qualcosa se la fame è al massimo 1: dire "Non hai fame. Il cibo lo tieni per quando servirà.".
 Invece di mangia qualcosa se il cibo è almeno 1: dire "Mastichi piano. Non sa di niente, ma è qualcosa nello stomaco." e adesso diminuisci il cibo di 1 e adesso diminuisci la fame di 3.
 Invece di mangia qualcosa: dire "Non hai niente da mettere sotto i denti.".

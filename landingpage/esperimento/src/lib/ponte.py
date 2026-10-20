@@ -404,12 +404,17 @@ def fav_carica(entry, comandi_json, impronta_attesa="", ultimo=None):
     ogni turno); gli ultimi CODA_ANNULLA comandi con le istantanee, così ANNULLA
     funziona anche subito dopo il caricamento. La coda comincia sempre fuori da
     una conversazione: una conversazione è un solo passo di ANNULLA, e la sua
-    istantanea si prende all'ingresso."""
-    global _ingresso_dialogo
-    comandi = json.loads(comandi_json)
-    inizio_coda = max(0, len(comandi) - CODA_ANNULLA)
+    istantanea si prende all'ingresso.
+
+    È atomico: se qualcosa si rompe a metà (un comando che solleva, una sequenza
+    illeggibile) il ponte torna com'era, con il mondo e la sequenza di prima,
+    perché l'interfaccia continua a mostrare quel mondo."""
+    global _mondo, _entry, _registro, _posizioni, _ingresso_dialogo
+    prima = (_mondo, _entry, _registro, _posizioni, _ingresso_dialogo)
     buf = io.StringIO()
     try:
+        comandi = json.loads(comandi_json)
+        inizio_coda = max(0, len(comandi) - CODA_ANNULLA)
         with contextlib.redirect_stdout(buf):
             _compila(entry)
             _mondo.cattura_stato = lambda: None
@@ -446,18 +451,19 @@ def fav_carica(entry, comandi_json, impronta_attesa="", ultimo=None):
         with contextlib.redirect_stdout(uscita):
             if not _mondo.in_dialogo():
                 mostra_stanza(_mondo)
+        impronta = fav_impronta_stato()
+        return json.dumps({
+            "ok": True,
+            "text": uscita.getvalue(),
+            "impronta": impronta,
+            "identica": (not impronta_attesa) or impronta == impronta_attesa,
+            "stato": _mondo.stato_partita,
+            "comandi": len(comandi),
+            "annullabili": len(_mondo._storia_stati),
+        }, ensure_ascii=False)
     except Exception as e:
+        _mondo, _entry, _registro, _posizioni, _ingresso_dialogo = prima
         return json.dumps({"ok": False, "errore": f"{type(e).__name__}: {e}"})
-    impronta = fav_impronta_stato()
-    return json.dumps({
-        "ok": True,
-        "text": uscita.getvalue(),
-        "impronta": impronta,
-        "identica": (not impronta_attesa) or impronta == impronta_attesa,
-        "stato": _mondo.stato_partita,
-        "comandi": len(comandi),
-        "annullabili": len(_mondo._storia_stati),
-    }, ensure_ascii=False)
 
 
 def _intero(v, nome):

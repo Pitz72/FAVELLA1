@@ -53,6 +53,30 @@ export const VOCI_NEL_FILE = 160;
 // ── validazione ─────────────────────────────────────────────────────────────
 export class SalvataggioNonValido extends Error {}
 
+const BLOCCHI_CON_TESTO = new Set(["prosa", "corpo", "sistema", "finale", "comando"]);
+
+/** Un blocco del diario com'è nel file: i campi che la resa legge devono esserci, altrimenti si scarta. */
+function bloccoValido(b: unknown): b is Blocco {
+  if (!b || typeof b !== "object") return false;
+  const o = b as Record<string, unknown>;
+  if (o.tipo === "stanza") return typeof o.titolo === "string";
+  if (o.tipo === "battuta") return typeof o.chi === "string" && typeof o.testo === "string";
+  return typeof o.tipo === "string" && BLOCCHI_CON_TESTO.has(o.tipo) && typeof o.testo === "string";
+}
+
+/** Il diario del file, con un valore di ripiego per ogni pezzo mancante o guasto (il diario è la pagina:
+ *  la partita si ricostruisce comunque dai comandi). */
+function diarioValido(grezzo: unknown): Salvataggio["diario"] {
+  const d = (grezzo && typeof grezzo === "object" ? grezzo : {}) as Record<string, unknown>;
+  const stringhe = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === "string") : []);
+  const voci: VoceSalvata[] = (Array.isArray(d.voci) ? d.voci : []).flatMap((v: unknown) => {
+    if (!v || typeof v !== "object") return [];
+    const { cmd, blocchi } = v as { cmd?: unknown; blocchi?: unknown };
+    return [{ ...(typeof cmd === "string" ? { cmd } : {}), blocchi: Array.isArray(blocchi) ? blocchi.filter(bloccoValido) : [] }];
+  });
+  return { voci, incontrati: stringhe(d.incontrati), storia: stringhe(d.storia) };
+}
+
 export function valida(grezzo: unknown): Salvataggio {
   const s = grezzo as Partial<Salvataggio>;
   if (!s || typeof s !== "object" || s.formato !== FORMATO) {
@@ -74,7 +98,7 @@ export function valida(grezzo: unknown): Salvataggio {
   // migrazioni dai formati precedenti: qui, quando il formato cambierà
   return {
     ...s,
-    diario: s.diario && Array.isArray(s.diario.voci) ? s.diario : { voci: [], incontrati: [], storia: [] },
+    diario: diarioValido(s.diario),
   } as Salvataggio;
 }
 

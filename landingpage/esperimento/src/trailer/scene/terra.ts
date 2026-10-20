@@ -13,7 +13,7 @@ import { clamp, rng } from "../tempo";
 import type { Cache } from "../cache";
 import { alone, cielo, crinale, type C2D } from "../pittura";
 import {
-  casoDi, creaTela, ctxDi, fbmPeriodico, fetta, hexRgb, mescola, riempi, sfoca, smooth, voronoiTessera, type RGB, type Tela,
+  campoLento, casoDi, creaTela, ctxDi, fbmPeriodico, fetta, hexRgb, mescola, riempi, sfoca, smooth, voronoiTessera, type RGB, type Tela,
 } from "../texture";
 import { disegnaOmbra, disegnaViandante, velocitaSuolo } from "../viandante";
 
@@ -32,59 +32,86 @@ interface StatoTerra {
 interface SuoloCotto { tela: Tela; periodi: number[]; quadro: Tela; quadroCtx: C2D }
 
 // --------------------------------------------------------------------
-//  Il fango screpolato, una tessera che si ripete in x e in y
+//  Il fango screpolato, una tessera che si ripete in x e in y.
+//  Fessure di larghezza variabile (strette quasi ovunque, larghe dove la piastra si solleva), con la polvere
+//  chiara depositata ai bordi; piastre che si incurvano ognuna a modo suo; zone più pallide e più scure;
+//  crepe sottili dentro una piastra su due.
 // --------------------------------------------------------------------
 async function fangoTela(): Promise<Tela> {
   const vor = voronoiTessera(3, 118, TW, TH, 0.92);
+  const vor2 = voronoiTessera(13, 46, TW, TH, 0.9);
   const gr = fbmPeriodico(5, 16, 4, 4);
   const gr2 = fbmPeriodico(12, 64, 3, 16);
-  const cr = fbmPeriodico(8, 10, 3, 3);
+  // i campi lenti: quanto è larga la fessura, le zone di tono, dove si deposita la polvere, dove le crepe sottili si spezzano
+  const nLarg = fbmPeriodico(8, 10, 3, 3), nZona = fbmPeriodico(21, 6, 3, 2), nPolv = fbmPeriodico(33, 14, 3, 4), nSpezza = fbmPeriodico(47, 24, 3, 6);
+  const largF = campoLento((x, y) => nLarg(x / TW * 10, y / TH * 3) * 0.5 + 0.5, TW, TH, 8);
+  const zonaF = campoLento((x, y) => nZona(x / TW * 6, y / TH * 2) * 0.5 + 0.5, TW, TH, 16);
+  const polvF = campoLento((x, y) => nPolv(x / TW * 14, y / TH * 4) * 0.5 + 0.5, TW, TH, 8);
+  const spezzaF = campoLento((x, y) => nSpezza(x / TW * 24, y / TH * 6), TW, TH, 8);
   const A = hexRgb("#b99162"), B = hexRgb("#a07a4c"), C = hexRgb("#8c6a42"), CH = hexRgb("#e7cc9c");
+  const PALLIDO = hexRgb("#d9c19a"), POLVERE = hexRgb("#d2b78a");
   const FONDO0 = hexRgb("#0f0805"), FONDO1 = hexRgb("#2c1b0f");
   const L = [-0.62, -0.78];
   const t = await riempi(TW, TH, (x, y, px) => {
     const c = vor(x, y);
     const bordo = c.f2 - c.f1;
-    const rumore = gr(x / TW * 16, y / TH * 4) * 0.5 + 0.5;
-    const larg = 2.4 + rumore * 3.2;
-    if (bordo < larg) {
-      const d = bordo / larg;
-      const col = mescola(FONDO0, FONDO1, d * d);
+    const lw = largF(x, y);
+    const wc = 1.8 + 11.5 * smooth(0.40, 0.86, lw);             // la fessura: da un filo a una spaccatura di una dozzina di pixel
+    if (bordo < wc) {
+      const d = bordo / wc;                                      // 0 sul filo, 1 sul labbro
+      let col = mescola(FONDO0, FONDO1, d * d);
+      // la polvere chiara che il vento ha portato nella fessura, più sul labbro che in fondo
+      const p = clamp(polvF(x, y) * 1.4 - 0.25) * smooth(0.15, 1, d) * 0.85;
+      col = mescola(col, POLVERE, p);
       px[0] = col[0]; px[1] = col[1]; px[2] = col[2];
       return;
     }
-    const caso = casoDi(c.id);
+    const caso = casoDi(c.id), caso2 = casoDi(c.id + 7919);
     let col: RGB = mescola(caso < 0.5 ? A : B, caso < 0.5 ? B : C, (caso * 2) % 1);
-    const d = bordo - larg;
+    // zone più pallide (una pellicola di polvere d'argilla) e piastre scure e umide
+    const zona = zonaF(x, y);
+    col = mescola(col, PALLIDO, smooth(0.52, 0.85, zona) * 0.55 + (caso2 > 0.82 ? 0.22 : 0));
+    const umida = smooth(0.40, 0.12, zona) * 0.35 + (caso2 < 0.12 ? 0.25 : 0);
+    col = [col[0] * (1 - umida * 0.30), col[1] * (1 - umida * 0.34), col[2] * (1 - umida * 0.38)];
+    const d = bordo - wc;
     const cupola = smooth(0, 30, d);
-    // il bordo della piastra, arricciato: chiaro dal lato della luce, scuro dall'altro
+    // il bordo della piastra, incurvato verso l'alto: ognuna si solleva a modo suo (poco, tanto)
+    const curl = (0.40 + 0.60 * caso2) * (0.75 + 0.5 * lw), rimW = 7 + 16 * caso2;       // più si solleva dove la fessura si apre
     const dx = x - c.cx, dy = y - c.cy;
     const len = Math.hypot(dx, dy) || 1;
-    const luce = (dx * L[0] + dy * L[1]) / len;               // -1..1: quanto il bordo guarda il sole
-    const rim = 1 - smooth(0, 9, d);
-    const chiaro = rim * clamp(luce * 0.9 + 0.15);
-    const scuro = (1 - smooth(0, 14, d)) * clamp(-luce * 0.8 + 0.1);
+    const luce = (dx * L[0] + dy * L[1]) / len;                  // -1..1: quanto il bordo guarda il sole
+    const rim = 1 - smooth(0, rimW, d);
+    const chiaro = rim * clamp(luce * 0.9 + 0.15) * curl;
+    const scuro = (1 - smooth(0, rimW * 1.5, d)) * clamp(-luce * 0.8 + 0.1) * curl;
     col = mescola(col, CH, chiaro * 0.55);
-    col = [col[0] * (0.90 + 0.18 * cupola) * (1 - scuro * 0.45), col[1] * (0.90 + 0.18 * cupola) * (1 - scuro * 0.45), col[2] * (0.90 + 0.18 * cupola) * (1 - scuro * 0.45)];
+    const m = (0.90 + 0.18 * cupola) * (1 - scuro * 0.5);
+    col = [col[0] * m, col[1] * m, col[2] * m];
     // grana: sabbia fine e piccole scaglie
-    const g = gr2(x / TW * 64, y / TH * 16) * 22 + (gr(x / TW * 16 + 3, y / TH * 4 + 7)) * 16;
-    // fessure sottili dentro la piastra
-    const h = Math.abs(cr(x / TW * 10 + 5, y / TH * 3 + 1));
-    const fess = h < 0.012 ? 0.55 : 1;
-    px[0] = (col[0] + g) * fess; px[1] = (col[1] + g * 0.9) * fess; px[2] = (col[2] + g * 0.75) * fess;
+    const g = gr2(x / TW * 64, y / TH * 16) * 22 + gr(x / TW * 16 + 3, y / TH * 4 + 7) * 16;
+    let r = col[0] + g, gg = col[1] + g * 0.9, b = col[2] + g * 0.75;
+    // le crepe sottili dentro la piastra: una su due ne ha, e si spezzano a tratti
+    if (caso2 > 0.45 && d > 9) {
+      const c2 = vor2(x, y);
+      const b2 = c2.f2 - c2.f1, w2 = 1.2 + lw * 1.2;
+      if (b2 < w2 && spezzaF(x, y) > -0.12) {
+        const k = 0.50 + 0.40 * (b2 / w2);
+        r *= k; gg *= k; b *= k;
+      }
+    }
+    px[0] = r; px[1] = gg; px[2] = b;
   });
-  // sassolini e frammenti secchi
+  // sassolini e frammenti secchi: pochi, polverosi, con la loro ombra
   const g = ctxDi(t), r = rng(19);
-  for (let i = 0; i < 340; i++) {
-    const x = r() * TW, y = r() * TH, s = 2 + r() * 7;
+  for (let i = 0; i < 150; i++) {
+    const x = r() * TW, y = r() * TH, s = 2 + r() * 5.5;
     for (const oy of [0, TH, -TH]) {
       g.fillStyle = "rgba(20,10,4,.35)"; g.beginPath(); g.ellipse(x + s * 0.4, y + oy + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = `rgb(${190 + r() * 40},${160 + r() * 30},${125 + r() * 25})`; g.beginPath(); g.ellipse(x, y + oy, s, s * 0.62, r() * 0.5, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "rgba(255,240,210,.4)"; g.beginPath(); g.ellipse(x - s * 0.25, y + oy - s * 0.2, s * 0.4, s * 0.2, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = `rgb(${172 + r() * 34},${146 + r() * 26},${112 + r() * 24})`; g.beginPath(); g.ellipse(x, y + oy, s, s * 0.62, r() * 0.5, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "rgba(255,240,210,.32)"; g.beginPath(); g.ellipse(x - s * 0.25, y + oy - s * 0.2, s * 0.4, s * 0.2, 0, 0, Math.PI * 2); g.fill();
     }
   }
   g.strokeStyle = "rgba(60,38,20,.8)"; g.lineCap = "round";
-  for (let i = 0; i < 26; i++) {           // steli secchi
+  for (let i = 0; i < 16; i++) {           // steli secchi
     const x = r() * TW, y = r() * TH, a = r() * Math.PI, l = 14 + r() * 40;
     g.lineWidth = 1 + r() * 1.4;
     g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * l * 0.5, y + Math.sin(a) * l * 0.5 - 3, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();

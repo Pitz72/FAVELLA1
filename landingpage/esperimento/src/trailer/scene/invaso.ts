@@ -12,7 +12,7 @@ import { W, H, CAMMINATE, faseDiPasso } from "../scaletta";
 import { clamp, easeInOut, mix, rng, rgba, seg } from "../tempo";
 import type { Cache } from "../cache";
 import { alone, cielo, crinale, nuvole, nuvoleScorrono, type C2D } from "../pittura";
-import { creaTela, ctxDi, fbmPeriodico, riempi, smooth, voronoiTessera, type Tela } from "../texture";
+import { campoLento, casoDi, creaTela, ctxDi, fbmPeriodico, RES_TELE, riempi, smooth, voronoiTessera, type Tela } from "../texture";
 import { disegnaOmbra, disegnaViandante, velocitaSuolo } from "../viandante";
 
 const ORIZZONTE = 700;
@@ -21,56 +21,112 @@ const AMP = 0.4;
 interface StatoInvaso { piana: Tela; diga: Tela; colline: Tela; collineNotte: Tela; lattea: Tela; cirri: Tela; nubiNotte: Tela }
 
 // --------------------------------------------------------------------
-//  La piana di sale: placche poligonali in prospettiva, dipinte una volta sola
+//  La piana di sale: lastre irregolari con la cresta di pressione rialzata ai bordi,
+//  chiazze di umidità e granulo di cristalli, in prospettiva, dipinte una volta sola
 // --------------------------------------------------------------------
+const hashPx = (x: number, y: number) => {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+};
+
 async function pianaTela(): Promise<Tela> {
-  const TW = 1024, TH = 256;
-  const vor = voronoiTessera(9, 56, TW, TH, 0.30);
-  const n = fbmPeriodico(3, 8, 4, 2);
-  const n2 = fbmPeriodico(14, 32, 3, 8);
+  const K = RES_TELE;                                      // pixel di tela per unità di progetto: la tessera e la piana hanno K volte i pixel
+  const TW = 1024 * K, TH = 256 * K;
+  const vor = voronoiTessera(9, 86 * K, TW, TH, 0.9);      // le lastre: larghe, irregolari
+  const vor2 = voronoiTessera(21, 31 * K, TW, TH, 0.9);    // le fessure sottili dentro la lastra
+  const grano = fbmPeriodico(14, 32, 3, 8);
+  // i campi lenti (umidità, larghezza della cresta, dove si apre la fessura, dove le crepe sottili si spezzano)
+  const nUmido = fbmPeriodico(41, 6, 4, 2), nLarg = fbmPeriodico(23, 16, 3, 4), nFess = fbmPeriodico(29, 12, 3, 3);
+  const umidoF = campoLento((x, y) => nUmido(x / TW * 6, y / TH * 2) * 0.5 + 0.5, TW, TH, 8);
+  const largF = campoLento((x, y) => nLarg(x / TW * 16, y / TH * 4) * 0.5 + 0.5, TW, TH, 8);
+  const fessF = campoLento((x, y) => nFess(x / TW * 12, y / TH * 3), TW, TH, 8);
+  const lacunaF = campoLento((x, y) => nLarg(x / TW * 16 + 5, y / TH * 4 + 2), TW, TH, 8);
   const luce = [-0.6, -0.8];
   const tessera = await riempi(TW, TH, (x, y, px) => {
     const c = vor(x, y);
-    const bordo = c.f2 - c.f1;
-    const base = 0.5 + 0.5 * n(x / TW * 8, y / TH * 2);
-    if (bordo < 1.6) {                              // la fessura fra due placche: ombra azzurrina
-      px[0] = 118; px[1] = 128; px[2] = 138; return;
-    }
-    const d = bordo - 1.6;
+    const d = (c.f2 - c.f1) * 0.5 / K;                      // distanza (circa) dal confine fra due lastre, in unità di progetto
+    const caso = casoDi(c.id);
+    const lg = largF(x, y);
     const dx = x - c.cx, dy = y - c.cy, len = Math.hypot(dx, dy) || 1;
-    const lit = (dx * luce[0] + dy * luce[1]) / len;
-    const rim = 1 - smooth(0, 5.5, d);              // il bordo della placca, rialzato
-    let r = 226 + base * 16, g = 232 + base * 14, b = 232 + base * 12;
-    const grana = n2(x / TW * 32, y / TH * 8) * 14;
-    const chiaro = rim * clamp(lit * 0.8 + 0.4) * 40, scuro = rim * clamp(-lit * 0.8 + 0.1) * 34;
-    r += grana + chiaro - scuro; g += grana + chiaro - scuro * 0.9; b += grana + chiaro - scuro * 0.7;
-    // la parte piena della placca è un filo più scura al centro e più azzurra
-    const centro = smooth(0, 26, d) * 0.5;
-    px[0] = r - centro * 6; px[1] = g - centro * 5; px[2] = b - centro * 1;
+    const verso = -(dx * luce[0] + dy * luce[1]) / len;     // > 0: il fianco interno della cresta guarda la luce
+    // la lastra: bianco azzurrino, un poco diverso per ogni lastra, più scuro e freddo nel mezzo
+    let r = 229 + (caso - 0.5) * 9, g = 235 + (caso - 0.5) * 8, b = 236 + (caso - 0.5) * 6;
+    const fondo = smooth(0, 52, d);
+    r -= fondo * 6; g -= fondo * 5; b -= fondo * 1.5;
+    // le chiazze di umidità: più scure e più fredde, a macchie larghe e morbide
+    const um = smooth(0.10, 0.62, umidoF(x, y) + (caso - 0.5) * 0.25);
+    r -= um * 26; g -= um * 20; b -= um * 12;
+    // il granulo dei cristalli, e un luccichio rado
+    const gr = grano(x / TW * 32, y / TH * 8) * 11 + (hashPx(x, y) - 0.5) * 9;
+    r += gr; g += gr; b += gr * 0.9;
+    if (hashPx(x + 7, y + 3) > 0.9985) { r += 18; g += 18; b += 16; }
+    // le fessure sottili dentro la lastra (non tutte: solo dove il caso le apre)
+    if (d > 9 && lacunaF(x, y) > 0.05) {
+      const c2 = vor2(x, y);
+      if ((c2.f2 - c2.f1) * 0.5 / K < 0.75) { r *= 0.93; g *= 0.94; b *= 0.95; }
+    }
+    // la cresta di pressione: rialzata sul confine, chiara dal lato della luce, in ombra dall'altro
+    const wR = 3.4 + lg * 3.4;
+    const cresta = 1 - smooth(0, wR, d);
+    const chiaro = cresta * clamp(verso + 0.40) * 46;
+    const scuro = cresta * clamp(-verso + 0.05) * 48;
+    r += chiaro - scuro; g += chiaro - scuro * 0.94; b += chiaro * 0.9 - scuro * 0.80;
+    // sul confine, a tratti, la fessura: una riga sottile e fredda
+    const apre = 0.40 + 0.60 * smooth(-0.20, 0.35, fessF(x, y));
+    const fd = (1 - smooth(0, 0.7 + lg * 0.9, d)) * apre;
+    r += (112 - r) * fd * 0.75; g += (124 - g) * fd * 0.75; b += (138 - b) * fd * 0.75;
+    px[0] = r; px[1] = g; px[2] = b;
   });
-  const alt = 400;
-  const piana = creaTela(W, alt), g = ctxDi(piana);
-  const gr = g.createLinearGradient(0, 0, 0, alt);
-  gr.addColorStop(0, "#e2e8ea"); gr.addColorStop(1, "#bcc5c8");
-  g.fillStyle = gr; g.fillRect(0, 0, W, alt);
-  const pat = g.createPattern(tessera, "repeat")!;
+
+  // la prospettiva: ogni riga è letta con più campioni (quanti ne copre sulla tessera), così lontano la
+  // tessera si fa media e non puntinatura; vicino la riga è ingrandita e vale la sfumatura del canvas
+  const alt = 400, righe = alt * K;
+  const trama = creaTela(W * K, righe), gt = ctxDi(trama);
+  const pat = gt.createPattern(tessera, "repeat")!;
   const F0 = 0.09, F1 = 1.55;
+  const opaca: number[] = [];
   let v = 0;
-  for (let y = 0; y < alt; y += 1) {
-    const f = F0 + (F1 - F0) * Math.pow(y / alt, 1.15);
+  for (let yi = 0; yi < righe; yi += 1) {
+    const f = F0 + (F1 - F0) * Math.pow((yi + 0.5) / righe, 1.15);
     const ky = 0.36 * f;
-    g.save();
-    g.globalAlpha = smooth(0.10, 0.34, f) * 0.95;
-    g.transform(f, 0, 0, ky, (W / 2) * (1 - f), y - ky * v);
-    g.fillStyle = pat;
-    g.fillRect(-W / f, v, (W * 3) / f, 1 / ky + 0.5);
-    g.restore();
-    v += 1 / ky;
+    const dv = 1 / ky;                                       // righe di tessera coperte da una riga di tela
+    const A = smooth(0.10, 0.34, f) * 0.95;
+    opaca.push(A);
+    if (A > 0.004) {
+      const nh = Math.max(1, Math.min(6, Math.round(1 / f))), nv = Math.max(1, Math.min(12, Math.round(dv)));
+      const cx = (W * K) / 2 * (1 - f);                      // la tessera resta ancorata al centro dello schermo
+      gt.fillStyle = pat;
+      let k = 0;
+      for (let sv = 0; sv < nv; sv++) {
+        const vs = v + ((sv + 0.5) / nv - 0.5) * dv;         // il centro del pixel cade a vs + dv/2
+        for (let sh = 0; sh < nh; sh++) {
+          const dxs = (sh + 0.5) / nh - 0.5;
+          k++;
+          gt.save();
+          gt.globalAlpha = 1 / k;
+          gt.transform(f, 0, 0, ky, cx + dxs, yi - ky * vs);
+          gt.fillRect((-2 - cx) / f - 1, vs, (W * K + 4) / f + 2, 1 / ky + 0.5);
+          gt.restore();
+        }
+      }
+    }
+    v += dv;
   }
+  const piana = creaTela(W * K, righe), g = ctxDi(piana);
+  const gr = g.createLinearGradient(0, 0, 0, righe);
+  gr.addColorStop(0, "#e2e8ea"); gr.addColorStop(1, "#bcc5c8");
+  g.fillStyle = gr; g.fillRect(0, 0, W * K, righe);
+  for (let y = 0; y < righe; y++) {
+    if (opaca[y] <= 0.004) continue;
+    g.globalAlpha = opaca[y];
+    g.drawImage(trama, 0, y, W * K, 1, 0, y, W * K, 1);
+  }
+  g.globalAlpha = 1;
   // foschia lontana che mangia il dettaglio
-  const fos = g.createLinearGradient(0, 0, 0, 120);
+  const fos = g.createLinearGradient(0, 0, 0, 120 * K);
   fos.addColorStop(0, "rgba(232,238,238,.95)"); fos.addColorStop(1, "rgba(232,238,238,0)");
-  g.fillStyle = fos; g.fillRect(0, 0, W, 120);
+  g.fillStyle = fos; g.fillRect(0, 0, W * K, 120 * K);
   return piana;
 }
 
@@ -250,7 +306,7 @@ export function disegnaInvaso(ctx: C2D, t: number, c: Cache) {
   if (notte < 1) { ctx.globalAlpha = 1 - notte; ctx.drawImage(a.colline, 0, ORIZZONTE - 96); }
   if (notte > 0) { ctx.globalAlpha = notte; ctx.drawImage(a.collineNotte, 0, ORIZZONTE - 96); }
   ctx.restore();
-  ctx.drawImage(a.piana, 0, ORIZZONTE - 2);
+  ctx.drawImage(a.piana, 0, ORIZZONTE - 2, W, 400);
   // il cielo si specchia sul sale: una fascia chiara sotto l'orizzonte, che sbiadisce
   cielo(ctx, [[0, mix("#f4e7d0", "#33466a", notte).replace("#", "#")], [1, "rgba(0,0,0,0)"]], ORIZZONTE - 2, ORIZZONTE + 1);
   const rifl = ctx.createLinearGradient(0, ORIZZONTE, 0, ORIZZONTE + 150);
@@ -266,16 +322,33 @@ export function disegnaInvaso(ctx: C2D, t: number, c: Cache) {
     alone(ctx, 330, ORIZZONTE + 70, 420, "#9fb8e8", 0.14 * clamp((notte - 0.3) * 1.6), 0.22);
     ctx.globalCompositeOperation = "source-over";
   }
+  // le stelle e la luna si specchiano sul sale: trattini freddi che si allungano e si spengono con la distanza dall'orizzonte
+  if (vis > 0.05) {
+    const rs = rng(9);
+    for (let i = 0; i < 110; i++) {
+      const x = rs() * W, d = rs(), b = 0.3 + rs() * 0.7, tw = 0.5 + 0.5 * Math.sin(t * (0.8 + rs() * 2) + i);
+      const vicino = Math.abs(x - 330) < 120 ? 2.4 : 1;                       // sotto la luna il riflesso è più fitto
+      const al = vis * b * (1 - d) * (0.45 + 0.55 * tw) * 0.2 * vicino;
+      if (al < 0.01) continue;
+      ctx.fillStyle = `rgba(190,212,255,${al})`;
+      ctx.fillRect(x, ORIZZONTE + 8 + d * 150, 1.4, 2 + d * 11);
+    }
+  }
 
   // la diga a destra: un muro di cemento in prospettiva
   ctx.save();
   ctx.beginPath(); ctx.moveTo(1420, ORIZZONTE + 12); ctx.lineTo(1462, 528); ctx.lineTo(W + 20, 503); ctx.lineTo(W + 20, ORIZZONTE + 12); ctx.closePath();
   ctx.clip();
   ctx.drawImage(a.diga, 1420, 490, 540, 226);
-  ctx.fillStyle = `rgba(6,10,24,${0.05 + 0.93 * notte})`; ctx.fillRect(1400, 480, 560, 260);
+  ctx.fillStyle = `rgba(6,10,24,${0.05 + 0.80 * notte})`; ctx.fillRect(1400, 480, 560, 260);       // di notte resta il 15–20 % della materia
+  if (notte > 0.2) {                                                                              // il velo freddo della luna, più forte in alto
+    const lunare = ctx.createLinearGradient(0, 500, 0, 700);
+    lunare.addColorStop(0, rgba("#9cb6ee", 0.30 * notte)); lunare.addColorStop(0.55, rgba("#9cb6ee", 0.08 * notte)); lunare.addColorStop(1, rgba("#9cb6ee", 0));
+    ctx.globalCompositeOperation = "screen"; ctx.fillStyle = lunare; ctx.fillRect(1400, 480, 560, 260); ctx.globalCompositeOperation = "source-over";
+  }
   ctx.restore();
   // luce sul ciglio della diga, nel crepuscolo
-  ctx.strokeStyle = rgba(mix("#ffe2b4", "#8aa4d8", notte), 0.5 * (1 - notte * 0.6)); ctx.lineWidth = 1.6;
+  ctx.strokeStyle = rgba(mix("#ffe2b4", "#a9c0f0", notte), 0.5 * (1 - notte * 0.6) + 0.4 * notte); ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(1462, 528); ctx.lineTo(W + 20, 503); ctx.stroke();
 
   // la torre di presa, con il faro rosso che lampeggia di notte
@@ -286,6 +359,10 @@ export function disegnaInvaso(ctx: C2D, t: number, c: Cache) {
   ctx.fillRect(1188, 618, 6, 10); ctx.fillRect(1198, 618, 6, 10); ctx.fillRect(1188, 640, 6, 10); ctx.fillRect(1198, 640, 6, 10);
   ctx.fillStyle = mix("#7c8494", "#0a0d18", notte); ctx.fillRect(1180, 604, 3, 100);
   ctx.strokeStyle = cT; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1195, 594); ctx.lineTo(1195, 566); ctx.stroke();
+  if (notte > 0.3) {                                                                              // il bordo freddo della luna sulla torre
+    ctx.fillStyle = rgba("#a9c0f0", 0.6 * clamp((notte - 0.3) * 1.5));
+    ctx.fillRect(1180, 604, 2, 100); ctx.fillRect(1166, 594, 58, 1.6); ctx.fillRect(1166, 594, 1.6, 12);
+  }
   if (notte > 0.4) {
     const lampo = Math.pow(Math.max(0, Math.sin(t * 3.2)), 8);
     ctx.globalCompositeOperation = "lighter";

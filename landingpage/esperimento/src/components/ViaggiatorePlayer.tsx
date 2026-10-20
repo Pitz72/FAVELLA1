@@ -30,6 +30,9 @@ import { bersagliDelUso, chipDiContesto, senzaArticolo, serveAnteprima, valutaCo
 import { componi, dataLeggibile, nomePosto, scrivi, type Posto, type Riassunto, type Salvataggio } from "../lib/salvataggi";
 import { annota, inDesktop, esciDalGioco } from "../lib/desktop";
 import { analizza, spezza, VOCI, GESTI, type Blocco } from "../gioco/testo";
+import { partiDelBlocco, partiDellaScelta, type Tabella } from "../gioco/parti";
+import { voce, leggiImpostazioni, scriviImpostazioni, PAUSA_FRASE, PAUSA_RIGA, type Impostazioni, type Parte } from "../gioco/voce";
+import ImpostazioniVoce from "../gioco/ImpostazioniVoce";
 import "../gioco/gioco.css";
 
 const VUOTO: StatoMondo = { inventory: [], counters: {}, room: null, roomId: null };
@@ -39,7 +42,8 @@ const DIREZIONI: Record<string, string> = { nord: "↑", sud: "↓", est: "→",
 
 interface Voce { id: number; cmd?: string; blocchi: Blocco[] }
 type Menu = Cosa | null;
-type Richiesta = { cmd: string; etichetta: string; conferma: DatiConferma } | null;
+/** `annullabile`: dopo la mossa il pulsante ↶ annulla potrà disfarla (non se il dialogo continua o la partita finisce) */
+type Richiesta = { cmd: string; etichetta: string; conferma: DatiConferma; annullabile: boolean } | null;
 const SENZA_AZIONI: AzioniContesto = { soli: [], bersagli: [] };
 
 const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; carica?: Salvataggio | null }) => {
@@ -72,6 +76,71 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   const iStoria = useRef(-1);
   const contatore = useRef(0);
 
+  // ── la voce (il doppiaggio) ────────────────────────────────────────
+  // In voce recitata il diario non si annuncia: ciò che la voce non dice (le risposte del
+  // motore, i titoli dei luoghi, le parti senza audio) va al lettore di schermo da un'area a parte.
+  const [impVoce, setImpVoce] = useState<Impostazioni>(leggiImpostazioni);
+  const [pannelloVoce, setPannelloVoce] = useState(false);
+  const [annuncio, setAnnuncio] = useState({ n: 0, testo: "" });
+  const tabVoce = useRef<Tabella | null>(null);
+  const daDire = useRef<Blocco[] | null>(null);   // il primo testo, se arriva prima dell'indice della voce
+  const recitata = impVoce.modo === "recitata";
+  const recitataRef = useRef(recitata);
+  recitataRef.current = recitata;
+
+  const daiVoce = (blocchi: Blocco[]) => {
+    if (!recitataRef.current) return;
+    const tab = tabVoce.current;
+    if (!tab) { daDire.current = blocchi; return; }
+    const parti: Parte[] = [];
+    const muti: string[] = [];
+    let rigaPrima = -1;
+    blocchi.forEach((b, riga) => {
+      if (b.tipo === "stanza") { muti.push(b.titolo); return; }
+      if (b.tipo === "sistema" || b.tipo === "comando") { muti.push(b.testo); return; }
+      const r = partiDelBlocco(b, tab);
+      const suonano = r.ids.filter((id) => voce.ha(id));
+      if (!suonano.length) { muti.push(b.tipo === "battuta" ? `${b.chi}: ${b.testo}` : b.testo); return; }
+      muti.push(...r.ids.filter((id) => !voce.ha(id)).map((id) => voce.testoDi(id)), ...r.mancano.map((m) => m.testo));
+      for (const id of suonano) { parti.push({ id, pausa: riga === rigaPrima ? PAUSA_FRASE : PAUSA_RIGA }); rigaPrima = riga; }
+    });
+    voce.dici(parti);
+    const testo = muti.filter(Boolean).join(" ");
+    if (testo) setAnnuncio((a) => ({ n: a.n + 1, testo }));
+  };
+  const daiVoceRef = useRef(daiVoce);
+  daiVoceRef.current = daiVoce;
+
+  /** Una risposta di dialogo: la legge il narratore quando ci si passa sopra o la si raggiunge da tastiera. */
+  const diciScelta = (opzione: string) => {
+    if (!recitata || !tabVoce.current) return;
+    voce.dici(partiDellaScelta(opzione, tabVoce.current).ids.map((id) => ({ id, pausa: 0 })));
+  };
+
+  useEffect(() => {
+    let vivo = true;
+    voce.prepara().then((tab) => {
+      if (!vivo) return;
+      tabVoce.current = tab;
+      const primo = daDire.current;
+      daDire.current = null;
+      if (primo) daiVoceRef.current(primo);
+    });
+    // la voce si ferma al primo tasto (non ai soli tasti di modifica); F2 ridice l'ultimo testo
+    const tasto = (e: KeyboardEvent) => {
+      if (e.key === "F2") { e.preventDefault(); if (recitataRef.current) voce.riascolta(); return; }
+      if (["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock"].includes(e.key)) return;
+      voce.ferma();
+    };
+    window.addEventListener("keydown", tasto, true);
+    return () => { vivo = false; window.removeEventListener("keydown", tasto, true); voce.ferma(); };
+  }, []);
+  useEffect(() => {
+    voce.impostaVolume(impVoce.volume);
+    scriviImpostazioni(impVoce);
+    if (impVoce.modo !== "recitata") voce.ferma();
+  }, [impVoce]);
+
   // ── avvio del motore ────────────────────────────────────────────────
   useEffect(() => {
     let vivo = true;
@@ -81,10 +150,12 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
         if (!vivo) return;
         sessione.current = s;
         const e = s.boot();
-        setVoci([{ id: contatore.current++, blocchi: analizza(e.text) }]);
+        const primi = analizza(e.text);
+        setVoci([{ id: contatore.current++, blocchi: primi }]);
         setMondo(s.stato());
         setCamminaDa(performance.now());
         if (carica) riprendi(carica);
+        else daiVoce(primi);
         setFase("gioca");
       } catch (err) {
         if (vivo) { setMessaggio(err instanceof Error ? err.message : String(err)); setFase("errore"); }
@@ -93,7 +164,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
     return () => { vivo = false; };
   }, []);
 
-  useEffect(() => { if (fase === "gioca" && !finita && !guida && !taccuino && !richiesta) inputRef.current?.focus(); }, [fase, finita, guida, taccuino, voci, richiesta]);
+  useEffect(() => { if (fase === "gioca" && !finita && !guida && !taccuino && !richiesta && !pannelloVoce) inputRef.current?.focus(); }, [fase, finita, guida, taccuino, voci, richiesta, pannelloVoce]);
   // i verbi che qui e adesso hanno un effetto (attingi, curati, attacca…) cambiano a ogni turno
   useEffect(() => {
     if (fase === "gioca" && sessione.current && !finita) setAzioniCtx(sessione.current.azioni());
@@ -107,6 +178,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   const applica = (etichetta: string, e: TurnoEsito) => {
     const blocchi = analizza(e.text);
     setVoci((v) => [...v, { id: contatore.current++, cmd: etichetta, blocchi }]);
+    daiVoce(blocchi);
     const nuovi = blocchi.flatMap((b) => (b.tipo === "battuta" ? [b.chi] : []));
     if (nuovi.length) setIncontrati((p) => Array.from(new Set([...p, ...nuovi])));
     const fin = blocchi.find((b) => b.tipo === "finale");
@@ -144,11 +216,14 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   const manda = (grezzo: string, etichetta?: string) => {
     const cmd = grezzo.trim();
     if (!cmd || finita || !sessione.current || richiesta) return;
+    voce.ferma();   // anche un comando dato col mouse zittisce la voce: non parli sopra una scelta nuova
     if (serveAnteprima(cmd, mondo)) {
-      const c = valutaConferma(cmd, sessione.current.anteprima(cmd), mondo);
+      const antep = sessione.current.anteprima(cmd);
+      const c = valutaConferma(cmd, antep, mondo);
       if (c) {
         setBozza(""); chiudiPannelli();
-        setRichiesta({ cmd, etichetta: etichettaDi(cmd, etichetta), conferma: c });
+        // ANNULLA disfa un turno intero: dentro un dialogo che continua, o a partita chiusa, il pulsante non c'è
+        setRichiesta({ cmd, etichetta: etichettaDi(cmd, etichetta), conferma: c, annullabile: !antep.dialogo && antep.esito === "in_corso" });
         return;
       }
     }
@@ -167,7 +242,9 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   const ricomincia = () => {
     if (!sessione.current) return;
     const e = sessione.current.boot();
-    setVoci([{ id: contatore.current++, blocchi: analizza(e.text) }]);
+    const primi = analizza(e.text);
+    setVoci([{ id: contatore.current++, blocchi: primi }]);
+    daiVoce(primi);
     setMondo(sessione.current.stato());
     setFinita(false); setEsito("in_corso"); setFinale(""); setIncontrati([]); setMenu(null); setUsaDa(null);
     setPannello(null); setRichiesta(null);
@@ -237,10 +314,12 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
       annota("warn", `caricamento con impronta diversa (salvato ${dati.gioco}, stessa avventura: ${stessaAvventura})`);
     }
     annota("info", `partita caricata: ${nomePosto(dati.posto)}, ${esito.comandi} comandi in ${Math.round(performance.now() - t0)} ms`);
+    const ripresa = [...note, ...analizza(esito.text)];
     setVoci([
       ...dati.diario.voci.map((v) => ({ id: contatore.current++, cmd: v.cmd, blocchi: v.blocchi })),
-      { id: contatore.current++, blocchi: [...note, ...analizza(esito.text)] },
+      { id: contatore.current++, blocchi: ripresa },
     ]);
+    daiVoce(ripresa);
     setMondo(nuovoMondo);
     autoLuogo.current = nuovoMondo.roomId;
     setIncontrati(dati.diario.incontrati ?? []);
@@ -256,13 +335,13 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
   // F5 salva, F9 carica
   useEffect(() => {
     const tasto = (e: KeyboardEvent) => {
-      if (fase !== "gioca" || guida || taccuino) return;
+      if (fase !== "gioca" || guida || taccuino || pannelloVoce) return;
       if (e.key === "F5") { e.preventDefault(); if (!finita) setTaccuino("salva"); }
       else if (e.key === "F9") { e.preventDefault(); setTaccuino("carica"); }
     };
     window.addEventListener("keydown", tasto);
     return () => window.removeEventListener("keydown", tasto);
-  }, [fase, guida, taccuino, finita]);
+  }, [fase, guida, taccuino, finita, pannelloVoce]);
 
   // solo in sviluppo: pilotare la partita dalla console per collaudare l'interfaccia
   useEffect(() => {
@@ -426,6 +505,8 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
           <div style={{ display: "flex", gap: 8 }}>
             <button className="vg-bottone vg-piccolo" onClick={() => setTaccuino("salva")} disabled={finita} title="Salva la partita (F5)">salva</button>
             <button className="vg-bottone vg-piccolo" onClick={() => setTaccuino("carica")} title="Carica una partita (F9)">carica</button>
+            <button className="vg-bottone vg-piccolo" onClick={() => setPannelloVoce(true)} aria-pressed={recitata}
+              title="La voce: recitata o lettore di schermo, e il volume (F2 ridice l'ultimo testo)">{recitata ? "♪ voce" : "voce no"}</button>
             <button className="vg-bottone vg-piccolo" onClick={() => setGuida(true)}>? come si gioca</button>
             <button className="vg-bottone vg-piccolo" onClick={esci}>← intro</button>
             {inDesktop() && <button className="vg-bottone vg-piccolo" onClick={chiudiGioco} title="Chiude il gioco (salva il posto automatico)">✕ esci</button>}
@@ -440,7 +521,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
       <div className="vg-pagina">
         {/* DIARIO */}
         <main className="vg-diario-col">
-          <div ref={diarioRef} className="vg-diario gv-scroll">
+          <div ref={diarioRef} className="vg-diario gv-scroll" role="log" aria-live={recitata ? "off" : "polite"} aria-relevant="additions" aria-label="Diario del viaggio">
             <div className="vg-colonna">
               {voci.map((v, i) => (
                 <section key={v.id} className={"vg-voce" + (i < ultima ? " vg-passata" : "")}>
@@ -470,7 +551,8 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
                   <p className="vg-sopratitolo">rispondi a {mondo.dialog.chi}</p>
                   <div className="vg-risposte-lista">
                     {mondo.dialog.opzioni.map((o, i) => (
-                      <button key={i} className="vg-risposta" onClick={() => manda(String(i + 1), o)}>
+                      <button key={i} className="vg-risposta" onClick={() => manda(String(i + 1), o)}
+                        onMouseEnter={() => diciScelta(o)} onFocus={() => diciScelta(o)}>
                         <span className="vg-num">{i + 1}</span><span>{o}</span>
                       </button>
                     ))}
@@ -646,6 +728,16 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
         </aside>
       </div>
 
+      {recitata && (
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          <p key={annuncio.n}>{annuncio.testo}</p>
+        </div>
+      )}
+      {pannelloVoce && (
+        <ImpostazioniVoce base={13} accento={accento} imp={impVoce} onCambia={setImpVoce}
+          onRiascolta={() => { setPannelloVoce(false); voce.riascolta(); }}
+          onChiudi={() => { setPannelloVoce(false); inputRef.current?.focus(); }} />
+      )}
       {guida && <ComeSiGioca base={13} accento={accento} onChiudi={() => { setGuida(false); inputRef.current?.focus(); }} />}
       {taccuino && (
         <Taccuino base={13} modo={taccuino} accento={accento} puoSalvare={!finita} avvisaPerdita={nonSalvati > 0 && !finita}
@@ -654,7 +746,7 @@ const ViaggiatorePlayer = ({ onExit, carica = null }: { onExit: () => void; cari
           onChiudi={() => { setTaccuino(null); inputRef.current?.focus(); }} />
       )}
       {richiesta && (
-        <Conferma conferma={richiesta.conferma} etichetta={richiesta.etichetta} puoAnnullare={(mondo.undo ?? 0) >= 0}
+        <Conferma conferma={richiesta.conferma} etichetta={richiesta.etichetta} puoAnnullare={richiesta.annullabile}
           onSi={confermaSi} onNo={confermaNo} />
       )}
     </div>

@@ -7,7 +7,7 @@
 import { W, H } from "./scaletta";
 import { clamp, lerp, rng, rgba } from "./tempo";
 import {
-  creaTela, ctxDi, fbm, fbmPeriodico, hexRgb, mescola, perlin, riempi, rgbCss, smooth,
+  creaTela, ctxDi, fbm, fbmPeriodico, hexRgb, mescola, perlin, riempi, rgbCss, sfoca, smooth,
   type RGB, type Tela,
 } from "./texture";
 
@@ -32,6 +32,35 @@ export function alone(ctx: C2D, x: number, y: number, r: number, colore: string,
   g.addColorStop(1, rgba(colore, 0));
   ctx.fillStyle = g;
   ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+// --------------------------------------------------------------------
+//  Raggi di luce dai bordi morbidi: uno spicchio dall'apice, dissolto verso la fine e sfocato ai lati, dipinto
+//  UNA volta (a mezza risoluzione: è morbido) e copiato a ogni fotogramma con l'opacità che «respira». Uno spicchio
+//  tracciato a ogni fotogramma con un gradiente radiale ha i lati netti, come ritagliati, accanto a nuvole morbide.
+// --------------------------------------------------------------------
+export interface RaggioMorbido { tela: Tela; pad: number; hh: number; scala: number }
+
+export function raggioMorbido(lung: number, w2: number, partenza: number, fine: number, colore: string, scala = 0.5, sfumatura = 2.5): RaggioMorbido {
+  const pad = 26;
+  const semi = lung * Math.sin(w2) * scala;
+  const hh = Math.ceil(semi) + pad, L = Math.ceil(lung * Math.cos(w2) * scala);
+  const t = creaTela(L + pad * 2, hh * 2), g = ctxDi(t);
+  const gr = g.createLinearGradient(pad + partenza * scala, 0, pad + fine * scala, 0);
+  gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = gr;
+  g.beginPath(); g.moveTo(pad, hh); g.lineTo(pad + L, hh - semi); g.lineTo(pad + L, hh + semi); g.closePath(); g.fill();
+  g.globalCompositeOperation = "source-in";
+  g.fillStyle = colore; g.fillRect(0, 0, t.width, t.height);
+  return { tela: sfoca(t, sfumatura), pad, hh, scala };
+}
+
+/** Copia un raggio dal punto (0, 0) già traslato, nella direzione `ang`, con l'opacità `alfa`. */
+export function disegnaRaggio(ctx: C2D, r: RaggioMorbido, ang: number, alfa: number) {
+  ctx.save();
+  ctx.rotate(ang); ctx.globalAlpha = alfa;
+  ctx.drawImage(r.tela, -r.pad / r.scala, -r.hh / r.scala, r.tela.width / r.scala, r.tela.height / r.scala);
   ctx.restore();
 }
 
@@ -78,11 +107,22 @@ export async function nuvole(o: OpzioniNuvole): Promise<Tela> {
   const chiaro = hexRgb(o.chiaro), scuro = hexRgb(o.scuro);
   const [sx, sy] = o.sole;
   const passo = 9;
+  // La torsione legge il rumore a u·0,7, che non ha il periodo della tela: a destra e a sinistra valeva due
+  // cose diverse e la tessera, ripetendosi, si saldava con un gradino (la densità saltava di un fattore 10).
+  // Nell'ultimo 30 % della larghezza la si porta, con una curva dolce, al valore che ha all'inizio: la tessera
+  // si salda, il resto del cielo resta com'era.
+  const torsioneBase = (u: number, v: number) => n(u * 0.7, v * 0.7 + 3.1) * 0.35;
+  const fascia = per * 0.3;
+  const torsione = (u: number, v: number) => {
+    const a = torsioneBase(u, v);
+    if (u <= per - fascia) return a;
+    return a + (torsioneBase(u - per, v) - a) * smooth(per - fascia, per, u);
+  };
   const dens = (x: number, y: number) => {
     const u = (x / o.w) * per;
     const v = (y * per * o.scalaX) / o.w * o.scalaY;
     // un poco di torsione: le nuvole vere non sono righe parallele
-    const t = n(u * 0.7, v * 0.7 + 3.1) * 0.35;
+    const t = torsione(u, v);
     return smooth(1 - o.copertura - o.morbidezza, 1 - o.copertura + o.morbidezza, n(u + t * 0.3, v + t) * 0.5 + 0.5);
   };
   return await riempi(o.w, o.h, (x, y, px) => {

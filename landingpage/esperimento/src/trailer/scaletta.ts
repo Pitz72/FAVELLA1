@@ -38,8 +38,11 @@ export interface Scena { id: IdScena; da: number; a: number; entra: number; esce
 export const SCENE: Scena[] = [
   { id: "lettere", da: 0.0,  a: 9.6,  entra: 0.8, esce: 0.7 },
   { id: "alba",    da: 9.6,  a: 17.6, entra: 1.0, esce: 0 },
-  { id: "terra",   da: 17.6, a: 25.2, entra: 0,   esce: 0.9 },
-  { id: "invaso",  da: 24.8, a: 33.4, entra: 0.9, esce: 1.2 },
+  // terra → invaso è un incrocio vero, centrato sul taglio nominale (25,2): la terra resta piena (e sotto) finché l'invaso,
+  // che le entra sopra da 24,8 a 25,6, non è tutto opaco. Prima le due si dissolvevano insieme sul nero e a 25,0 il quadro
+  // perdeva quasi metà della luce.
+  { id: "terra",   da: 17.6, a: 25.6, entra: 0,   esce: 0 },
+  { id: "invaso",  da: 24.8, a: 33.4, entra: 0.8, esce: 1.2 },
   { id: "mappa",   da: 32.8, a: 49.0, entra: 1.4, esce: 0.8 },
   { id: "cinque",  da: 48.8, a: 59.6, entra: 0.8, esce: 0.5 },
   { id: "guado",   da: 59.6, a: 67.8, entra: 0.6, esce: 0 },
@@ -74,13 +77,15 @@ export function presenza(s: Scena, t: number) {
 //  CAMMINATE: dove il viandante cammina, e a che cadenza (passi/s ÷ 2).
 //  Servono al disegno (fase del passo) e al suono (i passi a terra).
 // --------------------------------------------------------------------
-export interface Camminata { da: number; a: number; cad: number; vol: number }
+/** Su che cosa si cammina: dà ai passi la loro materia (è solo un dato: nessun tempo dipende da lui). */
+export type Terreno = "asfalto" | "crosta" | "sale" | "sassi";
+export interface Camminata { da: number; a: number; cad: number; vol: number; terreno: Terreno }
 export const CAMMINATE: Camminata[] = [
-  { da: 9.6,  a: 17.6, cad: 1.05, vol: 0.35 },
-  { da: 17.6, a: 25.2, cad: 0.92, vol: 1.0 },
-  { da: 25.2, a: 32.6, cad: 1.0,  vol: 0.18 },
-  { da: 59.6, a: 64.2, cad: 0.9,  vol: 0.55 },
-  { da: 81.4, a: 1e9,  cad: 1.0,  vol: 0.25 },
+  { da: 9.6,  a: 17.6, cad: 1.05, vol: 0.35, terreno: "asfalto" },   // la provinciale all'alba
+  { da: 17.6, a: 25.2, cad: 0.92, vol: 1.0,  terreno: "crosta" },    // il fango screpolato della secca
+  { da: 25.2, a: 32.6, cad: 1.0,  vol: 0.18, terreno: "sale" },      // la piana di sale dell'invaso
+  { da: 59.6, a: 64.0, cad: 0.9,  vol: 0.55, terreno: "sassi" },     // il greto del guado (si ferma sul colpo grave del brano, a 64,0)
+  { da: 81.4, a: 1e9,  cad: 1.0,  vol: 0.25, terreno: "asfalto" },   // la provinciale, di nuovo, sul titolo
 ];
 
 export const faseDiPasso = (t: number, c: Camminata) => (t - c.da) * c.cad;
@@ -101,10 +106,11 @@ export function appoggi(c: Camminata, fino = 200): number[] {
 //  EVENTI SONORI puntuali (i passi si aggiungono da CAMMINATE).
 // --------------------------------------------------------------------
 export type TipoSuono = "carta" | "timbro" | "tasto" | "soffio" | "tonfo" | "passo" | "rintocco";
-export interface Evento { t: number; tipo: TipoSuono; vol?: number }
+/** `terreno` e `piede` (0 sinistro, 1 destro) servono solo ai passi: ne dicono la materia e il lato. */
+export interface Evento { t: number; tipo: TipoSuono; vol?: number; terreno?: Terreno; piede?: 0 | 1 }
 
 const LETTERE_ARRIVI = [0.7, 1.8, 2.9, 4.0];
-export const BIGLIETTO = { arriva: 6.7, scrive: 7.25, perCarattere: 0.042, testo: ["NON È IL CASO", "DI TORNARE."] };
+export const BIGLIETTO = { arriva: 6.7, scrive: 7.25, perCarattere: 0.034, testo: ["NON È IL CASO", "DI TORNARE."] };
 
 function eventiBase(): Evento[] {
   const e: Evento[] = [];
@@ -122,7 +128,7 @@ function eventiBase(): Evento[] {
   e.push({ t: TAPPE_T0 + 7 * TAPPE_PASSO, tipo: "tonfo", vol: 0.5 });
   // i cinque segni
   for (let i = 0; i < 5; i++) e.push({ t: CINQUE_T0 + i * CINQUE_PASSO, tipo: "rintocco", vol: 0.3 });
-  e.push({ t: 63.7, tipo: "tonfo", vol: 1 });
+  e.push({ t: 64.0, tipo: "tonfo", vol: 1 });                 // il colpo grave del brano è a 63,99: «tuo fratello» entra con lui
   for (let i = 0; i < 5; i++) e.push({ t: 67.8 + i * REGOLA_DUR, tipo: "soffio", vol: 0.55 });
   e.push({ t: 77.0, tipo: "soffio", vol: 0.4 });
   e.push({ t: 82.3, tipo: "tonfo", vol: 0.8 });
@@ -137,7 +143,7 @@ export const REGOLA_DUR = 1.84;
 
 export const EVENTI: Evento[] = (() => {
   const e = eventiBase();
-  CAMMINATE.forEach((c) => appoggi(c, 60).forEach((t) => e.push({ t, tipo: "passo", vol: c.vol })));
+  CAMMINATE.forEach((c) => appoggi(c, 60).forEach((t, i) => e.push({ t, tipo: "passo", vol: c.vol, terreno: c.terreno, piede: (i % 2) as 0 | 1 })));
   return e.sort((a, b) => a.t - b.t);
 })();
 

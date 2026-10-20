@@ -37,6 +37,7 @@ export interface OpzioniFigura {
   stivali?: string;      // colore degli stivali (dettaglio 2)
   polvere?: string;      // colore della polvere sugli orli (dettaglio 2)
   senzaTesta?: boolean;  // inquadratura dal ginocchio in giù
+  risvolto?: boolean;    // nella sagoma ci sono anche il risvolto dei pantaloni e la suola: per la luce di contorno del primo piano
 }
 
 const TAU = Math.PI * 2;
@@ -154,7 +155,7 @@ function coloriDa(o: OpzioniFigura): Colori {
 //  Lo stivale: gambale, piede e (in primo piano) suola, guardolo, cuciture,
 //  lacci, pieghe e luce sul cuoio. Il risvolto dei pantaloni ci cade sopra.
 // --------------------------------------------------------------------
-function stivale(ctx: Ctx, g: Gamba, col: Colori, dettaglio: number, lontano: boolean) {
+function stivale(ctx: Ctx, g: Gamba, col: Colori, dettaglio: number, lontano: boolean, risvolto = false) {
   const base = lontano ? col.lontano : col.stivali;
 
   if (dettaglio < 2) {
@@ -171,7 +172,24 @@ function stivale(ctx: Ctx, g: Gamba, col: Colori, dettaglio: number, lontano: bo
     ctx.moveTo(-0.046, -0.004); ctx.quadraticCurveTo(-0.058, 0.016, -0.05, L.suola); ctx.lineTo(0.112, L.suola);
     ctx.quadraticCurveTo(0.140, L.suola - 0.002, 0.138, 0.012); ctx.quadraticCurveTo(0.128, -0.012, 0.075, -0.024);
     ctx.lineTo(0.036, -0.030); ctx.lineTo(0.036, -0.012); ctx.closePath(); ctx.fill();
+    if (risvolto) {
+      // la sagoma di un primo piano ha anche la suola spessa...
+      ctx.beginPath();
+      ctx.moveTo(-0.058, 0.010); ctx.lineTo(0.151, 0.010); ctx.quadraticCurveTo(0.157, 0.026, 0.147, 0.030);
+      ctx.lineTo(0.120, L.suola); ctx.lineTo(-0.046, L.suola); ctx.quadraticCurveTo(-0.060, 0.030, -0.058, 0.017); ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
+    if (risvolto) {
+      // ...e il risvolto dei pantaloni, più largo della gamba: senza, la luce di contorno gli fa i gradini intorno
+      ctx.save();
+      ctx.translate(g.caviglia.x, g.caviglia.y); ctx.rotate(-g.angStinco);
+      ctx.fillStyle = base;
+      ctx.beginPath();
+      ctx.moveTo(-0.050, -0.150); ctx.lineTo(0.046, -0.150);
+      ctx.quadraticCurveTo(0.054, -0.118, 0.047, -0.092); ctx.quadraticCurveTo(0.0, -0.084, -0.051, -0.092);
+      ctx.quadraticCurveTo(-0.057, -0.120, -0.050, -0.150); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
     return;
   }
 
@@ -364,7 +382,7 @@ function figura(ctx: Ctx, f: number, o: OpzioniFigura, col: Colori, luce: boolea
   ctx.fillStyle = det >= 2 ? col.pantaloni : col.lontano;
   arto(ctx, lontana.anca, 0.052, lontana.ginocchio, 0.040); ctx.fill();
   arto(ctx, lontana.ginocchio, 0.040, lontana.caviglia, 0.030); ctx.fill();
-  stivale(ctx, lontana, col, det, true);
+  stivale(ctx, lontana, col, det, true, !!o.risvolto);
 
   // ─ fagotto: coperta arrotolata di traverso sulle spalle, con la cinghia
   if (o.fagotto) {
@@ -427,7 +445,7 @@ function figura(ctx: Ctx, f: number, o: OpzioniFigura, col: Colori, luce: boolea
     ctx.fillStyle = "rgba(255,240,220,.06)";
     arto(ctx, vicina.anca, 0.024, vicina.ginocchio, 0.018); ctx.fill();
   }
-  stivale(ctx, vicina, col, det, false);
+  stivale(ctx, vicina, col, det, false, !!o.risvolto);
 
   ctx.fillStyle = col.cappotto;
   arto(ctx, spalla, 0.034, bv.gomito, 0.027); ctx.fill();
@@ -488,7 +506,7 @@ export function disegnaViandante(
     ctx.scale(alto * v, alto);
     if (ps.rim) {
       const c = { ...col, cappotto: o.bordo!, lontano: o.bordo!, pantaloni: o.bordo!, stivali: o.bordo!, tanica: o.bordo!, cuoio: o.bordo! };
-      figura(ctx, f, { ...o, dettaglio: 0 }, c, false);
+      figura(ctx, f, { ...o, dettaglio: 0, risvolto: o.dettaglio === 2 }, c, false);
     } else {
       figura(ctx, f, o, col, true);
     }

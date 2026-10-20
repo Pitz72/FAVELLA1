@@ -50,13 +50,24 @@ export default defineConfig(({ command }) => ({
           if (req.url && /^\/(fonts|favella-engine|favicon)/.test(req.url)) req.url = '/esperimento' + req.url
           next()
         })
+        // la voce del doppiaggio (dal Viaggiatore 1.19.0) sta in pubblico/voce/: in sviluppo la si serve da lì
+        server.middlewares.use((req, res, next) => {
+          const m = req.url ? /^\/esperimento\/voce\/([^?]+)/.exec(req.url) : null
+          if (!m) return next()
+          const file = new URL(`./pubblico/voce/${decodeURIComponent(m[1])}`, import.meta.url)
+          if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return next()
+          res.setHeader('Content-Type', m[1].endsWith('.json') ? 'application/json' : 'audio/ogg')
+          fs.createReadStream(file).pipe(res)
+        })
       },
     },
   ],
-  // Solo in sviluppo: servi la public del sito (font in /fonts, motore in
+  // In sviluppo: servi la public del sito (font in /fonts, motore in
   // /favella-engine) così l'app separata gira identica al deploy. In build
-  // nessuna public: non si copia il sito dentro dist/esperimento.
-  publicDir: command === 'serve' ? '../public' : false,
+  // la sola cartella pubblico/ dell'esperimento (la voce del doppiaggio,
+  // copiata dal gioco: pubblico/voce/ → /esperimento/voce/); il sito non si
+  // copia dentro dist/esperimento.
+  publicDir: command === 'serve' ? '../public' : 'pubblico',
   build: {
     outDir: '../dist/esperimento',
     emptyOutDir: true, // svuota SOLO dist/esperimento, non tutta la dist

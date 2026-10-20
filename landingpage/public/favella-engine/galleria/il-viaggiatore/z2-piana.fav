@@ -68,7 +68,8 @@ Al nodo "dono" l'opzione "Grazie." chiude il dialogo.
 # Il primo dono a Saverio entra nella generosità (una volta: la fiducia non cala mai).
 Quando la fiducia di Saverio è almeno 3: aumenta la generosità di 1.
 
-Saverio al nodo "richiesta" dice "«Acqua.» Sputa di lato. «Tutti vogliono acqua. Portami un motivo per fidarmi, e ne parliamo.»".
+Saverio al nodo "richiesta" dice "«Acqua.» Sputa di lato. «Tutti vogliono acqua. Portami un motivo per fidarmi, e ne parliamo.»" se la fiducia di Saverio è al massimo 1.
+Saverio al nodo "richiesta" dice "«Acqua.» Stavolta non sputa. Accenna alla corda con il mento. «Cala piano, la corda è vecchia. Quel che viene su è tuo.»" se la fiducia di Saverio è almeno 2.
 Al nodo "richiesta" l'opzione "Capito." conduce al nodo "guardia".
 
 # --- ATTINGERE AL POZZO  [acqua gated su FIDUCIA + esaurimento] ---

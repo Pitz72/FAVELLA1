@@ -22,7 +22,7 @@ export const NODI_MAPPA = [
 ];
 
 interface Rotta { pts: { x: number; y: number }[]; cum: number[]; nodi: number[] }
-interface StatoMappa { mappa: Tela; rotta: Rotta; polvere: Tela }
+interface StatoMappa { mappa: Tela; rotta: Rotta; polvere: Tela; ingombri: { alto: number; basso: number }[] }
 
 // --------------------------------------------------------------------
 //  La rotta: una curva morbida (Catmull-Rom) per gli otto punti
@@ -246,8 +246,20 @@ export async function preparaMappa(c: Cache) {
   if (c.mappa) return;
   const fibre = fbmPeriodico(2, 6, 3, 0);
   const polvere = await riempi(64, 64, (x, y, px) => { const v = fibre(x / 64 * 6, y / 64 * 6) * 40; px[0] = 128 + v; px[1] = 136 + v; px[2] = 150 + v; px[3] = 10; });
-  const s: StatoMappa = { mappa: await faiMappa(), rotta: faiRotta(), polvere };
+  const s: StatoMappa = { mappa: await faiMappa(), rotta: faiRotta(), polvere, ingombri: NODI_MAPPA.map((_, i) => ingombroSegno(i)) };
   c.mappa = s;
+}
+
+/** Quanto sopra e quanto sotto l'origine (il centro del segno) arriva il disegno di una tappa: si misura sul
+ *  segno vero, una volta sola, così i nomi si dispongono fuori dal suo ingombro e non lo attraversano. */
+function ingombroSegno(i: number) {
+  const A = 260, O = 130;                            // tela alta 260, origine a metà
+  const tmp = creaTela(520, A), g = ctxDi(tmp);
+  segno(g, i, 260, O, 1);
+  const d = g.getImageData(0, 0, 520, A).data;
+  let alto = A, basso = 0;
+  for (let y = 0; y < A; y++) for (let x = 0; x < 520; x++) if (d[(y * 520 + x) * 4 + 3] > 40) { alto = Math.min(alto, y); basso = Math.max(basso, y); }
+  return { alto: alto - O, basso: basso - O };
 }
 
 // --------------------------------------------------------------------
@@ -340,14 +352,18 @@ export function disegnaMappa(ctx: C2D, t: number, c: Cache) {
     const dy = (1 - al) * 18 * (sopra ? 1 : -1);
     ctx.globalAlpha = al;
     ctx.textAlign = "center";
+    // i nomi stanno fuori dall'ingombro del segno (il segno sta a n.y + 40): sopra, il loro bordo basso è sopra
+    // il suo bordo alto; sotto, il loro bordo alto è sotto il suo bordo basso
+    const ing = a.ingombri[i], MARGINE = 18;
     if (finale) {
-      const vv = ctx.createRadialGradient(n.x, n.y + 84 + dy, 10, n.x, n.y + 84 + dy, 190);
+      const nome = Math.max(n.y + 62, n.y + 40 + ing.basso + MARGINE + 16);
+      const vv = ctx.createRadialGradient(n.x, nome + 22 + dy, 10, n.x, nome + 22 + dy, 190);
       vv.addColorStop(0, "rgba(5,8,14,.72)"); vv.addColorStop(1, "rgba(5,8,14,0)");
-      ctx.fillStyle = vv; ctx.fillRect(n.x - 200, n.y + dy - 30, 400, 230);
-      ctx.fillStyle = "#f0e6d8"; ctx.font = `600 22px ${FONT.mono}`; ctx.fillText("A C Q U A M O R T A", n.x, n.y + 62 + dy);
-      ctx.fillStyle = "rgba(240,230,216,.62)"; ctx.font = `italic 500 26px ${FONT.serif}`; ctx.fillText("casa", n.x, n.y + 100 + dy);
+      ctx.fillStyle = vv; ctx.fillRect(n.x - 200, nome - 92 + dy, 400, 230);
+      ctx.fillStyle = "#f0e6d8"; ctx.font = `600 22px ${FONT.mono}`; ctx.fillText("A C Q U A M O R T A", n.x, nome + dy);
+      ctx.fillStyle = "rgba(240,230,216,.62)"; ctx.font = `italic 500 26px ${FONT.serif}`; ctx.fillText("casa", n.x, nome + 38 + dy);
     } else {
-      const base = sopra ? n.y - 118 : n.y + 64;
+      const base = sopra ? Math.min(n.y - 118, n.y + 40 + ing.alto - MARGINE - 86 - 8) : Math.max(n.y + 64, n.y + 40 + ing.basso + MARGINE + 8);
       const vv = ctx.createRadialGradient(n.x, base + 30 + dy, 10, n.x, base + 30 + dy, 210);
       vv.addColorStop(0, "rgba(5,8,14,.74)"); vv.addColorStop(1, "rgba(5,8,14,0)");
       ctx.fillStyle = vv; ctx.fillRect(n.x - 230, base - 60 + dy, 460, 190);

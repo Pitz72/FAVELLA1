@@ -56,7 +56,7 @@ export function seguiPreparazione(f: (k: number) => void): () => void {
 export function avviaPreparazione(c: Cache = cacheTrailer, avanza?: (k: number) => void): Promise<void> {
   if (inCorso) return inCorso;
   inCorso = (async () => {
-    const famiglie = [`500 24px ${FONT.serif}`, `italic 500 24px ${FONT.serif}`, `700 24px ${FONT.display}`, `800 24px ${FONT.display}`, `600 24px ${FONT.display}`, `500 24px ${FONT.mono}`, `600 24px ${FONT.mono}`, `700 24px ${FONT.mono}`];
+    const famiglie = [`500 24px ${FONT.serif}`, `italic 500 24px ${FONT.serif}`, `700 24px ${FONT.display}`, `800 24px ${FONT.display}`, `600 24px ${FONT.display}`, `500 24px ${FONT.mono}`, `400 24px ${FONT.mano}`, `600 24px ${FONT.mono}`, `700 24px ${FONT.mono}`];
     const attesa = Promise.all(famiglie.map((f) => document.fonts?.load(f).catch(() => null)));
     await Promise.race([attesa, new Promise((r) => setTimeout(r, 2500))]);
     const tempi: string[] = [];

@@ -8,23 +8,23 @@
 //  aperte: è Cosimo. Da destra arriva il viandante, e si ferma.
 // ====================================================================
 import { W, H, CAMMINATE, faseDiPasso } from "../scaletta";
-import { easeInOut, lerp, rng, rgba, seg } from "../tempo";
+import { easeInOut, lerp, rng, seg } from "../tempo";
 import type { Cache } from "../cache";
-import { alone, camera, cielo, crinale, nuvole, nuvoleScorrono, pulviscolo, type C2D } from "../pittura";
-import { creaTela, ctxDi, fbmPeriodico, riempi, type Tela } from "../texture";
+import { alone, camera, cielo, crinale, disegnaRaggio, nuvole, nuvoleScorrono, pulviscolo, raggioMorbido, type C2D, type RaggioMorbido } from "../pittura";
+import { creaTelaR, fbmPeriodico, riempi, type Tela } from "../texture";
 import { disegnaViandante, velocitaSuolo } from "../viandante";
 
 const AMP = 0.4;
 const RIVA = 662;
 
-interface StatoGuado { citta: Tela; sassi: Tela; nubi: Tela; colline: Tela }
+interface StatoGuado { citta: Tela; sassi: Tela; nubi: Tela; colline: Tela; raggi: RaggioMorbido[] }
 
 // --------------------------------------------------------------------
 //  Acquamorta, sull'altra riva: case, tetti crollati, il campanile, la torre dell'acqua
 // --------------------------------------------------------------------
 function cittaTela(): Tela {
   const w = 1300, h = 300, base = 250;
-  const t = creaTela(w, h), g = ctxDi(t), r = rng(61);
+  const { tela: t, g } = creaTelaR(w, h), r = rng(61);
   g.fillStyle = "#12050b";
   const luce = "rgba(255,130,96,.75)";
   let x = 30;
@@ -73,13 +73,13 @@ function cittaTela(): Tela {
 // --------------------------------------------------------------------
 async function sassiTela(): Promise<Tela> {
   const w = W + 400, h = 400;
-  const t = creaTela(w, h), g = ctxDi(t), r = rng(91);
+  const { tela: t, g } = creaTelaR(w, h), r = rng(91);
   const fondo = g.createLinearGradient(0, 0, 0, h);
   fondo.addColorStop(0, "#28101a"); fondo.addColorStop(0.5, "#1c0b12"); fondo.addColorStop(1, "#12070c");
   g.fillStyle = fondo; g.fillRect(0, 0, w, h);
   const n = fbmPeriodico(2, 10, 3, 0);
   const grana = await riempi(w, h, (x, y, px) => { const v = n(x / w * 10, y / 40) * 30; px[0] = v > 0 ? 255 : 0; px[1] = v > 0 ? 190 : 0; px[2] = v > 0 ? 160 : 0; px[3] = Math.abs(v) * 1.4; });
-  g.drawImage(grana, 0, 0);
+  g.drawImage(grana, 0, 0, w, h);
   const sassi: { x: number; y: number; rx: number; ry: number; a: number }[] = [];
   for (let i = 0; i < 620; i++) {
     const y = Math.pow(r(), 1.7) * h, prof = y / h;
@@ -113,7 +113,15 @@ export async function preparaGuado(c: Cache) {
       chiaro: "#ff9a6a", scuro: "#4a1226", alto: 0.25, basso: 0.55 }),
     colline: await crinale({ seme: 808, larghezza: 1920, altezza: 200, base: 120, ampiezza: 60, frequenza: 3, aspro: 0.4, luce: -1,
       chiaro: "#9a3a3c", scuro: "#2c0d1c", nebbia: "#7a2a36", nebbiaForza: 0.5, grana: 0.1 }),
+    raggi: [],
   };
+  // gli otto raggi del sole, con i bordi morbidi (uno per ogni apertura)
+  const sprite = new Map<number, RaggioMorbido>();
+  for (let i = 0; i < 8; i++) {
+    const w2 = 0.05 + ((i * 41) % 7) * 0.01;
+    if (!sprite.has(w2)) sprite.set(w2, raggioMorbido(1500, w2, 40, 1300, "#ff9a6a"));
+    s.raggi.push(sprite.get(w2) as RaggioMorbido);
+  }
   c.guado = s;
 }
 
@@ -146,18 +154,14 @@ export function disegnaGuado(ctx: C2D, t: number, c: Cache) {
   ctx.save(); ctx.translate(380, 668);
   for (let i = 0; i < 8; i++) {
     const ang = -Math.PI * (0.08 + i * 0.12);
-    const w2 = 0.05 + ((i * 41) % 7) * 0.01;
-    const gr = ctx.createRadialGradient(0, 0, 40, 0, 0, 1300);
-    gr.addColorStop(0, rgba("#ff9a6a", (0.09 + 0.05 * Math.sin(t * 0.7 + i * 1.9)))); gr.addColorStop(1, rgba("#ff9a6a", 0));
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(ang - w2) * 1500, Math.sin(ang - w2) * 1500); ctx.lineTo(Math.cos(ang + w2) * 1500, Math.sin(ang + w2) * 1500); ctx.closePath(); ctx.fill();
+    disegnaRaggio(ctx, a.raggi[i], ang, 1.3 * (0.09 + 0.05 * Math.sin(t * 0.7 + i * 1.9)));
   }
   ctx.restore();
   ctx.globalCompositeOperation = "source-over";
 
   // ── colline dietro, poi Acquamorta sull'altra riva
   ctx.drawImage(a.colline, 0, 470);
-  ctx.drawImage(a.citta, 30, RIVA - 250 + 4);
+  ctx.drawImage(a.citta, 30, RIVA - 250 + 4, 1300, 300);
   // foschia bassa: la calura della sera sale dall'acqua
   cielo(ctx, [[0, "rgba(255,150,100,0)"], [1, "rgba(255,150,100,.30)"]], 610, 700);
 
@@ -167,7 +171,7 @@ export function disegnaGuado(ctx: C2D, t: number, c: Cache) {
   gw.addColorStop(0, "#e07a52"); gw.addColorStop(0.35, "#a63f44"); gw.addColorStop(1, "#3b1220");
   ctx.fillStyle = gw; ctx.fillRect(-100, ay, W + 200, 110);
   // il riflesso della città: la stessa sagoma capovolta e sfumata
-  ctx.save(); ctx.globalAlpha = 0.34; ctx.translate(30, ay); ctx.scale(1, -0.55); ctx.drawImage(a.citta, 0, -250); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.34; ctx.translate(30, ay); ctx.scale(1, -0.55); ctx.drawImage(a.citta, 0, -250, 1300, 300); ctx.restore();
   // il bagliore del sole sull'acqua: una colonna di scintille
   ctx.globalCompositeOperation = "lighter";
   const rr = rng(12);
@@ -204,11 +208,11 @@ export function disegnaGuado(ctx: C2D, t: number, c: Cache) {
   });
 
   // ── il viandante arriva da destra e si ferma
-  const ferma = easeInOut(seg(l, 3.8, 4.6));
+  const ferma = easeInOut(seg(l, 3.6, 4.4));                 // finisce di fermarsi a 64,0, sul colpo grave del brano
   const avanza = l < 4.6 ? l : 4.6;
   const cam = CAMMINATE[3];
   const vx = 1720 - avanza * velocitaSuolo(342, cam.cad, AMP) * 0.95 + ferma * 6;
-  const fase = cam ? faseDiPasso(Math.min(t, 64.2), cam) - 0.25 : 0;
+  const fase = cam ? faseDiPasso(Math.min(t, 64.0), cam) - 0.25 : 0;
   // da fermo il braccio si scosta un poco dal fianco: la tanica pende fuori dal cappotto e si legge anche in controluce
   const optV = { colore: "#08030a", tanica: true, fagotto: true, cappello: true, ampiezza: AMP, fermo: ferma, respiro, braccia: 0.27 } as const;
   ombraVerso(ctx, vx + 24, 900, 342, fase, { ...optV, verso: -1 }, 0.55, 0.32);

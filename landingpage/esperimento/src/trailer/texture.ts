@@ -18,6 +18,20 @@ export const creaTela = (w: number, h: number): Tela => {
 
 export const ctxDi = (t: Tela) => t.getContext("2d", { willReadFrequently: false })!;
 
+/** Quanti pixel di tela per ogni unità di progetto (1920×1080) nelle tele statiche: 2 = nitide anche con la tela a 3840. */
+export const RES_TELE = 2;
+
+/**
+ * Una tela statica di `w × h` unità di progetto, dipinta a RES_TELE: il pennello è già scalato, si disegna
+ * in unità di progetto come sempre. Chi la copia sul quadro dà le dimensioni di progetto (`drawImage(t, x, y, w, h)`).
+ */
+export function creaTelaR(w: number, h: number): { tela: Tela; g: CanvasRenderingContext2D } {
+  const tela = creaTela(w * RES_TELE, h * RES_TELE);
+  const g = ctxDi(tela);
+  g.scale(RES_TELE, RES_TELE);
+  return { tela, g };
+}
+
 /** La sfocatura del canvas c'è (Chrome, Electron); dove manca, si disegna nitido. */
 export const haSfocatura = (() => {
   try {
@@ -91,6 +105,28 @@ export function fbmPeriodico(seme: number, periodo: number, ottave = 4, periodoY
     let s = 0, amp = 1, norma = 0;
     for (let i = 0; i < ottave; i++) { s += ns[i](x * 2 ** i, y * 2 ** i) * amp; norma += amp; amp *= 0.5; }
     return s / norma;
+  };
+}
+
+/**
+ * Un campo lento (toni a zone, umidità, larghezza delle fessure): `f` si calcola solo ogni `passo` pixel
+ * e il resto si interpola, con ritorno periodico in x e y (la tessera si salda). Costa una frazione del
+ * rumore calcolato su ogni pixel. `w` e `h` devono essere multipli di `passo`.
+ */
+export function campoLento(f: (x: number, y: number) => number, w: number, h: number, passo: number, periodico = true) {
+  // periodico: i punti sono w/passo × h/passo e il campo si richiude su se stesso; altrimenti c'è un punto in più per lato e i bordi tengono il loro valore
+  const nx = Math.ceil(w / passo) + (periodico ? 0 : 1), ny = Math.ceil(h / passo) + (periodico ? 0 : 1);
+  const v = new Float32Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) v[j * nx + i] = f(i * passo, j * passo);
+  const fuori = periodico
+    ? (i: number, n: number) => ((i % n) + n) % n
+    : (i: number, n: number) => (i < 0 ? 0 : i >= n ? n - 1 : i);
+  return (x: number, y: number): number => {
+    const gx = x / passo, gy = y / passo;
+    const i0 = Math.floor(gx), j0 = Math.floor(gy), fx = gx - i0, fy = gy - j0;
+    const a = fuori(i0, nx), b = fuori(i0 + 1, nx), c = fuori(j0, ny), d = fuori(j0 + 1, ny);
+    const top = v[c * nx + a] * (1 - fx) + v[c * nx + b] * fx, bot = v[d * nx + a] * (1 - fx) + v[d * nx + b] * fx;
+    return top * (1 - fy) + bot * fy;
   };
 }
 
