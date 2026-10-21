@@ -6,7 +6,9 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
-> ✅ **STATO AL 2026-10-20: motore 1.5.0, sito 2.10.0.**
+> ✅ **STATO AL 2026-10-21: motore 1.5.0, sito 2.11.0.**
+> `esperimento/` resta alla 1.23.0 anche dopo la release desktop 1.35.0: per decisione di
+> Simone è la versione web definitiva del gioco, e non si risincronizza con la desktop.
 > I cinque moduli in `engine/` sono il motore **1.5.0**: il motore parla per
 > eventi e propone i pulsanti-verbo, e `src/lib/favellaRuntime.ts` li usa
 > (cassette-gioco con i pulsanti, `src/components/PulsantiVerbo.tsx`). Sono

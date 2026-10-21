@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NEWS, UPDATE_LOGS, RELEASES_URL, VERSION } from "../constants";
 import type { NewsItem } from "../constants";
 import ManualBanner from "../components/ManualBanner";
+import { ViaggiatoreKeyArt } from "../components/ViaggiatoreBanner";
 import { Link } from "../router";
 import { Btn, Ink, PageHero, Reveal, SectionHead, Spot } from "../ui/primitives";
 
@@ -66,18 +67,23 @@ const UpdatesPage = () => {
         <section className="px-6 pb-8">
           <div className="mx-auto max-w-[1180px]">
             <Reveal>
-              <div className="relative overflow-hidden rounded-[32px] border border-favella-cyan/25 bg-[radial-gradient(70%_120%_at_100%_0%,rgba(34,211,238,0.16),transparent_60%),radial-gradient(60%_90%_at_0%_100%,rgba(245,158,11,0.10),transparent_60%),linear-gradient(180deg,#0b1a28,#060d17)] px-8 py-11 md:px-14 md:py-14">
-                <div className="mb-5 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-brand-gradient px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-favella-void">
-                    {featured.tag}
-                  </span>
-                  <span className="font-mono text-[12px] text-favella-text-muted">{featured.date}</span>
+              <div className="relative overflow-hidden rounded-[32px] border border-favella-cyan/25 bg-[radial-gradient(70%_120%_at_100%_0%,rgba(34,211,238,0.16),transparent_60%),radial-gradient(60%_90%_at_0%_100%,rgba(245,158,11,0.10),transparent_60%),linear-gradient(180deg,#0b1a28,#060d17)]">
+                {featured.image === "viaggiatore" && (
+                  <ViaggiatoreKeyArt sizes="(min-width: 1228px) 1180px, calc(100vw - 48px)" className="border-b border-favella-cyan/15" />
+                )}
+                <div className="px-8 py-11 md:px-14 md:py-14">
+                  <div className="mb-5 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full bg-brand-gradient px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-favella-void">
+                      {featured.tag}
+                    </span>
+                    <span className="font-mono text-[12px] text-favella-text-muted">{featured.date}</span>
+                  </div>
+                  <h2 className="mb-5 max-w-[860px] font-display text-[clamp(30px,4.4vw,54px)] font-bold leading-[1.04] tracking-[-0.04em] text-favella-text-primary">
+                    {featured.title}
+                  </h2>
+                  <p className="mb-7 max-w-[820px] font-serif text-[17.5px] leading-[1.75] text-[#c4d3e2]">{featured.body}</p>
+                  {featured.cta && <CtaLink label={featured.cta.label} href={featured.cta.href} />}
                 </div>
-                <h2 className="mb-5 max-w-[860px] font-display text-[clamp(30px,4.4vw,54px)] font-bold leading-[1.04] tracking-[-0.04em] text-favella-text-primary">
-                  {featured.title}
-                </h2>
-                <p className="mb-7 max-w-[820px] font-serif text-[17.5px] leading-[1.75] text-[#c4d3e2]">{featured.body}</p>
-                {featured.cta && <CtaLink label={featured.cta.label} href={featured.cta.href} />}
               </div>
             </Reveal>
           </div>

@@ -63,7 +63,11 @@ export const SITE_URL = "https://favella.eu";
 // · 2.10.0 = Il Viaggiatore 1.23.0, doppiato per intero: /esperimento con la voce (circa un'ora, sedici voci,
 //   trailer compreso) e il cartello delle licenze e dei crediti; la storia della galleria alla 1.23.0; il
 //   carattere del biglietto (Covered By Your Grace, OFL); notizia, banner e privacy aggiornati.
-export const SITE_VERSION = "2.10.0";
+// · 2.11.0 = Il Viaggiatore 1.35.0, la versione desktop più completa: la key art nuova (il guado di Acquamorta
+//   al tramonto) nel banner della Galleria e nella notizia in evidenza, in webp in public/viaggiatore/; il banner
+//   distingue la web (1.23.0, definitiva, /esperimento invariato) dalla desktop (1.35.0, Windows e Linux, coi suoi
+//   plus); i link di download puntano alla release v1.35.0.
+export const SITE_VERSION = "2.11.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -82,10 +86,16 @@ const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
 export const GITHUB_SITO_URL = `${_REPO}/landingpage`;
 // Il Viaggiatore: dal settembre 2026 è un gioco a sé, con repository e release propri.
 export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-favella";
-// Sempre l'ultima release: oggi la 1.23.0 (desktop e web), col motore FAVELLA 1.5.0 e il doppiaggio integrale. La
-// storia è quella della 1.12.0, la definitiva (con titolo, autore e «(voluto)» della 1.14.0 e le rifiniture di testo
-// della 1.15–1.16).
-export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/latest`;
+// Dal 21 ottobre 2026 il gioco ha due versioni, e Simone ha deciso che restano così. La web (GitHub Pages e
+// /esperimento qui sul sito) è la 1.23.0 ed è definitiva: la storia intera, doppiata, col trailer. La desktop
+// (Windows e Linux) è la 1.35.0, la più completa: raccoglie dalla 1.24 alla 1.35 le opzioni a schede, la pausa, i
+// salvataggi con nome e rapidi, trenta trofei, la musica delle zone e la sequenza finale coi titoli di coda. La storia
+// è quella della 1.12.0, la definitiva (con titolo, autore e «(voluto)» della 1.14.0 e le rifiniture di testo della
+// 1.15–1.16), col motore FAVELLA 1.5.0 e il doppiaggio integrale.
+export const VIAGGIATORE_WEB_VERSION = "1.23.0";
+export const VIAGGIATORE_DESKTOP_VERSION = "1.35.0";
+export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/tag/v${VIAGGIATORE_DESKTOP_VERSION}`;
+export const VIAGGIATORE_PAGES_URL = "https://pitz72.github.io/il-viaggiatore-favella/";
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
@@ -207,6 +217,8 @@ export interface NewsItem {
   cta?: { label: string; href: string };
   // Illustrazione opzionale della card (es. il punto interrogativo del teaser).
   art?: "question";
+  // Immagine di testa della notizia in evidenza: «viaggiatore» = la key art del gioco.
+  image?: "viaggiatore";
 }
 
 export const NEWS: NewsItem[] = [
@@ -214,6 +226,15 @@ export const NEWS: NewsItem[] = [
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
     emphasis: "primary",
+    image: "viaggiatore",
+    title: "Il Viaggiatore 1.35: la versione desktop, la più completa",
+    body: "Il Viaggiatore ha una versione desktop nuova, la 1.35.0, per Windows e Linux: raccoglie in una release sola il lavoro dalla 1.24 alla 1.35. La storia, i testi e il doppiaggio sono quelli della 1.23, e le partite salvate prima si caricano; cambia il gioco intorno alla storia. Le opzioni stanno in un pannello a schede: i volumi di musica, voce ed effetti, l'alta accessibilità (contrasto alto, testo più grande, movimento ridotto), la finestra o lo schermo intero, la qualità della grafica. Esc mette in pausa e c'è un menu d'avvio. I salvataggi sono quanti se ne vuole, ciascuno col suo nome e la miniatura del panorama; F5 salva al volo, F9 ricarica. I trofei sono trenta, in sei famiglie. Ogni zona ha la sua musica, dalla colonna sonora di The Runtimers, e l'album si scarica dagli Extra. Dopo uno dei sei finali arriva la sequenza finale: Acquamorta al tramonto, la notte, i titoli di coda e la canzone «La mano sa ancora la forma». Le versioni web, su GitHub Pages e qui nella prova sul sito, restano alla 1.23 e sono definitive così: la storia intera, doppiata, col trailer. Le musiche di The Runtimers, generate con Lyria 3.5 di Google, stanno fuori dalla licenza libera, come le voci ElevenLabs di quattro personaggi.",
+    cta: { label: "Scarica Il Viaggiatore 1.35", href: VIAGGIATORE_RELEASE_URL },
+  },
+  {
+    tag: "Il Viaggiatore",
+    date: "Ottobre 2026",
+    emphasis: "normal",
     title: "Il Viaggiatore 1.23: il racconto ha una voce",
     body: "Il Viaggiatore ora si ascolta: dalla 1.19 alla 1.23 il gioco è stato doppiato per intero con la sintesi vocale, circa un'ora di parlato in sedici voci. Il narratore legge le descrizioni e le scelte, ognuno dei quattordici personaggi ha la sua voce e il suo tono per ogni battuta, una voce di servizio dice i suggerimenti e le scorte d'acqua e di cibo, composte numero per numero; anche il trailer d'apertura è letto dal narratore, con la musica che gli scende sotto. La voce segue il testo che il motore FAVELLA stampa, si ferma al primo tasto e si ripete con F2; le risposte di un dialogo si ascoltano passandoci sopra. Chi usa un lettore di schermo può lasciare a lui la lettura, dal pulsante «♪ voce». Dopo i loghi c'è ora il cartello delle licenze e dei crediti: storia, testi, musica, grafica e voci Google Gemini sotto CC BY-SA 4.0, il codice e il motore sotto MIT; le voci ElevenLabs di Imma, Rosaria, Tore e Vito (elevenlabs.io) sono fuori dalla licenza libera e solo per uso non commerciale. La storia resta quella della 1.12.0, e la prova qui sul sito ha la voce anche lei.",
     cta: { label: "Ascoltalo nel browser", href: "/esperimento/" },
