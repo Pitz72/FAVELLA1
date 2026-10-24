@@ -8181,6 +8181,26 @@ _CORPUS_GUARDIA_160 = (
     "Definisci \"riposa un poco\" come: diminuisci la sete e adesso aumenta il vigore.\n"
     "\"pernotta\" è un comando senza oggetto.\n"
     "Invece di pernotta: dire \"Dormi.\" e adesso esegui riposa un poco e adesso aumenta la sete.\n"
+    # [B1] Oggetti contabili: dichiarazione con concordanza DICHIARATA, quantità
+    # iniziali (inventario, stanza, contenitore), condizioni (almeno/più di/meno
+    # di/esatto/finite/finiti). Convivono con tutto il resto della 1.6.0.
+    "La pozione, plurale \"pozioni\", è contabile.\nLa pozione è prendibile.\n"
+    "La freccia, plurale \"frecce\", è contabile.\nLa freccia è prendibile.\n"
+    "Il dardo, plurale \"dardi\", è contabile.\nIl dardo è prendibile.\n"
+    "La bisaccia è un contenitore.\nLa bisaccia è nella cella.\n"
+    "Il giocatore ha 3 pozioni.\n"
+    "Ci sono 5 frecce in la bisaccia.\n"
+    "Ci sono 2 pozioni in la gola.\n"
+    "Ci sono 4 dardi in la cripta.\n"
+    "\"conta\" è un comando senza oggetto.\n"
+    "Invece di conta se il giocatore ha almeno 2 pozioni: dire \"Scorte: [quante pozioni].\".\n"
+    "Invece di conta se non restano pozioni: dire \"Vuoto.\".\n"
+    "\"stima\" è un comando senza oggetto.\n"
+    "Invece di stima se il giocatore ha più di 2 frecce: dire \"Molte frecce.\".\n"
+    "Invece di stima se il giocatore ha meno di 1 frecce: dire \"Nessuna freccia.\".\n"
+    "\"pari\" è un comando senza oggetto.\n"
+    "Invece di pari se il giocatore ha 3 pozioni: dire \"Esatte tre.\".\n"
+    "Invece di pari se non restano più dardi: dire \"Niente dardi.\".\n"
 )
 
 
@@ -8691,6 +8711,141 @@ def test_160_guardia_lalr_frasi_nuove():
     _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
     mondo, log = compila(_CORPUS_GUARDIA_160)
     _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
+
+
+# --- [1.6.0 / B1] Oggetti contabili ------------------------------------------
+
+_B1_BASE = (
+    "Il titolo è \"B1\".\n"
+    "La cella è una stanza.\nLa dispensa è una stanza.\n"
+    "La cella collega nord a la dispensa.\n"
+    "Il giocatore comincia nella cella.\n"
+    "La pozione, plurale \"pozioni\", è contabile.\nLa pozione è prendibile.\n"
+    "La freccia, plurale \"frecce\", è contabile.\nLa freccia è prendibile.\n"
+    "La faretra è un contenitore.\nLa faretra è nella cella.\n"
+)
+
+
+def test_160_b1_dichiarazione():
+    print("[1.6.0 / B1: dichiarazione con concordanza dichiarata]")
+    mondo, log = compila(_B1_BASE)
+    _check(mondo is not None, f"compila {'' if mondo else log[-300:]}")
+    poz = mondo.trova_oggetto("pozione")
+    _check(poz is not None and poz.contabile, "la pozione è contabile")
+    _check(poz.plurale == "pozioni", "il plurale dichiarato è 'pozioni' (non indovinato)")
+    _check(mondo.plurali.get("pozioni") == "pozione", "la forma plurale mappa all'id singolare")
+    _check(mondo.trova_oggetto("pozioni") is poz, "trova_oggetto('pozioni') risolve all'oggetto")
+    _check(mondo.canonizza("frecce") == "freccia", "canonizza('frecce') -> 'freccia'")
+
+
+def test_160_b1_quantita_iniziali():
+    print("[1.6.0 / B1: quantità iniziali in inventario, stanza e contenitore]")
+    src = _B1_BASE + ("Il giocatore ha 3 pozioni.\n"
+                      "Ci sono 5 frecce in la faretra.\n"
+                      "Ci sono 2 pozioni in la dispensa.\n")
+    mondo, log = compila(src)
+    _check(mondo is not None, f"compila {'' if mondo else log[-300:]}")
+    _check(mondo.quantita_posseduta("pozione") == 3, "3 pozioni in inventario")
+    _check(mondo.quantita_in("freccia", "faretra") == 5, "5 frecce nel contenitore")
+    _check(mondo.quantita_in("pozione", "dispensa") == 2, "2 pozioni in una stanza")
+    _check("freccia" in mondo.trova_oggetto("faretra").contenuto, "marker: la freccia è nel contenuto della faretra")
+    _check("pozione" in mondo.inventario, "marker: la pozione è in inventario")
+    # Collocazione standard di un contabile = 1 copia.
+    src2 = _B1_BASE + "La pozione è nella dispensa.\n"
+    mondo2, _ = compila(src2)
+    _check(mondo2.quantita_in("pozione", "dispensa") == 1,
+           "una collocazione standard vale 1 copia")
+
+
+def test_160_b1_prendi_lascia():
+    print("[1.6.0 / B1: prendi/lascia N con concordanza negli elenchi]")
+    src = _B1_BASE + ("Ci sono 5 frecce in la faretra.\n"
+                      "Ci sono 4 pozioni in la cella.\n")
+    mondo = runtime(src)
+    out = esegui(mondo, "guarda")
+    _check("4 pozioni" in out, "l'elenco della stanza concorda al plurale (4 pozioni)")
+    _check("Nella faretra: 5 frecce." in out, "il contenuto del contenitore concorda (5 frecce)")
+    out = esegui(mondo, "prendi 2 pozioni")
+    _check("Hai preso 2 pozioni." in out, "prendi 2 pozioni")
+    _check(mondo.quantita_posseduta("pozione") == 2 and mondo.quantita_in("pozione", "cella") == 2,
+           "2 prese, 2 restano nella stanza (stack diviso)")
+    out = esegui(mondo, "prendi una pozione")
+    _check("Hai preso 1 pozione." in out, "prendi una pozione -> singolare concordato")
+    _check(mondo.quantita_posseduta("pozione") == 3, "ora 3 in inventario")
+    out = esegui(mondo, "prendi le pozioni")
+    _check(mondo.quantita_posseduta("pozione") == 4 and mondo.quantita_in("pozione", "cella") == 0,
+           "senza numero prende 1 (default); ne restava 1, ora la stanza è vuota")
+    out = esegui(mondo, "inventario")
+    _check("4 pozioni" in out, "l'inventario mostra le copie concordate")
+    out = esegui(mondo, "prendi tutte le frecce")
+    _check("Hai preso 5 frecce." in out and mondo.quantita_posseduta("freccia") == 5, "prendi tutte -> tutte le copie")
+    out = esegui(mondo, "lascia 2 frecce")
+    _check("Hai lasciato 2 frecce." in out, "lascia 2 frecce")
+    _check(mondo.quantita_in("freccia", "cella") == 2 and mondo.quantita_posseduta("freccia") == 3,
+           "2 lasciate nella stanza corrente, 3 restano con sé")
+    out = esegui(mondo, "prendi una pozione")
+    _check("Non ne vedi qui da prendere." in out, "niente da prendere se non ci sono copie qui")
+
+
+def test_160_b1_consuma():
+    print("[1.6.0 / B1: consumare N copie]")
+    src = _B1_BASE + "Il giocatore ha 3 pozioni.\n"
+    mondo = runtime(src)
+    out = esegui(mondo, "consuma una pozione")
+    _check("Consumi 1 pozione." in out, "consuma una pozione")
+    _check(mondo.quantita_posseduta("pozione") == 2, "ne restano 2")
+    out = esegui(mondo, "consuma 5 pozioni")
+    _check(mondo.quantita_posseduta("pozione") == 0, "consumare più del posseduto svuota (non va sotto zero)")
+    out = esegui(mondo, "consuma una pozione")
+    _check("Consumi" not in out and mondo.quantita_posseduta("pozione") == 0,
+           "a zero copie non si consuma altro")
+
+
+def test_160_b1_condizioni():
+    print("[1.6.0 / B1: condizioni sulle scorte e interpolazione [quante …]]")
+    src = _B1_BASE + ("Il giocatore ha 2 pozioni.\n"
+                      "\"conta\" è un comando senza oggetto.\n"
+                      "Invece di conta se il giocatore ha almeno 2 pozioni: dire \"Molte: [quante pozioni].\".\n"
+                      "Invece di conta se non restano pozioni: dire \"Vuoto.\".\n"
+                      "\"stima\" è un comando senza oggetto.\n"
+                      "Invece di stima se il giocatore ha più di 1 pozioni: dire \"Più di una.\".\n"
+                      "Invece di stima se il giocatore ha meno di 1 pozioni: dire \"Meno di una.\".\n")
+    mondo = runtime(src)
+    _check("Molte: 2." in esegui(mondo, "conta"), "ha almeno 2 (con [quante pozioni]=2)")
+    _check("Più di una." in esegui(mondo, "stima"), "ha più di 1")
+    esegui(mondo, "consuma 2 pozioni")
+    _check("Vuoto." in esegui(mondo, "conta"), "non restano pozioni (scorta a 0)")
+    _check("Meno di una." in esegui(mondo, "stima"), "ha meno di 1")
+
+
+def test_160_b1_annulla():
+    print("[1.6.0 / B1: ANNULLA riavvolge le quantità]")
+    src = _B1_BASE + "Ci sono 4 pozioni in la cella.\n"
+    mondo = runtime(src)
+    esegui(mondo, "prendi 3 pozioni")
+    _check(mondo.quantita_posseduta("pozione") == 3 and mondo.quantita_in("pozione", "cella") == 1,
+           "dopo prendi 3: 3 con sé, 1 nella stanza")
+    esegui(mondo, "annulla")
+    _check(mondo.quantita_posseduta("pozione") == 0 and mondo.quantita_in("pozione", "cella") == 4,
+           "ANNULLA ripristina 0 con sé e 4 nella stanza")
+
+
+def test_160_b1_errori_dautore():
+    print("[1.6.0 / B1: errori d'autore gentili]")
+    # contabile + contenitore insieme
+    m1, log1 = compila("La cella è una stanza.\nLa cassa è un contenitore.\n"
+                       "La cassa, plurale \"casse\", è contabile.\n")
+    _check(m1 is None and "cosa semplice" in log1, "contabile + contenitore: errore gentile")
+    # quantità su un oggetto NON contabile
+    m2, log2 = compila("La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+                       "La mela è una cosa.\nIl giocatore ha 3 mele.\n")
+    _check(m2 is None, "quantità su un oggetto non contabile: errore")
+    # condizione di scorta su un non contabile
+    m3, log3 = compila("La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+                       "La mela è una cosa.\n\"x\" è un comando senza oggetto.\n"
+                       "Invece di x se il giocatore ha almeno 2 mela: dire \"no\".\n")
+    _check(m3 is None and "contabile" in log3, "condizione di scorta su un non contabile: errore")
+
 
 
 def main():
@@ -9233,6 +9388,13 @@ def main():
         test_160_procedure_ricorsione,
         test_studio_160_procedure_round_trip,
         test_160_guardia_lalr_frasi_nuove,
+        test_160_b1_dichiarazione,
+        test_160_b1_quantita_iniziali,
+        test_160_b1_prendi_lascia,
+        test_160_b1_consuma,
+        test_160_b1_condizioni,
+        test_160_b1_annulla,
+        test_160_b1_errori_dautore,
     ]
     print("=" * 60)
     print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")

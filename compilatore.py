@@ -976,11 +976,16 @@ _GRAMMAR_TEMPLATE = r"""
     cond_pq_gte: "il" "giocatore" "ha" "almeno" _numero ENTITA
     cond_pq_gt: "il" "giocatore" "ha" "più" "di" _numero ENTITA
     cond_pq_lt: "il" "giocatore" "ha" "meno" "di" _numero ENTITA
-    // [1.6.0 / B1] Scorta esaurita: 'se le pozioni sono finite' (o 'finiti' per un
-    // nome maschile plurale). "finite"/"finiti" sono keyword riservate nuove: dopo
-    // 'ENTITA _copula' vincono su PROPRIETA (priorità più alta), come già "di
-    // scena" / "anche" → LALR(1) 0-ambiguo. Vero quando il giocatore non ne ha più.
-    cond_scorta_finita: ENTITA _copula ( "finite" | "finiti" )
+    // [1.6.0 / B1] Scorta esaurita: 'se non restano pozioni' (o 'se non restano
+    // più pozioni'). Scelta deliberata della forma: 'le pozioni sono finite'
+    // metterebbe un AGGETTIVO nudo dopo la copula, che collide con PROPRIETA
+    // ('ENTITA _copula PROPRIETA', cond_proprieta) — due letture complete della
+    // stessa frase (ambiguità reale per la guardia Earley, benché LALR la risolva
+    // per priorità). La forma 'non restano … ENTITA' parte dalla keyword "non"
+    // (come cond_non_gruppo, che però prosegue con "("): dopo "non" il lookahead
+    // "restano" è disgiunto → LALR(1) 0-ambiguo e Earley 0-ambiguo. Vero quando il
+    // giocatore non ha più copie del contabile.
+    cond_scorta_finita: "non" "restano" "più"? ENTITA
     // [0.18.0 / B1] Posizione del giocatore: 'se il giocatore è in [stanza]'.
     // Dopo 'il giocatore' il lookahead distingue "ha"/"non ha" (possesso) dalla
     // copula è/sono (posizione) → LALR(1) 0-ambiguo.
