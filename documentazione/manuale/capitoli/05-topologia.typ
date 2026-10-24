@@ -149,6 +149,37 @@ e il turno non passa. Una conseguenza `collega` o `non collega più` sulla stess
 toglie la condizione. È la forma da preferire a una regola `Invece di vai` che fa da
 porta: l'uscita chiusa non si vede, e il collaudo la conosce.
 
+== Passaggi a senso unico
+
+Finora ogni collegamento si percorre nei due versi: dichiarato `L'ingresso collega
+nord a il salotto.`, il ritorno a sud nasce da solo. A volte però vuoi un passaggio
+da cui non si torna indietro — ci si cala in un pozzo, si scivola in una botola.
+Dalla versione 1.6 lo dici aggiungendo `senza ritorno` in coda al collegamento.
+
+#sintassi[
+  `[Stanza A] collega [direzione] a [Stanza B] senza ritorno.`
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+La botola collega giù a il pozzo senza ritorno.
+La soglia collega nord a l'abisso se il sigillo è rotto senza ritorno.
+```)
+]
+
+Si crea la sola uscita dalla botola verso il pozzo; dal pozzo non si risale per la
+botola, a meno che tu non apra un altro passaggio. Il `senza ritorno` sta sempre
+*in fondo*, anche dopo una condizione `se …; altrimenti "…"`. Le conseguenze
+`collega` e `non collega più` non cambiano: il senso unico è una scelta della sola
+dichiarazione.
+
+#tranello[
+  È facile tagliare fuori il giocatore senza accorgersene: un `senza ritorno` verso
+  una stanza da cui non parte nessun'altra uscita è una trappola a tutti gli effetti.
+  Il collaudo di vincibilità (`favella1 collaudo`) se ne accorge e ti segnala le
+  stanze che diventano irraggiungibili.
+]
+
 #prova[
   Aggiungi una nuova stanza, il `sottoscala`, e collegala alla cantina con una
   coppia di direzioni tutta tua (per esempio `dentro` e `fuori`). Poi parti

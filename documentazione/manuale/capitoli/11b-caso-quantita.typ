@@ -73,6 +73,32 @@ guerriero, una relazione che cambia da sé man mano che i due numeri si muovono.
   *misurarli*.
 ]
 
+== Contare le scorte
+
+Gli *oggetti contabili* del capitolo «Gli oggetti» — le pozioni, le frecce —
+portano con sé una quantità, e quella quantità si interroga quasi come un contatore.
+Le condizioni guardano quante copie il giocatore ha in mano:
+
+#sintassi[
+  `se il giocatore ha [N] [plurale]` — esattamente N \
+  `se il giocatore ha almeno [N] [plurale]` — N o più \
+  `se il giocatore ha più di [N] [plurale]` — strettamente più \
+  `se il giocatore ha meno di [N] [plurale]` — strettamente meno \
+  `se non restano [plurale]` — scorta esaurita
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+Invece di bevi se il giocatore ha almeno 2 pozioni: dire "Ne hai ancora [quante pozioni]." e adesso consuma una pozione.
+Invece di bevi se non restano pozioni: dire "La sacca è vuota.".
+```)
+]
+
+L'interpolazione `[quante pozioni]` (o `[quanti …]`) rende il numero di copie
+possedute, da mostrare in un testo come faresti con un contatore. Le condizioni di
+scorta valgono solo per un oggetto dichiarato contabile; su un oggetto qualunque
+FAVELLA te lo fa notare.
+
 == Tirare i dadi
 
 La terza forma dell'operando è il dado vero e proprio: `un numero fra A e B` pesca un

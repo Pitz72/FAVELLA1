@@ -24,12 +24,14 @@ porta a est` è un nome valido, anche se `est` è riservata).
   [Definizioni], [#kw[è · sono · una · un · uno · stanza · cosa · contenitore · supporto · personaggio · comando · senza · oggetto · stato · contatore · prendibile]],
   [Articoli], [#kw[il · lo · la · i · gli · le · l' · un']],
   [Preposizioni], [#kw[di · del · dei · della · dell' · degli · delle · dello · in · nel · nella · nello · negli · nelle · nell' · su · sul · sulla · sullo · sui · sugli · sulle · con · contro · a · al · alla · allo · ai · agli · alle · all' · da · dal · dalla · dallo · dai · dagli · dalle · dall' · sopra · sotto · dentro · dietro · verso · ad]],
-  [Mondo], [#kw[descrizione · posto · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza · scena · anche · uscite · nominano · solo · stanze · visitate · qui]],
+  [Mondo], [#kw[descrizione · posto · collega · giocatore · comincia · inizia · parte · ha · una · di · sequenza · scena · anche · uscite · nominano · solo · stanze · visitate · qui · ritorno]],
   [Buio e luce], [#kw[buia · buio · illumina]],
   [Trasporto], [#kw[può · portare · oggetti · dà · spazi]],
-  [Regole e logica], [#kw[Invece · Prima · Dopo · se · dire · e · adesso · oppure · non · ha · come · altrimenti · qualcosa · basta · poi · volta · ritrova · segnala]],
-  [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · partono · almeno · massimo · meno · più · moltiplica · dividi · riduci · modulo · per · resta · turno]],
+  [Regole e logica], [#kw[Invece · Prima · Dopo · se · dire · e · adesso · oppure · non · ha · come · altrimenti · qualcosa · basta · poi · volta · ritrova · segnala · definisci · esegui]],
+  [Relazioni], [#kw[relazione · molti · ed · reciproca · reciproco · qualcuno]],
+  [Stati e contatori], [#kw[aumenta · diminuisci · diventa · da · partono · almeno · massimo · meno · più · moltiplica · dividi · riduci · modulo · per · resta · sempre · turno]],
   [Quantità e caso], [#kw[fra · numero · càpita]],
+  [Oggetti contabili], [#kw[plurale · contabile · Ci]],
   [Fine partita], [#kw[vinci · perdi · termina]],
   [Opposte, alias, sinonimi], [#kw[opposte · direzioni · si · chiama · chiamano · anche · come]],
   [Tempo e demoni], [#kw[Al · turno · turni · Ogni · Quando · vera · dopo · che · entra]],
@@ -67,6 +69,7 @@ Il messaggio "non capisco" è "...".
 I comandi si scrivono.
 I comandi si scelgono con i pulsanti.
 La cucina collega giù a la cantina se [condizione]; altrimenti "...".
+La botola collega giù a il pozzo senza ritorno.
 La riga di stato è "[luogo] · turno [turno]".
 L'IFID è "...".
 Il testo "voce" è "...".   # poi [voce] in qualunque testo
@@ -93,6 +96,9 @@ Il tavolino è un supporto.
 "accelera" è un comando senza oggetto.
 "ghermisci" è come prendi.
 "butta via il cibo" è come "getta il cibo".
+La pozione, plurale "pozioni", è contabile.
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
 ```)
 
 *Stati e contatori*
@@ -105,6 +111,7 @@ Le vite sono un contatore.
 Le vite partono da 3.
 La temperatura parte da -5.
 L'aria è un contatore (voluto).   # lo legge l'interfaccia
+La sete resta sempre fra 0 e 100.   # invariante di clamp
 La protezione è attiva quando [condizione].
 ```)
 
@@ -140,12 +147,17 @@ Invece di [verbo] [oggetto]: dire "..." e adesso [conseguenza] e poi dire "...".
 #   [stanza] non collega più D
 #   il giocatore è in [stanza]
 #   il giocatore va in [stanza] · si ritrova in [stanza]
-#   segnala "..."
+#   segnala "..." · esegui [procedura]
+#   [parte] [relazione] [parte]
+#   [parte] non [relazione] più [parte]
 #   [personaggio] va nel [stanza]
 #   [personaggio] cambia stanza · [personaggio] ha [ogg]
 #   vinci/perdi/termina "..."
 # condizioni:
 #   il giocatore ha [ogg] · [personaggio] ha [ogg]
+#   il giocatore ha [N] [plurale] (almeno/più di/meno di)
+#   non restano [plurale]
+#   [parte] [relazione] [parte] · qualcuno [relazione] [parte]
 #   [ogg] è [proprietà] · [ogg] è in [luogo] · [ogg] è qui
 #   [stato] è [valore] · [stato] è come [altro stato]
 #   [contatore] è almeno/al massimo/più di/meno di/non è
@@ -156,6 +168,22 @@ Invece di [verbo] [oggetto]: dire "..." e adesso [conseguenza] e poi dire "...".
 #   \n · \[ \] · [turno] · [luogo]
 #   [se ...]...[altrimenti]...[fine]   (anche annidati)
 #   [nome di un testo]
+#   [chi [relazione] [parte]] · [quante [plurale]]
+```)
+
+*Relazioni e procedure*
+#fav(```
+"si fida di" è una relazione molti a molti.
+"apre" è una relazione uno a molti.
+"conosce" è una relazione molti a molti ed è reciproca.
+Il giocatore si fida di Saverio.
+La chiave di ottone apre la cella.
+Definisci "far passare la notte" come: aumenta la sete di 10 e adesso la lampada è spenta.
+# nelle regole: e adesso il giocatore si fida di Vito
+#              e adesso il giocatore non si fida più di Vito
+#              e adesso esegui far passare la notte
+# nelle condizioni: se qualcuno si fida del giocatore
+# nei testi: [chi si fida del giocatore]
 ```)
 
 *Tempo, demoni, dialoghi, moduli*
@@ -193,7 +221,8 @@ li racconta per esteso; qui sono raccolti per consultazione.
   align: (left + top, left + top),
   table.header([*Comando*], [*Effetto*]),
   [#rip[nord, sud, est, ovest]], [Spostarsi (anche `n`, `s`, `e`, `o`, `su`, `giù`, `nordest`…, le direzioni personalizzate, `vai nord`, `sali`, `scendi`, `entra`).],
-  [#rip[prendi / lascia]], [Raccogliere o posare un oggetto prendibile (anche `prendi tutto`, `prendi X e Y`, `prendi X dal Y`).],
+  [#rip[prendi / lascia]], [Raccogliere o posare un oggetto prendibile (anche `prendi tutto`, `prendi X e Y`, `prendi X dal Y`; con un contabile, `prendi 2 pozioni`, `prendi tutte le pozioni`).],
+  [#rip[consuma]], [Usare e far sparire copie di un oggetto contabile (`consuma una pozione`).],
   [#rip[esamina]], [Guardare da vicino un oggetto e leggerne la descrizione.],
   [#rip[guarda]], [Rivedere la descrizione della stanza e cosa c'è.],
   [#rip[inventario]], [Vedere cosa porti con te (anche `i`).],

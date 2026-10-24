@@ -4,14 +4,15 @@
 // abbondanza (bleed). Il disegno è quello dell'ebook (lib/copertina-arte.typ).
 //
 //   Trim libro          : 6,69 × 9,61″  (169,93 × 244,09 mm)
-//   Pagine (interno KDP) : 96  →  manuale-interno-kdp.pdf
-//   Carta                : bianca (BN o colore standard) → dorso 96×0,002252″
+//   Pagine (interno KDP) : 112  →  manuale-interno-kdp.pdf (motore 1.6.0)
+//   Carta                : bianca (BN o colore standard) → dorso 112×0,002252″
 //   Bleed                : 0,125″ (3,175 mm) su ogni lato esterno
 //
-// Wrap risultante: 13,846 × 9,860″  ≈  351,7 × 250,4 mm  (dorso 5,49 mm).
+// Wrap risultante: 13,882 × 9,860″  ≈  352,6 × 250,4 mm  (dorso 6,41 mm).
 //
 // ⚠ Se cambi carta o numero di pagine, ricalcola `pagine` qui sotto.
-// ⚠ Dorso < 100 pp. → niente testo sul dorso (regola KDP): resta un filetto di marca.
+// ⚠ Il dorso resta senza testo (scelta di marca): un filetto al centro. Sopra le
+//   100 pp. KDP lo consentirebbe, ma la copertina lo tiene pulito di proposito.
 // ⚠ La versione e l'edizione stanno in lib/edizione.typ (le stesse del manuale).
 // Build: typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 // =============================================================================
@@ -23,9 +24,9 @@
 #let trim-w = 6.69in
 #let trim-h = 9.61in
 #let bleed  = 0.125in
-#let pagine = 96
+#let pagine = 112
 #let mult   = 0.002252in        // bianca, BN / colore standard
-#let spine  = pagine * mult      // ≈ 0,21619″ (5,49 mm)
+#let spine  = pagine * mult      // ≈ 0,25222″ (6,41 mm)
 #let safe   = 0.25in             // margine di sicurezza dai tagli e dalle pieghe
 
 #let cover-w = 2 * trim-w + spine + 2 * bleed

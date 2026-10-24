@@ -171,6 +171,37 @@ Ognuna ha la sua negazione (`se la guardia non è in cucina`). E `e adesso` si p
 scrivere anche davanti alla prima conseguenza, quando manca il `dire`:
 `Invece di tocca la miccia: e adesso la miccia è accesa.`
 
+== Dare un nome a una sequenza: le procedure
+
+Quando le stesse conseguenze tornano in più regole — far passare la notte,
+scatenare l'allarme, azzerare un punteggio — ricopiarle ogni volta è fatica e fonte
+di errori: cambi una riga in un posto e dimentichi gli altri. Dalla versione 1.6
+puoi scriverle una volta sola, dare loro un nome e richiamarle: è una *procedura*.
+
+#sintassi[
+  `Definisci "[nome]" come: [conseguenza] e adesso [conseguenza] … .`
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.
+Invece di dormi: dire "Ti addormenti di sasso." e adesso esegui far passare la notte.
+```)
+]
+
+Il corpo è una lista di conseguenze — non un `dire`: una procedura *cambia il
+mondo*, il testo lo mette la regola che la richiama. La invochi come una conseguenza
+qualunque, con `esegui [nome]`, dentro una regola, un evento o un demone. Una
+procedura può richiamarne un'altra, o sé stessa: contro i cicli c'è un limite di
+profondità, oltre il quale FAVELLA smette in silenzio.
+
+#nota[
+  Il nome, come ogni vocabolario nuovo, sta fra virgolette nella definizione
+  (`Definisci "far passare la notte" come: …`) e si scrive nudo nell'invocazione
+  (`esegui far passare la notte`). Se definisci due procedure con lo stesso nome,
+  vale l'ultima e FAVELLA te lo segnala.
+]
+
 #prova[
   Scrivi una regola sul `flacone di medicine`: esaminandolo, fai aumentare gli
   indizi *e* diminuire la calma, con due `e adesso` in coda. Poi controlla che la

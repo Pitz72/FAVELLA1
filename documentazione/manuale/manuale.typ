@@ -68,6 +68,7 @@
 #include "capitoli/14-demoni.typ"
 #include "capitoli/15-buio-luce.typ"
 #include "capitoli/16-personaggi-dialoghi.typ"
+#include "capitoli/16b-relazioni.typ"
 #include "capitoli/17-trasporto.typ"
 #include "capitoli/18-moduli.typ"
 #include "capitoli/19-comandi-giocatore.typ"

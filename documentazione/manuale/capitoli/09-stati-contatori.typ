@@ -226,6 +226,40 @@ conseguenze sanno:
 *Il turno* si legge come un contatore, senza dichiararlo: `se il turno è almeno 20`
 nelle condizioni, `[turno]` nei testi. Non si può cambiare.
 
+== Un limite che si applica da solo
+
+L'ultima riga della tabella, `la forza resta fra 0 e 10`, è una *conseguenza*:
+riporta il valore nell'intervallo una volta sola, nel punto in cui la scrivi, e va
+richiamata a mano dopo ogni modifica — dimenticarla lascia il contatore scendere
+sotto zero o sfondare il massimo. Dalla versione 1.6 lo stesso limite si può
+*dichiarare una volta per tutte*, e il motore lo fa rispettare da sé.
+
+#sintassi[
+  `[contatore] resta sempre fra [A] e [B].`
+]
+
+#esempio(da: "un esempio")[
+#fav(```
+La sete resta sempre fra 0 e 100.
+Il vigore resta sempre fra 0 e [soglia massima].
+```)
+]
+
+La parola che fa la differenza è `sempre`. Da quel momento qualunque cosa muova la
+`sete` — un `aumenta`, un `diminuisci`, un `diventa`, una moltiplicazione, perfino
+il valore con cui parte — la riporta automaticamente fra 0 e 100: non puoi più
+uscire dall'intervallo, e non devi ricordartene a ogni regola. Gli estremi sono un
+numero fisso oppure il valore di un altro contatore fra parentesi quadre (`[soglia
+massima]`), letto nell'istante della modifica.
+
+#nota[
+  L'invariante vale solo per i *contatori*, non per gli stati a parole, e i suoi
+  estremi devono essere numeri o contatori: se provi a limitare uno stato, o a usare
+  come estremo qualcosa che non è un contatore, FAVELLA te lo dice con gentilezza.
+  Come tutto il resto del mondo, anche questo è catturato dalle istantanee: `annulla`
+  riavvolge pure i valori riportati nell'intervallo.
+]
+
 #prova[
   Dichiara un contatore `passi` che parte da 0 e uno stato `meteo` che parte da
   `sereno`. Non farli ancora cambiare: prima impareremo a muovere i numeri e gli
