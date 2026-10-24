@@ -33,7 +33,7 @@ from strutture import (
     ConseguenzaSegnala, Arrivo,
     Relazione, CondizioneRelazione, ConseguenzaRelazioneAggiungi,
     ConseguenzaRelazioneTogli, REL_QUALCUNO, REL_QUALCOSA, REL_GIOCATORE,
-    ConseguenzaProcedura,
+    ConseguenzaProcedura, CondizioneScorta,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
@@ -182,12 +182,20 @@ class TabellaSimboli:
         # notte" come: …'): i nomi normalizzati. Diventano il terminale CHIUSO
         # PROCEDURA (come VERBO_MULTI), usato nell'invocazione 'esegui "…"'.
         self.procedure = set()
+        # [1.6.0 / B1] Oggetti contabili: mappa id-FORMA-PLURALE -> id-canonico
+        # ('pozioni' -> 'pozione'), raccolta da 'La pozione, plurale "pozioni", è
+        # contabile.'. Le forme plurali entrano nell'alternanza del terminale ENTITA
+        # (vedi 'tutti'), così 'prendi 2 pozioni' e 'Il giocatore ha 3 pozioni'
+        # lessano la forma plurale come ENTITA; trova_oggetto/canonizza la riportano
+        # poi all'oggetto canonico.
+        self.plurali = {}
 
     @property
     def tutti(self):
-        """Nomi-ENTITÀ referenziabili (stanze ∪ oggetti). Gli 'stati' sono una
-        classe di simboli SEPARATA (terminale VARIABILE) e non rientrano qui."""
-        return self.stanze | self.oggetti
+        """Nomi-ENTITÀ referenziabili (stanze ∪ oggetti ∪ forme plurali dei
+        contabili). Gli 'stati' sono una classe di simboli SEPARATA (terminale
+        VARIABILE) e non rientrano qui."""
+        return self.stanze | self.oggetti | set(self.plurali)
 
     def __repr__(self):
         return (f"TabellaSimboli(stanze={sorted(self.stanze)}, "
@@ -259,6 +267,15 @@ _PREP_RELAZIONE_FINALI = frozenset({"di", "a", "da", "su", "con", "per", "in",
 _RE_DEF_PROCEDURA = re.compile(r'\bdefinisci\s+"([^"]+)"\s+come\s*:', re.IGNORECASE)
 
 
+# [1.6.0 / B1] Dichiarazione di un oggetto CONTABILE: 'La pozione, plurale
+# "pozioni", è contabile.'. Come verbi/relazioni/procedure va cercata PRIMA di
+# svuotare le stringhe quotate (il plurale vive nelle virgolette). Introduce
+# l'oggetto (il singolare) e la sua forma plurale dichiarata.
+_RE_DEF_CONTABILE = re.compile(
+    r'(?P<nome>[^,.\n]+?)\s*,\s*plurale\s+"(?P<plur>[^"]+)"\s*,\s*(?:è|sono)\s+contabile\s*\.',
+    re.IGNORECASE)
+
+
 def _scomponi_locuzione(locuzione: str):
     """[1.6.0 / B3] Divide una locuzione di relazione in (base, preposizione
     finale). 'si fida di' -> ('si fida', 'di'); 'apre' -> ('apre', None). La base
@@ -327,6 +344,15 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         nome = " ".join(m.group(1).lower().split())
         if nome:
             tab.procedure.add(nome)
+    # [1.6.0 / B1] Oggetti contabili: il singolare è un oggetto; la forma plurale
+    # entra fra le ENTITA (mappata al canonico) prima di svuotare le virgolette.
+    for m in _RE_DEF_CONTABILE.finditer(senza_commenti):
+        id_sing = normalizza_nome(m.group("nome").strip())
+        id_plur = normalizza_nome(m.group("plur").strip())
+        if id_sing:
+            tab.oggetti.add(id_sing)
+            if id_plur and id_plur != id_sing:
+                tab.plurali[id_plur] = id_sing
     pulito = _RE_QUOTATO.sub('""', pulito)
     pulito = _RE_COMMENTO.sub("", pulito)
 
@@ -476,6 +502,9 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_relazione          // [1.6.0 / B3]
                   | def_relazione_fatto    // [1.6.0 / B3]
                   | def_procedura          // [1.6.0 / C1]
+                  | def_contabile          // [1.6.0 / B1]
+                  | def_giocatore_scorta   // [1.6.0 / B1]
+                  | def_scorta_luogo       // [1.6.0 / B1]
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -597,6 +626,23 @@ _GRAMMAR_TEMPLATE = r"""
     def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
     def_capacita_oggetto: ENTITA "dà" _numero ( "spazi" | "spazio" ) "."
     _numero: NUMERO | NUMERO_PAROLA
+
+    // --- [1.6.0 / B1] OGGETTI CONTABILI: concordanza DICHIARATA ---
+    // 'La pozione, plurale "pozioni", è contabile.'. Comincia come ogni altra
+    // dichiarazione su un oggetto (ENTITA); dopo l'entità il lookahead "," è
+    // NUOVO e disgiunto da ogni altro continuatore top-level (è/sono, collega,
+    // ha, dà, illumina, RELAZIONE) → LALR(1) 0-ambiguo. Il motore NON pluralizza
+    // da sé: l'autore dà il plurale una volta (NO-GO dei plurali automatici,
+    // Temi 5a/5b). Riservate nuove: "plurale", "contabile".
+    def_contabile: ENTITA "," "plurale" TESTO_QUOTATO "," _copula "contabile" "."
+    // Quantità iniziale in inventario: 'Il giocatore ha 3 pozioni.'. Prefisso
+    // comune con def_giocatore_inventario: dopo "ha" il lookahead _numero
+    // (NUMERO|NUMERO_PAROLA) è disgiunto da ENTITA → LALR(1) 0-ambiguo.
+    def_giocatore_scorta: "Il" "giocatore" "ha" _numero ENTITA "."
+    // Quantità iniziale in un luogo: 'Ci sono 5 frecce in la faretra.'. Inizia con
+    // la keyword nuova "Ci" (nessun'altra dichiarazione) → 0-ambiguo. Il luogo è
+    // una stanza o un contenitore/supporto (PREP_LUOGO ENTITA). Riservata: "Ci".
+    def_scorta_luogo: "Ci" ( "sono" | "è" ) _numero ENTITA PREP_LUOGO ENTITA "."
 
     // --- [1.3.0 / M-8] SCENA E TOPOLOGIA ---
     // 'Il cielo è di scena.': si esamina ma non si elenca («Puoi vedere qui»).
@@ -913,10 +959,28 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_png_ha_neg
               | cond_relazione       // [1.6.0 / B3]
               | cond_relazione_neg   // [1.6.0 / B3]
+              | cond_pq_eq           // [1.6.0 / B1]
+              | cond_pq_gte          // [1.6.0 / B1]
+              | cond_pq_gt           // [1.6.0 / B1]
+              | cond_pq_lt           // [1.6.0 / B1]
+              | cond_scorta_finita   // [1.6.0 / B1]
               | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
     cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
+    // [1.6.0 / B1] Quantità posseduta di un contabile: 'se il giocatore ha almeno
+    // 2 pozioni' (ed esatto / più di / meno di). Prefisso comune con cond_possesso:
+    // dopo "ha" il lookahead _numero/"almeno"/"più"/"meno" è disgiunto da ENTITA →
+    // LALR(1) 0-ambiguo. Il confronto è sulle copie in inventario.
+    cond_pq_eq: "il" "giocatore" "ha" _numero ENTITA
+    cond_pq_gte: "il" "giocatore" "ha" "almeno" _numero ENTITA
+    cond_pq_gt: "il" "giocatore" "ha" "più" "di" _numero ENTITA
+    cond_pq_lt: "il" "giocatore" "ha" "meno" "di" _numero ENTITA
+    // [1.6.0 / B1] Scorta esaurita: 'se le pozioni sono finite' (o 'finiti' per un
+    // nome maschile plurale). "finite"/"finiti" sono keyword riservate nuove: dopo
+    // 'ENTITA _copula' vincono su PROPRIETA (priorità più alta), come già "di
+    // scena" / "anche" → LALR(1) 0-ambiguo. Vero quando il giocatore non ne ha più.
+    cond_scorta_finita: ENTITA _copula ( "finite" | "finiti" )
     // [0.18.0 / B1] Posizione del giocatore: 'se il giocatore è in [stanza]'.
     // Dopo 'il giocatore' il lookahead distingue "ha"/"non ha" (possesso) dalla
     // copula è/sono (posizione) → LALR(1) 0-ambiguo.
@@ -1749,9 +1813,14 @@ class FavellaTransformer(Transformer):
     """
     Visita l'albero sintattico generato da Lark e popola l'oggetto Mondo.
     """
-    def __init__(self, coppie_direzioni=(), relazioni=()):
+    def __init__(self, coppie_direzioni=(), relazioni=(), plurali=None):
         super().__init__()
         self.mondo = Mondo()
+        # [1.6.0 / B1] Mappa plurale->canonico raccolta in Passata 1: la copio nel
+        # mondo PRIMA del transform, così trova_oggetto/canonizza risolvono le forme
+        # plurali già mentre si processano le frasi.
+        if plurali:
+            self.mondo.plurali = dict(plurali)
         self.errori = []        # Errori bloccanti: la compilazione fallisce
         self.warnings = []      # Avvisi non bloccanti: la compilazione prosegue
         self.start_dichiarato_raw = None  # Nome grezzo della stanza di partenza
@@ -1805,6 +1874,13 @@ class FavellaTransformer(Transformer):
         # [1.6.0 / Q1] Invarianti di clamp dichiarate ('X resta sempre fra A e B'),
         # validate in valida_post (il contatore può essere dichiarato dopo).
         self._pending_invarianti = []    # (nome, grezzo, Operando min, Operando max)
+        # [1.6.0 / B1] Oggetti contabili e quantità iniziali, risolti in valida_post
+        # (l'oggetto può essere dichiarato dopo le sue quantità; le quantità dopo
+        # le posizioni). _pending_contabili: (ent_grezzo, plurale); _pending_scorte:
+        # (ent_grezzo, luogo_grezzo|None=inventario, numero, grezzo_intero).
+        self._pending_contabili = []
+        self._pending_scorte = []
+        self._pending_scorte_cond = []   # (CondizioneScorta, ent_grezzo, grezzo) da validare
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -2531,6 +2607,29 @@ class FavellaTransformer(Transformer):
         self._pending_inventario_iniziale.append(ent_grezzo)
         return None
 
+    def def_contabile(self, ent_grezzo, plurale):
+        # [1.6.0 / B1] 'La pozione, plurale "pozioni", è contabile.'. Marca l'oggetto
+        # come contabile e registra il plurale DICHIARATO (il motore non lo indovina).
+        # La forma plurale è già in mondo.plurali (scanner → __init__); la coerenza
+        # (è un oggetto semplice, non un contenitore/personaggio…) è in valida_post.
+        oggetto = self._crea_o_trova_oggetto(ent_grezzo)
+        oggetto.contabile = True
+        oggetto.plurale = " ".join(str(plurale).lower().split())
+        self._pending_contabili.append((ent_grezzo, str(plurale)))
+        return None
+
+    def def_giocatore_scorta(self, numero, ent_grezzo):
+        # [1.6.0 / B1] 'Il giocatore ha 3 pozioni.': N copie in inventario all'avvio.
+        self._pending_scorte.append((ent_grezzo, None, numero, f"Il giocatore ha {numero} {ent_grezzo}"))
+        return None
+
+    def def_scorta_luogo(self, numero, ent_grezzo, prep, luogo_grezzo):
+        # [1.6.0 / B1] 'Ci sono 5 frecce in la faretra.': N copie in un luogo
+        # (stanza o contenitore/supporto) all'avvio. 'prep' (PREP_LUOGO) è ininfluente.
+        self._pending_scorte.append((ent_grezzo, luogo_grezzo, numero,
+                                     f"Ci sono {numero} {ent_grezzo} in {luogo_grezzo}"))
+        return None
+
     def def_capacita_oggetto(self, ent_grezzo, numero):
         # [Livello 7] 'Lo zaino dà N spazi.': l'oggetto, mentre è nell'inventario,
         # aumenta la capacità di N. _crea_o_trova_oggetto tollera l'ordine delle
@@ -2957,6 +3056,31 @@ class FavellaTransformer(Transformer):
 
     def cond_possesso_neg(self, ogg_grezzo):
         return CondizioneNot(CondizionePossesso(normalizza_nome(ogg_grezzo)))
+
+    def _cond_scorta(self, ogg_grezzo, operatore, soglia):
+        # [1.6.0 / B1] Condizione sulle copie possedute di un contabile. La forma
+        # plurale ('pozioni') è canonicalizzata all'id dell'oggetto; la coerenza
+        # (è davvero un contabile) è validata in valida_post.
+        id_ogg = self.mondo.canonizza(normalizza_nome(ogg_grezzo))
+        cond = CondizioneScorta(id_ogg, operatore, soglia)
+        self._pending_scorte_cond.append((cond, ogg_grezzo, str(ogg_grezzo)))
+        return cond
+
+    def cond_pq_eq(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, "==", numero)
+
+    def cond_pq_gte(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, ">=", numero)
+
+    def cond_pq_gt(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, ">", numero)
+
+    def cond_pq_lt(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, "<", numero)
+
+    def cond_scorta_finita(self, ogg_grezzo):
+        # [1.6.0 / B1] 'se le pozioni sono finite' = il giocatore non ne ha più.
+        return self._cond_scorta(ogg_grezzo, "==", 0)
 
     def cond_posizione_giocatore(self, prep, stanza_grezzo):
         # [0.18.0 / B1] 'se il giocatore è in [stanza]'. 'prep' è il token
@@ -3494,6 +3618,83 @@ class FavellaTransformer(Transformer):
         ))
         return None
 
+    def _applica_contabili(self, m):
+        """[1.6.0 / B1] Valida le dichiarazioni 'è contabile' e applica le quantità
+        iniziali, poi sincronizza i marker di presenza di ogni contabile. Chiamato
+        da valida_post DOPO posizioni e inventario iniziale."""
+        # 1. Coerenza di ogni 'è contabile': un contabile è una COSA semplice.
+        for ent_grezzo, plurale in self._pending_contabili:
+            oggetto = m.trova_oggetto(normalizza_nome(ent_grezzo))
+            if oggetto is None:
+                self.errori.append(f"Oggetto contabile inesistente: '{ent_grezzo}'.")
+                continue
+            incompat = []
+            if oggetto.is_contenitore:
+                incompat.append("un contenitore")
+            if oggetto.is_supporto:
+                incompat.append("un supporto")
+            if oggetto.is_personaggio:
+                incompat.append("un personaggio")
+            if oggetto.illumina:
+                incompat.append("una fonte di luce")
+            if incompat:
+                self.errori.append(
+                    f"'{ent_grezzo}' non può essere contabile e insieme "
+                    f"{' e '.join(incompat)}: un contabile è una cosa semplice "
+                    f"(tenuta in più copie).")
+            if not (oggetto.plurale or "").strip():
+                self.errori.append(
+                    f"Il plurale di '{ent_grezzo}' è vuoto: scrivi «{ent_grezzo}, "
+                    f"plurale \"…\", è contabile.».")
+        # 2. Una collocazione standard di un contabile ('La pozione è in cella.',
+        #    'Il giocatore ha la pozione.') vale 1 copia in quel luogo. Si fa PRIMA
+        #    di applicare le quantità dichiarate, così le due forme si fondono.
+        for oggetto in m.oggetti.values():
+            if oggetto.contabile and not oggetto.quantita and oggetto.posizione:
+                pos = oggetto.posizione
+                if pos == "inventario" or pos in m.stanze or m.trova_oggetto(pos) is not None:
+                    oggetto.quantita[pos] = 1
+        # 3. Quantità dichiarate: FISSANO il numero di copie in un luogo.
+        for ent_grezzo, luogo_grezzo, numero, grezzo in self._pending_scorte:
+            oggetto = m.trova_oggetto(m.canonizza(normalizza_nome(ent_grezzo)))
+            if oggetto is None:
+                self.errori.append(f"Quantità iniziale: oggetto inesistente ('{grezzo}.').")
+                continue
+            if not oggetto.contabile:
+                self.errori.append(
+                    f"'{ent_grezzo}' non è contabile: una quantità ('{grezzo}.') vale "
+                    f"solo per un oggetto dichiarato «… è contabile.».")
+                continue
+            if numero < 0:
+                self.warnings.append(f"Quantità negativa ignorata ('{grezzo}.').")
+                continue
+            if luogo_grezzo is None:
+                luogo = "inventario"
+            else:
+                id_luogo = normalizza_nome(luogo_grezzo)
+                contenitore = m.trova_oggetto(id_luogo)
+                if id_luogo in m.stanze:
+                    luogo = id_luogo
+                elif contenitore is not None and (contenitore.is_contenitore or contenitore.is_supporto):
+                    luogo = id_luogo
+                else:
+                    self.errori.append(
+                        f"Luogo non valido per la quantità ('{grezzo}.'): '{luogo_grezzo}' "
+                        f"non è una stanza né un contenitore/supporto.")
+                    continue
+            oggetto.quantita[luogo] = numero
+        # 4. Sincronizza i marker di presenza dalle quantità finali.
+        for oggetto in m.oggetti.values():
+            if oggetto.contabile:
+                m._sincronizza_presenza_contabile(oggetto)
+        # 5. Le condizioni sulle scorte valgono solo per un contabile.
+        for cond, ent_grezzo, grezzo in self._pending_scorte_cond:
+            oggetto = m.trova_oggetto(cond.id_oggetto)
+            if oggetto is None or not oggetto.contabile:
+                self.errori.append(
+                    f"La condizione sulle scorte («{grezzo}») vale solo per un oggetto "
+                    f"contabile: «{ent_grezzo}» non lo è.")
+
     # --- Validazione semantica globale (dopo il transform completo) ---
 
     def valida_post(self):
@@ -3622,6 +3823,14 @@ class FavellaTransformer(Transformer):
             m.rimuovi_da_posizione(oggetto)
             oggetto.posizione = "inventario"
             m.inventario.add(id_ogg)
+
+        # [1.6.0 / B1] Oggetti contabili e quantità iniziali. Deve venire DOPO le
+        # posizioni e l'inventario iniziale: un contabile collocato con le frasi
+        # standard ('La pozione è in cella.', 'Il giocatore ha la pozione.') nasce
+        # con 1 copia in quel luogo; le frasi di quantità ('Il giocatore ha 3
+        # pozioni.', 'Ci sono 5 frecce in la faretra.') FISSANO il numero in un
+        # luogo. Qui si fondono e si sincronizzano i marker di presenza.
+        self._applica_contabili(m)
 
         # [1.1.0] Il posto iniziale vale per un oggetto collocato DIRETTAMENTE in
         # una stanza: dentro un contenitore, su un supporto, in inventario o nel
@@ -4573,7 +4782,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             return None
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
-        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
                                         simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
@@ -4803,7 +5012,7 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                 errors.append(_diag(messaggio, file=f_o, line=r_o, col=col, code=codice))
             return {"ok": False, "errors": errors, "warnings": warnings,
                     "worldSummary": None}
-        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
                                         simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.transform(tree)
@@ -4900,7 +5109,7 @@ def compila_mondo(percorso_file, sorgente=None):
                                    verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
                                    procedure=simboli.procedure)
         tree = parser.parse(testo)
-        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
                                         simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]

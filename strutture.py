@@ -113,6 +113,29 @@ class CondizionePossesso(Condizione):
     def valuta(self, mondo: 'Mondo') -> bool:
         return mondo.giocatore_possiede(self.id_oggetto)
 
+class CondizioneScorta(Condizione):
+    """[1.6.0 / B1] Quantità di un oggetto CONTABILE che il giocatore ha in
+    inventario, confrontata con una soglia: 'se il giocatore ha almeno 2 pozioni'
+    (>=), '… ha 2 pozioni' (==), '… ha più di 2 …' (>), '… ha meno di 2 …' (<).
+    'se le pozioni sono finite' è il caso ==0. Un oggetto non contabile o mai
+    posseduto vale 0 copie."""
+    def __init__(self, id_oggetto: str, operatore: str, soglia: int):
+        self.id_oggetto = id_oggetto
+        self.operatore = operatore   # '==' | '>=' | '>' | '<'
+        self.soglia = int(soglia)
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        n = mondo.quantita_posseduta(self.id_oggetto)
+        if self.operatore == "==":
+            return n == self.soglia
+        if self.operatore == ">=":
+            return n >= self.soglia
+        if self.operatore == ">":
+            return n > self.soglia
+        if self.operatore == "<":
+            return n < self.soglia
+        return False
+
 class CondizioneProprieta(Condizione):
     """Rappresenta la condizione 'se [oggetto] è [proprietà]'."""
     def __init__(self, id_oggetto: str, proprieta: str):
@@ -1102,6 +1125,20 @@ class Oggetto:
         # cielo è anche nel cortile.'): cielo, mare, una porta vista dai due lati.
         self.di_scena: bool = False
         self.anche_in: Set[str] = set()
+        # [1.6.0 / B1] Oggetto CONTABILE: una cosa tenuta in più copie, con la
+        # concordanza DICHIARATA (non indovinata): 'La pozione, plurale "pozioni",
+        # è contabile.'. 'plurale' è il nucleo plurale dato dall'autore (es.
+        # "pozioni"), usato negli elenchi concordati ('3 pozioni', '1 pozione'); il
+        # motore non pluralizza mai da sé. 'quantita' mappa ogni LUOGO (id di stanza,
+        # 'inventario', o un contenitore/supporto) al numero di copie lì presenti
+        # (>0): è la fonte di verità del contabile. I marker di presenza standard
+        # (inventario, stanza.oggetti, contenuto) restano in sincronia, così la
+        # visibilità e la raggiungibilità esistenti valgono senza modifiche. Un
+        # contabile è una cosa SEMPLICE: non è contenitore/supporto/personaggio/fonte
+        # di luce (il compilatore lo verifica). Vedi §30 della grammatica.
+        self.contabile: bool = False
+        self.plurale: Optional[str] = None
+        self.quantita: Dict[str, int] = {}
 
     def al_suo_posto(self) -> bool:
         """[1.1.0] True se la frase del posto iniziale va ancora mostrata."""
@@ -1246,6 +1283,12 @@ class Mondo:
         # volatile (sessione del comando in corso).
         self.procedure: Dict[str, list] = {}
         self._procedure_in_corso: list = []
+        # [1.6.0 / B1] Oggetti contabili: mappa id-FORMA-PLURALE -> id-canonico
+        # (singolare). La forma plurale dichiarata ('pozioni') è un'ENTITA valida
+        # che risolve all'oggetto 'pozione': trova_oggetto la canonicalizza, così
+        # ogni riferimento al plurale trova lo stesso oggetto. Dato statico (scritto
+        # dal compilatore, mai cambiato in partita).
+        self.plurali: Dict[str, str] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1588,7 +1631,11 @@ class Mondo:
                       # i Relazione, che restano nell'istantanea come 'relazioni'.
                       "liste_relazione",
                       # [1.6.0 / C1] i corpi delle procedure sono statici.
-                      "procedure")
+                      "procedure",
+                      # [1.6.0 / B1] la mappa plurale->canonico è statica (le
+                      # QUANTITÀ, invece, vivono su Oggetto.quantita e sono catturate
+                      # dall'istantanea come il resto dello stato degli oggetti).
+                      "plurali")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
@@ -1893,7 +1940,121 @@ class Mondo:
         return self.stanze.get(nome)
 
     def trova_oggetto(self, nome: str) -> Oggetto | None:
-        return self.oggetti.get(nome)
+        oggetto = self.oggetti.get(nome)
+        if oggetto is None and self.plurali:
+            # [1.6.0 / B1] La forma plurale dichiarata ('pozioni') risolve
+            # all'oggetto canonico ('pozione').
+            oggetto = self.oggetti.get(self.plurali.get(nome, nome))
+        return oggetto
+
+    # --- [1.6.0 / B1] Oggetti contabili: quantità per luogo --------------------
+
+    def canonizza(self, id_oggetto: str) -> str:
+        """[1.6.0 / B1] Riporta una forma plurale dichiarata all'id canonico; ogni
+        altro id resta com'è."""
+        return self.plurali.get(id_oggetto, id_oggetto)
+
+    def quantita_in(self, id_oggetto: str, luogo: str) -> int:
+        """Quante copie di un contabile stanno nel luogo dato ('inventario', un id
+        di stanza o di contenitore/supporto). 0 se nessuna."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return 0
+        return oggetto.quantita.get(luogo, 0)
+
+    def quantita_posseduta(self, id_oggetto: str) -> int:
+        """Quante copie di un contabile il giocatore ha in inventario."""
+        return self.quantita_in(id_oggetto, "inventario")
+
+    def quantita_totale(self, id_oggetto: str) -> int:
+        """Quante copie di un contabile esistono in tutto il mondo."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return 0
+        return sum(oggetto.quantita.values())
+
+    def _sincronizza_presenza_contabile(self, oggetto: 'Oggetto'):
+        """Allinea i marker di presenza standard (inventario, stanza.oggetti,
+        contenuto dei contenitori/supporti) e 'posizione' alle QUANTITÀ correnti di
+        un contabile, così la visibilità e la raggiungibilità esistenti valgono
+        senza modifiche. Un luogo con 0 copie sparisce dai marker."""
+        id_ogg = oggetto.nome
+        # togli le copie azzerate
+        for luogo in [l for l, n in oggetto.quantita.items() if n <= 0]:
+            oggetto.quantita.pop(luogo, None)
+        luoghi = set(oggetto.quantita)
+        # inventario
+        if "inventario" in luoghi:
+            self.inventario.add(id_ogg)
+        else:
+            self.inventario.discard(id_ogg)
+        # stanze e contenitori/supporti
+        for sid, stanza in self.stanze.items():
+            if sid in luoghi:
+                stanza.oggetti[id_ogg] = oggetto
+            else:
+                stanza.oggetti.pop(id_ogg, None)
+        for altro in self.oggetti.values():
+            if altro is oggetto:
+                continue
+            if (altro.is_contenitore or altro.is_supporto):
+                if altro.nome in luoghi:
+                    altro.contenuto.add(id_ogg)
+                else:
+                    altro.contenuto.discard(id_ogg)
+        # posizione «primaria» (per il codice che la legge): inventario se c'è,
+        # altrimenti un luogo qualsiasi con copie, altrimenti None.
+        if "inventario" in luoghi:
+            oggetto.posizione = "inventario"
+        elif luoghi:
+            oggetto.posizione = sorted(luoghi)[0]
+        else:
+            oggetto.posizione = None
+        if luoghi:
+            oggetto.spostato = True
+
+    def imposta_quantita(self, id_oggetto: str, luogo: str, n: int):
+        """Fissa a `n` le copie di un contabile nel luogo dato (n<=0 = nessuna) e
+        risincronizza i marker di presenza."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return
+        if n > 0:
+            oggetto.quantita[luogo] = n
+        else:
+            oggetto.quantita.pop(luogo, None)
+        self._sincronizza_presenza_contabile(oggetto)
+
+    def aggiungi_quantita(self, id_oggetto: str, luogo: str, n: int = 1):
+        """Aggiunge `n` copie al luogo dato."""
+        self.imposta_quantita(id_oggetto, luogo, self.quantita_in(id_oggetto, luogo) + n)
+
+    def togli_quantita(self, id_oggetto: str, luogo: str, n: int = 1):
+        """Toglie fino a `n` copie dal luogo dato (non scende sotto zero).
+        Restituisce quante ne ha davvero tolte."""
+        attuali = self.quantita_in(id_oggetto, luogo)
+        tolte = min(n, attuali)
+        if tolte:
+            self.imposta_quantita(id_oggetto, luogo, attuali - tolte)
+        return tolte
+
+    def luogo_scorta_raggiungibile(self, id_oggetto: str) -> Optional[str]:
+        """[1.6.0 / B1] Il luogo RAGGIUNGIBILE (non l'inventario) in cui stanno copie
+        di un contabile da prendere: la stanza corrente o un contenitore/supporto
+        raggiungibile lì. None se non c'è nulla da prendere qui."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None or not oggetto.contabile:
+            return None
+        candidati = [l for l, n in oggetto.quantita.items() if n > 0 and l != "inventario"]
+        for luogo in candidati:
+            if luogo == self.posizione_giocatore:
+                return luogo
+        # dentro un contenitore/supporto raggiungibile
+        for luogo in candidati:
+            contenitore = self.trova_oggetto(luogo)
+            if contenitore is not None and self.oggetto_raggiungibile(luogo):
+                return luogo
+        return None
 
     # --- [Livello 7] Capacità di trasporto ---
 
@@ -2057,6 +2218,20 @@ class Mondo:
         _visti.add(id_oggetto)
         oggetto = self.trova_oggetto(id_oggetto)
         if not oggetto:
+            return False
+        if oggetto.contabile:
+            # [1.6.0 / B1] Un contabile è alla portata se ha copie in inventario,
+            # nella stanza corrente, o in un contenitore/supporto raggiungibile lì
+            # (le copie possono essere sparse in più luoghi: non basta 'posizione').
+            id_ogg = oggetto.nome
+            if oggetto.quantita.get("inventario", 0) > 0:
+                return True
+            if oggetto.quantita.get(self.posizione_giocatore, 0) > 0:
+                return True
+            for luogo, n in oggetto.quantita.items():
+                if n > 0 and luogo not in ("inventario",) and luogo not in self.stanze:
+                    if self.oggetto_raggiungibile(luogo, _visti):
+                        return True
             return False
         if id_oggetto in self.inventario:
             return True
