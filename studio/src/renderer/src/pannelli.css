@@ -1893,3 +1893,55 @@
 .lavoro-prova .lavoro-titolo h1 {
   font-size: var(--t-xl);
 }
+
+/* --- [1.6.0 / B3] Pannello Relazioni: le coppie «soggetto → oggetto» di ciascuna --- */
+.rel-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.rel-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px var(--s-2);
+  border-radius: var(--r-2);
+  background: var(--superficie-1);
+  border: var(--spessore) solid var(--linea-tenue);
+}
+.rel-membro {
+  font-weight: 600;
+  color: var(--testo-titolo);
+}
+.rel-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accento);
+}
+/* La × della coppia va a destra. */
+.rel-pair .rel-tog {
+  margin-left: auto;
+}
+.rel-nospan {
+  margin-left: auto;
+  font-size: var(--t-xs);
+  color: var(--testo-3);
+  font-style: italic;
+}
+/* La riga per collegare una coppia nuova: due menu dei membri e «+ coppia». */
+.rel-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: 2px;
+  padding-top: var(--s-2);
+  border-top: var(--spessore) dashed var(--linea);
+}
+.rel-add select {
+  min-width: 10rem;
+  max-width: 16rem;
+}
+.rel-add > button {
+  margin-left: auto;
+}

@@ -11,6 +11,7 @@ import CharactersEditor from './CharactersEditor'
 import RoomEditor from './RoomEditor'
 import RulesEditor from './RulesEditor'
 import VariablesEditor from './VariablesEditor'
+import RelazioniEditor from './RelazioniEditor'
 import DialoguesEditor from './DialoguesEditor'
 import WordsEditor from './WordsEditor'
 import EditorPane from './EditorPane'
@@ -110,6 +111,7 @@ export default function Workspace(): JSX.Element | null {
   const loadOutline = useStudio((s) => s.loadOutline)
   const loadRules = useStudio((s) => s.loadRules)
   const loadVariables = useStudio((s) => s.loadVariables)
+  const loadRelations = useStudio((s) => s.loadRelations)
   const loadDialogues = useStudio((s) => s.loadDialogues)
   const loadWords = useStudio((s) => s.loadWords)
   const gameRunning = useStudio((s) => s.gameRunning)
@@ -141,6 +143,11 @@ export default function Workspace(): JSX.Element | null {
       void loadOutline()
     }
     if (tab === 'oggetti' || tab === 'stanze') void loadOutline()
+    if (tab === 'relazioni') {
+      // L'editor usa il modello delle relazioni e l'outline (nomi di stanze/oggetti).
+      void loadRelations()
+      void loadOutline()
+    }
     if (tab === 'personaggi') {
       void loadOutline()
       void loadDialogues()
@@ -154,7 +161,7 @@ export default function Workspace(): JSX.Element | null {
       if (latoProva === 'mappa') void loadGraph()
       if (latoProva === 'debug') void loadDebug()
     }
-  }, [tab, latoProva, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables, loadDialogues, loadWords])
+  }, [tab, latoProva, loadGraph, loadSnapshot, loadDebug, loadOutline, loadRules, loadVariables, loadRelations, loadDialogues, loadWords])
 
   // La Mappa segue il testo mentre si scrive (solo in anteprima, senza partita in corso).
   useEffect(() => {
@@ -240,6 +247,7 @@ export default function Workspace(): JSX.Element | null {
               <>
                 {tab === 'mappa' && <MapView editable />}
                 {tab === 'oggetti' && <ObjectsEditor />}
+                {tab === 'relazioni' && <RelazioniEditor />}
                 {tab === 'personaggi' && <CharactersEditor />}
                 {tab === 'stanze' && <RoomEditor />}
                 {tab === 'regole' && <RulesEditor />}

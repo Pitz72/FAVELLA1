@@ -39,6 +39,7 @@ export const SEZIONI: DefSezione[] = [
     sotto: [
       { tab: 'stanze', titolo: 'Stanze', aiuto: 'Descrizioni e punto di partenza' },
       { tab: 'oggetti', titolo: 'Oggetti', aiuto: 'Cose da trovare, prendere e usare' },
+      { tab: 'relazioni', titolo: 'Relazioni', aiuto: 'Legami fra chi e che cosa (si fida di, possiede…)' },
       { tab: 'mappa', titolo: 'Mappa', aiuto: 'Le uscite fra le stanze, da trascinare' }
     ]
   },

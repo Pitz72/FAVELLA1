@@ -366,3 +366,23 @@ export function IconaPunto({ size = 16 }: PropIcona): JSX.Element {
     </svg>
   )
 }
+
+export function IconaRelazioni({ size = 16 }: PropIcona): JSX.Element {
+  // Due nodi legati da un filo: un legame fra chi e che cosa (le relazioni).
+  return (
+    <Tratto size={size}>
+      <circle cx="6" cy="7" r="2.6" />
+      <circle cx="18" cy="17" r="2.6" />
+      <path d="M8.2 8.6l7.6 6.8" />
+    </Tratto>
+  )
+}
+
+export function IconaFrecciaDestra({ size = 16 }: PropIcona): JSX.Element {
+  // «porta a»: il verso soggetto → oggetto di una coppia di relazione.
+  return (
+    <Tratto size={size}>
+      <path d="M4 12h15M13 6l6 6-6 6" />
+    </Tratto>
+  )
+}

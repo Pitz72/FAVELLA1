@@ -17,6 +17,7 @@ import type {
   ExportResult,
   WorldRules,
   WorldVariables,
+  WorldRelations,
   WorldDialogues,
   WorldWords,
   StoryReorderResult,
@@ -110,6 +111,10 @@ const api = {
   /** [Stati] Modello editabile di stati/contatori con span sorgente. */
   worldVariables(path?: string, source?: string, sources?: Fonti): Promise<WorldVariables> {
     return ipcRenderer.invoke('rpc', 'world.variables', path ? { path, source, sources } : {})
+  },
+  /** [1.6.0 / B3] Modello editabile delle relazioni di prima classe con span sorgente. */
+  worldRelations(path?: string, source?: string, sources?: Fonti): Promise<WorldRelations> {
+    return ipcRenderer.invoke('rpc', 'world.relations', path ? { path, source, sources } : {})
   },
   /** [Fase 6b] Modello editabile di NPC/dialoghi con span sorgente. */
   worldDialogues(path?: string, source?: string, sources?: Fonti): Promise<WorldDialogues> {

@@ -15,6 +15,7 @@ import type {
   SerializeSpec,
   WorldRules,
   WorldVariables,
+  WorldRelations,
   WorldDialogues,
   WorldWords,
   Pulsantiera,
@@ -50,6 +51,7 @@ export type RightTab =
   | 'stato'
   | 'debug'
   | 'oggetti'
+  | 'relazioni'
   | 'personaggi'
   | 'regole'
   | 'stati'
@@ -175,6 +177,9 @@ interface StudioState {
   // Pannello Stati & Contatori
   variables: WorldVariables | null
   variablesLoading: boolean
+  // [1.6.0 / B3] Pannello Relazioni di prima classe
+  relations: WorldRelations | null
+  relationsLoading: boolean
   // Editor dialoghi/NPC (Fase 6b)
   dialogues: WorldDialogues | null
   dialoguesLoading: boolean
@@ -277,6 +282,8 @@ interface StudioState {
   loadRules: () => Promise<void>
   // Pannello Stati & Contatori
   loadVariables: () => Promise<void>
+  // [1.6.0 / B3] Pannello Relazioni di prima classe
+  loadRelations: () => Promise<void>
   // Editor dialoghi/NPC (Fase 6b)
   loadDialogues: () => Promise<void>
   loadWords: () => Promise<void>
@@ -542,6 +549,7 @@ const PROGETTO_VUOTO: Partial<StudioState> = {
   outline: null,
   rules: null,
   variables: null,
+  relations: null,
   dialogues: null,
   words: null,
   pendingEdit: null,
@@ -707,6 +715,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   rulesLoading: false,
   variables: null,
   variablesLoading: false,
+  relations: null,
+  relationsLoading: false,
   dialogues: null,
   dialoguesLoading: false,
   words: null,
@@ -1330,6 +1340,21 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
   },
 
+  loadRelations: async () => {
+    const ctx = contestoStoria(get())
+    if (!ctx) {
+      set({ relations: null })
+      return
+    }
+    set({ relationsLoading: true })
+    try {
+      const r = await window.favella.worldRelations(ctx.radice, ctx.sorgente, ctx.fonti)
+      set({ relationsLoading: false, relations: r })
+    } catch {
+      set({ relationsLoading: false })
+    }
+  },
+
   loadDialogues: async () => {
     const ctx = contestoStoria(get())
     if (!ctx) {
@@ -1394,6 +1419,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       get().loadWorldGraph(),
       get().loadRules(),
       get().loadVariables(),
+      get().loadRelations(),
       get().loadDialogues(),
       get().loadWords()
     ])

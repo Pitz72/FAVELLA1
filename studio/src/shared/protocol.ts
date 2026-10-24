@@ -414,6 +414,12 @@ export type SerializeSpec =
       dest?: string
       consequences: RuleConsequence[]
     }
+  // [1.6.0 / B3] Relazioni di prima classe. 'relation_decl' dichiara una relazione
+  // ('"si fida di" è una relazione molti a molti [ed è reciproca].'); 'relation_fact'
+  // asserisce una coppia ('Il giocatore si fida di Saverio.'): aName/bName sono le
+  // forme a metà frase (il serializzatore articola la preposizione e la maiuscola).
+  | { op: 'relation_decl'; locution: string; arity: RelationArity; reciprocal: boolean }
+  | { op: 'relation_fact'; aName: string; base: string; prep: string | null; bName: string }
 
 export interface SerializeResult {
   ok: boolean
@@ -675,6 +681,59 @@ export interface WorldVariables {
   ok: boolean
   states: VarState[]
   counters: VarCounter[]
+  errors: Diagnostic[]
+}
+
+// --- [1.6.0 / B3] Pannello Relazioni di prima classe ------------------------------
+
+// L'arietà di una relazione: quante coppie può reggere su ciascun lato. 'uno-a-uno'
+// e 'uno-a-molti' sfrattano le coppie in conflitto quando se ne aggiunge una nuova
+// (lo fa il motore); 'molti-a-molti' le accumula.
+export type RelationArity = 'uno-a-uno' | 'uno-a-molti' | 'molti-a-molti'
+
+// Una coppia ASSERITA d'autore (la frase 'Il giocatore si fida di Saverio.'). 'a'/'b'
+// sono gli id dei membri (o 'giocatore'); 'aName'/'bName' le forme a metà frase, già
+// pronte per il serializzatore 'relation_fact'. 'span' ancora la frase per toglierla.
+// 'base'/'prep' ripetono i dati della relazione, così la coppia è una spec completa.
+export interface RelationPair {
+  a: string
+  b: string
+  aName: string
+  bName: string
+  rel: string
+  base: string
+  prep: string | null
+  span: OutlineSpan | null
+}
+
+// Una relazione dichiarata ('"si fida di" è una relazione molti a molti ed è
+// reciproca.'): la locuzione, l'arietà, la reciprocità, la preposizione finale (se
+// c'è), la base (locuzione senza preposizione) e lo span della dichiarazione, più le
+// coppie asserite. L'editor mostra solo le FRASI SCRITTE (scatola di vetro): il
+// rovescio della reciprocità e gli sfratti dell'arietà non compaiono come righe.
+export interface RelationDecl {
+  name: string
+  locution: string
+  arity: RelationArity
+  reciprocal: boolean
+  prep: string | null
+  base: string
+  declSpan: OutlineSpan | null
+  pairs: RelationPair[]
+}
+
+// Un possibile membro di una coppia (per il form «aggiungi coppia»): il giocatore o
+// un'entità/stanza. 'name' è la forma a metà frase (aName/bName del serializzatore).
+export interface RelationMember {
+  id: string
+  name: string
+  kind: 'giocatore' | ObjectKind | 'stanza'
+}
+
+export interface WorldRelations {
+  ok: boolean
+  relations: RelationDecl[]
+  members: RelationMember[]
   errors: Diagnostic[]
 }
 
