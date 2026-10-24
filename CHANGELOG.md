@@ -4,13 +4,13 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
-## [Non rilasciata] — 1.6.0 (in sviluppo): le frontiere nuove
+## [1.6.0] - 2026-10-24 — le frontiere nuove
 
-> Versione di lavoro, **non rilasciata**. Raccoglie l'espansione del linguaggio
+> Raccoglie l'espansione del linguaggio
 > oltre la 1.5.0, tutta additiva: le frasi valide in 1.5 restano valide e col
 > medesimo significato; le dieci storie ufficiali hanno compilazione identica
 > (impronta vuota byte-per-byte) e gioco deterministico invariato. Semantica
-> precisa in `documentazione/grammatica-1.6.0.md`, §29.
+> precisa in `documentazione/grammatica-1.6.0.md`, §29–§30.
 
 #### Frasi nuove
 - **Invariante di clamp dichiarata** — `La sete resta sempre fra 0 e 100.`. Finora
