@@ -10,7 +10,7 @@ Sorgente del sito ufficiale: React 19 + Vite + Tailwind, pre-renderizzato in HTM
 | --- | --- |
 | `npm install` | installa le dipendenze |
 | `npm run dev` | server di sviluppo |
-| `npm run build` | controllo dei tipi, build, pre-render delle pagine e dell'esperimento |
+| `npm run build` | controllo dei tipi, build e pre-render delle pagine |
 | `npm run og` | rigenera le anteprime social `public/og/*.png` (testi in `scripts/genera-og.mjs`) |
 | `npm run deploy` | pubblica `dist/` su favella.eu via FTPS (lo lancia l'autore) |
 

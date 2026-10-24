@@ -63,8 +63,7 @@ const PrivacyPage = () => (
         <H>Memoria locale del browser</H>
         <P>
           Il sito può salvare nella memoria locale del tuo browser (localStorage) informazioni tecniche: il fatto che tu abbia già chiuso l'avviso informativo sulla privacy
-          e, nelle pagine interattive, le partite salvate da te nel browser e le preferenze della voce di Il Viaggiatore (voce recitata o
-          lettore di schermo, volume). Non sono cookie, non ti identificano e non vengono trasmesse a nessuno.
+          e, nelle pagine interattive, le partite salvate da te nel browser. Non sono cookie, non ti identificano e non vengono trasmesse a nessuno.
         </P>
 
         <H>Link esterni</H>

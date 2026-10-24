@@ -17,10 +17,10 @@ import {
 //  telefoni. Tipografia del gioco: Sora per il titolo spaziato, Lora per la
 //  prosa, Source Code Pro per le etichette.
 //
-//  Sotto, le due versioni: la web (1.23.0, definitiva) si gioca qui in
-//  /esperimento/, che è un'app separata e vuole un vero <a href> con
-//  ricarica completa, non il router della SPA; la desktop (1.35.0, la più
-//  completa) si scarica dalla sua release.
+//  Sotto, le due versioni: la web (1.23.0, definitiva) si gioca su GitHub
+//  Pages (pitz72.github.io/il-viaggiatore-favella), con un vero <a href> che
+//  apre il gioco in una scheda nuova; la desktop (1.35.0, la più completa) si
+//  scarica dalla sua release.
 // ====================================================================
 
 const FATTI = ["7 zone", "39 luoghi", "14 personaggi", "6 finali"];
@@ -96,26 +96,19 @@ const ViaggiatoreBanner = () => (
       </div>
 
       <div className="grid content-start gap-4">
-        {/* La versione web: definitiva, così com'è. */}
+        {/* La versione web: definitiva, su GitHub Pages. */}
         <div className="rounded-[14px] border border-[#f3b37a]/15 bg-[#0c0706]/70 p-5">
           <p className="m-0 font-mono text-[10.5px] uppercase tracking-[0.22em] text-[#f0b27a]">
             Nel browser · {VIAGGIATORE_WEB_VERSION} · definitiva
           </p>
           <p className="mb-4 mt-2 font-serif text-[15.5px] leading-[1.6] text-[#d9cfc2]">
-            La storia intera, doppiata, col suo trailer. Si gioca qui, senza installare nulla, e
-            anche su{" "}
-            <a
-              href={VIAGGIATORE_PAGES_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#f3c89a] underline decoration-[#f0b27a]/40 underline-offset-4 transition-colors hover:text-[#fff3e2]"
-            >
-              GitHub Pages
-            </a>
-            : resta così com'è.
+            La storia intera, doppiata, col suo trailer. Si gioca nel browser, senza installare
+            nulla, su GitHub Pages: resta così com'è.
           </p>
           <a
-            href="/esperimento/"
+            href={VIAGGIATORE_PAGES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="group inline-flex items-center gap-2.5 rounded-full border border-[#f0b27a]/50 bg-[#0c0706]/60 px-5 py-2.5 font-display text-[14px] font-semibold text-[#f3c89a] transition-colors hover:border-[#f3c89a] hover:text-[#fff3e2]"
           >
             Gioca nel browser

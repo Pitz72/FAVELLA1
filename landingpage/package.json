@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node scripts/prerender.mjs && npm run build:esperimento",
+    "build": "tsc && vite build && node scripts/prerender.mjs",
     "build:spa": "tsc && vite build",
-    "build:esperimento": "npm --prefix esperimento run build",
     "og": "node scripts/genera-og.mjs",
     "prerender": "node scripts/prerender.mjs",
     "deploy": "node scripts/deploy.mjs",
