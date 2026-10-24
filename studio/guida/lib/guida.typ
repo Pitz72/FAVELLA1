@@ -7,8 +7,8 @@
 // l'app.
 // =============================================================================
 
-#let STUDIO = "1.2.3"
-#let MOTORE = "1.5.0"
+#let STUDIO = "1.4.0"
+#let MOTORE = "1.6.0"
 #let EDIZIONE = "Prima edizione · ottobre 2026"
 
 // Due tirature dalla stessa sorgente: il PDF per lo schermo (A4, default) e l'interno per la

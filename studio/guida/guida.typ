@@ -33,6 +33,7 @@
 #include "capitoli/04-storia.typ"
 #include "capitoli/05-stanze.typ"
 #include "capitoli/06-oggetti.typ"
+#include "capitoli/06b-relazioni.typ"
 #include "capitoli/07-mappa.typ"
 #include "capitoli/08-personaggi.typ"
 #include "capitoli/09-regole.typ"

@@ -58,9 +58,9 @@ passare da un file all'altro.
 
 #num(2) *Salva.* Mostra #ui[Salvato] quando non c'è niente da salvare, #ui[Salva] quando
 un file è cambiato, #ui[Salva (2)] quando i file cambiati sono due. La freccia accanto
-apre #ui[Salva con nome…] e #ui[Salva il progetto come…] (capitolo 12). Prima di
+apre #ui[Salva con nome…] e #ui[Salva il progetto come…] (capitolo 13). Prima di
 #ui[Salva] c'è #ui[Riordina] (capitolo 4) e, quando sei in un pannello, #ui[Annulla]
-(capitolo 12).
+(capitolo 13).
 
 #num(3) *Prova la storia.* Compila la storia e ti porta nella sezione #ui[Prova] a
 giocarla (#tasto("F5")).
@@ -121,7 +121,7 @@ degli errori, un pallino verde su #ui[Prova] quando c'è una partita in corso.
     11), #ui[Apri il gioco in una finestra a parte].
 
     *Leggibilità*: la grandezza dell'interfaccia, il tema notte o carta, il contrasto alto
-    (capitolo 13).
+    (capitolo 14).
 
     *Applicazione*: #ui[Guida di Favella Studio (PDF)], #ui[Controlla gli
     aggiornamenti…], #ui[Controlla da solo a ogni avvio] (capitolo 2).
@@ -136,7 +136,7 @@ degli errori, un pallino verde su #ui[Prova] quando c'è una partita in corso.
 Studio non salva da solo: decidi tu quando. #tasto("Ctrl", "S") salva *tutti* i file
 cambiati, anche quelli che i pannelli hanno modificato senza che tu li aprissi. Se provi
 a chiudere Studio, ad aprire un'altra storia o a chiudere una scheda con delle modifiche
-non salvate, Studio te lo chiede prima (capitolo 12).
+non salvate, Studio te lo chiede prima (capitolo 13).
 
 #tastiera[
   #tasto("Ctrl", "1") … #tasto("Ctrl", "5") cambiano sezione. #tasto("F5") prova la storia.

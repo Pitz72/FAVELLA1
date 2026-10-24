@@ -120,6 +120,18 @@ resto: in fondo elenca, sotto #ui[Restano come sono scritte nel testo], le parti
 #ui[Scrivi la regola] riscriverà uguali. Una regola con «per la prima volta» può avere un
 #ui[Altrimenti] anche senza condizione: vale dalla seconda volta.
 
+== Le procedure (1.6)
+
+Dalla versione 1.6 del linguaggio una *procedura* è una sequenza di conseguenze con un
+nome, da richiamare dove serve (il manuale la spiega). In fondo a questa pagina c'è la
+sezione #ui[Procedure]: #ui[Una procedura nuova] apre una finestra dove le dai un nome
+e componi le conseguenze, come in una regola; #ui[Crea la procedura] la mette nel
+testo. Ogni procedura è una scheda con #ui[Modifica] e la #ui[×] per eliminarla.
+
+Da lì in poi, nel costruttore di una regola, di un evento o di un demone, fra le
+conseguenze compare #ui[esegui una procedura]: scegli quale, e la regola la richiama.
+La voce appare solo quando la storia dichiara almeno una procedura.
+
 == Eventi e demoni
 
 #coppia("nuovo-evento.png", "nuovo-demone.png",
@@ -135,7 +147,7 @@ torna falsa e di nuovo vera, scatta ancora. Il resto — il testo, le conseguenz
 come per le regole.
 
 #consiglio[
-  Prova spesso (#tasto("F5")). Il riquadro #ui[Passo passo] della Prova (capitolo 11)
+  Prova spesso (#tasto("F5")). Il riquadro #ui[Passo passo] della Prova (capitolo 12)
   mostra, turno per turno, che cosa è cambiato nel mondo: è il modo più rapido per
   capire perché una regola non è scattata.
 ]

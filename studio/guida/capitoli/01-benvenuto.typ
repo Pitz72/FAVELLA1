@@ -65,5 +65,5 @@ Per seguire la guida passo per passo, aprila anche tu:
   stessa cosa senza mouse: in Studio tutto si raggiunge dalla tastiera.
 
 Le schermate sono state prese da Favella Studio #STUDIO col tema chiaro, «carta»: sulla
-pagina bianca si leggono meglio. Studio si apre col tema scuro, «notte»; nel capitolo 13
+pagina bianca si leggono meglio. Studio si apre col tema scuro, «notte»; nel capitolo 14
 vedi come cambiarlo e come ingrandire tutta l'interfaccia.

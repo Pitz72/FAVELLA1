@@ -72,7 +72,25 @@ In fondo all'elenco degli oggetti c'è #ui[Il giocatore ne porta al massimo]: qu
 oggetti può tenere con sé. Vuoto (∞) vuol dire quanti ne vuole. Gli oggetti che «danno
 spazi in più» si aggiungono a questo numero.
 
+== Oggetti contabili
+
+Dalla versione 1.6 del linguaggio certe cose stanno in *più copie*: pozioni, frecce,
+monete. Nella scheda, la spunta #ui[Se ne contano le copie (contabile)] le trasforma
+in *contabili*. Appena la attivi compare il campo #ui[Plurale] — scrivilo come si dice
+al plurale («pozioni», «frecce»): FAVELLA non lo indovina, lo prende da te.
+
+Sotto, #ui[Quante] fissa le copie iniziali in ogni luogo: in #ui[Inventario], in una
+stanza, dentro un contenitore. In partita il giocatore ne prende, ne lascia e ne
+consuma a gruppi (`prendi 2 pozioni`, `consuma una pozione`): sono le frasi del motore
+1.6, e il manuale le racconta per esteso.
+
+#nota[
+  Un contabile è una cosa semplice: finché la spunta è attiva, il menu #ui[Che cos'è]
+  non lo lascia diventare contenitore, supporto o personaggio. Togli la spunta e torna
+  un oggetto qualunque.
+]
+
 #nota[
   I personaggi sono oggetti speciali e hanno la loro sezione, #ui[Personaggi]
-  (capitolo 8): qui non compaiono.
+  (capitolo 9): qui non compaiono.
 ]

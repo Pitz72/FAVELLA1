@@ -17,8 +17,8 @@ fare anche dalla scheda di una stanza (capitolo 5), con la tastiera.
 - Una linea è un collegamento fra due stanze. Vicino a ogni capo è scritta la direzione
   da prendere *da quella stanza*: fra l'ingresso e il salotto leggi «nord» vicino
   all'ingresso e «sud» vicino al salotto.
-- Una linea tratteggiata è un'uscita a senso unico: si va, ma non si torna per la stessa
-  strada.
+- Una linea tratteggiata, con una freccia singola, è un'uscita a senso unico: si va,
+  ma non si torna per la stessa strada.
 - Una linea a puntini, con «· se…» accanto alla direzione, è un'uscita che c'è solo
   mentre una condizione è vera: si cambia nel testo (capitolo 5).
 - In basso a sinistra ci sono #ui[\+] e #ui[−] per ingrandire e rimpicciolire e un
@@ -39,6 +39,10 @@ posizioni che avevi scelto).
   [Scegli #ui[Crea e collega].],
 )
 
+Spuntando #ui[Senza ritorno (a senso unico)] prima di confermare, l'uscita nasce in un
+verso solo: dalla seconda stanza non si torna indietro da sola. La stessa spunta
+#ui[senza ritorno] c'è su ogni uscita, nella scheda della stanza (capitolo 5).
+
 == Cambiare o togliere un collegamento
 
 Un clic su una linea apre #ui[Il collegamento]: le due stanze, la direzione (che si
@@ -57,6 +61,26 @@ direzione, stanza, #ui[×] per togliere, l'ultima riga per aggiungere.
 
 #ui[\+ Stanza], nella barra sopra la mappa, crea una stanza nuova: scrivi il nome con
 l'articolo e scegli #ui[Crea la stanza]. Compare sulla mappa, pronta da collegare.
+
+== Si può vincere?
+
+Dalla versione 1.4.0 di Studio, #ui[Vincibilità], nella barra sopra la mappa, accende
+un *overlay*: Studio analizza la struttura della storia e marca le stanze da cui non
+si arriva mai (tratteggiate di rosso), poi apre a lato il pannello #ui[Si può
+vincere?]. In cima l'esito — «La storia si può vincere.», «Forse non si vince: un
+requisito sembra irraggiungibile.» oppure «Nessun finale di vittoria: così la storia
+non si vince.» — e sotto che cosa manca: #ui[Per vincere] (gli oggetti e le condizioni
+che un finale buono richiede), #ui[Oggetti orfani], #ui[Regole che non scattano mai],
+#ui[Scorte che non bastano] e #ui[Stanze irraggiungibili].
+
+È una *vista*, non tocca la storia, e si aggiorna mentre scrivi: è il modo più rapido
+per scoprire, prima ancora di provarla a mano, se un `senza ritorno` di troppo o una
+chiave dimenticata hanno reso la storia impossibile da finire.
+
+#consiglio[
+  L'overlay guarda la *struttura* — raggiungibilità, catene di oggetti, scorte — non
+  gioca la partita: ti dice dove guardare, poi la Prova (capitolo 12) conferma.
+]
 
 #tastiera[
   La mappa si usa col mouse. Con la tastiera le stesse cose si fanno dalla scheda di

@@ -28,7 +28,7 @@ nord», «parla con il notaio») e premi #tasto("Invio") o #ui[Invia].
 
 == I pulsanti-verbo
 
-Se la storia lo permette (capitolo 10), sotto il racconto ci sono i *pulsanti-verbo*, gli
+Se la storia lo permette (capitolo 11), sotto il racconto ci sono i *pulsanti-verbo*, gli
 stessi che vedrà chi gioca:
 
 - #ui[Azioni]: i verbi (Esamina, Prendi, Apri, Usa…);

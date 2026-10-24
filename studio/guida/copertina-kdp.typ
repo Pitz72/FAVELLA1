@@ -5,11 +5,11 @@
 // Manuale di Programmazione di FAVELLA 1: sono due libri della stessa collana.
 //
 //   Trim libro          : 6,69 × 9,61″  (169,93 × 244,09 mm)
-//   Pagine (interno KDP) : 56  →  guida-interno-kdp.pdf   (multiplo di 4)
-//   Carta                : bianca, colore standard → dorso 56 × 0,002252″
+//   Pagine (interno KDP) : 60  →  guida-interno-kdp.pdf   (multiplo di 4, Studio 1.4.0)
+//   Carta                : bianca, colore standard → dorso 60 × 0,002252″
 //   Bleed                : 0,125″ (3,175 mm) su ogni lato esterno
 //
-// Wrap risultante: 13,756 × 9,860″  ≈  349,4 × 250,4 mm  (dorso 3,20 mm).
+// Wrap risultante: 13,765 × 9,860″  ≈  349,6 × 250,4 mm  (dorso 3,43 mm).
 //
 // ⚠ Se cambia il numero di pagine dell'interno, ricalcola `pagine` qui sotto.
 // ⚠ Dorso < 79 pp.: niente testo sul dorso (regola KDP); resta un filetto di marca.
@@ -37,9 +37,9 @@
 #let trim-w = 6.69in
 #let trim-h = 9.61in
 #let bleed  = 0.125in
-#let pagine = 56
+#let pagine = 60
 #let mult   = 0.002252in         // bianca, BN / colore standard
-#let spine  = pagine * mult       // ≈ 0,12611″ (3,20 mm)
+#let spine  = pagine * mult       // ≈ 0,13512″ (3,43 mm)
 #let safe   = 0.25in              // margine di sicurezza dai tagli e dalle pieghe
 
 #let cover-w = 2 * trim-w + spine + 2 * bleed

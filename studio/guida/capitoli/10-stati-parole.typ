@@ -25,6 +25,13 @@ che elenchi qui sono quelli che i menu delle regole ti propongono.
 (numero)]), il #ui[Nome], il #ui[Valore iniziale] e, per uno stato, se vuoi, gli altri
 valori ammessi. La #ui[×] in alto a destra di una scheda elimina lo stato o il contatore.
 
+Dalla versione 1.6 del linguaggio una scheda di contatore mostra anche il suo
+*limite*, #ui[resta sempre fra] A e B: gli estremi che il motore fa rispettare dopo
+ogni modifica. Gli estremi fissi si cambiano qui; un estremo che è un altro contatore
+(«[soglia]») resta in sola lettura — si tocca nel testo. E uno stato *calcolato* («è
+attivo quando…») compare con l'etichetta #ui[calcolato], anch'esso in sola lettura: il
+suo valore lo decide la condizione, non si fissa a mano.
+
 == Parole e comandi
 
 La linguetta #ui[Parole e comandi] riguarda il modo in cui il giocatore comanda.
@@ -46,7 +53,7 @@ Scegliere una voce aggiunge alla storia la frase che lo dice.
 *I verbi inventati da te.* Un verbo che il motore non conosce («lancia», «accelera»,
 «firma») si dichiara qui: scrivilo, spunta #ui[senza oggetto] se si usa da solo
 («ricorda»), e scegli #ui[Aggiungi il verbo]. Poi gli serve una regola che dica che cosa
-succede (capitolo 9). #ui[Nel testo] porta alla frase che lo dichiara.
+succede (capitolo 10). #ui[Nel testo] porta alla frase che lo dichiara.
 
 *Parole che valgono come un'altra.* I sinonimi: «ghermisci» vale «prendi». Scrivi una
 regola per «prendi» e funziona anche per «ghermisci». Se cambi apposta il significato di

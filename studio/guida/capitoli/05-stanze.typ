@@ -108,5 +108,5 @@ prima stanza; il nome scritto nei testi resta. #ui[Elimina 5 frasi] conferma.
 
 #consiglio[
   Un'eliminazione si annulla subito: in basso compare un avviso con #ui[Annulla]
-  (capitolo 12).
+  (capitolo 13).
 ]
