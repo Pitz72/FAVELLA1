@@ -64,6 +64,12 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   round-trip Studio: `menu.procedures`, conseguenza `op:"callProc"`,
   `serializza_frase` op `procedure_def`.)
 
+> **Valutate ma rimandate** (vedi `documentazione/grammatica-1.6.0.md` §29.5): il
+> quantificatore `ogni` nelle asserzioni di relazione, le relazioni azionabili dal
+> giocatore, e gli **oggetti contabili** (B1) — quest'ultimo richiede modifiche al
+> loop di gioco (quantità in inventario, prendere/lasciare N copie, concordanza
+> negli elenchi) e va progettato a parte.
+
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto
 Il remake de «Il Relitto Silente» (quattordici moduli, 362 regole, una risorsa che cala a

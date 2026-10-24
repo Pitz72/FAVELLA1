@@ -2194,3 +2194,20 @@ conseguenza) → 0-ambiguo.
 **Round-trip Studio.** `analizza_regole.menu.procedures` elenca i nomi; una
 conseguenza-invocazione è il JSON `{op:"callProc", name}` (riscritta in `esegui
 <nome>`); `serializza_frase` ha l'op `procedure_def {name, consequences[]}`.
+
+### §29.5 — Cosa resta aperto per una prossima versione
+
+Queste frontiere sono state VALUTATE ma lasciate fuori dalla 1.6.0 per scelta di
+scope (additività e rischio):
+
+- **B3 estensioni**: il quantificatore `ogni` nelle asserzioni (`apre ogni porta`)
+  e le relazioni **azionabili dal giocatore** (oggi solo d'autore e interrogabili).
+  Il modello `Relazione` è già pronto a reggerle.
+- **B1 — oggetti contabili** (`La pozione, plurale «pozioni», è contabile.`): la
+  forma utile (una cosa tenuta in più copie, con la concordanza dichiarata invece
+  che indovinata) richiede modifiche al *loop di gioco* — riconoscere il plurale
+  nell'input del giocatore, le quantità nell'inventario, prendere/lasciare N copie,
+  la concordanza negli elenchi — cioè i moduli `gioco.py` e `libreria_azioni.py`.
+  È il «secondo posto» a priorità più bassa della roadmap e va progettato
+  deliberatamente: la sola dichiarazione, senza le quantità, non sarebbe osservabile
+  in partita. Rimandata a una versione dedicata.
