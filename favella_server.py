@@ -56,7 +56,7 @@ try:
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.12.0"  # Studio 1.2.3 / motore 1.5: + riga di stato, uscite con una condizione, stati calcolati
+VERSIONE_SIDECAR = "0.13.0"  # Studio 1.3.0 / motore 1.6.0: relazioni, procedure, clamp, 'senza ritorno', oggetti contabili (round-trip IDE)
 
 
 # ==============================================================================
