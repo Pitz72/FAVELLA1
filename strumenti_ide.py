@@ -26,6 +26,9 @@ from strutture import (
     ConseguenzaSpostamentoGiocatore, ConseguenzaTogliProprieta, ConseguenzaVariabile,
     ConseguenzaVariabileCopia, ConseguenzaSegnala,
     OperandoCasuale, OperandoNumero, OperandoVariabile,
+    CondizioneRelazione, ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli,
+    REL_GIOCATORE, REL_QUALCUNO, REL_QUALCOSA, ConseguenzaProcedura,
+    CondizioneScorta,
 )
 from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QUADRA_CHIUSA
 from compilatore import (
@@ -194,6 +197,13 @@ def analizza_outline(percorso_file, sorgente=None):
                             and _norm_token(ents[1]) == rid:
                         span = f["span"]
                         break
+            # [1.6.0 / Q2] 'senza ritorno': un'uscita esplicita la cui direzione HA
+            # un'opposta, ma la destinazione non torna indietro di lì. (Un'uscita
+            # implicita è essa stessa l'auto-ritorno, quindi mai 'senza ritorno'.)
+            opposta = mondo.opposta_di(direzione)
+            one_way = bool(opposta) and not implicit and \
+                mondo.stanze.get(dest) is not None and \
+                mondo.stanze[dest].uscite.get(opposta) != rid
             exits.append({
                 "direction": direzione,
                 # [1.5.0 / C13] L'uscita vale solo mentre una condizione è vera.
@@ -202,6 +212,7 @@ def analizza_outline(percorso_file, sorgente=None):
                 "toName": mondo.stanze[dest].nome_visualizzato if dest in mondo.stanze else dest,
                 "span": span,
                 "implicit": implicit,
+                "oneWay": one_way,
             })
         rooms.append({
             "id": rid,
@@ -395,6 +406,65 @@ def _kind_variabile(mondo, nome):
     return "contatore" if isinstance(mondo.variabili.get(nome), int) else "stato"
 
 
+def _nome_scorta(mondo, eid):
+    """[1.6.0 / B1] La forma PLURALE dichiarata di un oggetto contabile ('pozioni'),
+    per riscrivere le frasi di scorta; in mancanza, il nucleo del nome o l'id."""
+    o = getattr(mondo, "oggetti", {}).get(eid)
+    if o is not None and getattr(o, "plurale", None):
+        return o.plurale
+    if o is not None:
+        return _scomponi_articolo(o.nome_visualizzato)[1]
+    return eid
+
+
+# [1.6.0 / B3] Articolazione della preposizione di una locuzione di relazione per
+# la RISCRITTURA: 'di' + 'il giocatore' -> 'del giocatore'; 'a' + 'la guardia' ->
+# 'alla guardia'. Solo 'di' e 'a' (le preposizioni di relazione tipiche); per le
+# altre si ripiega sulla forma piana 'prep nome' (che il parser accetta comunque).
+_FUSIONE_PREP = {
+    "di": {"il": "del", "lo": "dello", "la": "della", "i": "dei",
+           "gli": "degli", "le": "delle", "l'": "dell'"},
+    "a":  {"il": "al", "lo": "allo", "la": "alla", "i": "ai",
+           "gli": "agli", "le": "alle", "l'": "all'"},
+}
+
+
+def _articola_prep(prep, nome):
+    """Fonde la preposizione finale di una relazione con l'articolo dell'oggetto.
+    Senza preposizione (es. 'apre') ritorna il solo nome."""
+    if not prep:
+        return nome
+    art, nucleo = _scomponi_articolo(nome)
+    tavola = _FUSIONE_PREP.get(prep)
+    if art and tavola and art.lower() in tavola:
+        fusa = tavola[art.lower()]
+        return f"{fusa}{nucleo}" if fusa.endswith("'") else f"{fusa} {nucleo}"
+    return f"{prep} {nome}"
+
+
+def _rel_membro_surface(mondo, member_id):
+    """[1.6.0 / B3] Forma visualizzata (a metà frase, con articolo) di un membro di
+    relazione: il giocatore, un'entità, o un quantificatore d'interrogazione."""
+    if member_id == REL_GIOCATORE:
+        return "il giocatore"
+    if member_id == REL_QUALCUNO:
+        return "qualcuno"
+    if member_id == REL_QUALCOSA:
+        return "qualcosa"
+    return _articolo_in_minuscolo(_nome_entita(mondo, member_id))
+
+
+def _rel_info_json(mondo, nome_rel):
+    """Dati della relazione necessari alla riscrittura (base della locuzione e
+    preposizione finale)."""
+    rel = getattr(mondo, "relazioni", {}).get(nome_rel)
+    if rel is None:
+        return {"rel": nome_rel, "base": nome_rel, "prep": None}
+    prep = getattr(rel, "prep", None)
+    base = rel.locuzione[:-(len(prep) + 1)] if prep and rel.locuzione.endswith(" " + prep) else rel.locuzione
+    return {"rel": nome_rel, "base": base, "prep": prep}
+
+
 # [Favella Studio / Stati] Commento canonico che persiste l'elenco dei valori
 # ammessi di uno stato: '# valori di <nome>: a, b, c'. Il motore lo ignora (è un
 # commento); il sidecar lo legge per popolare i dropdown anche con valori non
@@ -510,6 +580,21 @@ def _cond_to_json(c, mondo):
         # [1.3.0 / M-10] 'il personaggio ha X'.
         return {"op": "npcHas", "npc": c.id_png, "npcName": _nome_entita(mondo, c.id_png),
                 "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
+    if isinstance(c, CondizioneScorta):
+        # [1.6.0 / B1] 'il giocatore ha [almeno|più di|meno di] N <plurale>' /
+        # 'non restano <plurale>' (cmp '==' con soglia 0). 'name' è la forma
+        # PLURALE dichiarata, per riscrivere la frase ('pozioni').
+        return {"op": "stock", "id": c.id_oggetto, "name": _nome_scorta(mondo, c.id_oggetto),
+                "cmp": c.operatore, "value": c.soglia}
+    if isinstance(c, CondizioneRelazione):
+        # [1.6.0 / B3] 'il giocatore si fida di Saverio', 'qualcuno si fida del
+        # giocatore'. 'a'/'b' sono gli ID (o le sentinelle qualcuno/qualcosa);
+        # 'aName'/'bName' le forme a metà frase, con l'info per riscrivere.
+        voce = {"op": "relation", "a": c.a, "b": c.b,
+                "aName": _rel_membro_surface(mondo, c.a),
+                "bName": _rel_membro_surface(mondo, c.b)}
+        voce.update(_rel_info_json(mondo, c.nome_rel))
+        return voce
     return {"op": "unknown"}
 
 
@@ -541,6 +626,18 @@ def _conseq_to_json(c, mondo):
                 "destName": _nome_stanza(mondo, c.destinazione) if c.destinazione else None}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
+    if isinstance(c, ConseguenzaProcedura):
+        # [1.6.0 / C1] 'esegui "far passare la notte"'.
+        return {"op": "callProc", "name": c.nome}
+    if isinstance(c, (ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli)):
+        # [1.6.0 / B3] 'il giocatore si fida di Vito' / 'il giocatore non si fida
+        # più di Vito'. 'remove' distingue le due; 'a'/'b' gli ID, i Name le forme.
+        voce = {"op": "relation", "remove": isinstance(c, ConseguenzaRelazioneTogli),
+                "a": c.a, "b": c.b,
+                "aName": _rel_membro_surface(mondo, c.a),
+                "bName": _rel_membro_surface(mondo, c.b)}
+        voce.update(_rel_info_json(mondo, c.nome_rel))
+        return voce
     if isinstance(c, ConseguenzaSpostamento):
         dest = c.destinazione
         dest_name = dest if dest in ("inventario", "nulla") else _nome_entita(mondo, dest)
@@ -590,7 +687,8 @@ def analizza_regole(percorso_file, sorgente=None):
     Difensiva: su errore restituisce ok=False + errors, non solleva."""
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     vuoto_menu = {"verbs": [], "objects": [], "rooms": [],
-                  "directions": [], "states": [], "counters": []}
+                  "directions": [], "states": [], "counters": [], "relations": [],
+                  "procedures": []}
     if not diag.get("ok"):
         return {"ok": False, "rules": [], "events": [], "demons": [], "menu": vuoto_menu,
                 "errors": diag.get("errors", [])}
@@ -810,13 +908,24 @@ def analizza_regole(percorso_file, sorgente=None):
                      "kind": ("personaggio" if getattr(o, "is_personaggio", False)
                               else "contenitore" if getattr(o, "is_contenitore", False)
                               else "supporto" if getattr(o, "is_supporto", False)
-                              else "oggetto")}
+                              else "oggetto"),
+                     # [1.6.0 / B1] Contabile + plurale dichiarato (None se non contabile).
+                     "countable": bool(getattr(o, "contabile", False)),
+                     "plural": getattr(o, "plurale", None)}
                     for oid, o in mondo.oggetti.items()],
         "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
         "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
         "states": sorted(states),
         "counters": sorted(counters),
         "stateValues": state_values,
+        # [1.6.0 / B3] Relazioni dichiarate, per i costruttori di regole/fatti.
+        "relations": [
+            {"name": nome, "locution": rel.locuzione, "arity": rel.arieta,
+             "reciprocal": bool(rel.reciproca), "prep": getattr(rel, "prep", None)}
+            for nome, rel in sorted(getattr(mondo, "relazioni", {}).items())
+        ],
+        # [1.6.0 / C1] Le procedure nominate (nomi), per il costruttore di regole.
+        "procedures": sorted(getattr(mondo, "procedure", {}).keys()),
     }
 
     return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
@@ -870,7 +979,7 @@ def analizza_variabili(percorso_file, sorgente=None):
         return {"file": f_o, "line": r_o, "endLine": r_end}
 
     # Indicizza le frasi di dichiarazione/valore-iniziale con il loro span.
-    decl_stato, decl_cont, init_stato, init_cont = {}, {}, {}, {}
+    decl_stato, decl_cont, init_stato, init_cont, span_invariante = {}, {}, {}, {}, {}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -896,6 +1005,10 @@ def analizza_variabili(percorso_file, sorgente=None):
                 # [0.16.0] 'La forza parte da N.' — valore iniziale del contatore.
                 nums = tok.get("NUMERO", [])
                 init_cont[nome] = (int(str(nums[0])) if nums else None, span)
+            elif nodo.data == "def_invariante":
+                # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.' — span della frase
+                # (l'ultima vince, come il motore).
+                span_invariante[nome] = span
 
     # Commenti '# valori di X: …' → mappa id-stato -> (valori, span). Ultima vince.
     commenti = {}
@@ -907,12 +1020,20 @@ def analizza_variabili(percorso_file, sorgente=None):
     for nome in mondo.variabili:
         if _kind_variabile(mondo, nome) == "contatore":
             val = mondo.variabili.get(nome)
+            # [1.6.0 / Q1] Invariante di clamp dichiarata ('X resta sempre fra A e B'):
+            # gli estremi sono Operando (NUMERO o '[contatore]') → forma JSON.
+            limiti = getattr(mondo, "invarianti_clamp", {}).get(nome)
+            clamp = ({"min": _operando_to_json(limiti[0]),
+                      "max": _operando_to_json(limiti[1]),
+                      "span": span_invariante.get(nome)}
+                     if limiti else None)
             counters.append({
                 "name": nome,
                 "declSpan": decl_cont.get(nome),
                 # [0.16.0 / B.2] valore iniziale (default 0) + span della frase 'parte da'.
                 "initial": val if isinstance(val, int) else 0,
                 "initialSpan": (init_cont.get(nome) or (None, None))[1],
+                "clamp": clamp,
             })
             continue
         iniziale = mondo.variabili.get(nome)
@@ -1191,7 +1312,10 @@ def analizza_dialoghi(percorso_file, sorgente=None):
                      "kind": ("personaggio" if getattr(o, "is_personaggio", False)
                               else "contenitore" if getattr(o, "is_contenitore", False)
                               else "supporto" if getattr(o, "is_supporto", False)
-                              else "oggetto")}
+                              else "oggetto"),
+                     # [1.6.0 / B1] Contabile + plurale dichiarato (None se non contabile).
+                     "countable": bool(getattr(o, "contabile", False)),
+                     "plural": getattr(o, "plurale", None)}
                     for oid, o in mondo.oggetti.items()],
         "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
         "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
@@ -1539,6 +1663,20 @@ def _serializza_operando(v):
     return str(v)
 
 
+def _frase_relazione(c, negato=False, togli=False):
+    """[1.6.0 / B3] Ricostruisce la frase di relazione da un JSON {aName, base,
+    prep, bName}. 'negato' per l'interrogazione negativa ('X non …'); 'togli' per
+    la conseguenza di rimozione ('X non … più …')."""
+    sogg = c["aName"]
+    base = c["base"]
+    coda = _articola_prep(c.get("prep"), c["bName"])
+    if togli:
+        return f"{sogg} non {base} più {coda}"
+    if negato:
+        return f"{sogg} non {base} {coda}"
+    return f"{sogg} {base} {coda}"
+
+
 def _serializza_condizione(c):
     """[Fase 6c] Condizione JSON (ricorsiva) → testo .fav canonico. Vincoli della
     grammatica: NOT solo su has/prop/var/varEq (infisso «non»); contatori/gruppi non
@@ -1566,6 +1704,18 @@ def _serializza_condizione(c):
     if op == "npcHas":
         # [1.3.0 / M-10] 'il personaggio ha X'.
         return f"{c['npcName']} ha {c['name']}"
+    if op == "relation":
+        # [1.6.0 / B3] 'il giocatore si fida di Saverio'.
+        return _frase_relazione(c)
+    if op == "stock":
+        # [1.6.0 / B1] Scorte di un contabile. 'name' è la forma plurale.
+        cmp, n, name = c["cmp"], int(c["value"]), c["name"]
+        if cmp == "==" and n == 0:
+            return f"non restano {name}"
+        prefisso = {"==": "", ">=": "almeno ", ">": "più di ", "<": "meno di "}.get(cmp)
+        if prefisso is None:
+            raise ValueError(f"Confronto di scorta sconosciuto: {cmp!r}.")
+        return f"il giocatore ha {prefisso}{n} {name}"
     if op == "count":
         cmp, v = c["cmp"], _serializza_operando(c["value"])
         if cmp == "==":
@@ -1598,7 +1748,10 @@ def _serializza_condizione(c):
             return f"{t['name']} non è {_luogo_di_condizione(t)}"
         if t["op"] == "npcHas":
             return f"{t['npcName']} non ha {t['name']}"
-        raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato o posizione.")
+        if t["op"] == "relation":
+            # [1.6.0 / B3] 'il giocatore non si fida di Vito'.
+            return _frase_relazione(t, negato=True)
+        raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato, posizione o relazione.")
     if op in ("and", "or"):
         sep = " e " if op == "and" else " oppure "
         def _grp(x):
@@ -1668,6 +1821,12 @@ def _serializza_conseguenza(c):
         base = "aumenta" if mode == "aumenta" else "diminuisci"
         # Ometti 'di 1' (default); ogni operando dinamico è esplicito.
         return f"{base} {c['name']}" + ("" if v == 1 else f" di {_serializza_operando(v)}")
+    if op == "relation":
+        # [1.6.0 / B3] 'il giocatore si fida di Vito' / '… non si fida più di Vito'.
+        return _frase_relazione(c, togli=bool(c.get("remove")))
+    if op == "callProc":
+        # [1.6.0 / C1] 'esegui <nome procedura>' (il nome è bare, come i verbi).
+        return f"esegui {c['name']}"
     if op == "unprop":
         # [1.3.0 / M-2] 'X non è più P'.
         return f"{c['name']} non è più {c['prop']}"
@@ -1796,7 +1955,7 @@ def serializza_frase(spec):
       room_def    {name}
       object_def  {name, kind:oggetto|contenitore|supporto|personaggio}
       description {name, text}
-      connection  {from, direction, to}
+      connection  {from, direction, to, oneWay?}   # oneWay → '… senza ritorno.'
       position    {name, prep, place}
       property    {name, property}
       prendibile  {name}
@@ -1807,9 +1966,13 @@ def serializza_frase(spec):
       state_decl     {name}          →  'X è uno stato.'
       state_init     {name, value}   →  'X è valore.' (valore iniziale dello stato)
       counter_decl   {name}          →  'X è un contatore.'
+      clamp_decl     {name, min, max} → 'X resta sempre fra A e B.'  [1.6.0 / Q1]
       state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
+      countable_decl {name, plural}          → 'La pozione, plurale "pozioni", è contabile.'  [1.6.0 / B1]
+      stock_player   {name, n}                → 'Il giocatore ha N <plurale>.'  [1.6.0 / B1]
+      stock_place    {name, n, prep?, place}  → 'Ci sono N <plurale> in <luogo>.'  [1.6.0 / B1]
       verb_decl      {word, noObject?}       → '"w" è un comando [senza oggetto].'
       synonym        {word, target, voluto?} → '"w" è come t [(voluto)].'
       commands_mode  {mode:'testo'|'pulsanti'|'entrambi'} → 'I comandi si scrivono…'
@@ -1847,9 +2010,11 @@ def serializza_frase(spec):
         if op == "description":
             return {"ok": True, "text": _frase_descrizione(spec["name"], spec.get("text", ""))}
         if op == "connection":
+            # [1.6.0 / Q2] 'senza ritorno' rende la connessione a senso unico.
+            coda = " senza ritorno" if spec.get("oneWay") else ""
             return {"ok": True,
                     "text": f"{spec['from']} collega {spec['direction']} a "
-                            f"{_articolo_in_minuscolo(spec['to'])}."}
+                            f"{_articolo_in_minuscolo(spec['to'])}{coda}."}
         if op == "position":
             return {"ok": True, "text": _frase_posizione(
                 spec["name"], spec["prep"], spec["place"])}
@@ -1899,6 +2064,52 @@ def serializza_frase(spec):
             # [0.16.0 / B.2] 'X parte da N.' — valore iniziale di un contatore.
             return {"ok": True,
                     "text": f"{str(spec['name']).strip()} parte da {int(spec['value'])}."}
+        if op == "clamp_decl":
+            # [1.6.0 / Q1] 'X resta sempre fra A e B.' — invariante di clamp. 'min'/
+            # 'max' sono operandi (un int letterale o {kind:'var'} → '[contatore]').
+            return {"ok": True,
+                    "text": f"{str(spec['name']).strip()} resta sempre fra "
+                            f"{_serializza_operando(spec['min'])} e "
+                            f"{_serializza_operando(spec['max'])}."}
+        if op == "countable_decl":
+            # [1.6.0 / B1] 'La pozione, plurale "pozioni", è contabile.'. Il plurale
+            # è DICHIARATO (il motore non lo indovina).
+            return {"ok": True,
+                    "text": f"{spec['name']}, plurale {_quota(str(spec['plural']).strip())}, "
+                            f"è contabile."}
+        if op == "stock_player":
+            # [1.6.0 / B1] 'Il giocatore ha N <plurale>.' — quantità iniziale in
+            # inventario. 'name' è la forma plurale ('pozioni').
+            return {"ok": True,
+                    "text": f"Il giocatore ha {int(spec['n'])} {str(spec['name']).strip()}."}
+        if op == "stock_place":
+            # [1.6.0 / B1] 'Ci sono N <plurale> in <luogo>.' — quantità iniziale in
+            # una stanza o in un contenitore/supporto.
+            prep = str(spec.get("prep", "in")).strip() or "in"
+            return {"ok": True,
+                    "text": f"Ci sono {int(spec['n'])} {str(spec['name']).strip()} "
+                            f"{prep} {_articolo_in_minuscolo(spec['place'])}."}
+        if op == "relation_decl":
+            # [1.6.0 / B3] '"si fida di" è una relazione molti a molti [ed è reciproca].'
+            arieta = str(spec.get("arity", "molti-a-molti")).replace("-", " ").strip()
+            if arieta not in ("uno a uno", "uno a molti", "molti a molti"):
+                raise ValueError(f"Arietà non valida: {spec.get('arity')!r}.")
+            coda = " ed è reciproca" if spec.get("reciprocal") else ""
+            return {"ok": True,
+                    "text": f"{_quota(str(spec['locution']).strip())} è una relazione {arieta}{coda}."}
+        if op == "relation_fact":
+            # [1.6.0 / B3] Asserzione: 'Il giocatore si fida di Saverio.'. Accetta la
+            # stessa shape JSON delle conseguenze/condizioni di relazione.
+            frase = _frase_relazione(spec)
+            return {"ok": True, "text": frase[:1].upper() + frase[1:] + "."}
+        if op == "procedure_def":
+            # [1.6.0 / C1] 'Definisci "far passare la notte" come: <cons> e adesso <cons>.'
+            corpo = [_serializza_conseguenza(c) for c in spec.get("consequences", [])]
+            if not corpo:
+                raise ValueError("Una procedura richiede almeno una conseguenza.")
+            return {"ok": True,
+                    "text": f"Definisci {_quota(str(spec['name']).strip())} come: "
+                            + " e adesso ".join(corpo) + "."}
         if op == "state_values_comment":
             # Commento canonico per persistere l'elenco dei valori ammessi di uno
             # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo

@@ -29,8 +29,11 @@ from strutture import (
     ConseguenzaSceltaStato,
     ConseguenzaContatore, ConseguenzaBuioStanza,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
-    Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
+    Operando, OperandoNumero, OperandoVariabile, OperandoCasuale, _come_operando,
     ConseguenzaSegnala, Arrivo,
+    Relazione, CondizioneRelazione, ConseguenzaRelazioneAggiungi,
+    ConseguenzaRelazioneTogli, REL_QUALCUNO, REL_QUALCOSA, REL_GIOCATORE,
+    ConseguenzaProcedura, CondizioneScorta,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
@@ -38,6 +41,7 @@ from favella_utils import (
     DIREZIONI_BASE, estrai_placeholder, radice_proprieta,
     prima_maiuscola, condizioni_nel_testo, SEGNAPOSTO_DEL_MOTORE, MESSAGGI_MOTORE,
     QUADRA_APERTA, QUADRA_CHIUSA, chiave_condizione, TestoCondizionaleSbilanciato,
+    liste_relazione_nel_testo,
 )
 import os
 import sys
@@ -138,6 +142,18 @@ PAROLE_RISERVATE = frozenset({
     # [1.5.0] le parole delle frasi nuove: 'e basta', 'e poi dire', 'per la
     # prima volta', 'si ritrova', 'segnala', 'si chiamano anche', 'entra', l'IFID
     "basta", "poi", "volta", "ritrova", "segnala", "chiamano", "entra", "ifid",
+    # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.': l'invariante di clamp
+    # dichiarata. 'resta'/'fra' sono già usate dalla conseguenza 'X resta fra A e
+    # B'; qui conta la parola nuova 'sempre', che distingue la dichiarazione.
+    "sempre",
+    # [1.6.0 / Q2] 'A collega nord a B senza ritorno.': connessione a senso unico.
+    # 'senza' è già riservata; 'ritorno' è nuova.
+    "ritorno",
+    # [1.6.0 / B3] relazioni di prima classe: parole della dichiarazione e dei
+    # quantificatori d'interrogazione ('qualcosa' era già di fatto riservata).
+    "relazione", "molti", "ed", "reciproca", "reciproco", "qualcuno",
+    # [1.6.0 / C1] 'Definisci "…" come: …' / 'esegui "…"'.
+    "definisci", "esegui",
 })
 
 
@@ -157,12 +173,29 @@ class TabellaSimboli:
         # i multiparola servono alla grammatica (terminale chiuso VERBO_MULTI); i
         # verbi monoparola restano coperti da VERBO=WORD (aperto).
         self.verbi_multi = set()
+        # [1.6.0 / B3] Relazioni binarie nominate dichiarate ('"si fida di" è una
+        # relazione molti a molti.'): id-canonico -> dict {locuzione, base, arieta,
+        # reciproca, prep}. La 'base' (locuzione senza la preposizione finale) è ciò
+        # che la grammatica incassa nel terminale chiuso RELAZIONE.
+        self.relazioni = {}
+        # [1.6.0 / C1] Procedure nominate dichiarate ('Definisci "far passare la
+        # notte" come: …'): i nomi normalizzati. Diventano il terminale CHIUSO
+        # PROCEDURA (come VERBO_MULTI), usato nell'invocazione 'esegui "…"'.
+        self.procedure = set()
+        # [1.6.0 / B1] Oggetti contabili: mappa id-FORMA-PLURALE -> id-canonico
+        # ('pozioni' -> 'pozione'), raccolta da 'La pozione, plurale "pozioni", è
+        # contabile.'. Le forme plurali entrano nell'alternanza del terminale ENTITA
+        # (vedi 'tutti'), così 'prendi 2 pozioni' e 'Il giocatore ha 3 pozioni'
+        # lessano la forma plurale come ENTITA; trova_oggetto/canonizza la riportano
+        # poi all'oggetto canonico.
+        self.plurali = {}
 
     @property
     def tutti(self):
-        """Nomi-ENTITÀ referenziabili (stanze ∪ oggetti). Gli 'stati' sono una
-        classe di simboli SEPARATA (terminale VARIABILE) e non rientrano qui."""
-        return self.stanze | self.oggetti
+        """Nomi-ENTITÀ referenziabili (stanze ∪ oggetti ∪ forme plurali dei
+        contabili). Gli 'stati' sono una classe di simboli SEPARATA (terminale
+        VARIABILE) e non rientrano qui."""
+        return self.stanze | self.oggetti | set(self.plurali)
 
     def __repr__(self):
         return (f"TabellaSimboli(stanze={sorted(self.stanze)}, "
@@ -203,6 +236,9 @@ _RE_DEF_DIREZIONI = re.compile(
 _RE_OPZIONE_DI_DIALOGO = re.compile(r"^al\s+nodo\b", re.IGNORECASE)
 # [1.5.0 / C13] La condizione in coda a un 'collega' ('… a la gola se …').
 _RE_CONDIZIONE_IN_CODA = re.compile(r"\s+se\s+", re.IGNORECASE)
+# [1.6.0 / Q2] Il marcatore 'senza ritorno' in coda a un 'collega': non fa parte
+# del nome della stanza di destinazione.
+_RE_SENZA_RITORNO_IN_CODA = re.compile(r"\s+senza\s+ritorno\s*$", re.IGNORECASE)
 # Stringhe quotate e commenti vanno rimossi prima di spezzare sui punti.
 _RE_QUOTATO = re.compile(r'"(\\.|[^"\\])*"')
 _RE_COMMENTO = re.compile(r"#[^\n]*")
@@ -210,6 +246,45 @@ _RE_COMMENTO = re.compile(r"#[^\n]*")
 # comando.'. Va cercato PRIMA di azzerare le stringhe quotate (lo scanner le
 # svuota), perché il nome del comando vive proprio dentro le virgolette.
 _RE_DEF_VERBO = re.compile(r'"([^"]+)"\s+è\s+un\s+comando\b', re.IGNORECASE)
+# [1.6.0 / B3] Dichiarazione di una relazione: '"si fida di" è una relazione
+# molti a molti [ed è reciproca].'. Come per i verbi, va cercata PRIMA di svuotare
+# le stringhe quotate (la locuzione vive dentro le virgolette).
+_RE_DEF_RELAZIONE = re.compile(
+    r'"([^"]+)"\s+è\s+una\s+relazione\s+'
+    r'(uno\s+a\s+uno|uno\s+a\s+molti|molti\s+a\s+molti)'
+    r'(\s+ed\s+è\s+reciproc[ao])?\s*\.', re.IGNORECASE)
+# Preposizioni che possono chiudere una locuzione di relazione ('si fida DI',
+# 'appartiene A'): la 'base' del terminale RELAZIONE le lascia fuori, perché in
+# uso si articolano con l'articolo ('del giocatore', 'alla guardia').
+_PREP_RELAZIONE_FINALI = frozenset({"di", "a", "da", "su", "con", "per", "in",
+                                    "fra", "tra", "verso", "contro"})
+
+
+# [1.6.0 / C1] Dichiarazione di una procedura nominata: 'Definisci "far passare
+# la notte" come: …'. Come i verbi, va cercata prima di svuotare le stringhe
+# quotate (il nome vive nelle virgolette). Serve solo il NOME (il corpo lo legge
+# la Passata 2).
+_RE_DEF_PROCEDURA = re.compile(r'\bdefinisci\s+"([^"]+)"\s+come\s*:', re.IGNORECASE)
+
+
+# [1.6.0 / B1] Dichiarazione di un oggetto CONTABILE: 'La pozione, plurale
+# "pozioni", è contabile.'. Come verbi/relazioni/procedure va cercata PRIMA di
+# svuotare le stringhe quotate (il plurale vive nelle virgolette). Introduce
+# l'oggetto (il singolare) e la sua forma plurale dichiarata.
+_RE_DEF_CONTABILE = re.compile(
+    r'(?P<nome>[^,.\n]+?)\s*,\s*plurale\s+"(?P<plur>[^"]+)"\s*,\s*(?:è|sono)\s+contabile\s*\.',
+    re.IGNORECASE)
+
+
+def _scomponi_locuzione(locuzione: str):
+    """[1.6.0 / B3] Divide una locuzione di relazione in (base, preposizione
+    finale). 'si fida di' -> ('si fida', 'di'); 'apre' -> ('apre', None). La base
+    è ciò che il terminale RELAZIONE incassa; la preposizione (articolabile) è
+    letta a parte in uso."""
+    parole = " ".join(locuzione.lower().split()).split()
+    if len(parole) >= 2 and parole[-1] in _PREP_RELAZIONE_FINALI:
+        return " ".join(parole[:-1]), parole[-1]
+    return " ".join(parole), None
 
 # [0.30.0 / A1] Carattere NON consentito in un nome dichiarato. Un nome (di
 # entità, stato/contatore, direzione, verbo multiparola) diventa un TERMINALE
@@ -249,6 +324,35 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         verbo = " ".join(m.group(1).lower().split())
         if " " in verbo:
             tab.verbi_multi.add(verbo)
+    # [1.6.0 / B3] Relazioni nominate (anche loro prima di svuotare le stringhe).
+    for m in _RE_DEF_RELAZIONE.finditer(senza_commenti):
+        locuzione = " ".join(m.group(1).lower().split())
+        if not locuzione:
+            continue
+        base, prep = _scomponi_locuzione(locuzione)
+        if not base:
+            continue
+        tab.relazioni[locuzione] = {
+            "locuzione": locuzione,
+            "base": base,
+            "arieta": " ".join(m.group(2).lower().split()).replace(" ", "-"),
+            "reciproca": bool(m.group(3)),
+            "prep": prep,
+        }
+    # [1.6.0 / C1] Procedure nominate (anche loro prima di svuotare le stringhe).
+    for m in _RE_DEF_PROCEDURA.finditer(senza_commenti):
+        nome = " ".join(m.group(1).lower().split())
+        if nome:
+            tab.procedure.add(nome)
+    # [1.6.0 / B1] Oggetti contabili: il singolare è un oggetto; la forma plurale
+    # entra fra le ENTITA (mappata al canonico) prima di svuotare le virgolette.
+    for m in _RE_DEF_CONTABILE.finditer(senza_commenti):
+        id_sing = normalizza_nome(m.group("nome").strip())
+        id_plur = normalizza_nome(m.group("plur").strip())
+        if id_sing:
+            tab.oggetti.add(id_sing)
+            if id_plur and id_plur != id_sing:
+                tab.plurali[id_plur] = id_sing
     pulito = _RE_QUOTATO.sub('""', pulito)
     pulito = _RE_COMMENTO.sub("", pulito)
 
@@ -302,8 +406,10 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         if m:
             tab.stanze.add(normalizza_nome(m.group("x")))
             # [1.5.0 / C13] '… a la gola se la fuga è iniziata': la condizione
-            # non fa parte del nome della stanza.
-            tab.stanze.add(normalizza_nome(_RE_CONDIZIONE_IN_CODA.split(m.group("y"), 1)[0]))
+            # non fa parte del nome della stanza. [1.6.0 / Q2] Né il marcatore
+            # 'senza ritorno' ('… a la gola senza ritorno'), tolto per primo.
+            coda = _RE_SENZA_RITORNO_IN_CODA.sub("", m.group("y"))
+            tab.stanze.add(normalizza_nome(_RE_CONDIZIONE_IN_CODA.split(coda, 1)[0]))
             continue
 
         # [1.5.0 / C2] 'La protezione è attiva quando …' (fuori da regole e demoni).
@@ -392,6 +498,13 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_riga_stato         // [1.5.0]
                   | def_ifid               // [1.5.0]
                   | def_demoni_fine_turno  // [1.5.0 / D]
+                  | def_invariante         // [1.6.0 / Q1]
+                  | def_relazione          // [1.6.0 / B3]
+                  | def_relazione_fatto    // [1.6.0 / B3]
+                  | def_procedura          // [1.6.0 / C1]
+                  | def_contabile          // [1.6.0 / B1]
+                  | def_giocatore_scorta   // [1.6.0 / B1]
+                  | def_scorta_luogo       // [1.6.0 / B1]
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -486,7 +599,14 @@ _GRAMMAR_TEMPLATE = r"""
     // cantina se la botola è aperta; altrimenti "La botola è chiusa.".' Dopo la
     // seconda ENTITA il lookahead "se"/"." decide; dopo la condizione
     // ";"/","/"altrimenti"/"." (nessuno continua una condizione) → 0-ambiguo.
-    def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA uscita_condizionata? "."
+    // [1.6.0 / Q2] 'senza ritorno' in coda: la connessione vale solo A→B (niente
+    // auto-ritorno B→A). Opzionale e in ultima posizione, dopo l'eventuale uscita
+    // condizionata: dopo la seconda ENTITA (o dopo il testo dell'altrimenti, o
+    // dopo la condizione) il lookahead "senza" è disgiunto da "se"/";"/","/
+    // "altrimenti"/"." → LALR(1) 0-ambiguo. "senza" è già riservata (comando senza
+    // oggetto); "ritorno" è la keyword nuova.
+    def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA uscita_condizionata? senza_ritorno? "."
+    senza_ritorno: "senza" "ritorno"
     uscita_condizionata: "se" condizione ( ( ";" | "," )? "altrimenti" TESTO_QUOTATO )?
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
     // [Livello 7] Capacità di trasporto. La BASE: 'Il giocatore può portare N
@@ -506,6 +626,23 @@ _GRAMMAR_TEMPLATE = r"""
     def_giocatore_inventario: "Il" "giocatore" "ha" ENTITA "."
     def_capacita_oggetto: ENTITA "dà" _numero ( "spazi" | "spazio" ) "."
     _numero: NUMERO | NUMERO_PAROLA
+
+    // --- [1.6.0 / B1] OGGETTI CONTABILI: concordanza DICHIARATA ---
+    // 'La pozione, plurale "pozioni", è contabile.'. Comincia come ogni altra
+    // dichiarazione su un oggetto (ENTITA); dopo l'entità il lookahead "," è
+    // NUOVO e disgiunto da ogni altro continuatore top-level (è/sono, collega,
+    // ha, dà, illumina, RELAZIONE) → LALR(1) 0-ambiguo. Il motore NON pluralizza
+    // da sé: l'autore dà il plurale una volta (NO-GO dei plurali automatici,
+    // Temi 5a/5b). Riservate nuove: "plurale", "contabile".
+    def_contabile: ENTITA "," "plurale" TESTO_QUOTATO "," _copula "contabile" "."
+    // Quantità iniziale in inventario: 'Il giocatore ha 3 pozioni.'. Prefisso
+    // comune con def_giocatore_inventario: dopo "ha" il lookahead _numero
+    // (NUMERO|NUMERO_PAROLA) è disgiunto da ENTITA → LALR(1) 0-ambiguo.
+    def_giocatore_scorta: "Il" "giocatore" "ha" _numero ENTITA "."
+    // Quantità iniziale in un luogo: 'Ci sono 5 frecce in la faretra.'. Inizia con
+    // la keyword nuova "Ci" (nessun'altra dichiarazione) → 0-ambiguo. Il luogo è
+    // una stanza o un contenitore/supporto (PREP_LUOGO ENTITA). Riservata: "Ci".
+    def_scorta_luogo: "Ci" ( "sono" | "è" ) _numero ENTITA PREP_LUOGO ENTITA "."
 
     // --- [1.3.0 / M-8] SCENA E TOPOLOGIA ---
     // 'Il cielo è di scena.': si esamina ma non si elenca («Puoi vedere qui»).
@@ -587,6 +724,62 @@ _GRAMMAR_TEMPLATE = r"""
     // [0.27.0 / A] "partono" plurale per i nomi-contatore plurali ('Le vite
     // partono da 3.'), coerente con la copula plurale di def_contatore.
     def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" _numero "."
+    // [1.6.0 / Q1] INVARIANTE di clamp dichiarata: 'La sete resta sempre fra 0 e
+    // 100.'. A differenza della conseguenza 'X resta fra A e B' (cons_limita, da
+    // richiamare a mano a ogni modifica), il motore la applica da solo dopo ogni
+    // scrittura del contatore. Inizia con VARIABILE come def_stato*/def_contatore*:
+    // dopo VARIABILE il lookahead "resta" è disgiunto da copula/"parte"/"partono"
+    // → LALR(1) 0-ambiguo. La parola "sempre" distingue questo contesto (top-level)
+    // dalla conseguenza (dopo ':', dove "resta" è seguito da "fra"): i due "resta"
+    // vivono in stati LALR distinti, quindi non entrano in conflitto. Gli estremi
+    // sono operando_confronto (NUMERO o '[contatore]'): niente estrazione casuale,
+    // che come limite ri-pescato a ogni scrittura non avrebbe senso.
+    def_invariante: VARIABILE "resta" "sempre" "fra" operando_confronto "e" operando_confronto "."
+
+    // --- [1.6.0 / B3] RELAZIONI DI PRIMA CLASSE ---
+    // Una relazione binaria NOMINATA (ispirata alle *relations* di Inform 7): si
+    // dichiara una volta con la locuzione d'uso (fra virgolette, come un verbo),
+    // l'arietà e l'eventuale reciprocità. La locuzione diventa il terminale CHIUSO
+    // RELAZIONE (la sua BASE, senza la preposizione finale). D'autore e
+    // interrogabile, non azionabile dal giocatore in questa prima versione.
+    //   '"si fida di" è una relazione molti a molti ed è reciproca.'
+    def_relazione: TESTO_QUOTATO "è" "una" "relazione" arieta reciprocita? "."
+    arieta: "uno" "a" "uno"     -> arieta_uno_uno
+          | "uno" "a" "molti"   -> arieta_uno_molti
+          | "molti" "a" "molti" -> arieta_molti_molti
+    reciprocita: "ed" "è" ( "reciproca" | "reciproco" )
+    // Asserzione d'autore (top-level): 'Il giocatore si fida di Saverio.',
+    // 'La chiave di ottone apre la cella.'. Il SOGGETTO è inlinato ("il giocatore"
+    // oppure ENTITA, mai un quantificatore): così condivide il prefisso con le
+    // altre dichiarazioni (def_giocatore*, def_proprieta/…) e diverge sul token
+    // DOPO il soggetto (RELAZIONE vs copula/collega/si/dà/ha/comincia/…) → LALR(1)
+    // 0-ambiguo. La preposizione finale, se c'è, è _rel_prep (filtrata: si articola
+    // in 'del'/'alla'). L'OGGETTO è rel_ogg (nonterminale, posizione libera).
+    def_relazione_fatto: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg "." -> fatto_rel_gioc
+                       | ENTITA RELAZIONE _rel_prep? rel_ogg "."            -> fatto_rel_ent
+    // L'oggetto di una relazione: il giocatore ('il giocatore' o, dopo una prep.
+    // articolata, 'giocatore' nudo), un'ENTITA, oppure — SOLO nelle interrogazioni
+    // — 'qualcuno'/'qualcosa' (il transformer li rifiuta in asserzioni/conseguenze).
+    rel_ogg: "il" "giocatore" -> rel_giocatore
+           | "giocatore"       -> rel_giocatore
+           | ENTITA            -> rel_entita
+           | "qualcuno"         -> rel_qualcuno
+           | "qualcosa"         -> rel_qualcosa
+    // Preposizione finale di relazione, articolata, FILTRATA (prefisso '_'): non
+    // produce figli, così i metodi del transformer vedono solo l'oggetto e la
+    // RELAZIONE. Le forme sono quelle di 'di' e 'a' (le relazioni tipiche); 'apre'
+    // non ne ha e _rel_prep resta assente.
+    _rel_prep: "di" | "del" | "dello" | "della" | "dei" | "degli" | "delle" | "dell'" | "d'"
+             | "a" | "al" | "allo" | "alla" | "ai" | "agli" | "alle" | "all'"
+
+    // --- [1.6.0 / C1] PROCEDURE NOMINATE ---
+    // 'Definisci "far passare la notte" come: <conseguenza> e adesso <conseguenza>.'
+    // definisce una sequenza NOMINATA di conseguenze, richiamabile come conseguenza
+    // con 'esegui "far passare la notte"'. Senza parametri in questa prima versione.
+    // Inizia con la riservata "Definisci": nessun'altra dichiarazione parte così →
+    // LALR(1) 0-ambiguo. Il corpo è una lista di conseguenze (niente 'dire': una
+    // procedura cambia lo stato, il testo lo dice la regola che la richiama).
+    def_procedura: "Definisci" TESTO_QUOTATO "come" ":" conseguenza ( "e" "adesso"? conseguenza )* "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -642,13 +835,19 @@ _GRAMMAR_TEMPLATE = r"""
     //       decide l'opzionale, entrambi NON continuatori di condizione (solo
     //       "oppure"/"e"/")") → reduce deterministico, LALR(1) 0-ambiguo.
     // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
-    def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
+    // [1.5.0 / C3] 'prima_volta?' è accettato anche su 'Ogni turno se' e 'N turni
+    // dopo che' solo per RAGGIUNGERE la diagnostica mirata nel transformer
+    // (demone_ogni/demone_dopo): su questi demoni 'per la prima volta' resta un
+    // errore, ma con un messaggio d'autore invece dell'errore grezzo del parser.
+    // LALR(1) 0-ambiguo: dopo la condizione il lookahead "per" (inizio di
+    // prima_volta) è disgiunto dai continuatori "oppure"/"e"/")" e da ":".
+    def_demone: "Ogni" "turno" "se" condizione prima_volta? ":" _esito_temporale "." -> demone_ogni
               // [1.5.0 / C3] '… per la prima volta': una volta sola in tutta la partita.
               | "Quando" condizione ( "diventa" "vera" )? prima_volta? ":" _esito_temporale "." -> demone_quando
               // [1.3.0 / M-7] Timer che parte da un fatto: 'Tre turni dopo che la
               // miccia è accesa: …' (scatta N turni dopo il fronte di salita).
               // Inizia con NUMERO: nessun'altra dichiarazione comincia così.
-              | _numero ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
+              | _numero ( "turno" | "turni" ) "dopo" "che" condizione prima_volta? ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -758,10 +957,35 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_posizione_oggetto_neg
               | cond_png_ha
               | cond_png_ha_neg
+              | cond_relazione       // [1.6.0 / B3]
+              | cond_relazione_neg   // [1.6.0 / B3]
+              | cond_pq_eq           // [1.6.0 / B1]
+              | cond_pq_gte          // [1.6.0 / B1]
+              | cond_pq_gt           // [1.6.0 / B1]
+              | cond_pq_lt           // [1.6.0 / B1]
+              | cond_scorta_finita   // [1.6.0 / B1]
               | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
     cond_possesso_neg: "il" "giocatore" "non" "ha" ENTITA
+    // [1.6.0 / B1] Quantità posseduta di un contabile: 'se il giocatore ha almeno
+    // 2 pozioni' (ed esatto / più di / meno di). Prefisso comune con cond_possesso:
+    // dopo "ha" il lookahead _numero/"almeno"/"più"/"meno" è disgiunto da ENTITA →
+    // LALR(1) 0-ambiguo. Il confronto è sulle copie in inventario.
+    cond_pq_eq: "il" "giocatore" "ha" _numero ENTITA
+    cond_pq_gte: "il" "giocatore" "ha" "almeno" _numero ENTITA
+    cond_pq_gt: "il" "giocatore" "ha" "più" "di" _numero ENTITA
+    cond_pq_lt: "il" "giocatore" "ha" "meno" "di" _numero ENTITA
+    // [1.6.0 / B1] Scorta esaurita: 'se non restano pozioni' (o 'se non restano
+    // più pozioni'). Scelta deliberata della forma: 'le pozioni sono finite'
+    // metterebbe un AGGETTIVO nudo dopo la copula, che collide con PROPRIETA
+    // ('ENTITA _copula PROPRIETA', cond_proprieta) — due letture complete della
+    // stessa frase (ambiguità reale per la guardia Earley, benché LALR la risolva
+    // per priorità). La forma 'non restano … ENTITA' parte dalla keyword "non"
+    // (come cond_non_gruppo, che però prosegue con "("): dopo "non" il lookahead
+    // "restano" è disgiunto → LALR(1) 0-ambiguo e Earley 0-ambiguo. Vero quando il
+    // giocatore non ha più copie del contabile.
+    cond_scorta_finita: "non" "restano" "più"? ENTITA
     // [0.18.0 / B1] Posizione del giocatore: 'se il giocatore è in [stanza]'.
     // Dopo 'il giocatore' il lookahead distingue "ha"/"non ha" (possesso) dalla
     // copula è/sono (posizione) → LALR(1) 0-ambiguo.
@@ -828,6 +1052,20 @@ _GRAMMAR_TEMPLATE = r"""
     // "ha" (o "non" "ha") è disgiunto da _copula.
     cond_png_ha: ENTITA "ha" ENTITA
     cond_png_ha_neg: ENTITA "non" "ha" ENTITA
+    // [1.6.0 / B3] Interrogazione di una relazione: 'se il giocatore si fida di
+    // Saverio', 'se qualcuno si fida del giocatore', 'se il giocatore non si fida
+    // (più) di Vito'. Il SOGGETTO è inlinato (il giocatore / ENTITA / qualcuno /
+    // qualcosa): così condivide il prefisso con le altre cond_base (copula/"ha")
+    // e diverge sul token dopo il soggetto (o dopo "non"): RELAZIONE vs "ha"/copula
+    // → LALR(1) 0-ambiguo. 'più' è opzionale e innocuo in interrogazione.
+    cond_relazione: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg -> cond_rel_gioc
+                  | ENTITA RELAZIONE _rel_prep? rel_ogg            -> cond_rel_ent
+                  | "qualcuno" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcuno
+                  | "qualcosa" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcosa
+    cond_relazione_neg: "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cond_rel_gioc_neg
+                      | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg            -> cond_rel_ent_neg
+                      | "qualcuno" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcuno_neg
+                      | "qualcosa" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcosa_neg
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
@@ -845,6 +1083,20 @@ _GRAMMAR_TEMPLATE = r"""
                 // [1.3.0 / M-10] 'la guardia ha la chiave': l'oggetto passa al
                 // personaggio. Dopo ENTITA il lookahead "ha" è nuovo.
                 | ENTITA "ha" ENTITA               -> cons_png_riceve
+                // [1.6.0 / B3] Asserire/togliere una coppia di relazione: 'il
+                // giocatore si fida di Vito' / 'il giocatore non si fida più di
+                // Vito'. Soggetto inlinato (il giocatore / ENTITA): dopo il
+                // soggetto (o dopo "non") il lookahead RELAZIONE è disgiunto dalle
+                // altre conseguenze su ENTITA/"il giocatore" (copula/collega/ha/va/
+                // cambia/diventa).
+                | "il" "giocatore" RELAZIONE _rel_prep? rel_ogg              -> cons_rel_gioc_agg
+                | ENTITA RELAZIONE _rel_prep? rel_ogg                        -> cons_rel_ent_agg
+                | "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cons_rel_gioc_tog
+                | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg           -> cons_rel_ent_tog
+                // [1.6.0 / C1] Invocazione di una procedura nominata: 'esegui "far
+                // passare la notte"'. Parte dalla keyword nuova "esegui" → disgiunta
+                // dalle altre conseguenze.
+                | "esegui" PROCEDURA                                         -> cons_procedura
                 // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
                 // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
                 // (mai un'ENTITA: 'giocatore' è riservata), distinta da
@@ -984,6 +1236,19 @@ _GRAMMAR_TEMPLATE = r"""
     // Vuota (nessun verbo multiparola) -> regex che non matcha mai.
     VERBO_MULTI.3: /(?:__VERBI_MULTI__)\b/i
 
+    // [1.6.0 / B3] RELAZIONE: alternanza CHIUSA delle BASI delle locuzioni di
+    // relazione dichiarate ('si fida', 'apre'), generata per-file (come
+    // VERBO_MULTI). Priorità ALTA (.3) e confine di parola, così la locuzione
+    // intera vince il longest-match contro i singoli WORD. La preposizione finale
+    // ('di'/'a') non è nella base: in uso si legge a parte (_rel_prep, articolabile
+    // in 'del'/'alla'). Vuota -> regex che non matcha mai.
+    RELAZIONE.3: /(?:__RELAZIONI__)\b/i
+
+    // [1.6.0 / C1] PROCEDURA: alternanza CHIUSA dei nomi di procedura dichiarati
+    // ('far passare la notte'), generata per-file (come VERBO_MULTI). Priorità
+    // ALTA (.3) e confine di parola. Vuota -> regex che non matcha mai.
+    PROCEDURA.3: /(?:__PROCEDURE__)\b/i
+
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
 
@@ -1073,6 +1338,33 @@ def _costruisci_alt_verbi_multi(verbi_multi=()) -> str:
     return "|".join(_pattern_nome(v) for v in verbi)
 
 
+def _costruisci_alt_relazioni(relazioni=()) -> str:
+    """[1.6.0 / B3] Corpo regex dell'alternanza del terminale RELAZIONE: le BASI
+    delle locuzioni di relazione dichiarate ('si fida', 'apre'), con spazi
+    flessibili e ordinate per lunghezza decrescente (longest-match). La
+    preposizione finale ('di'/'a') NON è nella base: in uso si legge a parte (si
+    articola in 'del'/'alla'…). Vuoto -> regex che non matcha mai."""
+    basi = []
+    for info in (relazioni.values() if isinstance(relazioni, dict) else relazioni):
+        base = info.get("base") if isinstance(info, dict) else info
+        if base:
+            basi.append(base)
+    basi = sorted(set(basi), key=len, reverse=True)
+    if not basi:
+        return r"[^\s\S]"
+    return "|".join(_pattern_nome(b) for b in basi)
+
+
+def _costruisci_alt_procedure(procedure=()) -> str:
+    """[1.6.0 / C1] Corpo regex dell'alternanza del terminale PROCEDURA: i nomi
+    delle procedure dichiarate ('far passare la notte'), con spazi flessibili e
+    ordinati per lunghezza decrescente (longest-match). Vuoto -> non matcha mai."""
+    nomi = sorted(set(p for p in procedure if p), key=len, reverse=True)
+    if not nomi:
+        return r"[^\s\S]"
+    return "|".join(_pattern_nome(n) for n in nomi)
+
+
 # ------------------------------------------------------------------------------
 # [1.3.0] PAROLE CHIAVE CON CONFINE DI PAROLA, SENZA DISTINZIONE DI MAIUSCOLE
 # ------------------------------------------------------------------------------
@@ -1138,15 +1430,19 @@ def _parole_chiave_con_confine(grammatica: str) -> str:
     return "\n".join(righe_out) + "\n" + "\n".join(definizioni) + "\n"
 
 
-def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -> str:
+def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=(),
+                          relazioni=(), procedure=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
-    ENTITA, VARIABILE, DIREZIONE e VERBO_MULTI risolti dai simboli noti (Passata 2).
-    VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include le direzioni
-    personalizzate (Livello 4); VERBO_MULTI i verbi custom multi-parola (0.18.0)."""
+    ENTITA, VARIABILE, DIREZIONE, VERBO_MULTI e RELAZIONE risolti dai simboli noti
+    (Passata 2). VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include
+    le direzioni personalizzate (Livello 4); VERBO_MULTI i verbi custom multi-parola
+    (0.18.0); RELAZIONE le locuzioni di relazione (1.6.0 / B3)."""
     grammatica = _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
+    grammatica = grammatica.replace("__RELAZIONI__", _costruisci_alt_relazioni(relazioni))
+    grammatica = grammatica.replace("__PROCEDURE__", _costruisci_alt_procedure(procedure))
     return _parole_chiave_con_confine(grammatica)
 
 
@@ -1161,7 +1457,8 @@ _CACHE_PARSER: dict = {}
 
 
 def costruisci_parser(simboli, variabili=(), direzioni=(),
-                      propagate_positions=False, verbi_multi=()) -> Lark:
+                      propagate_positions=False, verbi_multi=(), relazioni=(),
+                      procedure=()) -> Lark:
     """Istanzia (o riusa dalla cache) il parser LALR(1) per i simboli dati. LALR è
     unambiguo per costruzione: un'eventuale ambiguità grammaticale emergerebbe qui
     come GrammarError a build-time, non come scelta silenziosa a runtime.
@@ -1170,7 +1467,7 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
     finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, propagate_positions)
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1180,10 +1477,11 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     return parser
 
 
-def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=()) -> Lark:
+def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=(),
+                                 relazioni=(), procedure=()) -> Lark:
     """[1.3.0 / M-6] Un parser che legge una sola condizione ('la porta è
     aperta'), per i testi condizionali. Cachato come quello principale."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, "condizione")
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1497,6 +1795,7 @@ class RegolaTarget:
         self.secondario = secondario
 
 _VOLUTO = object()     # [1.4.1] il marcatore «(voluto)» di un sinonimo (vedi def_sinonimo)
+_SENZA_RITORNO = object()  # [1.6.0 / Q2] il marcatore «senza ritorno» di una connessione
 
 
 def _avviso_cambio_di_significato(sinonimo, azioni, canonico):
@@ -1519,9 +1818,14 @@ class FavellaTransformer(Transformer):
     """
     Visita l'albero sintattico generato da Lark e popola l'oggetto Mondo.
     """
-    def __init__(self, coppie_direzioni=()):
+    def __init__(self, coppie_direzioni=(), relazioni=(), plurali=None):
         super().__init__()
         self.mondo = Mondo()
+        # [1.6.0 / B1] Mappa plurale->canonico raccolta in Passata 1: la copio nel
+        # mondo PRIMA del transform, così trova_oggetto/canonizza risolvono le forme
+        # plurali già mentre si processano le frasi.
+        if plurali:
+            self.mondo.plurali = dict(plurali)
         self.errori = []        # Errori bloccanti: la compilazione fallisce
         self.warnings = []      # Avvisi non bloccanti: la compilazione prosegue
         self.start_dichiarato_raw = None  # Nome grezzo della stanza di partenza
@@ -1572,11 +1876,35 @@ class FavellaTransformer(Transformer):
         self._variabili_volute = set()   # L4: stati e contatori «(voluto)»
         self._pending_tempo_libero = []  # C10: verbi che non fanno passare il tempo
         self._pending_arrivi = []        # C12: (Arrivo, stanza_grezzo)
+        # [1.6.0 / Q1] Invarianti di clamp dichiarate ('X resta sempre fra A e B'),
+        # validate in valida_post (il contatore può essere dichiarato dopo).
+        self._pending_invarianti = []    # (nome, grezzo, Operando min, Operando max)
+        # [1.6.0 / B1] Oggetti contabili e quantità iniziali, risolti in valida_post
+        # (l'oggetto può essere dichiarato dopo le sue quantità; le quantità dopo
+        # le posizioni). _pending_contabili: (ent_grezzo, plurale); _pending_scorte:
+        # (ent_grezzo, luogo_grezzo|None=inventario, numero, grezzo_intero).
+        self._pending_contabili = []
+        self._pending_scorte = []
+        self._pending_scorte_cond = []   # (CondizioneScorta, ent_grezzo, grezzo) da validare
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
         for dir_a, dir_b in coppie_direzioni:
             self.mondo.dichiara_direzione_opposta(dir_a, dir_b)
+        # [1.6.0 / B3] Le relazioni sono raccolte in Passata 1 e pre-popolate qui,
+        # così asserzioni e interrogazioni funzionano a prescindere dall'ordine
+        # (un fatto può precedere la dichiarazione). `_base_relazione` mappa la
+        # BASE della locuzione (ciò che il terminale RELAZIONE matcha) all'id
+        # canonico (la locuzione intera, 'si fida di').
+        self._base_relazione = {}
+        info_rel = relazioni.values() if isinstance(relazioni, dict) else relazioni
+        for info in info_rel:
+            rel = Relazione(info["locuzione"], info["locuzione"],
+                            arieta=info.get("arieta", "molti-a-molti"),
+                            reciproca=bool(info.get("reciproca")),
+                            prep=info.get("prep"))
+            self.mondo.dichiara_relazione(rel)
+            self._base_relazione[" ".join(info["base"].lower().split())] = info["locuzione"]
 
     # --- Nodi Entità e Testo ---
 
@@ -1622,6 +1950,16 @@ class FavellaTransformer(Transformer):
 
     def DIREZIONE(self, token):
         return token.value.lower()
+
+    def RELAZIONE(self, token):
+        # [1.6.0 / B3] La BASE di una locuzione di relazione ('si fida', 'apre');
+        # la riconduco all'id canonico (la locuzione intera, 'si fida di').
+        base = " ".join(token.value.lower().split())
+        return self._base_relazione.get(base, base)
+
+    def PROCEDURA(self, token):
+        # [1.6.0 / C1] Il nome di una procedura, normalizzato (spazi singoli).
+        return " ".join(token.value.lower().split())
 
     def PREP_AZIONE(self, token):
         return token.value.lower()
@@ -2030,6 +2368,131 @@ class FavellaTransformer(Transformer):
         self.mondo.variabili[nome] = numero
         return None
 
+    def def_invariante(self, var_grezzo, minimo, massimo):
+        # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.'. minimo/massimo sono già
+        # Operando (operando_confronto -> operando_numero/operando_variabile). La
+        # validazione (il nome è un contatore, l'intervallo è sano) è differita a
+        # valida_post: il contatore può essere dichiarato dopo l'invariante.
+        nome = normalizza_nome(var_grezzo)
+        self._pending_invarianti.append(
+            (nome, str(var_grezzo), _come_operando(minimo), _come_operando(massimo)))
+        return None
+
+    # --- [1.6.0 / B3] Relazioni di prima classe ---
+
+    def def_relazione(self, *_):
+        # La relazione è già stata raccolta in Passata 1 e pre-popolata in __init__
+        # (come le coppie di direzioni): qui niente da fare.
+        return None
+
+    # L'OGGETTO di una relazione (rel_ogg) tramite gli alias rel_giocatore/…: tornano
+    # l'ID-membro o la sentinella del quantificatore.
+    def rel_giocatore(self, *_):
+        return REL_GIOCATORE
+
+    def rel_entita(self, ent_grezzo):
+        return normalizza_nome(ent_grezzo)
+
+    def rel_qualcuno(self, *_):
+        return REL_QUALCUNO
+
+    def rel_qualcosa(self, *_):
+        return REL_QUALCOSA
+
+    def _rel_quantificatore(self, operando):
+        return operando in (REL_QUALCUNO, REL_QUALCOSA)
+
+    def _rel_ogg_concreto(self, ogg, locuzione, contesto):
+        """[B3] 'qualcuno'/'qualcosa' valgono solo nelle interrogazioni: come
+        oggetto di un'asserzione o di una conseguenza sono un errore gentile."""
+        if self._rel_quantificatore(ogg):
+            self.errori.append(
+                f"«qualcuno»/«qualcosa» valgono solo in una domanda ('se …'), non "
+                f"in {contesto} della relazione «{locuzione}»: indica chi di preciso.")
+            return False
+        return True
+
+    # Asserzioni d'autore (top-level): applicano subito la coppia (la relazione è
+    # già in mondo.relazioni; gli ID-entità sono dichiarati per costruzione).
+    def _asserisci(self, sogg, locuzione, ogg):
+        if not self._rel_ogg_concreto(ogg, locuzione, "un'asserzione"):
+            return
+        rel = self.mondo.relazioni.get(locuzione)
+        if rel is not None:
+            rel.aggiungi(sogg, ogg)
+
+    def fatto_rel_gioc(self, locuzione, ogg):
+        self._asserisci(REL_GIOCATORE, locuzione, ogg)
+        return None
+
+    def fatto_rel_ent(self, ent_grezzo, locuzione, ogg):
+        self._asserisci(normalizza_nome(ent_grezzo), locuzione, ogg)
+        return None
+
+    # Conseguenze (azionate d'autore da regole/eventi/demoni).
+    def cons_rel_gioc_agg(self, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneAggiungi(locuzione, REL_GIOCATORE, ogg)
+
+    def cons_rel_ent_agg(self, ent_grezzo, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneAggiungi(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    def cons_rel_gioc_tog(self, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneTogli(locuzione, REL_GIOCATORE, ogg)
+
+    def cons_rel_ent_tog(self, ent_grezzo, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneTogli(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    # Interrogazioni (condizioni). Il soggetto è noto dall'alias della regola.
+    def cond_rel_gioc(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_GIOCATORE, ogg)
+
+    def cond_rel_ent(self, ent_grezzo, locuzione, ogg):
+        return CondizioneRelazione(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    def cond_rel_qualcuno(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_QUALCUNO, ogg)
+
+    def cond_rel_qualcosa(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_QUALCOSA, ogg)
+
+    def cond_rel_gioc_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_GIOCATORE, ogg))
+
+    def cond_rel_ent_neg(self, ent_grezzo, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, normalizza_nome(ent_grezzo), ogg))
+
+    def cond_rel_qualcuno_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_QUALCUNO, ogg))
+
+    def cond_rel_qualcosa_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_QUALCOSA, ogg))
+
+    # --- [1.6.0 / C1] Procedure nominate ---
+
+    def def_procedura(self, nome_quotato, *conseguenze):
+        # 'Definisci "far passare la notte" come: <conseguenze>.'. Il corpo è una
+        # lista di Conseguenza; lo registriamo nel mondo (l'ultima definizione per
+        # quel nome vince). Le conseguenze del corpo vanno validate come le altre.
+        nome = " ".join(normalizza_apostrofi(str(nome_quotato)).lower().split())
+        if not nome:
+            self.errori.append("«Definisci» vuole il nome della procedura fra virgolette.")
+            return None
+        corpo = [c for c in conseguenze if isinstance(c, Conseguenza)]
+        if nome in self.mondo.procedure:
+            self.warnings.append(f"La procedura «{nome_quotato}» è definita due volte: vale l'ultima.")
+        self.mondo.procedure[nome] = corpo
+        self._pending_conseguenze.append(corpo)   # le conseguenze del corpo si validano
+        return None
+
+    def cons_procedura(self, nome_proc):
+        # 'esegui "far passare la notte"'. Il nome è il terminale PROCEDURA (chiuso):
+        # esiste per costruzione, quindi non serve validarlo qui.
+        return ConseguenzaProcedura(nome_proc)
+
     def def_direzioni(self, dir_a, dir_b):
         # [Livello 4 / L1] La coppia è già stata raccolta in Passata 1 e applicata
         # al mondo nel costruttore (vedi __init__): qui niente da fare.
@@ -2078,10 +2541,19 @@ class FavellaTransformer(Transformer):
         # [1.5.0 / C13] 'se COND[; altrimenti "…"]' in coda a un 'collega'.
         return UscitaCondizionata(condizione, resto[0] if resto else None)
 
-    def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo, condizionata=None):
+    def senza_ritorno(self, *_):
+        # [1.6.0 / Q2] Il marcatore 'senza ritorno' di una connessione a senso unico.
+        return _SENZA_RITORNO
+
+    def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo, *resto):
+        # [1.6.0 / Q2] La coda ha due opzionali di tipo diverso: l'uscita
+        # condizionata (UscitaCondizionata) e il marcatore 'senza ritorno'
+        # (_SENZA_RITORNO). Li smisto per tipo, così l'ordine resta robusto.
+        condizionata = next((x for x in resto if isinstance(x, UscitaCondizionata)), None)
+        a_senso_unico = _SENZA_RITORNO in resto
         id_sta1 = normalizza_nome(sta1_grezzo)
         id_sta2 = normalizza_nome(sta2_grezzo)
-        
+
         if not self.mondo.trova_stanza(id_sta1):
             stanza1 = Stanza(id_sta1)
             stanza1.nome_visualizzato = sta1_grezzo
@@ -2090,7 +2562,7 @@ class FavellaTransformer(Transformer):
             stanza2 = Stanza(id_sta2)
             stanza2.nome_visualizzato = sta2_grezzo
             self.mondo.aggiungi_stanza(stanza2)
-        
+
         stanza1 = self.mondo.trova_stanza(id_sta1)
         stanza2 = self.mondo.trova_stanza(id_sta2)
 
@@ -2100,10 +2572,12 @@ class FavellaTransformer(Transformer):
         stanza1.uscite[direzione_norm] = id_sta2
 
         # Connessione automatica di ritorno, se la direzione ha un'opposta nota.
-        direzione_opposta = self.mondo.opposta_di(direzione_norm)
+        # [1.6.0 / Q2] 'senza ritorno' la sopprime: solo A→B.
+        direzione_opposta = None if a_senso_unico else self.mondo.opposta_di(direzione_norm)
         if direzione_opposta:
             stanza2.uscite[direzione_opposta] = id_sta1
-        # [1.5.0 / C13] Un'uscita con una condizione vale nelle due direzioni.
+        # [1.5.0 / C13] Un'uscita con una condizione vale nelle due direzioni (in una
+        # sola, se 'senza ritorno').
         if isinstance(condizionata, UscitaCondizionata):
             regola = (condizionata.condizione, condizionata.testo)
             self.mondo.condizioni_uscite[(id_sta1, direzione_norm)] = regola
@@ -2138,6 +2612,29 @@ class FavellaTransformer(Transformer):
         self._pending_inventario_iniziale.append(ent_grezzo)
         return None
 
+    def def_contabile(self, ent_grezzo, plurale):
+        # [1.6.0 / B1] 'La pozione, plurale "pozioni", è contabile.'. Marca l'oggetto
+        # come contabile e registra il plurale DICHIARATO (il motore non lo indovina).
+        # La forma plurale è già in mondo.plurali (scanner → __init__); la coerenza
+        # (è un oggetto semplice, non un contenitore/personaggio…) è in valida_post.
+        oggetto = self._crea_o_trova_oggetto(ent_grezzo)
+        oggetto.contabile = True
+        oggetto.plurale = " ".join(str(plurale).lower().split())
+        self._pending_contabili.append((ent_grezzo, str(plurale)))
+        return None
+
+    def def_giocatore_scorta(self, numero, ent_grezzo):
+        # [1.6.0 / B1] 'Il giocatore ha 3 pozioni.': N copie in inventario all'avvio.
+        self._pending_scorte.append((ent_grezzo, None, numero, f"Il giocatore ha {numero} {ent_grezzo}"))
+        return None
+
+    def def_scorta_luogo(self, numero, ent_grezzo, prep, luogo_grezzo):
+        # [1.6.0 / B1] 'Ci sono 5 frecce in la faretra.': N copie in un luogo
+        # (stanza o contenitore/supporto) all'avvio. 'prep' (PREP_LUOGO) è ininfluente.
+        self._pending_scorte.append((ent_grezzo, luogo_grezzo, numero,
+                                     f"Ci sono {numero} {ent_grezzo} in {luogo_grezzo}"))
+        return None
+
     def def_capacita_oggetto(self, ent_grezzo, numero):
         # [Livello 7] 'Lo zaino dà N spazi.': l'oggetto, mentre è nell'inventario,
         # aumenta la capacità di N. _crea_o_trova_oggetto tollera l'ordine delle
@@ -2154,6 +2651,8 @@ class FavellaTransformer(Transformer):
     # --- [1.3.0 / M-6] Presentazione ---
 
     def def_titolo(self, testo):
+        if self.mondo.titolo and self.mondo.titolo != testo:
+            self.warnings.append("Il titolo è dichiarato due volte: vale l'ultima.")
         self.mondo.titolo = testo
         return None
 
@@ -2199,6 +2698,8 @@ class FavellaTransformer(Transformer):
                 f"L'IFID «{testo}» non è valido: usa da 8 a 63 lettere maiuscole, cifre e "
                 f"trattini (per esempio un UUID: «favella1 ifid» te ne dà uno).")
             return None
+        if self.mondo.ifid and self.mondo.ifid != ifid:
+            self.warnings.append("L'IFID è dichiarato due volte: vale l'ultima.")
         self.mondo.ifid = ifid
         return None
 
@@ -2223,10 +2724,14 @@ class FavellaTransformer(Transformer):
         return None
 
     def def_autore(self, testo):
+        if self.mondo.autore and self.mondo.autore != testo:
+            self.warnings.append("L'autore è dichiarato due volte: vale l'ultima.")
         self.mondo.autore = testo
         return None
 
     def def_prologo(self, testo):
+        if self.mondo.prologo and self.mondo.prologo != testo:
+            self.warnings.append("Il prologo è dichiarato due volte: vale l'ultima.")
         self.mondo.prologo = testo
         return None
 
@@ -2510,7 +3015,16 @@ class FavellaTransformer(Transformer):
                 self.errori.append(
                     f"Nel testo \"{estratto}\" {e}: ogni [se …] si chiude con il suo "
                     f"[fine], e [altrimenti] sta fra i due.")
-        if not fonti:
+        # [1.6.0 / B3] Segnaposto-elenco di relazione '[chi <locuzione> <membro>]':
+        # si risolvono riusando il parser delle condizioni su 'qualcuno <resto>'
+        # (cond_rel_qualcuno). Un '[chi …]' che non è una relazione interrogabile
+        # (per esempio il letterario «[chi va là]») NON è un errore: resta un
+        # segnaposto normale (e, se non risolve, prende l'avviso dei segnaposto).
+        chiavi_liste = set()
+        for testo in self._tutti_i_testi():
+            for grezzo in liste_relazione_nel_testo(testo):
+                chiavi_liste.add(chiave_condizione(grezzo))
+        if not fonti and not chiavi_liste:
             return
         parser = self._parser_condizioni()
         for fonte in sorted(fonti):
@@ -2524,6 +3038,14 @@ class FavellaTransformer(Transformer):
                 self.errori.append(
                     f"La condizione del testo «[se {fonte}]» non si capisce: scrivila come "
                     f"dopo un «se» (per esempio «[se la porta è aperta]»).")
+        for chiave in sorted(chiavi_liste):
+            resto = chiave[4:].strip()   # toglie 'chi '
+            try:
+                cond = self.transform(parser.parse("qualcuno " + resto))
+            except Exception:
+                cond = None
+            if isinstance(cond, CondizioneRelazione) and cond.a == REL_QUALCUNO:
+                m.liste_relazione[chiave] = (cond.nome_rel, cond.b)
 
     def _parser_condizioni(self):
         """Il parser della sola regola 'condizione', con gli stessi nomi."""
@@ -2539,6 +3061,31 @@ class FavellaTransformer(Transformer):
 
     def cond_possesso_neg(self, ogg_grezzo):
         return CondizioneNot(CondizionePossesso(normalizza_nome(ogg_grezzo)))
+
+    def _cond_scorta(self, ogg_grezzo, operatore, soglia):
+        # [1.6.0 / B1] Condizione sulle copie possedute di un contabile. La forma
+        # plurale ('pozioni') è canonicalizzata all'id dell'oggetto; la coerenza
+        # (è davvero un contabile) è validata in valida_post.
+        id_ogg = self.mondo.canonizza(normalizza_nome(ogg_grezzo))
+        cond = CondizioneScorta(id_ogg, operatore, soglia)
+        self._pending_scorte_cond.append((cond, ogg_grezzo, str(ogg_grezzo)))
+        return cond
+
+    def cond_pq_eq(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, "==", numero)
+
+    def cond_pq_gte(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, ">=", numero)
+
+    def cond_pq_gt(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, ">", numero)
+
+    def cond_pq_lt(self, numero, ogg_grezzo):
+        return self._cond_scorta(ogg_grezzo, "<", numero)
+
+    def cond_scorta_finita(self, ogg_grezzo):
+        # [1.6.0 / B1] 'se le pozioni sono finite' = il giocatore non ne ha più.
+        return self._cond_scorta(ogg_grezzo, "==", 0)
 
     def cond_posizione_giocatore(self, prep, stanza_grezzo):
         # [0.18.0 / B1] 'se il giocatore è in [stanza]'. 'prep' è il token
@@ -3076,6 +3623,87 @@ class FavellaTransformer(Transformer):
         ))
         return None
 
+    def _applica_contabili(self, m):
+        """[1.6.0 / B1] Valida le dichiarazioni 'è contabile' e applica le quantità
+        iniziali, poi sincronizza i marker di presenza di ogni contabile. Chiamato
+        da valida_post DOPO posizioni e inventario iniziale."""
+        # 1. Coerenza di ogni 'è contabile': un contabile è una COSA semplice.
+        for ent_grezzo, plurale in self._pending_contabili:
+            oggetto = m.trova_oggetto(normalizza_nome(ent_grezzo))
+            if oggetto is None:
+                self.errori.append(f"Oggetto contabile inesistente: '{ent_grezzo}'.")
+                continue
+            incompat = []
+            if oggetto.is_contenitore:
+                incompat.append("un contenitore")
+            if oggetto.is_supporto:
+                incompat.append("un supporto")
+            if oggetto.is_personaggio:
+                incompat.append("un personaggio")
+            if oggetto.illumina:
+                incompat.append("una fonte di luce")
+            if incompat:
+                self.errori.append(
+                    f"'{ent_grezzo}' non può essere contabile e insieme "
+                    f"{' e '.join(incompat)}: un contabile è una cosa semplice "
+                    f"(tenuta in più copie).")
+            if not (oggetto.plurale or "").strip():
+                self.errori.append(
+                    f"Il plurale di '{ent_grezzo}' è vuoto: scrivi «{ent_grezzo}, "
+                    f"plurale \"…\", è contabile.».")
+        # 2. Una collocazione standard di un contabile ('La pozione è in cella.',
+        #    'Il giocatore ha la pozione.') vale 1 copia in quel luogo. Si fa PRIMA
+        #    di applicare le quantità dichiarate, così le due forme si fondono.
+        for oggetto in m.oggetti.values():
+            if oggetto.contabile and not oggetto.quantita and oggetto.posizione:
+                pos = oggetto.posizione
+                if pos == "inventario" or pos in m.stanze or m.trova_oggetto(pos) is not None:
+                    oggetto.quantita[pos] = 1
+        # 3. Quantità dichiarate: FISSANO il numero di copie in un luogo.
+        for ent_grezzo, luogo_grezzo, numero, grezzo in self._pending_scorte:
+            oggetto = m.trova_oggetto(m.canonizza(normalizza_nome(ent_grezzo)))
+            if oggetto is None:
+                self.errori.append(f"Quantità iniziale: oggetto inesistente ('{grezzo}.').")
+                continue
+            if not oggetto.contabile:
+                self.errori.append(
+                    f"'{ent_grezzo}' non è contabile: una quantità ('{grezzo}.') vale "
+                    f"solo per un oggetto dichiarato «… è contabile.».")
+                continue
+            if numero < 0:
+                self.warnings.append(f"Quantità negativa ignorata ('{grezzo}.').")
+                continue
+            if luogo_grezzo is None:
+                luogo = "inventario"
+            else:
+                id_luogo = normalizza_nome(luogo_grezzo)
+                contenitore = m.trova_oggetto(id_luogo)
+                if id_luogo in m.stanze:
+                    luogo = id_luogo
+                elif contenitore is not None and (contenitore.is_contenitore or contenitore.is_supporto):
+                    luogo = id_luogo
+                else:
+                    self.errori.append(
+                        f"Luogo non valido per la quantità ('{grezzo}.'): '{luogo_grezzo}' "
+                        f"non è una stanza né un contenitore/supporto.")
+                    continue
+            oggetto.quantita[luogo] = numero
+        # 4. Sincronizza i marker di presenza dalle quantità finali. La forma
+        #    plurale dichiarata è anche un ALIAS per l'input del giocatore ('prendi
+        #    pozioni' risolve all'oggetto 'pozione', come trova_oggetto fa per l'autore).
+        for plur, canon in m.plurali.items():
+            m.dichiara_alias(plur, canon)
+        for oggetto in m.oggetti.values():
+            if oggetto.contabile:
+                m._sincronizza_presenza_contabile(oggetto)
+        # 5. Le condizioni sulle scorte valgono solo per un contabile.
+        for cond, ent_grezzo, grezzo in self._pending_scorte_cond:
+            oggetto = m.trova_oggetto(cond.id_oggetto)
+            if oggetto is None or not oggetto.contabile:
+                self.errori.append(
+                    f"La condizione sulle scorte («{grezzo}») vale solo per un oggetto "
+                    f"contabile: «{ent_grezzo}» non lo è.")
+
     # --- Validazione semantica globale (dopo il transform completo) ---
 
     def valida_post(self):
@@ -3158,6 +3786,29 @@ class FavellaTransformer(Transformer):
                     f"{_con_articolo(t_lhs)} e '{raw_rhs}' è {_con_articolo(t_rhs)}. "
                     f"La forma '{raw_lhs} {scritto} {raw_rhs}' vale solo fra due "
                     f"stati; per i contatori usa il valore fra parentesi '[{altro}]'.")
+        # [1.6.0 / Q1] Invarianti di clamp dichiarate: validazione e applicazione
+        # ai valori iniziali. Un invariante vale solo per un CONTATORE (valore
+        # intero): su uno stato simbolico, o su un nome mai dichiarato come
+        # contatore, è un errore d'autore gentile. Gli estremi che citano un altro
+        # contatore '[soglia]' sono controllati qui (il contatore dev'esistere).
+        for nome, grezzo, op_min, op_max in self._pending_invarianti:
+            if not isinstance(m.variabili.get(nome), int):
+                self.errori.append(
+                    f"L'invariante «{grezzo} resta sempre fra …» vale solo per un "
+                    f"contatore: dichiara prima «{grezzo} è un contatore.».")
+                continue
+            mancanti = [n for n in (_variabili_in_operando(op_min) | _variabili_in_operando(op_max))
+                        if not isinstance(m.variabili.get(n), int)]
+            if mancanti:
+                self.errori.append(
+                    f"L'invariante di «{grezzo}» usa come estremo un nome che non è "
+                    f"un contatore: {', '.join(sorted(mancanti))}.")
+                continue
+            if nome in m.invarianti_clamp:
+                self.warnings.append(
+                    f"«{grezzo}» ha due invarianti di clamp: vale l'ultima.")
+            m.invarianti_clamp[nome] = (op_min, op_max)
+        m.applica_invarianti_iniziali()
         for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
             if id_ogg1 == "<categoria>":   # [1.3.0 / M-9] 'qualcosa (di …)'
                 if id_ogg2 and not m.trova_oggetto(id_ogg2):
@@ -3181,6 +3832,14 @@ class FavellaTransformer(Transformer):
             m.rimuovi_da_posizione(oggetto)
             oggetto.posizione = "inventario"
             m.inventario.add(id_ogg)
+
+        # [1.6.0 / B1] Oggetti contabili e quantità iniziali. Deve venire DOPO le
+        # posizioni e l'inventario iniziale: un contabile collocato con le frasi
+        # standard ('La pozione è in cella.', 'Il giocatore ha la pozione.') nasce
+        # con 1 copia in quel luogo; le frasi di quantità ('Il giocatore ha 3
+        # pozioni.', 'Ci sono 5 frecce in la faretra.') FISSANO il numero in un
+        # luogo. Qui si fondono e si sincronizzano i marker di presenza.
+        self._applica_contabili(m)
 
         # [1.1.0] Il posto iniziale vale per un oggetto collocato DIRETTAMENTE in
         # una stanza: dentro un contenitore, su un supporto, in inventario o nel
@@ -3314,6 +3973,10 @@ class FavellaTransformer(Transformer):
                 # [1.3.0] '[Apri gli occhi.]' è testo fra parentesi, non un
                 # segnaposto: un nome non contiene punteggiatura.
                 if _RE_CHAR_NOME_VIETATO.search(ph):
+                    continue
+                # [1.6.0 / B3] '[chi …]' risolto in un elenco di relazione: non è
+                # un segnaposto ignoto.
+                if chiave_condizione(ph) in m.liste_relazione:
                     continue
                 if normalizza_nome(ph) not in nomi_interpolabili:
                     segnaposto_sconosciuti.add(ph)
@@ -4108,7 +4771,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         # [1.3.0] Tutti gli errori di sintassi in una volta (analizza_con_recupero).
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4127,9 +4791,9 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             return None
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
         transformer.transform(tree)
 
@@ -4340,7 +5004,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         # [1.3.0] Tutti gli errori di sintassi, ciascuno con la sua posizione.
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4356,9 +5021,9 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                 errors.append(_diag(messaggio, file=f_o, line=r_o, col=col, code=codice))
             return {"ok": False, "errors": errors, "warnings": warnings,
                     "worldSummary": None}
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
         _avvisa_partenza_implicita(transformer, mappa_righe)
@@ -4450,11 +5115,12 @@ def compila_mondo(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         tree = parser.parse(testo)
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni, plurali=simboli.plurali)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]
         transformer.transform(tree)
         transformer.valida_post()

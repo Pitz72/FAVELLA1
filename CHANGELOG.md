@@ -4,6 +4,90 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.6.0] - 2026-10-24 — le frontiere nuove
+
+> Raccoglie l'espansione del linguaggio
+> oltre la 1.5.0, tutta additiva: le frasi valide in 1.5 restano valide e col
+> medesimo significato; le dieci storie ufficiali hanno compilazione identica
+> (impronta vuota byte-per-byte) e gioco deterministico invariato. Semantica
+> precisa in `documentazione/grammatica-1.6.0.md`, §29–§30.
+
+#### Frasi nuove
+- **Invariante di clamp dichiarata** — `La sete resta sempre fra 0 e 100.`. Finora
+  tenere un contatore dentro un intervallo si poteva solo con la *conseguenza* `X
+  resta fra A e B`, da richiamare a mano a ogni modifica (dimenticarla lasciava i
+  contatori andare sotto zero o sfondare il massimo). Ora si dichiara una volta e
+  il motore la applica da solo dopo **ogni** scrittura del contatore (`aumenta`,
+  `diminuisci`, `diventa`, `moltiplica`, `dividi`, `modulo`, copie, `resta fra`) e
+  sul valore iniziale. Gli estremi possono essere un numero o un altro contatore
+  (`… fra 0 e [soglia]`). Lo stato è catturato dalle istantanee: ANNULLA riavvolge
+  anche i clamp. L'invariante su uno stato simbolico, o con un estremo che non è un
+  contatore, è un errore d'autore gentile. Parola riservata nuova: `sempre`.
+  (`def_invariante`; round-trip Studio: `analizza_variabili.counters[].clamp`,
+  `serializza_frase` op `clamp_decl`.)
+- **Connessione a senso unico** — `La botola collega giù a il pozzo senza ritorno.`.
+  Finora `A collega D a B` era sempre bidirezionale (il motore aggiunge l'uscita di
+  ritorno `B → A`). Il suffisso opzionale `senza ritorno` la sopprime: si crea solo
+  `A → B`. Sta in ultima posizione, anche dopo un'uscita condizionata (`… se COND;
+  altrimenti "…" senza ritorno`). Le direzioni opposte custom (`Su e giù sono
+  direzioni opposte.`) e le conseguenze `collega` restano invariate. Parola
+  riservata nuova: `ritorno`. (`senza_ritorno`; round-trip Studio:
+  `analizza_outline.exits[].oneWay`, `rpc_world_graph` edge `oneWay`,
+  `serializza_frase` op `connection` con `oneWay`.)
+- **Relazioni di prima classe (B3)** — ispirate alle *relations* di Inform 7, mai
+  avute in FAVELLA. Una relazione binaria nominata collega due parti (entità o il
+  giocatore) con una locuzione d'uso: `"si fida di" è una relazione molti a molti.`,
+  `"apre" è una relazione uno a molti ed è reciproca.`. Si **asserisce** d'autore
+  (`Il giocatore si fida di Saverio.`, `La chiave di ottone apre la cella.`), si
+  cambia nelle regole (`e adesso il giocatore si fida di Vito`, `… non si fida più
+  di Vito`) e si **interroga** (`se il giocatore si fida di Saverio`, `se qualcuno
+  si fida del giocatore`, anche negata). Arietà (`uno a uno`/`uno a molti`/`molti a
+  molti`, con sfratto delle coppie in conflitto) e reciprocità opzionale; lo stato
+  è catturato dalle istantanee (ANNULLA lo riavvolge). In questa prima versione è
+  d'autore e interrogabile, **non** azionabile dal giocatore. Interpolazione a
+  corredo: `[chi si fida del giocatore]` rende l'elenco dei soggetti correnti
+  («Saverio e Vito»). Restano aperte (estensioni): il quantificatore `ogni` nelle
+  asserzioni e le relazioni azionabili dal giocatore. Parole riservate nuove:
+  `relazione`, `molti`, `ed`, `reciproca`, `reciproco`, `qualcuno`. (`def_relazione`,
+  `def_relazione_fatto`, `cond_relazione`, `cons_rel_*`; terminale chiuso `RELAZIONE`
+  generato per-file; round-trip Studio: `analizza_regole.menu.relations` +
+  condizioni/conseguenze `op:"relation"`, `serializza_frase` op `relation_decl`/
+  `relation_fact`.)
+- **Procedure nominate (C1)** — una sequenza nominata di conseguenze, dichiarata
+  una volta e richiamabile: `Definisci "far passare la notte" come: aumenta la sete
+  di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.`, poi
+  `Invece di dormi: … e adesso esegui far passare la notte.`. Senza parametri in
+  questa prima versione; il corpo è una lista di conseguenze (il testo lo dice la
+  regola che la richiama). Una procedura può richiamarne un'altra o se stessa, con
+  una guardia di profondità contro i cicli. Parole riservate nuove: `definisci`,
+  `esegui`. (`def_procedura`, `cons_procedura`; terminale chiuso `PROCEDURA`;
+  round-trip Studio: `menu.procedures`, conseguenza `op:"callProc"`,
+  `serializza_frase` op `procedure_def`.)
+- **Oggetti contabili (B1)** — una cosa tenuta in **più copie**, con la concordanza
+  **dichiarata** (mai indovinata): `La pozione, plurale "pozioni", è contabile.`. Il
+  motore non pluralizza da sé — l'autore dà il plurale una volta (così resta fuori il
+  NO-GO dei plurali automatici). Quantità iniziali in inventario, in una stanza o in
+  un contenitore: `Il giocatore ha 3 pozioni.`, `Ci sono 5 frecce in la faretra.`. È
+  la prima frontiera che tocca il **loop di gioco**: il giocatore prende/lascia/consuma
+  N copie (`prendi 2 pozioni`, `prendi una pozione` = 1 di default, `prendi tutte le
+  pozioni`, `lascia 2 pozioni`, `consuma una pozione`), e la stanza, l'inventario e i
+  contenitori mostrano le copie concordate (`3 pozioni`, `1 pozione`). Condizioni sulle
+  scorte: `se il giocatore ha almeno 2 pozioni` (anche esatto / più di / meno di) e
+  `se non restano pozioni`; interpolazione `[quante pozioni]`. Le quantità vivono su
+  `Oggetto.quantita` (mappa luogo→copie) e sono catturate dalle istantanee: ANNULLA le
+  riavvolge. Un contabile è una cosa semplice (non contenitore/supporto/personaggio).
+  Il verbo del giocatore `consuma` è nuovo e cede a un comando d'autore omonimo. Parole
+  riservate nuove: `plurale`, `contabile`, `Ci`. (`def_contabile`, `def_giocatore_scorta`,
+  `def_scorta_luogo`, `cond_pq_{eq,gte,gt,lt}`, `cond_scorta_finita`; terminale ENTITA
+  esteso con le forme plurali + `mondo.plurali`; round-trip Studio: `menu.objects[].{countable,plural}`,
+  condizioni `op:"stock"`, `serializza_frase` op `countable_decl`/`stock_player`/`stock_place`.)
+
+> **Valutate ma rimandate** (vedi `documentazione/grammatica-1.6.0.md` §29.5): il
+> quantificatore `ogni` nelle asserzioni di relazione e le relazioni azionabili dal
+> giocatore. Restano estensioni di B1 (vedi §30): i cambi di quantità da una regola
+> d'autore (una conseguenza che decrementa una scorta) e i contabili dentro i
+> contenitori manipolati dal giocatore.
+
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto
 Il remake de «Il Relitto Silente» (quattordici moduli, 362 regole, una risorsa che cala a

@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.5.0"
+VERSIONE_MOTORE = "1.6.0"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -112,6 +112,29 @@ class CondizionePossesso(Condizione):
 
     def valuta(self, mondo: 'Mondo') -> bool:
         return mondo.giocatore_possiede(self.id_oggetto)
+
+class CondizioneScorta(Condizione):
+    """[1.6.0 / B1] Quantità di un oggetto CONTABILE che il giocatore ha in
+    inventario, confrontata con una soglia: 'se il giocatore ha almeno 2 pozioni'
+    (>=), '… ha 2 pozioni' (==), '… ha più di 2 …' (>), '… ha meno di 2 …' (<).
+    'se le pozioni sono finite' è il caso ==0. Un oggetto non contabile o mai
+    posseduto vale 0 copie."""
+    def __init__(self, id_oggetto: str, operatore: str, soglia: int):
+        self.id_oggetto = id_oggetto
+        self.operatore = operatore   # '==' | '>=' | '>' | '<'
+        self.soglia = int(soglia)
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        n = mondo.quantita_posseduta(self.id_oggetto)
+        if self.operatore == "==":
+            return n == self.soglia
+        if self.operatore == ">=":
+            return n >= self.soglia
+        if self.operatore == ">":
+            return n > self.soglia
+        if self.operatore == "<":
+            return n < self.soglia
+        return False
 
 class CondizioneProprieta(Condizione):
     """Rappresenta la condizione 'se [oggetto] è [proprietà]'."""
@@ -260,6 +283,42 @@ class CondizionePngHa(Condizione):
         return self.id_png in mondo.contenitori_di(self.id_oggetto)
 
 
+# [1.6.0 / B3] Operandi-quantificatore di una relazione nelle INTERROGAZIONI:
+# 'qualcuno'/'qualcosa' significano «esiste un membro da quel lato». Sono
+# sentinelle, mai ID di entità (i nomi contengono solo lettere/cifre/spazi).
+REL_QUALCUNO = "<qualcuno>"
+REL_QUALCOSA = "<qualcosa>"
+# L'ID del giocatore nelle relazioni: 'giocatore' è una parola riservata, quindi
+# non è mai l'ID di un oggetto dichiarato → nessuna collisione.
+REL_GIOCATORE = "giocatore"
+
+
+class CondizioneRelazione(Condizione):
+    """[1.6.0 / B3] Interroga una relazione binaria nominata: 'se il giocatore si
+    fida di Saverio', 'se qualcuno si fida del giocatore', 'se il giocatore si
+    fida di qualcuno'. Gli operandi sono ID normalizzati, oppure le sentinelle
+    REL_QUALCUNO/REL_QUALCOSA (esistenziali su quel lato). In questa prima
+    versione è solo d'autore e interrogabile, non azionabile dal giocatore."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is None:
+            return False
+        a_q = self.a in (REL_QUALCUNO, REL_QUALCOSA)
+        b_q = self.b in (REL_QUALCUNO, REL_QUALCOSA)
+        if a_q and b_q:
+            return bool(rel.coppie)
+        if a_q:
+            return any(y == self.b for (x, y) in rel.coppie)
+        if b_q:
+            return any(x == self.a for (x, y) in rel.coppie)
+        return (self.a, self.b) in rel.coppie
+
+
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
     """Negazione: 'se il giocatore non ha X', 'se X non è Y'."""
@@ -390,6 +449,62 @@ class ConseguenzaPngRiceve(Conseguenza):
         oggetto.posizione = self.id_png
 
 
+class ConseguenzaRelazioneAggiungi(Conseguenza):
+    """[1.6.0 / B3] Asserisce una coppia in una relazione: 'e adesso il giocatore
+    si fida di Vito'. L'arietà e l'eventuale reciprocità sono gestite da
+    Relazione.aggiungi."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def esegui(self, mondo: 'Mondo'):
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is not None:
+            rel.aggiungi(self.a, self.b)
+
+
+class ConseguenzaRelazioneTogli(Conseguenza):
+    """[1.6.0 / B3] Toglie una coppia da una relazione: 'e adesso il giocatore
+    non si fida più di Vito'."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def esegui(self, mondo: 'Mondo'):
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is not None:
+            rel.togli(self.a, self.b)
+
+
+class ConseguenzaProcedura(Conseguenza):
+    """[1.6.0 / C1] Invoca una procedura nominata ('esegui "far passare la
+    notte"'): esegue in ordine le conseguenze del suo corpo. Una guardia di
+    profondità evita i cicli (una procedura che, direttamente o no, richiama se
+    stessa): oltre il limite l'invocazione è silenziosamente ignorata."""
+    LIMITE_RICORSIONE = 50
+
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def esegui(self, mondo: 'Mondo'):
+        corpo = (getattr(mondo, "procedure", None) or {}).get(self.nome)
+        if not corpo:
+            return
+        in_corso = getattr(mondo, "_procedure_in_corso", None)
+        if in_corso is None:
+            in_corso = mondo._procedure_in_corso = []
+        if len(in_corso) >= self.LIMITE_RICORSIONE:
+            return
+        in_corso.append(self.nome)
+        try:
+            for c in corpo:
+                c.esegui(mondo)
+        finally:
+            in_corso.pop()
+
+
 class ConseguenzaVariabile(Conseguenza):
     """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
     semaforo è verde')."""
@@ -398,7 +513,7 @@ class ConseguenzaVariabile(Conseguenza):
         self.valore = valore
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = self.valore
+        mondo.scrivi_variabile(self.nome, self.valore)
 
 class ConseguenzaVariabileCopia(Conseguenza):
     """[0.34.0 / Tema 3] Copia per INDIREZIONE del valore di uno stato in un altro:
@@ -415,7 +530,7 @@ class ConseguenzaVariabileCopia(Conseguenza):
         self.sorgente = sorgente
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = mondo.valore_variabile(self.sorgente)
+        mondo.scrivi_variabile(self.nome, mondo.valore_variabile(self.sorgente))
 
 class ConseguenzaSceltaStato(Conseguenza):
     """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso
@@ -433,7 +548,7 @@ class ConseguenzaSceltaStato(Conseguenza):
         # L'elenco ha sempre >=1 valore (la grammatica richiede almeno una
         # PROPRIETA dopo 'fra'); la guardia difende comunque da un elenco vuoto.
         if self.valori:
-            mondo.variabili[self.nome] = mondo.rng.choice(self.valori)
+            mondo.scrivi_variabile(self.nome, mondo.rng.choice(self.valori))
 
 class ConseguenzaContatore(Conseguenza):
     """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
@@ -453,22 +568,22 @@ class ConseguenzaContatore(Conseguenza):
             attuale = 0
         quantita = self.valore.valore(mondo)
         if self.modo == "aumenta":
-            mondo.variabili[self.nome] = attuale + quantita
+            mondo.scrivi_variabile(self.nome, attuale + quantita)
         elif self.modo == "diminuisci":
-            mondo.variabili[self.nome] = attuale - quantita
+            mondo.scrivi_variabile(self.nome, attuale - quantita)
         elif self.modo == "moltiplica":      # [1.3.0 / M-7]
-            mondo.variabili[self.nome] = attuale * quantita
+            mondo.scrivi_variabile(self.nome, attuale * quantita)
         elif self.modo == "dividi":
             # Divisione intera verso lo zero (7/2 = 3, -7/2 = -3); per zero il
             # contatore non cambia (non c'è un risultato sensato).
             if quantita != 0:
-                mondo.variabili[self.nome] = int(attuale / quantita)
+                mondo.scrivi_variabile(self.nome, int(attuale / quantita))
         elif self.modo == "modulo":
             # Il resto sempre fra 0 e N-1: 'riduci l'ora modulo 24'.
             if quantita != 0:
-                mondo.variabili[self.nome] = attuale % abs(quantita)
+                mondo.scrivi_variabile(self.nome, attuale % abs(quantita))
         else:  # diventa
-            mondo.variabili[self.nome] = quantita
+            mondo.scrivi_variabile(self.nome, quantita)
 
 
 class ConseguenzaLimita(Conseguenza):
@@ -484,7 +599,7 @@ class ConseguenzaLimita(Conseguenza):
         basso, alto = self.minimo.valore(mondo), self.massimo.valore(mondo)
         if basso > alto:
             basso, alto = alto, basso
-        mondo.variabili[self.nome] = max(basso, min(alto, attuale))
+        mondo.scrivi_variabile(self.nome, max(basso, min(alto, attuale)))
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -1010,6 +1125,20 @@ class Oggetto:
         # cielo è anche nel cortile.'): cielo, mare, una porta vista dai due lati.
         self.di_scena: bool = False
         self.anche_in: Set[str] = set()
+        # [1.6.0 / B1] Oggetto CONTABILE: una cosa tenuta in più copie, con la
+        # concordanza DICHIARATA (non indovinata): 'La pozione, plurale "pozioni",
+        # è contabile.'. 'plurale' è il nucleo plurale dato dall'autore (es.
+        # "pozioni"), usato negli elenchi concordati ('3 pozioni', '1 pozione'); il
+        # motore non pluralizza mai da sé. 'quantita' mappa ogni LUOGO (id di stanza,
+        # 'inventario', o un contenitore/supporto) al numero di copie lì presenti
+        # (>0): è la fonte di verità del contabile. I marker di presenza standard
+        # (inventario, stanza.oggetti, contenuto) restano in sincronia, così la
+        # visibilità e la raggiungibilità esistenti valgono senza modifiche. Un
+        # contabile è una cosa SEMPLICE: non è contenitore/supporto/personaggio/fonte
+        # di luce (il compilatore lo verifica). Vedi §30 della grammatica.
+        self.contabile: bool = False
+        self.plurale: Optional[str] = None
+        self.quantita: Dict[str, int] = {}
 
     def al_suo_posto(self) -> bool:
         """[1.1.0] True se la frase del posto iniziale va ancora mostrata."""
@@ -1027,6 +1156,53 @@ class Oggetto:
         (es. 'La torcia' -> ('f','s')). Vedi favella_utils.genere_numero."""
         from favella_utils import genere_numero
         return genere_numero(self.nome_visualizzato)
+
+class Relazione:
+    """[1.6.0 / B3] Una relazione binaria NOMINATA fra entità (e il giocatore),
+    ispirata alle *relations* di Inform 7. Dichiarata una volta con la sua
+    locuzione d'uso ('si fida di'), l'arietà delle due parti e l'eventuale
+    reciprocità. In questa prima versione è d'autore e INTERROGABILE, non
+    azionabile dal giocatore. I membri sono ID normalizzati ('giocatore' è il
+    giocatore). Lo stato (le coppie) vive nel mondo, quindi è catturato dalle
+    istantanee: ANNULLA riavvolge anche le relazioni."""
+    ARIETA = ("uno-a-uno", "uno-a-molti", "molti-a-molti")
+
+    def __init__(self, nome: str, locuzione: str, arieta: str = "molti-a-molti",
+                 reciproca: bool = False, prep: Optional[str] = None):
+        self.nome = nome              # id canonico (la locuzione normalizzata)
+        self.locuzione = locuzione    # forma visualizzata ('si fida di')
+        self.arieta = arieta if arieta in self.ARIETA else "molti-a-molti"
+        self.reciproca = reciproca
+        self.prep = prep              # preposizione finale ('di'/'a'/None), per riscrivere
+        self.coppie: Set[tuple] = set()
+
+    def vale(self, a: str, b: str) -> bool:
+        return (a, b) in self.coppie
+
+    def aggiungi(self, a: str, b: str):
+        # Arietà: togli le coppie in conflitto prima di aggiungere.
+        if self.arieta == "uno-a-uno":
+            self.coppie = {(x, y) for (x, y) in self.coppie if x != a and y != b}
+        elif self.arieta == "uno-a-molti":
+            # Un solo soggetto per ogni oggetto (A→molti B, ma ogni B←un solo A).
+            self.coppie = {(x, y) for (x, y) in self.coppie if y != b}
+        self.coppie.add((a, b))
+        if self.reciproca:
+            self.coppie.add((b, a))
+
+    def togli(self, a: str, b: str):
+        self.coppie.discard((a, b))
+        if self.reciproca:
+            self.coppie.discard((b, a))
+
+    def soggetti_di(self, b: str) -> List[str]:
+        """Chi è in relazione con b (i soggetti): 'chi si fida di X'."""
+        return sorted(x for (x, y) in self.coppie if y == b)
+
+    def oggetti_di(self, a: str) -> List[str]:
+        """Con chi a è in relazione (gli oggetti): 'di chi si fida X'."""
+        return sorted(y for (x, y) in self.coppie if x == a)
+
 
 class Mondo:
     """Contenitore per l'intero stato del mondo di gioco."""
@@ -1052,6 +1228,10 @@ class Mondo:
         self._ambiguita: Optional[dict] = None
         # [1.4.2] L'oggetto di «Con cosa vuoi usarlo?», in attesa del secondo.
         self._usa_in_sospeso: Optional[str] = None
+        # [1.6.0 / B1] Quantità chiesta nel comando in corso per un oggetto
+        # contabile ('prendi 2 pozioni'): un intero, la stringa 'tutte' (tutte le
+        # copie), o None (predefinito: 1). Stato di sessione, azzerato a ogni comando.
+        self._quantita_comando = None
         # [1.4.3] Nel comando in corso è scattata una regola dell'autore: il turno
         # non può più essere «libero» (vedi gioco._senza_turno).
         self._regola_scattata: bool = False
@@ -1088,6 +1268,31 @@ class Mondo:
         # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
         self.variabili: Dict[str, Optional[str]] = {}
+        # [1.6.0 / Q1] Invarianti di clamp DICHIARATE: 'La sete resta sempre fra 0
+        # e 100.'. Mappa nome-contatore -> (Operando minimo, Operando massimo). A
+        # differenza della conseguenza 'X resta fra A e B' (da richiamare a ogni
+        # modifica), questa è applicata dal motore AUTOMATICAMENTE dopo ogni
+        # scrittura del contatore (vedi scrivi_variabile): il contatore non può
+        # mai uscire dall'intervallo, senza che l'autore debba ricordarsene.
+        self.invarianti_clamp: Dict[str, tuple] = {}
+        # [1.6.0 / B3] Relazioni binarie nominate (nome-locuzione -> Relazione).
+        # Lo stato (le coppie) è parte del mondo, quindi catturato dalle istantanee.
+        self.relazioni: Dict[str, 'Relazione'] = {}
+        # [1.6.0 / B3] Segnaposto-elenco '[chi <locuzione> <membro>]' risolti dal
+        # compilatore: chiave normalizzata -> (nome_relazione, id_membro). L'elenco
+        # vero è ricalcolato a ogni resa dalle coppie correnti (come condizioni_testo).
+        self.liste_relazione: Dict[str, tuple] = {}
+        # [1.6.0 / C1] Procedure nominate: nome -> lista di Conseguenza (il corpo).
+        # Statico (scritto dal compilatore). Il contatore di ricorsione, invece, è
+        # volatile (sessione del comando in corso).
+        self.procedure: Dict[str, list] = {}
+        self._procedure_in_corso: list = []
+        # [1.6.0 / B1] Oggetti contabili: mappa id-FORMA-PLURALE -> id-canonico
+        # (singolare). La forma plurale dichiarata ('pozioni') è un'ENTITA valida
+        # che risolve all'oggetto 'pozione': trova_oggetto la canonicalizza, così
+        # ogni riferimento al plurale trova lo stesso oggetto. Dato statico (scritto
+        # dal compilatore, mai cambiato in partita).
+        self.plurali: Dict[str, str] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1315,6 +1520,49 @@ class Mondo:
         """Dichiara un contatore numerico (valore iniziale 0 se non già presente)."""
         self.variabili.setdefault(nome, 0)
 
+    def dichiara_relazione(self, relazione: 'Relazione'):
+        """[1.6.0 / B3] Registra una relazione nominata (l'ultima dichiarazione per
+        quel nome-locuzione vince; le eventuali coppie già asserite si conservano)."""
+        esistente = self.relazioni.get(relazione.nome)
+        if esistente is not None:
+            relazione.coppie |= esistente.coppie
+        self.relazioni[relazione.nome] = relazione
+
+    def scrivi_variabile(self, nome: str, valore):
+        """[1.6.0 / Q1] Unico punto di scrittura di uno stato/contatore: imposta il
+        valore e poi applica l'eventuale invariante di clamp dichiarata ('X resta
+        sempre fra A e B'). Ogni conseguenza che muta un contatore (aumenta,
+        diminuisci, diventa, moltiplica, dividi, modulo, copia, scelta, limita)
+        passa di qui, così l'invariante vale dopo OGNI scrittura."""
+        self.variabili[nome] = valore
+        if self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
+
+    def _applica_invariante_clamp(self, nome: str):
+        """Riporta il contatore `nome` dentro l'intervallo della sua invariante, se
+        ne ha una. Agisce solo su valori interi (uno stato simbolico non si
+        clampa). Gli estremi sono Operando: possono leggere altri contatori
+        ('[soglia]'), risolti al momento della scrittura."""
+        limiti = self.invarianti_clamp.get(nome)
+        if limiti is None:
+            return
+        attuale = self.variabili.get(nome)
+        if not isinstance(attuale, int):
+            return
+        basso, alto = limiti[0].valore(self), limiti[1].valore(self)
+        if basso > alto:
+            basso, alto = alto, basso
+        corretto = max(basso, min(alto, attuale))
+        if corretto != attuale:
+            self.variabili[nome] = corretto
+
+    def applica_invarianti_iniziali(self):
+        """[1.6.0 / Q1] Applica ogni invariante di clamp ai valori INIZIALI dei
+        contatori, una volta sola a fine compilazione: anche 'La forza parte da
+        150.' con 'La forza resta sempre fra 0 e 100.' nasce già nell'intervallo."""
+        for nome in self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
+
     def dichiara_opposte(self, prop_a: str, prop_b: str):
         """Registra che due proprietà sono opposte (relazione simmetrica). Le
         forme restano come scritte dall'autore (servono all'IDE per la lista delle
@@ -1352,6 +1600,7 @@ class Mondo:
                        # [1.3.0] sessione del comando in corso
                        "_turno_libero", "_in_conferma", "_uscita_richiesta",
                        "_azione_riuscita", "_ambiguita", "_usa_in_sospeso",
+                       "_quantita_comando",
                        "_regola_scattata", "_modo_spostamento",
                        "_consultazione", "_regola_cambia",
                        # [1.2.0] sessione di SALVA/CARICA
@@ -1364,6 +1613,8 @@ class Mondo:
                        # [1.5.0] i segnali per l'ospite (come gli annunci) e il
                        # calcolo in corso degli stati calcolati
                        "segnali", "_calcolo_in_corso", "_partenza_dopo_apertura",
+                       # [1.6.0 / C1] la pila di ricorsione delle procedure in corso
+                       "_procedure_in_corso",
                        # [1.4.0] l'uscita dell'host e ciò che il giocatore ha scoperto
                        "uscita", "verbi_scoperti", "argomenti_scoperti")
 
@@ -1379,7 +1630,17 @@ class Mondo:
                       # [1.5.0] le frasi nuove che non cambiano in partita
                       "stati_calcolati", "testi", "azioni_senza_tempo",
                       "arrivi", "riga_stato", "ifid",
-                      "fronti_a_fine_turno")
+                      "fronti_a_fine_turno",
+                      # [1.6.0 / B3] la struttura delle relazioni e gli elenchi di
+                      # testo risolti sono statici; lo STATO (le coppie) sta dentro
+                      # i Relazione, che restano nell'istantanea come 'relazioni'.
+                      "liste_relazione",
+                      # [1.6.0 / C1] i corpi delle procedure sono statici.
+                      "procedure",
+                      # [1.6.0 / B1] la mappa plurale->canonico è statica (le
+                      # QUANTITÀ, invece, vivono su Oggetto.quantita e sono catturate
+                      # dall'istantanea come il resto dello stato degli oggetti).
+                      "plurali")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
@@ -1684,7 +1945,121 @@ class Mondo:
         return self.stanze.get(nome)
 
     def trova_oggetto(self, nome: str) -> Oggetto | None:
-        return self.oggetti.get(nome)
+        oggetto = self.oggetti.get(nome)
+        if oggetto is None and self.plurali:
+            # [1.6.0 / B1] La forma plurale dichiarata ('pozioni') risolve
+            # all'oggetto canonico ('pozione').
+            oggetto = self.oggetti.get(self.plurali.get(nome, nome))
+        return oggetto
+
+    # --- [1.6.0 / B1] Oggetti contabili: quantità per luogo --------------------
+
+    def canonizza(self, id_oggetto: str) -> str:
+        """[1.6.0 / B1] Riporta una forma plurale dichiarata all'id canonico; ogni
+        altro id resta com'è."""
+        return self.plurali.get(id_oggetto, id_oggetto)
+
+    def quantita_in(self, id_oggetto: str, luogo: str) -> int:
+        """Quante copie di un contabile stanno nel luogo dato ('inventario', un id
+        di stanza o di contenitore/supporto). 0 se nessuna."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return 0
+        return oggetto.quantita.get(luogo, 0)
+
+    def quantita_posseduta(self, id_oggetto: str) -> int:
+        """Quante copie di un contabile il giocatore ha in inventario."""
+        return self.quantita_in(id_oggetto, "inventario")
+
+    def quantita_totale(self, id_oggetto: str) -> int:
+        """Quante copie di un contabile esistono in tutto il mondo."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return 0
+        return sum(oggetto.quantita.values())
+
+    def _sincronizza_presenza_contabile(self, oggetto: 'Oggetto'):
+        """Allinea i marker di presenza standard (inventario, stanza.oggetti,
+        contenuto dei contenitori/supporti) e 'posizione' alle QUANTITÀ correnti di
+        un contabile, così la visibilità e la raggiungibilità esistenti valgono
+        senza modifiche. Un luogo con 0 copie sparisce dai marker."""
+        id_ogg = oggetto.nome
+        # togli le copie azzerate
+        for luogo in [l for l, n in oggetto.quantita.items() if n <= 0]:
+            oggetto.quantita.pop(luogo, None)
+        luoghi = set(oggetto.quantita)
+        # inventario
+        if "inventario" in luoghi:
+            self.inventario.add(id_ogg)
+        else:
+            self.inventario.discard(id_ogg)
+        # stanze e contenitori/supporti
+        for sid, stanza in self.stanze.items():
+            if sid in luoghi:
+                stanza.oggetti[id_ogg] = oggetto
+            else:
+                stanza.oggetti.pop(id_ogg, None)
+        for altro in self.oggetti.values():
+            if altro is oggetto:
+                continue
+            if (altro.is_contenitore or altro.is_supporto):
+                if altro.nome in luoghi:
+                    altro.contenuto.add(id_ogg)
+                else:
+                    altro.contenuto.discard(id_ogg)
+        # posizione «primaria» (per il codice che la legge): inventario se c'è,
+        # altrimenti un luogo qualsiasi con copie, altrimenti None.
+        if "inventario" in luoghi:
+            oggetto.posizione = "inventario"
+        elif luoghi:
+            oggetto.posizione = sorted(luoghi)[0]
+        else:
+            oggetto.posizione = None
+        if luoghi:
+            oggetto.spostato = True
+
+    def imposta_quantita(self, id_oggetto: str, luogo: str, n: int):
+        """Fissa a `n` le copie di un contabile nel luogo dato (n<=0 = nessuna) e
+        risincronizza i marker di presenza."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None:
+            return
+        if n > 0:
+            oggetto.quantita[luogo] = n
+        else:
+            oggetto.quantita.pop(luogo, None)
+        self._sincronizza_presenza_contabile(oggetto)
+
+    def aggiungi_quantita(self, id_oggetto: str, luogo: str, n: int = 1):
+        """Aggiunge `n` copie al luogo dato."""
+        self.imposta_quantita(id_oggetto, luogo, self.quantita_in(id_oggetto, luogo) + n)
+
+    def togli_quantita(self, id_oggetto: str, luogo: str, n: int = 1):
+        """Toglie fino a `n` copie dal luogo dato (non scende sotto zero).
+        Restituisce quante ne ha davvero tolte."""
+        attuali = self.quantita_in(id_oggetto, luogo)
+        tolte = min(n, attuali)
+        if tolte:
+            self.imposta_quantita(id_oggetto, luogo, attuali - tolte)
+        return tolte
+
+    def luogo_scorta_raggiungibile(self, id_oggetto: str) -> Optional[str]:
+        """[1.6.0 / B1] Il luogo RAGGIUNGIBILE (non l'inventario) in cui stanno copie
+        di un contabile da prendere: la stanza corrente o un contenitore/supporto
+        raggiungibile lì. None se non c'è nulla da prendere qui."""
+        oggetto = self.trova_oggetto(id_oggetto)
+        if oggetto is None or not oggetto.contabile:
+            return None
+        candidati = [l for l, n in oggetto.quantita.items() if n > 0 and l != "inventario"]
+        for luogo in candidati:
+            if luogo == self.posizione_giocatore:
+                return luogo
+        # dentro un contenitore/supporto raggiungibile
+        for luogo in candidati:
+            contenitore = self.trova_oggetto(luogo)
+            if contenitore is not None and self.oggetto_raggiungibile(luogo):
+                return luogo
+        return None
 
     # --- [Livello 7] Capacità di trasporto ---
 
@@ -1848,6 +2223,20 @@ class Mondo:
         _visti.add(id_oggetto)
         oggetto = self.trova_oggetto(id_oggetto)
         if not oggetto:
+            return False
+        if oggetto.contabile:
+            # [1.6.0 / B1] Un contabile è alla portata se ha copie in inventario,
+            # nella stanza corrente, o in un contenitore/supporto raggiungibile lì
+            # (le copie possono essere sparse in più luoghi: non basta 'posizione').
+            id_ogg = oggetto.nome
+            if oggetto.quantita.get("inventario", 0) > 0:
+                return True
+            if oggetto.quantita.get(self.posizione_giocatore, 0) > 0:
+                return True
+            for luogo, n in oggetto.quantita.items():
+                if n > 0 and luogo not in ("inventario",) and luogo not in self.stanze:
+                    if self.oggetto_raggiungibile(luogo, _visti):
+                        return True
             return False
         if id_oggetto in self.inventario:
             return True
