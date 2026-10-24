@@ -63,12 +63,30 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   `esegui`. (`def_procedura`, `cons_procedura`; terminale chiuso `PROCEDURA`;
   round-trip Studio: `menu.procedures`, conseguenza `op:"callProc"`,
   `serializza_frase` op `procedure_def`.)
+- **Oggetti contabili (B1)** — una cosa tenuta in **più copie**, con la concordanza
+  **dichiarata** (mai indovinata): `La pozione, plurale "pozioni", è contabile.`. Il
+  motore non pluralizza da sé — l'autore dà il plurale una volta (così resta fuori il
+  NO-GO dei plurali automatici). Quantità iniziali in inventario, in una stanza o in
+  un contenitore: `Il giocatore ha 3 pozioni.`, `Ci sono 5 frecce in la faretra.`. È
+  la prima frontiera che tocca il **loop di gioco**: il giocatore prende/lascia/consuma
+  N copie (`prendi 2 pozioni`, `prendi una pozione` = 1 di default, `prendi tutte le
+  pozioni`, `lascia 2 pozioni`, `consuma una pozione`), e la stanza, l'inventario e i
+  contenitori mostrano le copie concordate (`3 pozioni`, `1 pozione`). Condizioni sulle
+  scorte: `se il giocatore ha almeno 2 pozioni` (anche esatto / più di / meno di) e
+  `se non restano pozioni`; interpolazione `[quante pozioni]`. Le quantità vivono su
+  `Oggetto.quantita` (mappa luogo→copie) e sono catturate dalle istantanee: ANNULLA le
+  riavvolge. Un contabile è una cosa semplice (non contenitore/supporto/personaggio).
+  Il verbo del giocatore `consuma` è nuovo e cede a un comando d'autore omonimo. Parole
+  riservate nuove: `plurale`, `contabile`, `Ci`. (`def_contabile`, `def_giocatore_scorta`,
+  `def_scorta_luogo`, `cond_pq_{eq,gte,gt,lt}`, `cond_scorta_finita`; terminale ENTITA
+  esteso con le forme plurali + `mondo.plurali`; round-trip Studio: `menu.objects[].{countable,plural}`,
+  condizioni `op:"stock"`, `serializza_frase` op `countable_decl`/`stock_player`/`stock_place`.)
 
 > **Valutate ma rimandate** (vedi `documentazione/grammatica-1.6.0.md` §29.5): il
-> quantificatore `ogni` nelle asserzioni di relazione, le relazioni azionabili dal
-> giocatore, e gli **oggetti contabili** (B1) — quest'ultimo richiede modifiche al
-> loop di gioco (quantità in inventario, prendere/lasciare N copie, concordanza
-> negli elenchi) e va progettato a parte.
+> quantificatore `ogni` nelle asserzioni di relazione e le relazioni azionabili dal
+> giocatore. Restano estensioni di B1 (vedi §30): i cambi di quantità da una regola
+> d'autore (una conseguenza che decrementa una scorta) e i contabili dentro i
+> contenitori manipolati dal giocatore.
 
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto

@@ -4,7 +4,7 @@
 from strutture import Mondo, Azione, ConseguenzaProprieta
 from favella_utils import (rendi_testo, frase_indeterminativa, prima_maiuscola, nome_in_frase,
                            con_preposizione, accorda, pronome_oggetto, radice_proprieta,
-                           messaggio, scrivi)
+                           messaggio, scrivi, conteggio)
 
 def _riuscita(mondo: Mondo):
     """[1.3.0] L'azione di default ha fatto ciò che doveva (preso, aperto,
@@ -54,12 +54,21 @@ def _imposta(mondo: Mondo, oggetto, proprieta: str):
     ConseguenzaProprieta(oggetto.nome, proprieta).esegui(mondo)
 
 
+def _nome_elencato(mondo: Mondo, oggetto, luogo: str) -> str:
+    """[1.6.0 / B1] Come un oggetto si nomina in un elenco di presenze: un contabile
+    col numero di copie in QUEL luogo e la concordanza dichiarata ('3 frecce'), gli
+    altri con l'articolo indeterminativo ('una mela')."""
+    if getattr(oggetto, "contabile", False):
+        return _etichetta_scorta(oggetto, mondo.quantita_in(oggetto.nome, luogo))
+    return frase_indeterminativa(oggetto.nome_visualizzato)
+
+
 def _elenca_contenuto(mondo: Mondo, oggetto):
     """[Livello 4 / M1] Mostra il contenuto di un contenitore/supporto, se ne è
     uno e (per i contenitori) se è aperto. [1.3.0 / M-10] Di un personaggio,
     ciò che tiene con sé."""
     if oggetto.is_personaggio:
-        nomi = [frase_indeterminativa(mondo.oggetti[c].nome_visualizzato)
+        nomi = [_nome_elencato(mondo, mondo.oggetti[c], oggetto.nome)
                 for c in mondo.oggetti if c in oggetto.contenuto]
         if nomi:
             scrivi(mondo, f"Ha con sé: {', '.join(nomi)}.", "elenco")
@@ -68,7 +77,7 @@ def _elenca_contenuto(mondo: Mondo, oggetto):
         scrivi(mondo, f"È {accorda(oggetto.nome_visualizzato, 'chiuso')}.")
         return
     if oggetto.is_contenitore or oggetto.is_supporto:
-        nomi = [frase_indeterminativa(mondo.oggetti[c].nome_visualizzato)
+        nomi = [_nome_elencato(mondo, mondo.oggetti[c], oggetto.nome)
                 for c in sorted(oggetto.contenuto) if c in mondo.oggetti]
         if nomi:
             dove = "Sopra" if oggetto.is_supporto else "Dentro"
@@ -89,6 +98,86 @@ def esamina_logica_default(mondo: Mondo, id_oggetto: str):
     else:
         scrivi(mondo, "Non vedi nulla del genere qui.")
 
+def _quante(mondo: Mondo, disponibili: int) -> int:
+    """[1.6.0 / B1] Quante copie chiede il comando in corso: la stringa 'tutte' =
+    tutte le disponibili, un intero = quel numero (limitato al disponibile), None =
+    1 (il predefinito). Mai più del disponibile, mai meno di 1 (se c'è qualcosa)."""
+    richiesta = getattr(mondo, "_quantita_comando", None)
+    if richiesta == "tutte":
+        return disponibili
+    if isinstance(richiesta, int):
+        n = richiesta
+    else:
+        n = 1
+    return max(1, min(n, disponibili)) if disponibili > 0 else 0
+
+
+def _etichetta_scorta(oggetto, n: int) -> str:
+    return conteggio(oggetto.nome_visualizzato, oggetto.plurale, n)
+
+
+def _prendi_scorta(mondo: Mondo, oggetto):
+    """[1.6.0 / B1] Prende N copie di un contabile dal luogo raggiungibile in cui
+    stanno (stanza o contenitore/supporto), portandole in inventario."""
+    luogo = mondo.luogo_scorta_raggiungibile(oggetto.nome)
+    if luogo is None:
+        pron = pronome_oggetto(oggetto.nome_visualizzato)
+        scrivi(mondo, f"Non ne vedi qui da prendere.")
+        return
+    if not oggetto.prendibile:
+        scrivi(mondo, messaggio(mondo, "non si prende",
+                                f"Non puoi prender{pronome_oggetto(oggetto.nome_visualizzato)}.",
+                                oggetto=_nome(oggetto)))
+        return
+    # Capienza: un contabile pesa come UN posto (il suo id), a prescindere dalle
+    # copie; prenderne altri quando già se ne ha non aumenta i posti occupati.
+    if not mondo.puo_prendere(oggetto):
+        scrivi(mondo, messaggio(mondo, "mani piene", "Hai le mani troppo piene: lascia qualcosa prima di "
+                                f"prender{pronome_oggetto(oggetto.nome_visualizzato)}.", oggetto=_nome(oggetto)))
+        return
+    disponibili = mondo.quantita_in(oggetto.nome, luogo)
+    n = _quante(mondo, disponibili)
+    chieste = getattr(mondo, "_quantita_comando", None)
+    mondo.togli_quantita(oggetto.nome, luogo, n)
+    mondo.aggiungi_quantita(oggetto.nome, "inventario", n)
+    msg = f"Hai preso {_etichetta_scorta(oggetto, n)}."
+    if isinstance(chieste, int) and chieste > disponibili:
+        msg += f" Ce n'erano solo {disponibili}."
+    scrivi(mondo, msg, "elenco")
+    _riuscita(mondo)
+
+
+def _lascia_scorta(mondo: Mondo, oggetto):
+    """[1.6.0 / B1] Posa N copie di un contabile nella stanza corrente."""
+    posseduti = mondo.quantita_posseduta(oggetto.nome)
+    if posseduti <= 0:
+        scrivi(mondo, "Non ne hai con te.")
+        return
+    stanza = mondo.trova_stanza(mondo.posizione_giocatore)
+    n = _quante(mondo, posseduti)
+    mondo.togli_quantita(oggetto.nome, "inventario", n)
+    mondo.aggiungi_quantita(oggetto.nome, stanza.nome, n)
+    scrivi(mondo, messaggio(mondo, "lasciato", f"Hai lasciato {_etichetta_scorta(oggetto, n)}.",
+                            oggetto=_etichetta_scorta(oggetto, n)), "elenco")
+    _riuscita(mondo)
+
+
+def _consuma_scorta(mondo: Mondo, oggetto):
+    """[1.6.0 / B1] Consuma (fa sparire) N copie di un contabile dall'inventario."""
+    posseduti = mondo.quantita_posseduta(oggetto.nome)
+    if posseduti <= 0:
+        scrivi(mondo, "Non ne hai da consumare.")
+        return
+    n = _quante(mondo, posseduti)
+    mondo.togli_quantita(oggetto.nome, "inventario", n)
+    restano = mondo.quantita_posseduta(oggetto.nome)
+    msg = f"Consumi {_etichetta_scorta(oggetto, n)}."
+    if restano:
+        msg += f" Te ne {'resta' if restano == 1 else 'restano'} {restano}."
+    scrivi(mondo, msg, "elenco")
+    _riuscita(mondo)
+
+
 def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     """Logica di default per l'azione PRENDERE. [1.3.0 / G-7] Con un secondo
     oggetto ('prendi la mela DAL tavolo') controlla che la mela sia davvero lì."""
@@ -101,6 +190,10 @@ def prendi_logica_default(mondo: Mondo, id_oggetto: str, id_da: str = None):
     oggetto = mondo.trova_oggetto(id_oggetto)
     if not oggetto or not mondo.oggetto_raggiungibile(id_oggetto):
         scrivi(mondo, "Non vedi nulla del genere qui.")
+        return
+    # [1.6.0 / B1] Un contabile si prende a copie (N, o 1 di default): logica a parte.
+    if oggetto.contabile:
+        _prendi_scorta(mondo, oggetto)
         return
     if id_oggetto in mondo.inventario:
         scrivi(mondo, "Ce l'hai già.")
@@ -186,11 +279,15 @@ def lascia_logica_default(mondo: Mondo, id_oggetto: str):
     if not mondo.c_e_luce():
         scrivi(mondo, messaggio(mondo, "buio", "È troppo buio per vederci."))
         return
+    oggetto = mondo.trova_oggetto(id_oggetto)
+    # [1.6.0 / B1] Un contabile si posa a copie (N, o 1 di default): logica a parte.
+    if oggetto is not None and oggetto.contabile:
+        _lascia_scorta(mondo, oggetto)
+        return
     if not mondo.giocatore_possiede(id_oggetto):
         scrivi(mondo, "Non ce l'hai.")
         return
 
-    oggetto = mondo.trova_oggetto(id_oggetto)
     stanza_corrente = mondo.trova_stanza(mondo.posizione_giocatore)
 
     if id_oggetto in mondo.inventario:
@@ -228,7 +325,13 @@ def _stampa_portato(mondo: Mondo, id_ogg: str, livello: int, visti: set):
     visti.add(id_ogg)
     oggetto = mondo.oggetti[id_ogg]
     rientro = "  " + "    " * (livello - 1)   # livello 1: '  - ' come sempre
-    scrivi(mondo, f"{rientro}- {oggetto.nome_visualizzato}", "elenco")
+    # [1.6.0 / B1] Un contabile in inventario mostra il numero di copie portate.
+    if getattr(oggetto, "contabile", False):
+        etichetta = conteggio(oggetto.nome_visualizzato, oggetto.plurale,
+                              mondo.quantita_posseduta(id_ogg))
+    else:
+        etichetta = oggetto.nome_visualizzato
+    scrivi(mondo, f"{rientro}- {etichetta}", "elenco")
     if oggetto.is_supporto or (oggetto.is_contenitore and mondo.contenitore_aperto(oggetto)):
         for figlio in sorted(oggetto.contenuto):
             _stampa_portato(mondo, figlio, livello + 1, visti)
@@ -386,6 +489,19 @@ def bere_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
     _consuma(mondo, id_oggetto, "bevibile", "Bevi", "Non si beve.")
 
 
+def consumare_logica_default(mondo: Mondo, id_oggetto: str, id_oggetto2: str = None):
+    """[1.6.0 / B1] 'consuma una pozione': fa sparire N copie di un contabile che
+    il giocatore ha con sé. Il verbo CEDE a un comando omonimo dichiarato
+    dall'autore; su un oggetto non contabile non succede nulla di particolare."""
+    oggetto = mondo.trova_oggetto(id_oggetto)
+    if _manca(mondo, oggetto):
+        return
+    if not oggetto.contabile:
+        scrivi(mondo, messaggio(mondo, "niente", "Non succede nulla di particolare."))
+        return
+    _consuma_scorta(mondo, oggetto)
+
+
 def aspettare_logica_default(mondo: Mondo):
     scrivi(mondo, messaggio(mondo, "tempo", "Il tempo passa."))
     _riuscita(mondo)
@@ -494,6 +610,10 @@ LIBRERIA_AZIONI = {
     "accendere": Azione(nomi=["accendi", "accendere"], logica=accendere_logica_default, cede=True),
     "spegnere": Azione(nomi=["spegni", "spegnere"], logica=spegnere_logica_default, cede=True),
     "bere": Azione(nomi=["bevi", "bere"], logica=bere_logica_default, cede=True),
+    # [1.6.0 / B1] 'consuma una pozione' fa sparire copie di un oggetto contabile.
+    # CEDE a un '"consuma" è un comando.' d'autore (storia che lo usava: invariata).
+    "consumare": Azione(nomi=["consuma", "consumare"], logica=consumare_logica_default,
+                        richiede_oggetto=True, cede=True),
     "aspettare": Azione(nomi=["aspetta", "aspettare", "attendi", "attendere", "z"],
                         logica=aspettare_logica_default, richiede_oggetto=False, cede=True),
     "toccare": Azione(nomi=["tocca", "toccare"], logica=niente_logica_default, cede=True),

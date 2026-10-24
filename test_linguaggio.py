@@ -8693,6 +8693,52 @@ def test_studio_160_procedure_round_trip():
     _check(m2 is not None and "riposa" in m2.procedure, "la dichiarazione riscritta ricompila")
 
 
+def test_studio_160_b1_round_trip():
+    print("[1.6.0 / B1: round-trip Studio (contabili, quantità, condizioni di scorta)]")
+    from strumenti_ide import _serializza_regola
+    # 1. Le tre dichiarazioni si riscrivono dal serializzatore e ricompilano.
+    d_decl = serializza_frase({"op": "countable_decl", "name": "La pozione", "plural": "pozioni"})
+    _check(d_decl.get("text") == 'La pozione, plurale "pozioni", è contabile.',
+           f"countable_decl ({d_decl})")
+    d_inv = serializza_frase({"op": "stock_player", "name": "pozioni", "n": 3})
+    _check(d_inv.get("text") == "Il giocatore ha 3 pozioni.", f"stock_player ({d_inv})")
+    d_luogo = serializza_frase({"op": "stock_place", "name": "frecce", "n": 5, "place": "La faretra"})
+    _check(d_luogo.get("text") == "Ci sono 5 frecce in la faretra.", f"stock_place ({d_luogo})")
+    testo_ricostruito = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La faretra è un contenitore.\nLa faretra è nella cella.\n"
+        "La freccia, plurale \"frecce\", è contabile.\nLa freccia è prendibile.\n"
+        + d_decl["text"] + "\n" + d_inv["text"] + "\n" + d_luogo["text"] + "\n")
+    m, log = compila(testo_ricostruito)
+    _check(m is not None, f"le frasi riscritte ricompilano {'' if m else log[-300:]}")
+    _check(m and m.quantita_posseduta("pozione") == 3 and m.quantita_in("freccia", "faretra") == 5,
+           "le quantità riscritte hanno effetto")
+    # 2. Le condizioni di scorta: lette (JSON) e riscritte (testo).
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La pozione, plurale \"pozioni\", è contabile.\nLa pozione è prendibile.\n"
+        "Il giocatore ha 2 pozioni.\n"
+        "\"conta\" è un comando senza oggetto.\n"
+        "Invece di conta se il giocatore ha almeno 2 pozioni: dire \"Molte.\".\n"
+        "\"vuota\" è un comando senza oggetto.\n"
+        "Invece di vuota se non restano pozioni: dire \"Vuoto.\".\n")
+    d = regole_strutturate(src)
+    _check(d.get("ok"), "analizza_regole regge le condizioni di scorta")
+    cond_conta = next(r["condition"] for r in d["rules"] if r.get("verb") == "conta")
+    _check(cond_conta == {"op": "stock", "id": "pozione", "name": "pozioni", "cmp": ">=", "value": 2},
+           f"la condizione 'almeno' è nel modello ({cond_conta})")
+    cond_vuota = next(r["condition"] for r in d["rules"] if r.get("verb") == "vuota")
+    _check(cond_vuota == {"op": "stock", "id": "pozione", "name": "pozioni", "cmp": "==", "value": 0},
+           f"la condizione 'scorta a zero' è nel modello ({cond_vuota})")
+    frase_conta = _serializza_regola(dict(next(r for r in d["rules"] if r.get("verb") == "conta"), op="rule"))
+    _check("il giocatore ha almeno 2 pozioni" in frase_conta, f"riscrive 'almeno' ({frase_conta})")
+    frase_vuota = _serializza_regola(dict(next(r for r in d["rules"] if r.get("verb") == "vuota"), op="rule"))
+    _check("non restano pozioni" in frase_vuota, f"riscrive 'scorta a zero' ({frase_vuota})")
+    # 3. Il menu segnala l'oggetto come contabile col plurale.
+    poz = next(o for o in d["menu"]["objects"] if o["id"] == "pozione")
+    _check(poz.get("countable") and poz.get("plural") == "pozioni", f"il menu marca il contabile ({poz})")
+
+
 def test_160_guardia_lalr_frasi_nuove():
     print("[1.6.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA_160)
@@ -9395,6 +9441,7 @@ def main():
         test_160_b1_condizioni,
         test_160_b1_annulla,
         test_160_b1_errori_dautore,
+        test_studio_160_b1_round_trip,
     ]
     print("=" * 60)
     print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")

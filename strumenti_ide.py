@@ -28,6 +28,7 @@ from strutture import (
     OperandoCasuale, OperandoNumero, OperandoVariabile,
     CondizioneRelazione, ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli,
     REL_GIOCATORE, REL_QUALCUNO, REL_QUALCOSA, ConseguenzaProcedura,
+    CondizioneScorta,
 )
 from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QUADRA_CHIUSA
 from compilatore import (
@@ -405,6 +406,17 @@ def _kind_variabile(mondo, nome):
     return "contatore" if isinstance(mondo.variabili.get(nome), int) else "stato"
 
 
+def _nome_scorta(mondo, eid):
+    """[1.6.0 / B1] La forma PLURALE dichiarata di un oggetto contabile ('pozioni'),
+    per riscrivere le frasi di scorta; in mancanza, il nucleo del nome o l'id."""
+    o = getattr(mondo, "oggetti", {}).get(eid)
+    if o is not None and getattr(o, "plurale", None):
+        return o.plurale
+    if o is not None:
+        return _scomponi_articolo(o.nome_visualizzato)[1]
+    return eid
+
+
 # [1.6.0 / B3] Articolazione della preposizione di una locuzione di relazione per
 # la RISCRITTURA: 'di' + 'il giocatore' -> 'del giocatore'; 'a' + 'la guardia' ->
 # 'alla guardia'. Solo 'di' e 'a' (le preposizioni di relazione tipiche); per le
@@ -568,6 +580,12 @@ def _cond_to_json(c, mondo):
         # [1.3.0 / M-10] 'il personaggio ha X'.
         return {"op": "npcHas", "npc": c.id_png, "npcName": _nome_entita(mondo, c.id_png),
                 "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
+    if isinstance(c, CondizioneScorta):
+        # [1.6.0 / B1] 'il giocatore ha [almeno|più di|meno di] N <plurale>' /
+        # 'non restano <plurale>' (cmp '==' con soglia 0). 'name' è la forma
+        # PLURALE dichiarata, per riscrivere la frase ('pozioni').
+        return {"op": "stock", "id": c.id_oggetto, "name": _nome_scorta(mondo, c.id_oggetto),
+                "cmp": c.operatore, "value": c.soglia}
     if isinstance(c, CondizioneRelazione):
         # [1.6.0 / B3] 'il giocatore si fida di Saverio', 'qualcuno si fida del
         # giocatore'. 'a'/'b' sono gli ID (o le sentinelle qualcuno/qualcosa);
@@ -890,7 +908,10 @@ def analizza_regole(percorso_file, sorgente=None):
                      "kind": ("personaggio" if getattr(o, "is_personaggio", False)
                               else "contenitore" if getattr(o, "is_contenitore", False)
                               else "supporto" if getattr(o, "is_supporto", False)
-                              else "oggetto")}
+                              else "oggetto"),
+                     # [1.6.0 / B1] Contabile + plurale dichiarato (None se non contabile).
+                     "countable": bool(getattr(o, "contabile", False)),
+                     "plural": getattr(o, "plurale", None)}
                     for oid, o in mondo.oggetti.items()],
         "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
         "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
@@ -1291,7 +1312,10 @@ def analizza_dialoghi(percorso_file, sorgente=None):
                      "kind": ("personaggio" if getattr(o, "is_personaggio", False)
                               else "contenitore" if getattr(o, "is_contenitore", False)
                               else "supporto" if getattr(o, "is_supporto", False)
-                              else "oggetto")}
+                              else "oggetto"),
+                     # [1.6.0 / B1] Contabile + plurale dichiarato (None se non contabile).
+                     "countable": bool(getattr(o, "contabile", False)),
+                     "plural": getattr(o, "plurale", None)}
                     for oid, o in mondo.oggetti.items()],
         "rooms": [{"id": rid, "name": st.nome_visualizzato} for rid, st in mondo.stanze.items()],
         "directions": sorted(set(getattr(mondo, "direzioni", {}).values())),
@@ -1683,6 +1707,15 @@ def _serializza_condizione(c):
     if op == "relation":
         # [1.6.0 / B3] 'il giocatore si fida di Saverio'.
         return _frase_relazione(c)
+    if op == "stock":
+        # [1.6.0 / B1] Scorte di un contabile. 'name' è la forma plurale.
+        cmp, n, name = c["cmp"], int(c["value"]), c["name"]
+        if cmp == "==" and n == 0:
+            return f"non restano {name}"
+        prefisso = {"==": "", ">=": "almeno ", ">": "più di ", "<": "meno di "}.get(cmp)
+        if prefisso is None:
+            raise ValueError(f"Confronto di scorta sconosciuto: {cmp!r}.")
+        return f"il giocatore ha {prefisso}{n} {name}"
     if op == "count":
         cmp, v = c["cmp"], _serializza_operando(c["value"])
         if cmp == "==":
@@ -1937,6 +1970,9 @@ def serializza_frase(spec):
       state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
+      countable_decl {name, plural}          → 'La pozione, plurale "pozioni", è contabile.'  [1.6.0 / B1]
+      stock_player   {name, n}                → 'Il giocatore ha N <plurale>.'  [1.6.0 / B1]
+      stock_place    {name, n, prep?, place}  → 'Ci sono N <plurale> in <luogo>.'  [1.6.0 / B1]
       verb_decl      {word, noObject?}       → '"w" è un comando [senza oggetto].'
       synonym        {word, target, voluto?} → '"w" è come t [(voluto)].'
       commands_mode  {mode:'testo'|'pulsanti'|'entrambi'} → 'I comandi si scrivono…'
@@ -2035,6 +2071,24 @@ def serializza_frase(spec):
                     "text": f"{str(spec['name']).strip()} resta sempre fra "
                             f"{_serializza_operando(spec['min'])} e "
                             f"{_serializza_operando(spec['max'])}."}
+        if op == "countable_decl":
+            # [1.6.0 / B1] 'La pozione, plurale "pozioni", è contabile.'. Il plurale
+            # è DICHIARATO (il motore non lo indovina).
+            return {"ok": True,
+                    "text": f"{spec['name']}, plurale {_quota(str(spec['plural']).strip())}, "
+                            f"è contabile."}
+        if op == "stock_player":
+            # [1.6.0 / B1] 'Il giocatore ha N <plurale>.' — quantità iniziale in
+            # inventario. 'name' è la forma plurale ('pozioni').
+            return {"ok": True,
+                    "text": f"Il giocatore ha {int(spec['n'])} {str(spec['name']).strip()}."}
+        if op == "stock_place":
+            # [1.6.0 / B1] 'Ci sono N <plurale> in <luogo>.' — quantità iniziale in
+            # una stanza o in un contenitore/supporto.
+            prep = str(spec.get("prep", "in")).strip() or "in"
+            return {"ok": True,
+                    "text": f"Ci sono {int(spec['n'])} {str(spec['name']).strip()} "
+                            f"{prep} {_articolo_in_minuscolo(spec['place'])}."}
         if op == "relation_decl":
             # [1.6.0 / B3] '"si fida di" è una relazione molti a molti [ed è reciproca].'
             arieta = str(spec.get("arity", "molti-a-molti")).replace("-", " ").strip()

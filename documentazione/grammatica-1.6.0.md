@@ -5,8 +5,12 @@
 > scrive per le storie che non usano le frasi nuove è identico (verificato sulle
 > dieci storie ufficiali, Il Relitto Silente compreso). Costrutti nuovi (vedi §29):
 > **`def_invariante`** (`La sete resta sempre fra 0 e 100.`), l'invariante di clamp
-> dichiarata che il motore applica dopo ogni scrittura del contatore.
-> La sezione §29 è il riferimento preciso delle aggiunte 1.6.0; il resto del
+> dichiarata che il motore applica dopo ogni scrittura del contatore; `senza ritorno`
+> (connessione a senso unico); le **relazioni di prima classe** (B3); le **procedure
+> nominate** (C1); e gli **oggetti contabili** (B1) con la concordanza dichiarata
+> (`La pozione, plurale «pozioni», è contabile.`), la prima frontiera che tocca il
+> loop di gioco (quantità, prendi/lascia/consuma N, elenchi concordati).
+> Le sezioni §29 e §30 sono il riferimento preciso delle aggiunte 1.6.0; il resto del
 > documento resta la base 1.5.0.
 
 
@@ -2203,11 +2207,127 @@ scope (additività e rischio):
 - **B3 estensioni**: il quantificatore `ogni` nelle asserzioni (`apre ogni porta`)
   e le relazioni **azionabili dal giocatore** (oggi solo d'autore e interrogabili).
   Il modello `Relazione` è già pronto a reggerle.
-- **B1 — oggetti contabili** (`La pozione, plurale «pozioni», è contabile.`): la
-  forma utile (una cosa tenuta in più copie, con la concordanza dichiarata invece
-  che indovinata) richiede modifiche al *loop di gioco* — riconoscere il plurale
-  nell'input del giocatore, le quantità nell'inventario, prendere/lasciare N copie,
-  la concordanza negli elenchi — cioè i moduli `gioco.py` e `libreria_azioni.py`.
-  È il «secondo posto» a priorità più bassa della roadmap e va progettato
-  deliberatamente: la sola dichiarazione, senza le quantità, non sarebbe osservabile
-  in partita. Rimandata a una versione dedicata.
+
+**B1 — oggetti contabili** è stato REALIZZATO: vedi §30.
+
+## §30 — v1.6.0: oggetti contabili (B1)
+
+Una cosa tenuta in **più copie**, con la concordanza **dichiarata** (non indovinata):
+l'autore dà il plurale una volta, il motore non pluralizza mai da sé (è la scelta che
+tiene fuori il NO-GO dei plurali automatici, Temi 5a/5b). È la prima frontiera che
+tocca il **loop di gioco**: perché sia osservabile in partita servono le quantità
+(inventario, stanze, contenitori), il prendere/lasciare/consumare N copie, la
+concordanza negli elenchi e nelle condizioni.
+
+### §30.1 — Dichiarazione
+
+```ebnf
+def_contabile: ENTITA "," "plurale" TESTO_QUOTATO "," _copula "contabile" "."
+```
+
+Esempi:
+
+```favella
+La pozione, plurale "pozioni", è contabile.
+La freccia, plurale "frecce", è contabile.
+```
+
+**Semantica.** L'oggetto (il singolare, es. `pozione`) diventa **contabile** e
+registra la sua forma **plurale** dichiarata (`pozioni`), usata negli elenchi
+concordati. Un contabile è una **cosa semplice**: non può essere anche contenitore,
+supporto, personaggio o fonte di luce (errore d'autore gentile). Lo scanner di
+Passata 1 raccoglie singolare e plurale; la forma plurale entra fra le **ENTITA** e
+`mondo.plurali` la riconduce all'id canonico (`trova_oggetto`/`canonizza`), così ogni
+riferimento al plurale — nelle frasi d'autore e nell'input del giocatore (un alias) —
+trova lo stesso oggetto. Parole riservate nuove: `plurale`, `contabile`.
+
+**Disambiguazione LALR(1).** `def_contabile` comincia con `ENTITA`, come molte
+dichiarazioni; dopo l'entità il lookahead `","` è **nuovo** e disgiunto da ogni altro
+continuatore top-level (`è`/`sono`, `collega`, `ha`, `dà`, `illumina`, RELAZIONE) →
+LALR(1) 0-ambiguo, confermato dalla guardia Earley.
+
+### §30.2 — Quantità iniziali
+
+```ebnf
+def_giocatore_scorta: "Il" "giocatore" "ha" _numero ENTITA "."
+def_scorta_luogo: "Ci" ( "sono" | "è" ) _numero ENTITA PREP_LUOGO ENTITA "."
+```
+
+Esempi:
+
+```favella
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
+Ci sono 2 pozioni in la gola.
+```
+
+**Semantica.** Le quantità vivono su `Oggetto.quantita` (mappa *luogo → copie*, con
+luogo = `"inventario"`, un id di stanza, o un id di contenitore/supporto): è la fonte
+di verità del contabile. I marker di presenza standard (`inventario`, `stanza.oggetti`,
+`contenuto`) restano **sincronizzati**, così la visibilità e la raggiungibilità
+esistenti valgono senza modifiche. Una collocazione **standard** di un contabile (`La
+pozione è in cella.`, `Il giocatore ha la pozione.`) vale **1 copia**; le frasi di
+quantità FISSANO il numero in un luogo. Le quantità sono catturate dalle istantanee →
+**ANNULLA** le riavvolge. Errori gentili: quantità su un oggetto non contabile; luogo
+che non è una stanza né un contenitore/supporto. `def_giocatore_scorta` condivide il
+prefisso `Il giocatore ha` con `def_giocatore_inventario` (dopo `ha`, il lookahead
+`_numero` è disgiunto da `ENTITA`); `def_scorta_luogo` parte dalla keyword nuova `Ci`.
+Riservata nuova: `Ci`.
+
+### §30.3 — Nel loop di gioco: prendere, lasciare, consumare
+
+Non è sintassi d'autore (sono comandi del **giocatore**), ma è la parte osservabile:
+
+- `prendi 2 pozioni`, `prendi una pozione` (default **1**), `prendi tutte le pozioni`
+  (tutte le copie raggiungibili), `lascia 2 pozioni`, `consuma una pozione`. Il numero
+  (cifre, numero in lettere, `una`/`un`/`uno` = 1, `tutte`/`tutti`/`tutto` = tutte) si
+  stacca in testa all'argomento per i verbi prendi/lascia/consuma; il nome ripulito
+  prosegue nel flusso normale (le regole d'autore su quel verbo scattano comunque).
+- La capienza conta un contabile come **un posto** (il suo id), a prescindere dalle
+  copie. Prendere divide lo stack fra luogo e inventario; lasciare posa nella stanza
+  corrente; consumare fa sparire le copie dall'inventario.
+- **`consuma`** è un verbo di libreria nuovo (cede a un `"consuma" è un comando.`
+  d'autore). Scelta deliberata: non collide con alcuna keyword della grammatica né
+  con un verbo di libreria esistente (nelle storie «consuma» compariva solo nei
+  commenti). I cambi di quantità da *regola d'autore* (una conseguenza che decrementa
+  una scorta) non sono in questa prima versione: restano un'estensione.
+
+**Concordanza negli elenchi** (`favella_utils.conteggio`): la stanza, l'inventario e
+il contenuto dei contenitori mostrano le copie col numero e la forma dichiarata —
+`Puoi vedere qui: 3 pozioni.`, `1 pozione` (solo `n == 1` usa il singolare).
+
+### §30.4 — Condizioni e interpolazione
+
+```ebnf
+cond_pq_eq: "il" "giocatore" "ha" _numero ENTITA
+cond_pq_gte: "il" "giocatore" "ha" "almeno" _numero ENTITA
+cond_pq_gt: "il" "giocatore" "ha" "più" "di" _numero ENTITA
+cond_pq_lt: "il" "giocatore" "ha" "meno" "di" _numero ENTITA
+cond_scorta_finita: "non" "restano" "più"? ENTITA
+```
+
+Esempi:
+
+```favella
+Invece di bevi se il giocatore ha almeno 2 pozioni: dire "Ne hai [quante pozioni]."
+Invece di bevi se non restano pozioni: dire "Niente pozioni."
+```
+
+**Semantica.** Le `cond_pq_*` confrontano le copie **in inventario** con una soglia
+(`==`, `>=`, `>`, `<`); `cond_scorta_finita` è il caso «scorta esaurita» (copie
+possedute `== 0`). Condividono il prefisso `il giocatore ha` con `cond_possesso`: dopo
+`ha`, i lookahead `_numero`/`almeno`/`più`/`meno`/`ENTITA` sono disgiunti → LALR(1)
+0-ambiguo. **Scelta di forma documentata:** la condizione «scorta esaurita» NON si
+scrive `le pozioni sono finite` perché un aggettivo nudo dopo la copula collide con
+`cond_proprieta` (`ENTITA _copula PROPRIETA`) — due letture complete della stessa
+frase, ambigue per la guardia Earley anche se LALR le risolve per priorità. La forma
+`non restano … ENTITA` parte dalla keyword `non` (come `cond_non_gruppo`, che però
+prosegue con `(`), quindi è 0-ambigua in entrambi i parser. L'interpolazione `[quante
+pozioni]` (anche `[quanti …]`) rende il numero di copie possedute. Le condizioni di
+scorta valgono solo per un oggetto contabile (errore gentile altrimenti).
+
+**Round-trip Studio.** `analizza_regole` espone i contabili in `menu.objects[]`
+(`countable`, `plural`) e le condizioni di scorta come JSON `{op:"stock", id, name,
+cmp, value}` (`name` = forma plurale); `_serializza_condizione` le riscrive; e
+`serializza_frase` ha le op `countable_decl {name, plural}`, `stock_player {name, n}`,
+`stock_place {name, n, prep?, place}`.
