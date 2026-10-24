@@ -40,6 +40,7 @@ from favella_utils import (
     DIREZIONI_BASE, estrai_placeholder, radice_proprieta,
     prima_maiuscola, condizioni_nel_testo, SEGNAPOSTO_DEL_MOTORE, MESSAGGI_MOTORE,
     QUADRA_APERTA, QUADRA_CHIUSA, chiave_condizione, TestoCondizionaleSbilanciato,
+    liste_relazione_nel_testo,
 )
 import os
 import sys
@@ -2817,7 +2818,16 @@ class FavellaTransformer(Transformer):
                 self.errori.append(
                     f"Nel testo \"{estratto}\" {e}: ogni [se …] si chiude con il suo "
                     f"[fine], e [altrimenti] sta fra i due.")
-        if not fonti:
+        # [1.6.0 / B3] Segnaposto-elenco di relazione '[chi <locuzione> <membro>]':
+        # si risolvono riusando il parser delle condizioni su 'qualcuno <resto>'
+        # (cond_rel_qualcuno). Un '[chi …]' che non è una relazione interrogabile
+        # (per esempio il letterario «[chi va là]») NON è un errore: resta un
+        # segnaposto normale (e, se non risolve, prende l'avviso dei segnaposto).
+        chiavi_liste = set()
+        for testo in self._tutti_i_testi():
+            for grezzo in liste_relazione_nel_testo(testo):
+                chiavi_liste.add(chiave_condizione(grezzo))
+        if not fonti and not chiavi_liste:
             return
         parser = self._parser_condizioni()
         for fonte in sorted(fonti):
@@ -2831,6 +2841,14 @@ class FavellaTransformer(Transformer):
                 self.errori.append(
                     f"La condizione del testo «[se {fonte}]» non si capisce: scrivila come "
                     f"dopo un «se» (per esempio «[se la porta è aperta]»).")
+        for chiave in sorted(chiavi_liste):
+            resto = chiave[4:].strip()   # toglie 'chi '
+            try:
+                cond = self.transform(parser.parse("qualcuno " + resto))
+            except Exception:
+                cond = None
+            if isinstance(cond, CondizioneRelazione) and cond.a == REL_QUALCUNO:
+                m.liste_relazione[chiave] = (cond.nome_rel, cond.b)
 
     def _parser_condizioni(self):
         """Il parser della sola regola 'condizione', con gli stessi nomi."""
@@ -3644,6 +3662,10 @@ class FavellaTransformer(Transformer):
                 # [1.3.0] '[Apri gli occhi.]' è testo fra parentesi, non un
                 # segnaposto: un nome non contiene punteggiatura.
                 if _RE_CHAR_NOME_VIETATO.search(ph):
+                    continue
+                # [1.6.0 / B3] '[chi …]' risolto in un elenco di relazione: non è
+                # un segnaposto ignoto.
+                if chiave_condizione(ph) in m.liste_relazione:
                     continue
                 if normalizza_nome(ph) not in nomi_interpolabili:
                     segnaposto_sconosciuti.add(ph)

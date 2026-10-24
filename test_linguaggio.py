@@ -8147,6 +8147,8 @@ _CORPUS_GUARDIA_160 = (
     "Invece di indaga se il giocatore si fida di Saverio: dire \"Fiducia.\".\n"
     "Prima di controlla se qualcuno si fida del giocatore e il giocatore non si fida di Vito: dire \"Eco.\".\n"
     "Ogni turno se il giocatore si fida di qualcuno: aumenta la sete.\n"
+    "\"elenca\" è un comando senza oggetto.\n"
+    "Invece di elenca: dire \"Si fidano di te: [chi si fida del giocatore].\".\n"
 )
 
 
@@ -8523,6 +8525,34 @@ def test_studio_160_relazioni_round_trip():
                              "arity": "molti-a-molti", "reciprocal": False})
     _check(decl.get("text") == '"si fida di" è una relazione molti a molti.',
            f"serializza la dichiarazione ({decl})")
+
+
+def test_160_relazioni_interpolazione():
+    print("[1.6.0 / B3: interpolazione '[chi si fida del giocatore]']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Saverio si fida del giocatore.\nVito si fida del giocatore.\n"
+        '"tradisci" è un comando senza oggetto.\n'
+        '"guardati" è un comando senza oggetto.\n'
+        'Invece di tradisci: dire "Vito si allontana." e adesso Vito non si fida più del giocatore.\n'
+        'Invece di guardati: dire "Si fidano di te: [chi si fida del giocatore].".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("Segnaposto" not in log, "'[chi …]' non è segnalato come segnaposto ignoto")
+    _check(mondo.liste_relazione.get("chi si fida del giocatore") == ("si fida di", "giocatore"),
+           "il compilatore risolve '[chi …]' nella relazione e nel membro")
+    mondo = runtime(src)
+    out = esegui(mondo, "guardati")
+    _check("Saverio e Vito" in out or "Vito e Saverio" in out,
+           f"l'elenco mostra i due soggetti ({out.strip()!r})")
+    # L'elenco si ricalcola: dopo che Vito smette di fidarsi, resta solo Saverio.
+    esegui(mondo, "tradisci")
+    out2 = esegui(mondo, "guardati")
+    _check("Saverio" in out2 and "Vito" not in out2, f"l'elenco si aggiorna ({out2.strip()!r})")
 
 
 def test_160_relazioni_additivo_nessuna_relazione():
@@ -9090,6 +9120,7 @@ def main():
         test_160_relazioni_arieta_reciprocita,
         test_160_relazioni_errori,
         test_studio_160_relazioni_round_trip,
+        test_160_relazioni_interpolazione,
         test_160_relazioni_additivo_nessuna_relazione,
         test_160_guardia_lalr_frasi_nuove,
     ]

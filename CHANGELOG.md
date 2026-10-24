@@ -44,9 +44,10 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   si fida del giocatore`, anche negata). Arietà (`uno a uno`/`uno a molti`/`molti a
   molti`, con sfratto delle coppie in conflitto) e reciprocità opzionale; lo stato
   è catturato dalle istantanee (ANNULLA lo riavvolge). In questa prima versione è
-  d'autore e interrogabile, **non** azionabile dal giocatore. Restano aperte
-  (estensioni): l'interpolazione `[chi si fida del giocatore]`, il quantificatore
-  `ogni` nelle asserzioni, le relazioni azionabili. Parole riservate nuove:
+  d'autore e interrogabile, **non** azionabile dal giocatore. Interpolazione a
+  corredo: `[chi si fida del giocatore]` rende l'elenco dei soggetti correnti
+  («Saverio e Vito»). Restano aperte (estensioni): il quantificatore `ogni` nelle
+  asserzioni e le relazioni azionabili dal giocatore. Parole riservate nuove:
   `relazione`, `molti`, `ed`, `reciproca`, `reciproco`, `qualcuno`. (`def_relazione`,
   `def_relazione_fatto`, `cond_relazione`, `cons_rel_*`; terminale chiuso `RELAZIONE`
   generato per-file; round-trip Studio: `analizza_regole.menu.relations` +

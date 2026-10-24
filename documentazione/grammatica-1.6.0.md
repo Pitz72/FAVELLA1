@@ -2132,14 +2132,22 @@ vs copula/`ha`/`collega`/… → LALR(1) 0-ambiguo.
 - Lo stato (le coppie) vive nel mondo → catturato dalle istantanee: **ANNULLA**
   riavvolge le relazioni.
 
+**Interpolazione a corredo.** Il segnaposto `[chi <locuzione> <membro>]` nei testi
+rende l'elenco (concordato, con la «e» finale) dei soggetti in relazione con quel
+membro: `"Si fidano di te: [chi si fida del giocatore]."` → «Saverio e Vito».
+Vuoto → «nessuno». Il compilatore lo risolve riusando il parser delle condizioni su
+`qualcuno <resto>` e lo conserva in `mondo.liste_relazione` (chiave normalizzata →
+(relazione, membro)); `favella_utils.rendi_testo` ricalcola l'elenco a ogni resa
+dalle coppie correnti. Un `[chi …]` che non è una relazione interrogabile (p.es. il
+letterario «[chi va là]») resta un segnaposto normale, non è un errore.
+
 **Round-trip Studio.** `analizza_regole` espone le relazioni dichiarate in
 `menu.relations` e le condizioni/conseguenze di relazione come JSON `{op:
 "relation", a, b, aName, bName, rel, base, prep, remove?}`; il serializzatore le
 riscrive (`_serializza_condizione`/`_serializza_conseguenza`), e `serializza_frase`
 ha le op `relation_decl` e `relation_fact`.
 
-**Cosa resta aperto (estensioni, non in questa versione).** L'interpolazione a
-corredo `[chi si fida del giocatore]` (elenco dei soggetti); il quantificatore
-`ogni` nelle asserzioni (`Il passe-partout apre ogni porta`); le relazioni
+**Cosa resta aperto (estensioni, non in questa versione).** Il quantificatore
+`ogni` nelle asserzioni (`Il passe-partout apre ogni porta`) e le relazioni
 azionabili dal giocatore. Il modello (`Relazione` con `soggetti_di`/`oggetti_di`,
 arietà, reciprocità) è già pronto per reggerle.

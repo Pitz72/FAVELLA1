@@ -1210,6 +1210,10 @@ class Mondo:
         # [1.6.0 / B3] Relazioni binarie nominate (nome-locuzione -> Relazione).
         # Lo stato (le coppie) è parte del mondo, quindi catturato dalle istantanee.
         self.relazioni: Dict[str, 'Relazione'] = {}
+        # [1.6.0 / B3] Segnaposto-elenco '[chi <locuzione> <membro>]' risolti dal
+        # compilatore: chiave normalizzata -> (nome_relazione, id_membro). L'elenco
+        # vero è ricalcolato a ogni resa dalle coppie correnti (come condizioni_testo).
+        self.liste_relazione: Dict[str, tuple] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1544,7 +1548,11 @@ class Mondo:
                       # [1.5.0] le frasi nuove che non cambiano in partita
                       "stati_calcolati", "testi", "azioni_senza_tempo",
                       "arrivi", "riga_stato", "ifid",
-                      "fronti_a_fine_turno")
+                      "fronti_a_fine_turno",
+                      # [1.6.0 / B3] la struttura delle relazioni e gli elenchi di
+                      # testo risolti sono statici; lo STATO (le coppie) sta dentro
+                      # i Relazione, che restano nell'istantanea come 'relazioni'.
+                      "liste_relazione")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per
