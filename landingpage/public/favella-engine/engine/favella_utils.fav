@@ -359,6 +359,50 @@ def chiave_condizione(fonte: str) -> str:
     return " ".join(normalizza_apostrofi(fonte).split())
 
 
+# [1.6.0 / B3] Segnaposto-elenco di relazione '[chi <locuzione> <membro>]'
+# (es. '[chi si fida del giocatore]'): il compilatore lo risolve in
+# mondo.liste_relazione, rendi_testo lo rende come elenco dei soggetti correnti.
+_RE_CHI = re.compile(r"^\s*chi\s+\S", re.IGNORECASE)
+
+
+def liste_relazione_nel_testo(testo: str) -> list:
+    """I segnaposto '[chi …]' presenti nel testo (contenuto grezzo)."""
+    if not testo or "[" not in testo:
+        return []
+    return [m.group(1).strip() for m in _RE_PLACEHOLDER.finditer(testo)
+            if _RE_CHI.match(m.group(1).strip())]
+
+
+def _elenca_nomi(nomi: list) -> str:
+    """Unisce i nomi di un elenco con le virgole e una 'e' finale; vuoto → 'nessuno'."""
+    nomi = [n for n in nomi if n]
+    if not nomi:
+        return "nessuno"
+    if len(nomi) == 1:
+        return nomi[0]
+    return ", ".join(nomi[:-1]) + " e " + nomi[-1]
+
+
+def _nomi_membri_relazione(mondo, spec) -> list:
+    """Nomi visualizzati (a metà frase) dei soggetti di una relazione verso un
+    membro: dato (nome_relazione, id_membro), l'elenco di chi vi sta in relazione."""
+    nome_rel, membro = spec
+    rel = (getattr(mondo, "relazioni", None) or {}).get(nome_rel)
+    if rel is None:
+        return []
+    nomi = []
+    for sid in rel.soggetti_di(membro):
+        if sid == "giocatore":
+            nomi.append("il giocatore")
+            continue
+        trova = getattr(mondo, "trova_oggetto", None)
+        ogg = trova(sid) if trova else None
+        if ogg is None:
+            ogg = (getattr(mondo, "stanze", None) or {}).get(sid)
+        nomi.append(nome_in_frase(ogg.nome_visualizzato) if ogg is not None else sid)
+    return nomi
+
+
 def _rendi_pezzi(pezzi, mondo, compilate, testo):
     """[1.5.0 / L14] Ricompone i pezzi di struttura_condizionale tenendo, di ogni
     blocco, il ramo della condizione vera (o 'altrimenti', o niente). Un blocco
@@ -446,6 +490,14 @@ def rendi_testo(mondo, testo: str, _profondita: int = 0) -> str:
             if stanza is not None:
                 nome = nome_in_frase(stanza.nome_visualizzato)
                 return prima_maiuscola(nome) if a_inizio else nome
+        # [1.6.0 / B3] '[chi si fida del giocatore]': l'elenco dei soggetti correnti,
+        # risolto dal compilatore in mondo.liste_relazione.
+        liste = getattr(mondo, "liste_relazione", None) or {}
+        if liste and _RE_CHI.match(grezzo):
+            spec = liste.get(chiave_condizione(grezzo))
+            if spec is not None:
+                reso = _elenca_nomi(_nomi_membri_relazione(mondo, spec))
+                return prima_maiuscola(reso) if a_inizio else reso
         return match.group(0)  # sconosciuto: resta il letterale [nome]
 
     testo = _RE_PLACEHOLDER.sub(_sostituisci, testo)

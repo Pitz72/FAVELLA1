@@ -22,7 +22,7 @@ from compilatore import (
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
     espandi_inclusioni, _GRAMMAR_TEMPLATE, analizza_file_strutturato,
 )
-from strumenti_ide import analizza_regole
+from strumenti_ide import analizza_regole, analizza_variabili, serializza_frase
 
 
 def _nomi_direzioni(simboli):
@@ -3319,7 +3319,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.5.0.md")
+                          "grammatica-1.6.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3336,7 +3336,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.5.0.md è presente")
+           "documentazione/grammatica-1.6.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -8126,6 +8126,573 @@ def test_150_guardia_lalr_frasi_nuove():
     _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
 
 
+# =============================================================================
+# [1.6.0] LE FRONTIERE NUOVE: invariante di clamp, 'senza ritorno', relazioni B3
+# =============================================================================
+
+# Corpus che esercita, in una sola storia, tutte le frasi NUOVE della 1.6.0.
+# Cresce con ogni fetta; la guardia (test_160_guardia_lalr_frasi_nuove) verifica
+# che LALR(1) si costruisca senza conflitti e che Earley produca UN SOLO albero.
+_CORPUS_GUARDIA_160 = (
+    "La cella è una stanza.\nIl corridoio è una stanza.\nLa gola è una stanza.\n"
+    "La cripta è una stanza.\nIl pozzo è una stanza.\n"
+    "Il giocatore comincia nella cella.\n"
+    # [Q1] Invariante di clamp dichiarata: letterale e con estremo '[contatore]'.
+    "La sete è un contatore.\nLa sete parte da 50.\n"
+    "La soglia è un contatore.\nLa soglia parte da 80.\n"
+    "Il vigore è un contatore.\n"
+    "La sete resta sempre fra 0 e 100.\n"
+    "Il vigore resta sempre fra 0 e [soglia].\n"
+    "\"bevi\" è un comando senza oggetto.\n"
+    "Invece di bevi: diminuisci la sete di 40 e adesso aumenta il vigore di 1000.\n"
+    # [Q2] 'senza ritorno': nuda, con una direzione custom, e in coda a una
+    # condizione (con e senza 'altrimenti'). Convive con la connessione normale e
+    # con 'sono direzioni opposte'.
+    "Su e giù sono direzioni opposte.\n"
+    "La fuga è uno stato.\nLa fuga è lontana.\n"
+    "La cella collega nord a la gola senza ritorno.\n"
+    "La cella collega est a il corridoio.\n"
+    "La gola collega giù a la cripta senza ritorno.\n"
+    "Il corridoio collega sud a il pozzo se la fuga è lontana senza ritorno.\n"
+    "La cripta collega su a il pozzo se la fuga è lontana; altrimenti \"Chiuso.\" senza ritorno.\n"
+    # [B3] Relazioni di prima classe: dichiarazione (arietà + reciprocità),
+    # asserzioni (player-soggetto, entità-entità con e senza preposizione),
+    # conseguenze (aggiungi/togli), interrogazioni (concrete, con quantificatore,
+    # negate, player come oggetto articolato 'del giocatore').
+    "Saverio è un personaggio.\nSaverio è nella cella.\n"
+    "Vito è un personaggio.\nVito è nella cella.\n"
+    "La chiave di ottone è una cosa.\nLa chiave di ottone è nella cella.\n"
+    "\"si fida di\" è una relazione molti a molti.\n"
+    "\"apre\" è una relazione uno a molti.\n"
+    "\"è amico di\" è una relazione molti a molti ed è reciproca.\n"
+    "Il giocatore si fida di Saverio.\n"
+    "La chiave di ottone apre la cella.\n"
+    "Saverio è amico di Vito.\n"
+    "\"accusa\" è un comando.\n\"perdona\" è un comando senza oggetto.\n"
+    "\"indaga\" è un comando senza oggetto.\n\"controlla\" è un comando senza oggetto.\n"
+    "Invece di accusa Vito: dire \"Accusa.\" e adesso il giocatore si fida di Vito.\n"
+    "Invece di perdona: dire \"Perdono.\" e adesso il giocatore non si fida più di Saverio.\n"
+    "Invece di indaga se il giocatore si fida di Saverio: dire \"Fiducia.\".\n"
+    "Prima di controlla se qualcuno si fida del giocatore e il giocatore non si fida di Vito: dire \"Eco.\".\n"
+    "Ogni turno se il giocatore si fida di qualcuno: aumenta la sete.\n"
+    "\"elenca\" è un comando senza oggetto.\n"
+    "Invece di elenca: dire \"Si fidano di te: [chi si fida del giocatore].\".\n"
+    # [C1] Procedura nominata: dichiarazione (corpo di conseguenze) e invocazione.
+    "Definisci \"riposa un poco\" come: diminuisci la sete e adesso aumenta il vigore.\n"
+    "\"pernotta\" è un comando senza oggetto.\n"
+    "Invece di pernotta: dire \"Dormi.\" e adesso esegui riposa un poco e adesso aumenta la sete.\n"
+)
+
+
+def test_160_invariante_clamp():
+    print("[1.6.0 / Q1: invariante di clamp dichiarato]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa sete parte da 150.\n"
+        "La sete resta sempre fra 0 e 100.\n"
+        "La soglia è un contatore.\nLa soglia parte da 80.\n"
+        "Il vigore è un contatore.\n"
+        "Il vigore resta sempre fra 0 e [soglia].\n"
+        '"bevi" è un comando senza oggetto.\n'
+        '"soffri" è un comando senza oggetto.\n'
+        '"spingi" è un comando senza oggetto.\n'
+        '"fissa" è un comando senza oggetto.\n'
+        "Invece di bevi: diminuisci la sete di 40.\n"
+        "Invece di soffri: aumenta la sete di 999.\n"
+        "Invece di spingi: il vigore diventa 500.\n"
+        "Invece di fissa: diminuisci il vigore di 999.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(mondo.variabili["sete"] == 100, "valore iniziale fuori scala clampa all'avvio (150 -> 100)")
+    _check(mondo.variabili["vigore"] == 0, "il vigore parte da 0, dentro [soglia]")
+    esegui(mondo, "soffri")
+    _check(mondo.variabili["sete"] == 100, "aumenta oltre il massimo resta clampato a 100")
+    esegui(mondo, "bevi")
+    _check(mondo.variabili["sete"] == 60, "una diminuzione nel range non viene toccata (60)")
+    esegui(mondo, "bevi"); esegui(mondo, "bevi")
+    _check(mondo.variabili["sete"] == 0, "diminuire sotto lo zero clampa a 0")
+    esegui(mondo, "spingi")
+    _check(mondo.variabili["vigore"] == 80, "'diventa 500' clampa all'estremo dinamico [soglia]=80")
+    esegui(mondo, "fissa")
+    _check(mondo.variabili["vigore"] == 0, "scendere sotto 0 clampa a 0 (anche col massimo dinamico)")
+
+
+def test_160_invariante_clamp_annulla():
+    print("[1.6.0 / Q1: il clamp è stato, ANNULLA lo riavvolge]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La forza è un contatore.\nLa forza parte da 5.\n"
+        "La forza resta sempre fra 0 e 10.\n"
+        '"grida" è un comando senza oggetto.\n'
+        "Invece di grida: aumenta la forza di 999.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "grida")
+    _check(mondo.variabili["forza"] == 10, "dopo grida la forza è clampata a 10")
+    esegui(mondo, "annulla")
+    _check(mondo.variabili["forza"] == 5, "ANNULLA riporta la forza a 5")
+
+
+def test_160_invariante_errori():
+    print("[1.6.0 / Q1: l'invariante solo su un contatore, con estremi dichiarati]")
+    # Su uno STATO simbolico: errore bloccante gentile.
+    src_stato = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Il meteo è uno stato.\nIl meteo è sereno.\n"
+        "Il meteo resta sempre fra 0 e 3.\n"
+    )
+    mondo, log = compila(src_stato)
+    _check(mondo is None and "contatore" in log.lower(),
+           "invariante su uno stato: errore che rimanda al contatore")
+    # Estremo '[x]' dove x è uno STATO, non un contatore: errore bloccante.
+    src_stato_bound = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La vita è un contatore.\n"
+        "Il livello è uno stato.\nIl livello è alto.\n"
+        "La vita resta sempre fra 0 e [livello].\n"
+    )
+    mondo2, log2 = compila(src_stato_bound)
+    _check(mondo2 is None and "non è un contatore" in log2.lower(),
+           "estremo che cita uno stato invece di un contatore: errore")
+
+
+def test_160_invariante_additivo_vecchia_conseguenza():
+    print("[1.6.0 / Q1: la conseguenza 'resta fra' (senza 'sempre') resta valida e invariata]")
+    # La forma-conseguenza del 1.3.0 non deve cambiare: niente 'sempre', vale solo
+    # dove la si richiama.
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La forza è un contatore.\nLa forza parte da 50.\n"
+        '"tara" è un comando senza oggetto.\n'
+        "Invece di tara: la forza resta fra 0 e 10.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None and "forza" not in mondo.invarianti_clamp,
+           "'resta fra' (conseguenza) non dichiara un'invariante permanente")
+    _check(mondo.variabili["forza"] == 50, "all'avvio la forza resta 50 (nessun clamp automatico)")
+    esegui(mondo, "tara")
+    _check(mondo.variabili["forza"] == 10, "la conseguenza 'resta fra' agisce solo quando richiamata")
+
+
+def test_studio_160_invariante_round_trip():
+    print("[1.6.0 / Q1: round-trip Studio dell'invariante di clamp]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa sete parte da 50.\n"
+        "La soglia è un contatore.\nLa soglia parte da 80.\n"
+        "Il vigore è un contatore.\n"
+        "La sete resta sempre fra 0 e 100.\n"
+        "Il vigore resta sempre fra 0 e [soglia].\n"
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        modello = analizza_variabili(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(modello.get("ok"), "analizza_variabili regge")
+    per_nome = {c["name"]: c for c in modello.get("counters", [])}
+    _check(per_nome.get("sete", {}).get("clamp") == {"min": 0, "max": 100,
+           "span": per_nome["sete"]["clamp"]["span"]},
+           f"la sete porta la sua invariante letterale ({per_nome.get('sete', {}).get('clamp')})")
+    cv = per_nome.get("vigore", {}).get("clamp")
+    _check(cv and cv["min"] == 0 and cv["max"] == {"kind": "var", "name": "soglia"},
+           f"il vigore porta l'invariante con estremo dinamico ({cv})")
+    _check(per_nome["sete"]["clamp"]["span"] is not None, "l'invariante ha uno span sorgente")
+    # Riscrittura dall'editor → stessa semantica.
+    t1 = serializza_frase({"op": "clamp_decl", "name": "la sete", "min": 0, "max": 100})
+    t2 = serializza_frase({"op": "clamp_decl", "name": "il vigore",
+                           "min": 0, "max": {"kind": "var", "name": "soglia"}})
+    _check(t1.get("text") == "la sete resta sempre fra 0 e 100.", f"serializza letterale ({t1})")
+    _check(t2.get("text") == "il vigore resta sempre fra 0 e [soglia].", f"serializza dinamica ({t2})")
+    # Ricompilando la frase riscritta, l'invariante è identica.
+    src2 = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa soglia è un contatore.\nIl vigore è un contatore.\n"
+        + t1["text"] + "\n" + t2["text"] + "\n"
+    )
+    mondo2, _ = compila(src2)
+    _check(mondo2 is not None and "sete" in mondo2.invarianti_clamp and "vigore" in mondo2.invarianti_clamp,
+           "la frase riscritta ricompila con le stesse invarianti")
+
+
+def test_160_senza_ritorno():
+    print("[1.6.0 / Q2: 'senza ritorno' — connessione a senso unico]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "La cripta è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "Su e giù sono direzioni opposte.\n"
+        "La cella collega nord a la gola senza ritorno.\n"   # una direzione
+        "La cella collega est a l'atrio.\n"                    # controprova bidirezionale
+        "La cella collega giù a la cripta senza ritorno.\n"   # direzione custom
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(set(mondo.stanze) == {"cella", "gola", "atrio", "cripta"},
+           "lo scanner non inventa una stanza «gola senza ritorno»")
+    _check(mondo.stanze["cella"].uscite.get("nord") == "gola", "cella → gola esiste (nord)")
+    _check("sud" not in mondo.stanze["gola"].uscite, "ma gola NON torna a cella (niente auto-ritorno)")
+    _check(mondo.stanze["cella"].uscite.get("est") == "atrio"
+           and mondo.stanze["atrio"].uscite.get("ovest") == "cella",
+           "la connessione senza «senza ritorno» resta bidirezionale")
+    _check(mondo.stanze["cella"].uscite.get("giù") == "cripta"
+           and "su" not in mondo.stanze["cripta"].uscite,
+           "'senza ritorno' vale anche con una direzione personalizzata")
+    # Giocando: da cella si va a nord in gola; da gola non si torna indietro.
+    esegui(mondo, "nord")
+    _check(mondo.posizione_giocatore == "gola", "il giocatore arriva nella gola")
+    esegui(mondo, "sud")
+    _check(mondo.posizione_giocatore == "gola",
+           "da gola 'sud' non riporta nella cella (resta nella gola)")
+
+
+def test_160_senza_ritorno_con_condizione():
+    print("[1.6.0 / Q2: 'senza ritorno' convive con l'uscita condizionata]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La fuga è uno stato.\nLa fuga è lontana.\n"
+        "La cella collega nord a la gola se la fuga è lontana senza ritorno.\n"
+        "La cella collega est a l'atrio se la fuga è lontana; altrimenti \"Chiuso.\" senza ritorno.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila con condizione + senza ritorno")
+    _check(("cella", "nord") in mondo.condizioni_uscite, "l'uscita condizionata è registrata")
+    _check("sud" not in mondo.stanze["gola"].uscite
+           and "ovest" not in mondo.stanze["atrio"].uscite,
+           "in entrambe le forme (con/senza altrimenti) non c'è auto-ritorno")
+
+
+def test_160_direzioni_opposte_non_rotte():
+    print("[1.6.0 / Q2: 'sono direzioni opposte' non è intaccata]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "Alto e basso sono direzioni opposte.\n"
+        "La cella collega alto a la gola.\n"   # senza 'senza ritorno' → bidirezionale
+    )
+    mondo = runtime(src)
+    _check(mondo is not None and mondo.stanze["cella"].uscite.get("alto") == "gola"
+           and mondo.stanze["gola"].uscite.get("basso") == "cella",
+           "le direzioni opposte custom restano con l'auto-ritorno")
+
+
+def test_studio_160_senza_ritorno_round_trip():
+    print("[1.6.0 / Q2: round-trip Studio di 'senza ritorno']")
+    from strumenti_ide import analizza_outline
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La cella collega nord a la gola senza ritorno.\n"
+        "La cella collega est a l'atrio.\n"
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        out = analizza_outline(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(out.get("ok"), "analizza_outline regge")
+    ex = {(r["id"], e["direction"]): e for r in out["rooms"] for e in r["exits"]}
+    _check(ex.get(("cella", "nord"), {}).get("oneWay") is True, "la mappa segna l'uscita a senso unico")
+    _check(ex.get(("cella", "est"), {}).get("oneWay") is False, "quella bidirezionale no")
+    t1 = serializza_frase({"op": "connection", "from": "La cella",
+                           "direction": "nord", "to": "La gola", "oneWay": True})
+    t2 = serializza_frase({"op": "connection", "from": "La cella",
+                           "direction": "est", "to": "L'atrio"})
+    _check(t1.get("text") == "La cella collega nord a la gola senza ritorno.", f"serializza oneWay ({t1})")
+    _check(t2.get("text") == "La cella collega est a l'atrio.", f"serializza normale ({t2})")
+    # Ricompila la frase riscritta: la topologia è la stessa.
+    src2 = (
+        "La cella è una stanza.\nLa gola è una stanza.\n"
+        "Il giocatore comincia nella cella.\n" + t1["text"] + "\n"
+    )
+    m2, _ = compila(src2)
+    _check(m2 is not None and "sud" not in m2.stanze["gola"].uscite,
+           "la frase riscritta ricompila ancora a senso unico")
+
+
+def test_160_relazioni_base():
+    print("[1.6.0 / B3: relazioni — dichiarazione, asserzione, interrogazione, conseguenze]")
+    from strutture import REL_GIOCATORE
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        "La chiave di ottone è una cosa.\nLa chiave di ottone è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        '"apre" è una relazione uno a molti.\n'
+        "Il giocatore si fida di Saverio.\n"              # asserzione (player soggetto)
+        "La chiave di ottone apre la cella.\n"            # asserzione (ent-ent, senza prep)
+        '"accusa" è un comando.\n"perdona" è un comando senza oggetto.\n'
+        '"chiedi" è un comando senza oggetto.\n"spia" è un comando senza oggetto.\n'
+        '"controlla" è un comando senza oggetto.\n'
+        'Invece di accusa Vito: dire "Accusa." e adesso il giocatore si fida di Vito.\n'
+        'Invece di perdona: dire "Perdono." e adesso il giocatore non si fida più di Saverio.\n'
+        'Invece di chiedi se il giocatore si fida di Saverio: dire "Fiducia in Saverio.".\n'
+        'Invece di spia se qualcuno si fida del giocatore: dire "Qualcuno si fida di te.".\n'
+        'Invece di controlla se il giocatore non si fida di Vito: dire "Diffidi di Vito.".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    rel = mondo.relazioni["si fida di"]
+    _check(rel.vale(REL_GIOCATORE, "saverio"), "asserzione iniziale: il giocatore si fida di Saverio")
+    _check(mondo.relazioni["apre"].vale("chiave di ottone", "cella"),
+           "asserzione entità-entità senza preposizione ('apre')")
+    _check("Fiducia in Saverio" in esegui(mondo, "chiedi"), "interrogazione concreta vera")
+    _check("Diffidi di Vito" in esegui(mondo, "controlla"), "interrogazione negata (non si fida di Vito)")
+    _check("Qualcuno si fida di te" not in esegui(mondo, "spia"),
+           "nessuno si fida ancora del giocatore")
+    esegui(mondo, "accusa Vito")
+    _check(rel.vale(REL_GIOCATORE, "vito"), "la conseguenza aggiunge la fiducia in Vito")
+    esegui(mondo, "perdona")
+    _check(not mondo.relazioni["si fida di"].vale(REL_GIOCATORE, "saverio"),
+           "la conseguenza toglie la fiducia in Saverio")
+    # ANNULLA riavvolge le relazioni (stato del mondo). Dopo il ripristino la
+    # mappa è nuova: la si rilegge dal mondo (il vecchio riferimento è obsoleto).
+    esegui(mondo, "annulla")
+    _check(mondo.relazioni["si fida di"].vale(REL_GIOCATORE, "saverio"),
+           "ANNULLA ripristina la fiducia in Saverio")
+
+
+def test_160_relazioni_qualcuno_e_oggetto():
+    print("[1.6.0 / B3: 'qualcuno' soggetto, player come oggetto articolato]")
+    from strutture import REL_GIOCATORE
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Saverio si fida del giocatore.\n"                 # entità soggetto, player oggetto
+        '"spia" è un comando senza oggetto.\n'
+        'Invece di spia se qualcuno si fida del giocatore: dire "Sei osservato.".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila 'Saverio si fida del giocatore'")
+    _check(mondo.relazioni["si fida di"].vale("saverio", REL_GIOCATORE),
+           "la coppia (Saverio, giocatore) è asserita")
+    _check("Sei osservato" in esegui(mondo, "spia"),
+           "'qualcuno si fida del giocatore' è vera")
+
+
+def test_160_relazioni_arieta_reciprocita():
+    print("[1.6.0 / B3: arietà e reciprocità]")
+    # uno-a-uno: una sola coppia per ciascun lato (eviction).
+    src_uno = (
+        "La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+        "Anna è un personaggio.\nAnna è nella sala.\n"
+        "Bea è un personaggio.\nBea è nella sala.\n"
+        '"ama" è una relazione uno a uno.\n'
+        "Il giocatore ama Anna.\nIl giocatore ama Bea.\n"   # la seconda sostituisce la prima
+    )
+    m = runtime(src_uno)
+    from strutture import REL_GIOCATORE
+    coppie = m.relazioni["ama"].coppie
+    _check(coppie == {(REL_GIOCATORE, "bea")}, f"uno-a-uno: vale solo l'ultima coppia ({coppie})")
+    # reciproca: asserire A→B asserisce anche B→A.
+    src_rec = (
+        "La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+        "Anna è un personaggio.\nAnna è nella sala.\n"
+        '"è amico di" è una relazione molti a molti ed è reciproca.\n'
+        "Il giocatore è amico di Anna.\n"
+    )
+    m2 = runtime(src_rec)
+    rel = m2.relazioni["è amico di"]
+    _check(rel.vale(REL_GIOCATORE, "anna") and rel.vale("anna", REL_GIOCATORE),
+           "reciproca: la coppia vale nei due versi")
+
+
+def test_160_relazioni_errori():
+    print("[1.6.0 / B3: 'qualcuno'/'qualcosa' solo nelle domande]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Il giocatore si fida di qualcuno.\n"   # quantificatore in un'asserzione: errore
+    )
+    mondo, log = compila(src)
+    _check(mondo is None and "qualcuno" in log.lower() and "domanda" in log.lower(),
+           "un quantificatore come oggetto di un'asserzione è un errore gentile")
+
+
+def test_studio_160_relazioni_round_trip():
+    print("[1.6.0 / B3: round-trip Studio di relazioni (regole + dichiarazioni)]")
+    from strumenti_ide import _serializza_regola
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Il giocatore si fida di Saverio.\n"
+        '"accusa" è un comando.\n'
+        'Invece di accusa Vito se il giocatore si fida di Saverio e il giocatore non si fida di Vito: '
+        'dire "Ok." e adesso il giocatore si fida di Vito e adesso il giocatore non si fida più di Saverio.\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        d = analizza_regole(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(d.get("ok"), "analizza_regole regge")
+    rels = {r["name"]: r for r in d["menu"]["relations"]}
+    _check(rels.get("si fida di", {}).get("arity") == "molti-a-molti"
+           and rels["si fida di"].get("prep") == "di",
+           "il menu elenca la relazione con arietà e preposizione")
+    r = d["rules"][0]
+    frase = _serializza_regola(dict(r, op="rule"))
+    for atteso in ["il giocatore si fida di Saverio", "il giocatore non si fida di Vito",
+                   "il giocatore si fida di Vito", "il giocatore non si fida più di Saverio"]:
+        _check(atteso in frase, f"la regola si riscrive con «{atteso}»")
+    # Riscrittura ricompilabile con la stessa semantica.
+    src2 = "\n".join(src.splitlines()[:-1]) + "\n" + frase + "\n"
+    m2, _ = compila(src2)
+    _check(m2 is not None, "la regola riscritta ricompila")
+    # Serializzazione della dichiarazione e del fatto.
+    decl = serializza_frase({"op": "relation_decl", "locution": "si fida di",
+                             "arity": "molti-a-molti", "reciprocal": False})
+    _check(decl.get("text") == '"si fida di" è una relazione molti a molti.',
+           f"serializza la dichiarazione ({decl})")
+
+
+def test_160_relazioni_interpolazione():
+    print("[1.6.0 / B3: interpolazione '[chi si fida del giocatore]']")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Saverio si fida del giocatore.\nVito si fida del giocatore.\n"
+        '"tradisci" è un comando senza oggetto.\n'
+        '"guardati" è un comando senza oggetto.\n'
+        'Invece di tradisci: dire "Vito si allontana." e adesso Vito non si fida più del giocatore.\n'
+        'Invece di guardati: dire "Si fidano di te: [chi si fida del giocatore].".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("Segnaposto" not in log, "'[chi …]' non è segnalato come segnaposto ignoto")
+    _check(mondo.liste_relazione.get("chi si fida del giocatore") == ("si fida di", "giocatore"),
+           "il compilatore risolve '[chi …]' nella relazione e nel membro")
+    mondo = runtime(src)
+    out = esegui(mondo, "guardati")
+    _check("Saverio e Vito" in out or "Vito e Saverio" in out,
+           f"l'elenco mostra i due soggetti ({out.strip()!r})")
+    # L'elenco si ricalcola: dopo che Vito smette di fidarsi, resta solo Saverio.
+    esegui(mondo, "tradisci")
+    out2 = esegui(mondo, "guardati")
+    _check("Saverio" in out2 and "Vito" not in out2, f"l'elenco si aggiorna ({out2.strip()!r})")
+
+
+def test_160_relazioni_additivo_nessuna_relazione():
+    print("[1.6.0 / B3: senza relazioni dichiarate, 'si fida'/'apre' restano parole comuni]")
+    # Nessuna relazione dichiarata → RELAZIONE non matcha: le vecchie frasi valgono.
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La chiave è una cosa.\nLa chiave è nella cella.\n"
+        "La chiave è lucente.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and not mondo.relazioni, "nessuna relazione; la storia compila come prima")
+
+
+def test_160_procedure():
+    print("[1.6.0 / C1: procedure nominate — Definisci … come: … / esegui …]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa stanchezza è un contatore.\n"
+        "La lampada è una cosa.\nLa lampada è nella cella.\nLa lampada è accesa.\n"
+        'Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.\n'
+        '"dormi" è un comando senza oggetto.\n'
+        'Invece di dormi: dire "Dormi." e adesso esegui far passare la notte.\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(len(mondo.procedure.get("far passare la notte", [])) == 3,
+           "il corpo della procedura ha le tre conseguenze")
+    esegui(mondo, "dormi")
+    _check(mondo.variabili["sete"] == 10 and mondo.variabili["stanchezza"] == 5,
+           "l'invocazione esegue le conseguenze del corpo")
+    _check("spenta" in mondo.oggetti["lampada"].proprieta, "anche i cambi di proprietà")
+    esegui(mondo, "annulla")
+    _check(mondo.variabili["sete"] == 0 and "accesa" in mondo.oggetti["lampada"].proprieta,
+           "ANNULLA riavvolge gli effetti della procedura")
+
+
+def test_160_procedure_ricorsione():
+    print("[1.6.0 / C1: una procedura che richiama se stessa non blocca il motore]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "I passi sono un contatore.\n"
+        'Definisci "gira" come: aumenta i passi e adesso esegui gira.\n'
+        '"rotea" è un comando senza oggetto.\n'
+        "Invece di rotea: esegui gira.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila una procedura ricorsiva")
+    esegui(mondo, "rotea")
+    _check(0 < mondo.variabili["passi"] <= 60,
+           f"la ricorsione è limitata, niente blocco (passi={mondo.variabili.get('passi')})")
+
+
+def test_studio_160_procedure_round_trip():
+    print("[1.6.0 / C1: round-trip Studio delle procedure]")
+    from strumenti_ide import _serializza_regola
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nIl vigore è un contatore.\n"
+        'Definisci "riposa" come: diminuisci la sete di 3 e adesso aumenta il vigore.\n'
+        '"pernotta" è un comando senza oggetto.\n'
+        'Invece di pernotta: dire "Riposi." e adesso esegui riposa.\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        d = analizza_regole(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(d.get("ok"), "analizza_regole regge")
+    _check("riposa" in d["menu"]["procedures"], "il menu elenca la procedura")
+    r = d["rules"][0]
+    _check(r["consequences"] == [{"op": "callProc", "name": "riposa"}],
+           f"la conseguenza-invocazione è nel modello ({r['consequences']})")
+    frase = _serializza_regola(dict(r, op="rule"))
+    _check("esegui riposa" in frase, f"la regola si riscrive con l'invocazione ({frase})")
+    decl = serializza_frase({"op": "procedure_def", "name": "riposa", "consequences": [
+        {"op": "count", "name": "sete", "mode": "diminuisci", "value": 3},
+        {"op": "count", "name": "vigore", "mode": "aumenta", "value": 1}]})
+    _check(decl.get("text") == "Definisci \"riposa\" come: diminuisci sete di 3 e adesso aumenta vigore.",
+           f"serializza la dichiarazione ({decl})")
+    # Ricompila la dichiarazione riscritta.
+    m2, _ = compila("La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+                    "La sete è un contatore.\nIl vigore è un contatore.\n" + decl["text"] + "\n")
+    _check(m2 is not None and "riposa" in m2.procedure, "la dichiarazione riscritta ricompila")
+
+
+def test_160_guardia_lalr_frasi_nuove():
+    print("[1.6.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
+    simboli = costruisci_symbol_table(_CORPUS_GUARDIA_160)
+    try:
+        costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli),
+                          verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                          procedure=simboli.procedure)
+        ok, msg = True, ""
+    except GrammarError as e:
+        ok, msg = False, str(e)
+    _check(ok, f"LALR(1) senza conflitti ({msg})")
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili,
+                                       _nomi_direzioni(simboli), verbi_multi=simboli.verbi_multi,
+                                       relazioni=simboli.relazioni, procedure=simboli.procedure)
+    albero = Lark(grammatica, start="start", parser="earley", ambiguity="explicit").parse(_CORPUS_GUARDIA_160)
+    _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
+    mondo, log = compila(_CORPUS_GUARDIA_160)
+    _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
+
+
 def main():
     # [1.4.3] Con l'uscita rediretta su file, in Windows la console è cp1252 e le
     # descrizioni dei test con «→» o simili interrompevano la suite a metà.
@@ -8645,6 +9212,27 @@ def main():
         test_150_studio_regge_le_frasi_nuove,
         test_studio_123_il_sidecar_e_le_frasi_nuove,
         test_150_guardia_lalr_frasi_nuove,
+        # [1.6.0] Le frontiere nuove.
+        test_160_invariante_clamp,
+        test_160_invariante_clamp_annulla,
+        test_160_invariante_errori,
+        test_160_invariante_additivo_vecchia_conseguenza,
+        test_studio_160_invariante_round_trip,
+        test_160_senza_ritorno,
+        test_160_senza_ritorno_con_condizione,
+        test_160_direzioni_opposte_non_rotte,
+        test_studio_160_senza_ritorno_round_trip,
+        test_160_relazioni_base,
+        test_160_relazioni_qualcuno_e_oggetto,
+        test_160_relazioni_arieta_reciprocita,
+        test_160_relazioni_errori,
+        test_studio_160_relazioni_round_trip,
+        test_160_relazioni_interpolazione,
+        test_160_relazioni_additivo_nessuna_relazione,
+        test_160_procedure,
+        test_160_procedure_ricorsione,
+        test_studio_160_procedure_round_trip,
+        test_160_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)
     print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")

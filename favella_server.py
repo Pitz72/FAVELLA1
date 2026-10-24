@@ -348,8 +348,14 @@ def _grafo_mondo(mondo):
     condizionate = getattr(mondo, "condizioni_uscite", None) or {}
     for rid, st in mondo.stanze.items():
         for direzione, dest in getattr(st, "uscite", {}).items():
+            # [1.6.0 / Q2] 'senza ritorno': la direzione ha un'opposta, ma la
+            # destinazione non torna indietro di lì (arco a senso unico in mappa).
+            opposta = mondo.opposta_di(direzione)
+            one_way = bool(opposta) and mondo.stanze.get(dest) is not None and \
+                mondo.stanze[dest].uscite.get(opposta) != rid
             edges.append({"from": rid, "to": dest, "direction": direzione,
-                          "conditional": (rid, direzione) in condizionate})
+                          "conditional": (rid, direzione) in condizionate,
+                          "oneWay": one_way})
     return {"ok": True, "rooms": rooms, "edges": edges, "errors": []}
 
 

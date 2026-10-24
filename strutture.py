@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.5.0"
+VERSIONE_MOTORE = "1.6.0-dev"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -260,6 +260,42 @@ class CondizionePngHa(Condizione):
         return self.id_png in mondo.contenitori_di(self.id_oggetto)
 
 
+# [1.6.0 / B3] Operandi-quantificatore di una relazione nelle INTERROGAZIONI:
+# 'qualcuno'/'qualcosa' significano «esiste un membro da quel lato». Sono
+# sentinelle, mai ID di entità (i nomi contengono solo lettere/cifre/spazi).
+REL_QUALCUNO = "<qualcuno>"
+REL_QUALCOSA = "<qualcosa>"
+# L'ID del giocatore nelle relazioni: 'giocatore' è una parola riservata, quindi
+# non è mai l'ID di un oggetto dichiarato → nessuna collisione.
+REL_GIOCATORE = "giocatore"
+
+
+class CondizioneRelazione(Condizione):
+    """[1.6.0 / B3] Interroga una relazione binaria nominata: 'se il giocatore si
+    fida di Saverio', 'se qualcuno si fida del giocatore', 'se il giocatore si
+    fida di qualcuno'. Gli operandi sono ID normalizzati, oppure le sentinelle
+    REL_QUALCUNO/REL_QUALCOSA (esistenziali su quel lato). In questa prima
+    versione è solo d'autore e interrogabile, non azionabile dal giocatore."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def valuta(self, mondo: 'Mondo') -> bool:
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is None:
+            return False
+        a_q = self.a in (REL_QUALCUNO, REL_QUALCOSA)
+        b_q = self.b in (REL_QUALCUNO, REL_QUALCOSA)
+        if a_q and b_q:
+            return bool(rel.coppie)
+        if a_q:
+            return any(y == self.b for (x, y) in rel.coppie)
+        if b_q:
+            return any(x == self.a for (x, y) in rel.coppie)
+        return (self.a, self.b) in rel.coppie
+
+
 # --- Condizioni composite (logica booleana, v0.6.0) ---
 class CondizioneNot(Condizione):
     """Negazione: 'se il giocatore non ha X', 'se X non è Y'."""
@@ -390,6 +426,62 @@ class ConseguenzaPngRiceve(Conseguenza):
         oggetto.posizione = self.id_png
 
 
+class ConseguenzaRelazioneAggiungi(Conseguenza):
+    """[1.6.0 / B3] Asserisce una coppia in una relazione: 'e adesso il giocatore
+    si fida di Vito'. L'arietà e l'eventuale reciprocità sono gestite da
+    Relazione.aggiungi."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def esegui(self, mondo: 'Mondo'):
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is not None:
+            rel.aggiungi(self.a, self.b)
+
+
+class ConseguenzaRelazioneTogli(Conseguenza):
+    """[1.6.0 / B3] Toglie una coppia da una relazione: 'e adesso il giocatore
+    non si fida più di Vito'."""
+    def __init__(self, nome_rel: str, a: str, b: str):
+        self.nome_rel = nome_rel
+        self.a = a
+        self.b = b
+
+    def esegui(self, mondo: 'Mondo'):
+        rel = mondo.relazioni.get(self.nome_rel)
+        if rel is not None:
+            rel.togli(self.a, self.b)
+
+
+class ConseguenzaProcedura(Conseguenza):
+    """[1.6.0 / C1] Invoca una procedura nominata ('esegui "far passare la
+    notte"'): esegue in ordine le conseguenze del suo corpo. Una guardia di
+    profondità evita i cicli (una procedura che, direttamente o no, richiama se
+    stessa): oltre il limite l'invocazione è silenziosamente ignorata."""
+    LIMITE_RICORSIONE = 50
+
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def esegui(self, mondo: 'Mondo'):
+        corpo = (getattr(mondo, "procedure", None) or {}).get(self.nome)
+        if not corpo:
+            return
+        in_corso = getattr(mondo, "_procedure_in_corso", None)
+        if in_corso is None:
+            in_corso = mondo._procedure_in_corso = []
+        if len(in_corso) >= self.LIMITE_RICORSIONE:
+            return
+        in_corso.append(self.nome)
+        try:
+            for c in corpo:
+                c.esegui(mondo)
+        finally:
+            in_corso.pop()
+
+
 class ConseguenzaVariabile(Conseguenza):
     """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
     semaforo è verde')."""
@@ -398,7 +490,7 @@ class ConseguenzaVariabile(Conseguenza):
         self.valore = valore
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = self.valore
+        mondo.scrivi_variabile(self.nome, self.valore)
 
 class ConseguenzaVariabileCopia(Conseguenza):
     """[0.34.0 / Tema 3] Copia per INDIREZIONE del valore di uno stato in un altro:
@@ -415,7 +507,7 @@ class ConseguenzaVariabileCopia(Conseguenza):
         self.sorgente = sorgente
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = mondo.valore_variabile(self.sorgente)
+        mondo.scrivi_variabile(self.nome, mondo.valore_variabile(self.sorgente))
 
 class ConseguenzaSceltaStato(Conseguenza):
     """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso
@@ -433,7 +525,7 @@ class ConseguenzaSceltaStato(Conseguenza):
         # L'elenco ha sempre >=1 valore (la grammatica richiede almeno una
         # PROPRIETA dopo 'fra'); la guardia difende comunque da un elenco vuoto.
         if self.valori:
-            mondo.variabili[self.nome] = mondo.rng.choice(self.valori)
+            mondo.scrivi_variabile(self.nome, mondo.rng.choice(self.valori))
 
 class ConseguenzaContatore(Conseguenza):
     """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
@@ -453,22 +545,22 @@ class ConseguenzaContatore(Conseguenza):
             attuale = 0
         quantita = self.valore.valore(mondo)
         if self.modo == "aumenta":
-            mondo.variabili[self.nome] = attuale + quantita
+            mondo.scrivi_variabile(self.nome, attuale + quantita)
         elif self.modo == "diminuisci":
-            mondo.variabili[self.nome] = attuale - quantita
+            mondo.scrivi_variabile(self.nome, attuale - quantita)
         elif self.modo == "moltiplica":      # [1.3.0 / M-7]
-            mondo.variabili[self.nome] = attuale * quantita
+            mondo.scrivi_variabile(self.nome, attuale * quantita)
         elif self.modo == "dividi":
             # Divisione intera verso lo zero (7/2 = 3, -7/2 = -3); per zero il
             # contatore non cambia (non c'è un risultato sensato).
             if quantita != 0:
-                mondo.variabili[self.nome] = int(attuale / quantita)
+                mondo.scrivi_variabile(self.nome, int(attuale / quantita))
         elif self.modo == "modulo":
             # Il resto sempre fra 0 e N-1: 'riduci l'ora modulo 24'.
             if quantita != 0:
-                mondo.variabili[self.nome] = attuale % abs(quantita)
+                mondo.scrivi_variabile(self.nome, attuale % abs(quantita))
         else:  # diventa
-            mondo.variabili[self.nome] = quantita
+            mondo.scrivi_variabile(self.nome, quantita)
 
 
 class ConseguenzaLimita(Conseguenza):
@@ -484,7 +576,7 @@ class ConseguenzaLimita(Conseguenza):
         basso, alto = self.minimo.valore(mondo), self.massimo.valore(mondo)
         if basso > alto:
             basso, alto = alto, basso
-        mondo.variabili[self.nome] = max(basso, min(alto, attuale))
+        mondo.scrivi_variabile(self.nome, max(basso, min(alto, attuale)))
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -1028,6 +1120,53 @@ class Oggetto:
         from favella_utils import genere_numero
         return genere_numero(self.nome_visualizzato)
 
+class Relazione:
+    """[1.6.0 / B3] Una relazione binaria NOMINATA fra entità (e il giocatore),
+    ispirata alle *relations* di Inform 7. Dichiarata una volta con la sua
+    locuzione d'uso ('si fida di'), l'arietà delle due parti e l'eventuale
+    reciprocità. In questa prima versione è d'autore e INTERROGABILE, non
+    azionabile dal giocatore. I membri sono ID normalizzati ('giocatore' è il
+    giocatore). Lo stato (le coppie) vive nel mondo, quindi è catturato dalle
+    istantanee: ANNULLA riavvolge anche le relazioni."""
+    ARIETA = ("uno-a-uno", "uno-a-molti", "molti-a-molti")
+
+    def __init__(self, nome: str, locuzione: str, arieta: str = "molti-a-molti",
+                 reciproca: bool = False, prep: Optional[str] = None):
+        self.nome = nome              # id canonico (la locuzione normalizzata)
+        self.locuzione = locuzione    # forma visualizzata ('si fida di')
+        self.arieta = arieta if arieta in self.ARIETA else "molti-a-molti"
+        self.reciproca = reciproca
+        self.prep = prep              # preposizione finale ('di'/'a'/None), per riscrivere
+        self.coppie: Set[tuple] = set()
+
+    def vale(self, a: str, b: str) -> bool:
+        return (a, b) in self.coppie
+
+    def aggiungi(self, a: str, b: str):
+        # Arietà: togli le coppie in conflitto prima di aggiungere.
+        if self.arieta == "uno-a-uno":
+            self.coppie = {(x, y) for (x, y) in self.coppie if x != a and y != b}
+        elif self.arieta == "uno-a-molti":
+            # Un solo soggetto per ogni oggetto (A→molti B, ma ogni B←un solo A).
+            self.coppie = {(x, y) for (x, y) in self.coppie if y != b}
+        self.coppie.add((a, b))
+        if self.reciproca:
+            self.coppie.add((b, a))
+
+    def togli(self, a: str, b: str):
+        self.coppie.discard((a, b))
+        if self.reciproca:
+            self.coppie.discard((b, a))
+
+    def soggetti_di(self, b: str) -> List[str]:
+        """Chi è in relazione con b (i soggetti): 'chi si fida di X'."""
+        return sorted(x for (x, y) in self.coppie if y == b)
+
+    def oggetti_di(self, a: str) -> List[str]:
+        """Con chi a è in relazione (gli oggetti): 'di chi si fida X'."""
+        return sorted(y for (x, y) in self.coppie if x == a)
+
+
 class Mondo:
     """Contenitore per l'intero stato del mondo di gioco."""
     def __init__(self):
@@ -1088,6 +1227,25 @@ class Mondo:
         # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
         self.variabili: Dict[str, Optional[str]] = {}
+        # [1.6.0 / Q1] Invarianti di clamp DICHIARATE: 'La sete resta sempre fra 0
+        # e 100.'. Mappa nome-contatore -> (Operando minimo, Operando massimo). A
+        # differenza della conseguenza 'X resta fra A e B' (da richiamare a ogni
+        # modifica), questa è applicata dal motore AUTOMATICAMENTE dopo ogni
+        # scrittura del contatore (vedi scrivi_variabile): il contatore non può
+        # mai uscire dall'intervallo, senza che l'autore debba ricordarsene.
+        self.invarianti_clamp: Dict[str, tuple] = {}
+        # [1.6.0 / B3] Relazioni binarie nominate (nome-locuzione -> Relazione).
+        # Lo stato (le coppie) è parte del mondo, quindi catturato dalle istantanee.
+        self.relazioni: Dict[str, 'Relazione'] = {}
+        # [1.6.0 / B3] Segnaposto-elenco '[chi <locuzione> <membro>]' risolti dal
+        # compilatore: chiave normalizzata -> (nome_relazione, id_membro). L'elenco
+        # vero è ricalcolato a ogni resa dalle coppie correnti (come condizioni_testo).
+        self.liste_relazione: Dict[str, tuple] = {}
+        # [1.6.0 / C1] Procedure nominate: nome -> lista di Conseguenza (il corpo).
+        # Statico (scritto dal compilatore). Il contatore di ricorsione, invece, è
+        # volatile (sessione del comando in corso).
+        self.procedure: Dict[str, list] = {}
+        self._procedure_in_corso: list = []
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1315,6 +1473,49 @@ class Mondo:
         """Dichiara un contatore numerico (valore iniziale 0 se non già presente)."""
         self.variabili.setdefault(nome, 0)
 
+    def dichiara_relazione(self, relazione: 'Relazione'):
+        """[1.6.0 / B3] Registra una relazione nominata (l'ultima dichiarazione per
+        quel nome-locuzione vince; le eventuali coppie già asserite si conservano)."""
+        esistente = self.relazioni.get(relazione.nome)
+        if esistente is not None:
+            relazione.coppie |= esistente.coppie
+        self.relazioni[relazione.nome] = relazione
+
+    def scrivi_variabile(self, nome: str, valore):
+        """[1.6.0 / Q1] Unico punto di scrittura di uno stato/contatore: imposta il
+        valore e poi applica l'eventuale invariante di clamp dichiarata ('X resta
+        sempre fra A e B'). Ogni conseguenza che muta un contatore (aumenta,
+        diminuisci, diventa, moltiplica, dividi, modulo, copia, scelta, limita)
+        passa di qui, così l'invariante vale dopo OGNI scrittura."""
+        self.variabili[nome] = valore
+        if self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
+
+    def _applica_invariante_clamp(self, nome: str):
+        """Riporta il contatore `nome` dentro l'intervallo della sua invariante, se
+        ne ha una. Agisce solo su valori interi (uno stato simbolico non si
+        clampa). Gli estremi sono Operando: possono leggere altri contatori
+        ('[soglia]'), risolti al momento della scrittura."""
+        limiti = self.invarianti_clamp.get(nome)
+        if limiti is None:
+            return
+        attuale = self.variabili.get(nome)
+        if not isinstance(attuale, int):
+            return
+        basso, alto = limiti[0].valore(self), limiti[1].valore(self)
+        if basso > alto:
+            basso, alto = alto, basso
+        corretto = max(basso, min(alto, attuale))
+        if corretto != attuale:
+            self.variabili[nome] = corretto
+
+    def applica_invarianti_iniziali(self):
+        """[1.6.0 / Q1] Applica ogni invariante di clamp ai valori INIZIALI dei
+        contatori, una volta sola a fine compilazione: anche 'La forza parte da
+        150.' con 'La forza resta sempre fra 0 e 100.' nasce già nell'intervallo."""
+        for nome in self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
+
     def dichiara_opposte(self, prop_a: str, prop_b: str):
         """Registra che due proprietà sono opposte (relazione simmetrica). Le
         forme restano come scritte dall'autore (servono all'IDE per la lista delle
@@ -1364,6 +1565,8 @@ class Mondo:
                        # [1.5.0] i segnali per l'ospite (come gli annunci) e il
                        # calcolo in corso degli stati calcolati
                        "segnali", "_calcolo_in_corso", "_partenza_dopo_apertura",
+                       # [1.6.0 / C1] la pila di ricorsione delle procedure in corso
+                       "_procedure_in_corso",
                        # [1.4.0] l'uscita dell'host e ciò che il giocatore ha scoperto
                        "uscita", "verbi_scoperti", "argomenti_scoperti")
 
@@ -1379,7 +1582,13 @@ class Mondo:
                       # [1.5.0] le frasi nuove che non cambiano in partita
                       "stati_calcolati", "testi", "azioni_senza_tempo",
                       "arrivi", "riga_stato", "ifid",
-                      "fronti_a_fine_turno")
+                      "fronti_a_fine_turno",
+                      # [1.6.0 / B3] la struttura delle relazioni e gli elenchi di
+                      # testo risolti sono statici; lo STATO (le coppie) sta dentro
+                      # i Relazione, che restano nell'istantanea come 'relazioni'.
+                      "liste_relazione",
+                      # [1.6.0 / C1] i corpi delle procedure sono statici.
+                      "procedure")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per

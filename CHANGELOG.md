@@ -4,6 +4,72 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Non rilasciata] — 1.6.0 (in sviluppo): le frontiere nuove
+
+> Versione di lavoro, **non rilasciata**. Raccoglie l'espansione del linguaggio
+> oltre la 1.5.0, tutta additiva: le frasi valide in 1.5 restano valide e col
+> medesimo significato; le dieci storie ufficiali hanno compilazione identica
+> (impronta vuota byte-per-byte) e gioco deterministico invariato. Semantica
+> precisa in `documentazione/grammatica-1.6.0.md`, §29.
+
+#### Frasi nuove
+- **Invariante di clamp dichiarata** — `La sete resta sempre fra 0 e 100.`. Finora
+  tenere un contatore dentro un intervallo si poteva solo con la *conseguenza* `X
+  resta fra A e B`, da richiamare a mano a ogni modifica (dimenticarla lasciava i
+  contatori andare sotto zero o sfondare il massimo). Ora si dichiara una volta e
+  il motore la applica da solo dopo **ogni** scrittura del contatore (`aumenta`,
+  `diminuisci`, `diventa`, `moltiplica`, `dividi`, `modulo`, copie, `resta fra`) e
+  sul valore iniziale. Gli estremi possono essere un numero o un altro contatore
+  (`… fra 0 e [soglia]`). Lo stato è catturato dalle istantanee: ANNULLA riavvolge
+  anche i clamp. L'invariante su uno stato simbolico, o con un estremo che non è un
+  contatore, è un errore d'autore gentile. Parola riservata nuova: `sempre`.
+  (`def_invariante`; round-trip Studio: `analizza_variabili.counters[].clamp`,
+  `serializza_frase` op `clamp_decl`.)
+- **Connessione a senso unico** — `La botola collega giù a il pozzo senza ritorno.`.
+  Finora `A collega D a B` era sempre bidirezionale (il motore aggiunge l'uscita di
+  ritorno `B → A`). Il suffisso opzionale `senza ritorno` la sopprime: si crea solo
+  `A → B`. Sta in ultima posizione, anche dopo un'uscita condizionata (`… se COND;
+  altrimenti "…" senza ritorno`). Le direzioni opposte custom (`Su e giù sono
+  direzioni opposte.`) e le conseguenze `collega` restano invariate. Parola
+  riservata nuova: `ritorno`. (`senza_ritorno`; round-trip Studio:
+  `analizza_outline.exits[].oneWay`, `rpc_world_graph` edge `oneWay`,
+  `serializza_frase` op `connection` con `oneWay`.)
+- **Relazioni di prima classe (B3)** — ispirate alle *relations* di Inform 7, mai
+  avute in FAVELLA. Una relazione binaria nominata collega due parti (entità o il
+  giocatore) con una locuzione d'uso: `"si fida di" è una relazione molti a molti.`,
+  `"apre" è una relazione uno a molti ed è reciproca.`. Si **asserisce** d'autore
+  (`Il giocatore si fida di Saverio.`, `La chiave di ottone apre la cella.`), si
+  cambia nelle regole (`e adesso il giocatore si fida di Vito`, `… non si fida più
+  di Vito`) e si **interroga** (`se il giocatore si fida di Saverio`, `se qualcuno
+  si fida del giocatore`, anche negata). Arietà (`uno a uno`/`uno a molti`/`molti a
+  molti`, con sfratto delle coppie in conflitto) e reciprocità opzionale; lo stato
+  è catturato dalle istantanee (ANNULLA lo riavvolge). In questa prima versione è
+  d'autore e interrogabile, **non** azionabile dal giocatore. Interpolazione a
+  corredo: `[chi si fida del giocatore]` rende l'elenco dei soggetti correnti
+  («Saverio e Vito»). Restano aperte (estensioni): il quantificatore `ogni` nelle
+  asserzioni e le relazioni azionabili dal giocatore. Parole riservate nuove:
+  `relazione`, `molti`, `ed`, `reciproca`, `reciproco`, `qualcuno`. (`def_relazione`,
+  `def_relazione_fatto`, `cond_relazione`, `cons_rel_*`; terminale chiuso `RELAZIONE`
+  generato per-file; round-trip Studio: `analizza_regole.menu.relations` +
+  condizioni/conseguenze `op:"relation"`, `serializza_frase` op `relation_decl`/
+  `relation_fact`.)
+- **Procedure nominate (C1)** — una sequenza nominata di conseguenze, dichiarata
+  una volta e richiamabile: `Definisci "far passare la notte" come: aumenta la sete
+  di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.`, poi
+  `Invece di dormi: … e adesso esegui far passare la notte.`. Senza parametri in
+  questa prima versione; il corpo è una lista di conseguenze (il testo lo dice la
+  regola che la richiama). Una procedura può richiamarne un'altra o se stessa, con
+  una guardia di profondità contro i cicli. Parole riservate nuove: `definisci`,
+  `esegui`. (`def_procedura`, `cons_procedura`; terminale chiuso `PROCEDURA`;
+  round-trip Studio: `menu.procedures`, conseguenza `op:"callProc"`,
+  `serializza_frase` op `procedure_def`.)
+
+> **Valutate ma rimandate** (vedi `documentazione/grammatica-1.6.0.md` §29.5): il
+> quantificatore `ogni` nelle asserzioni di relazione, le relazioni azionabili dal
+> giocatore, e gli **oggetti contabili** (B1) — quest'ultimo richiede modifiche al
+> loop di gioco (quantità in inventario, prendere/lasciare N copie, concordanza
+> negli elenchi) e va progettato a parte.
+
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto
 Il remake de «Il Relitto Silente» (quattordici moduli, 362 regole, una risorsa che cala a
