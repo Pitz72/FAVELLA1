@@ -8106,7 +8106,8 @@ def test_150_guardia_lalr_frasi_nuove():
 # Cresce con ogni fetta; la guardia (test_160_guardia_lalr_frasi_nuove) verifica
 # che LALR(1) si costruisca senza conflitti e che Earley produca UN SOLO albero.
 _CORPUS_GUARDIA_160 = (
-    "La cella è una stanza.\nIl corridoio è una stanza.\n"
+    "La cella è una stanza.\nIl corridoio è una stanza.\nLa gola è una stanza.\n"
+    "La cripta è una stanza.\nIl pozzo è una stanza.\n"
     "Il giocatore comincia nella cella.\n"
     # [Q1] Invariante di clamp dichiarata: letterale e con estremo '[contatore]'.
     "La sete è un contatore.\nLa sete parte da 50.\n"
@@ -8116,6 +8117,16 @@ _CORPUS_GUARDIA_160 = (
     "Il vigore resta sempre fra 0 e [soglia].\n"
     "\"bevi\" è un comando senza oggetto.\n"
     "Invece di bevi: diminuisci la sete di 40 e adesso aumenta il vigore di 1000.\n"
+    # [Q2] 'senza ritorno': nuda, con una direzione custom, e in coda a una
+    # condizione (con e senza 'altrimenti'). Convive con la connessione normale e
+    # con 'sono direzioni opposte'.
+    "Su e giù sono direzioni opposte.\n"
+    "La fuga è uno stato.\nLa fuga è lontana.\n"
+    "La cella collega nord a la gola senza ritorno.\n"
+    "La cella collega est a il corridoio.\n"
+    "La gola collega giù a la cripta senza ritorno.\n"
+    "Il corridoio collega sud a il pozzo se la fuga è lontana senza ritorno.\n"
+    "La cripta collega su a il pozzo se la fuga è lontana; altrimenti \"Chiuso.\" senza ritorno.\n"
 )
 
 
@@ -8252,6 +8263,104 @@ def test_studio_160_invariante_round_trip():
     mondo2, _ = compila(src2)
     _check(mondo2 is not None and "sete" in mondo2.invarianti_clamp and "vigore" in mondo2.invarianti_clamp,
            "la frase riscritta ricompila con le stesse invarianti")
+
+
+def test_160_senza_ritorno():
+    print("[1.6.0 / Q2: 'senza ritorno' — connessione a senso unico]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "La cripta è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "Su e giù sono direzioni opposte.\n"
+        "La cella collega nord a la gola senza ritorno.\n"   # una direzione
+        "La cella collega est a l'atrio.\n"                    # controprova bidirezionale
+        "La cella collega giù a la cripta senza ritorno.\n"   # direzione custom
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(set(mondo.stanze) == {"cella", "gola", "atrio", "cripta"},
+           "lo scanner non inventa una stanza «gola senza ritorno»")
+    _check(mondo.stanze["cella"].uscite.get("nord") == "gola", "cella → gola esiste (nord)")
+    _check("sud" not in mondo.stanze["gola"].uscite, "ma gola NON torna a cella (niente auto-ritorno)")
+    _check(mondo.stanze["cella"].uscite.get("est") == "atrio"
+           and mondo.stanze["atrio"].uscite.get("ovest") == "cella",
+           "la connessione senza «senza ritorno» resta bidirezionale")
+    _check(mondo.stanze["cella"].uscite.get("giù") == "cripta"
+           and "su" not in mondo.stanze["cripta"].uscite,
+           "'senza ritorno' vale anche con una direzione personalizzata")
+    # Giocando: da cella si va a nord in gola; da gola non si torna indietro.
+    esegui(mondo, "nord")
+    _check(mondo.posizione_giocatore == "gola", "il giocatore arriva nella gola")
+    esegui(mondo, "sud")
+    _check(mondo.posizione_giocatore == "gola",
+           "da gola 'sud' non riporta nella cella (resta nella gola)")
+
+
+def test_160_senza_ritorno_con_condizione():
+    print("[1.6.0 / Q2: 'senza ritorno' convive con l'uscita condizionata]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La fuga è uno stato.\nLa fuga è lontana.\n"
+        "La cella collega nord a la gola se la fuga è lontana senza ritorno.\n"
+        "La cella collega est a l'atrio se la fuga è lontana; altrimenti \"Chiuso.\" senza ritorno.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila con condizione + senza ritorno")
+    _check(("cella", "nord") in mondo.condizioni_uscite, "l'uscita condizionata è registrata")
+    _check("sud" not in mondo.stanze["gola"].uscite
+           and "ovest" not in mondo.stanze["atrio"].uscite,
+           "in entrambe le forme (con/senza altrimenti) non c'è auto-ritorno")
+
+
+def test_160_direzioni_opposte_non_rotte():
+    print("[1.6.0 / Q2: 'sono direzioni opposte' non è intaccata]")
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "Alto e basso sono direzioni opposte.\n"
+        "La cella collega alto a la gola.\n"   # senza 'senza ritorno' → bidirezionale
+    )
+    mondo = runtime(src)
+    _check(mondo is not None and mondo.stanze["cella"].uscite.get("alto") == "gola"
+           and mondo.stanze["gola"].uscite.get("basso") == "cella",
+           "le direzioni opposte custom restano con l'auto-ritorno")
+
+
+def test_studio_160_senza_ritorno_round_trip():
+    print("[1.6.0 / Q2: round-trip Studio di 'senza ritorno']")
+    from strumenti_ide import analizza_outline
+    src = (
+        "La cella è una stanza.\nLa gola è una stanza.\nL'atrio è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La cella collega nord a la gola senza ritorno.\n"
+        "La cella collega est a l'atrio.\n"
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        out = analizza_outline(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(out.get("ok"), "analizza_outline regge")
+    ex = {(r["id"], e["direction"]): e for r in out["rooms"] for e in r["exits"]}
+    _check(ex.get(("cella", "nord"), {}).get("oneWay") is True, "la mappa segna l'uscita a senso unico")
+    _check(ex.get(("cella", "est"), {}).get("oneWay") is False, "quella bidirezionale no")
+    t1 = serializza_frase({"op": "connection", "from": "La cella",
+                           "direction": "nord", "to": "La gola", "oneWay": True})
+    t2 = serializza_frase({"op": "connection", "from": "La cella",
+                           "direction": "est", "to": "L'atrio"})
+    _check(t1.get("text") == "La cella collega nord a la gola senza ritorno.", f"serializza oneWay ({t1})")
+    _check(t2.get("text") == "La cella collega est a l'atrio.", f"serializza normale ({t2})")
+    # Ricompila la frase riscritta: la topologia è la stessa.
+    src2 = (
+        "La cella è una stanza.\nLa gola è una stanza.\n"
+        "Il giocatore comincia nella cella.\n" + t1["text"] + "\n"
+    )
+    m2, _ = compila(src2)
+    _check(m2 is not None and "sud" not in m2.stanze["gola"].uscite,
+           "la frase riscritta ricompila ancora a senso unico")
 
 
 def test_160_guardia_lalr_frasi_nuove():
@@ -8797,6 +8906,10 @@ def main():
         test_160_invariante_errori,
         test_160_invariante_additivo_vecchia_conseguenza,
         test_studio_160_invariante_round_trip,
+        test_160_senza_ritorno,
+        test_160_senza_ritorno_con_condizione,
+        test_160_direzioni_opposte_non_rotte,
+        test_studio_160_senza_ritorno_round_trip,
         test_160_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)

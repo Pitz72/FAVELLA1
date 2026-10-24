@@ -194,6 +194,13 @@ def analizza_outline(percorso_file, sorgente=None):
                             and _norm_token(ents[1]) == rid:
                         span = f["span"]
                         break
+            # [1.6.0 / Q2] 'senza ritorno': un'uscita esplicita la cui direzione HA
+            # un'opposta, ma la destinazione non torna indietro di lì. (Un'uscita
+            # implicita è essa stessa l'auto-ritorno, quindi mai 'senza ritorno'.)
+            opposta = mondo.opposta_di(direzione)
+            one_way = bool(opposta) and not implicit and \
+                mondo.stanze.get(dest) is not None and \
+                mondo.stanze[dest].uscite.get(opposta) != rid
             exits.append({
                 "direction": direzione,
                 # [1.5.0 / C13] L'uscita vale solo mentre una condizione è vera.
@@ -202,6 +209,7 @@ def analizza_outline(percorso_file, sorgente=None):
                 "toName": mondo.stanze[dest].nome_visualizzato if dest in mondo.stanze else dest,
                 "span": span,
                 "implicit": implicit,
+                "oneWay": one_way,
             })
         rooms.append({
             "id": rid,
@@ -1808,7 +1816,7 @@ def serializza_frase(spec):
       room_def    {name}
       object_def  {name, kind:oggetto|contenitore|supporto|personaggio}
       description {name, text}
-      connection  {from, direction, to}
+      connection  {from, direction, to, oneWay?}   # oneWay → '… senza ritorno.'
       position    {name, prep, place}
       property    {name, property}
       prendibile  {name}
@@ -1860,9 +1868,11 @@ def serializza_frase(spec):
         if op == "description":
             return {"ok": True, "text": _frase_descrizione(spec["name"], spec.get("text", ""))}
         if op == "connection":
+            # [1.6.0 / Q2] 'senza ritorno' rende la connessione a senso unico.
+            coda = " senza ritorno" if spec.get("oneWay") else ""
             return {"ok": True,
                     "text": f"{spec['from']} collega {spec['direction']} a "
-                            f"{_articolo_in_minuscolo(spec['to'])}."}
+                            f"{_articolo_in_minuscolo(spec['to'])}{coda}."}
         if op == "position":
             return {"ok": True, "text": _frase_posizione(
                 spec["name"], spec["prep"], spec["place"])}

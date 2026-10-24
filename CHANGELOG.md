@@ -25,6 +25,15 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   contatore, è un errore d'autore gentile. Parola riservata nuova: `sempre`.
   (`def_invariante`; round-trip Studio: `analizza_variabili.counters[].clamp`,
   `serializza_frase` op `clamp_decl`.)
+- **Connessione a senso unico** — `La botola collega giù a il pozzo senza ritorno.`.
+  Finora `A collega D a B` era sempre bidirezionale (il motore aggiunge l'uscita di
+  ritorno `B → A`). Il suffisso opzionale `senza ritorno` la sopprime: si crea solo
+  `A → B`. Sta in ultima posizione, anche dopo un'uscita condizionata (`… se COND;
+  altrimenti "…" senza ritorno`). Le direzioni opposte custom (`Su e giù sono
+  direzioni opposte.`) e le conseguenze `collega` restano invariate. Parola
+  riservata nuova: `ritorno`. (`senza_ritorno`; round-trip Studio:
+  `analizza_outline.exits[].oneWay`, `rpc_world_graph` edge `oneWay`,
+  `serializza_frase` op `connection` con `oneWay`.)
 
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto

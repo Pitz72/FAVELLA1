@@ -142,6 +142,9 @@ PAROLE_RISERVATE = frozenset({
     # dichiarata. 'resta'/'fra' sono già usate dalla conseguenza 'X resta fra A e
     # B'; qui conta la parola nuova 'sempre', che distingue la dichiarazione.
     "sempre",
+    # [1.6.0 / Q2] 'A collega nord a B senza ritorno.': connessione a senso unico.
+    # 'senza' è già riservata; 'ritorno' è nuova.
+    "ritorno",
 })
 
 
@@ -207,6 +210,9 @@ _RE_DEF_DIREZIONI = re.compile(
 _RE_OPZIONE_DI_DIALOGO = re.compile(r"^al\s+nodo\b", re.IGNORECASE)
 # [1.5.0 / C13] La condizione in coda a un 'collega' ('… a la gola se …').
 _RE_CONDIZIONE_IN_CODA = re.compile(r"\s+se\s+", re.IGNORECASE)
+# [1.6.0 / Q2] Il marcatore 'senza ritorno' in coda a un 'collega': non fa parte
+# del nome della stanza di destinazione.
+_RE_SENZA_RITORNO_IN_CODA = re.compile(r"\s+senza\s+ritorno\s*$", re.IGNORECASE)
 # Stringhe quotate e commenti vanno rimossi prima di spezzare sui punti.
 _RE_QUOTATO = re.compile(r'"(\\.|[^"\\])*"')
 _RE_COMMENTO = re.compile(r"#[^\n]*")
@@ -306,8 +312,10 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         if m:
             tab.stanze.add(normalizza_nome(m.group("x")))
             # [1.5.0 / C13] '… a la gola se la fuga è iniziata': la condizione
-            # non fa parte del nome della stanza.
-            tab.stanze.add(normalizza_nome(_RE_CONDIZIONE_IN_CODA.split(m.group("y"), 1)[0]))
+            # non fa parte del nome della stanza. [1.6.0 / Q2] Né il marcatore
+            # 'senza ritorno' ('… a la gola senza ritorno'), tolto per primo.
+            coda = _RE_SENZA_RITORNO_IN_CODA.sub("", m.group("y"))
+            tab.stanze.add(normalizza_nome(_RE_CONDIZIONE_IN_CODA.split(coda, 1)[0]))
             continue
 
         # [1.5.0 / C2] 'La protezione è attiva quando …' (fuori da regole e demoni).
@@ -491,7 +499,14 @@ _GRAMMAR_TEMPLATE = r"""
     // cantina se la botola è aperta; altrimenti "La botola è chiusa.".' Dopo la
     // seconda ENTITA il lookahead "se"/"." decide; dopo la condizione
     // ";"/","/"altrimenti"/"." (nessuno continua una condizione) → 0-ambiguo.
-    def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA uscita_condizionata? "."
+    // [1.6.0 / Q2] 'senza ritorno' in coda: la connessione vale solo A→B (niente
+    // auto-ritorno B→A). Opzionale e in ultima posizione, dopo l'eventuale uscita
+    // condizionata: dopo la seconda ENTITA (o dopo il testo dell'altrimenti, o
+    // dopo la condizione) il lookahead "senza" è disgiunto da "se"/";"/","/
+    // "altrimenti"/"." → LALR(1) 0-ambiguo. "senza" è già riservata (comando senza
+    // oggetto); "ritorno" è la keyword nuova.
+    def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA uscita_condizionata? senza_ritorno? "."
+    senza_ritorno: "senza" "ritorno"
     uscita_condizionata: "se" condizione ( ( ";" | "," )? "altrimenti" TESTO_QUOTATO )?
     def_giocatore: "Il" "giocatore" ( "comincia" | "inizia" | "parte" ) PREP_LUOGO ENTITA "."
     // [Livello 7] Capacità di trasporto. La BASE: 'Il giocatore può portare N
@@ -1513,6 +1528,7 @@ class RegolaTarget:
         self.secondario = secondario
 
 _VOLUTO = object()     # [1.4.1] il marcatore «(voluto)» di un sinonimo (vedi def_sinonimo)
+_SENZA_RITORNO = object()  # [1.6.0 / Q2] il marcatore «senza ritorno» di una connessione
 
 
 def _avviso_cambio_di_significato(sinonimo, azioni, canonico):
@@ -2107,10 +2123,19 @@ class FavellaTransformer(Transformer):
         # [1.5.0 / C13] 'se COND[; altrimenti "…"]' in coda a un 'collega'.
         return UscitaCondizionata(condizione, resto[0] if resto else None)
 
-    def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo, condizionata=None):
+    def senza_ritorno(self, *_):
+        # [1.6.0 / Q2] Il marcatore 'senza ritorno' di una connessione a senso unico.
+        return _SENZA_RITORNO
+
+    def def_connessione(self, sta1_grezzo, direzione, sta2_grezzo, *resto):
+        # [1.6.0 / Q2] La coda ha due opzionali di tipo diverso: l'uscita
+        # condizionata (UscitaCondizionata) e il marcatore 'senza ritorno'
+        # (_SENZA_RITORNO). Li smisto per tipo, così l'ordine resta robusto.
+        condizionata = next((x for x in resto if isinstance(x, UscitaCondizionata)), None)
+        a_senso_unico = _SENZA_RITORNO in resto
         id_sta1 = normalizza_nome(sta1_grezzo)
         id_sta2 = normalizza_nome(sta2_grezzo)
-        
+
         if not self.mondo.trova_stanza(id_sta1):
             stanza1 = Stanza(id_sta1)
             stanza1.nome_visualizzato = sta1_grezzo
@@ -2119,7 +2144,7 @@ class FavellaTransformer(Transformer):
             stanza2 = Stanza(id_sta2)
             stanza2.nome_visualizzato = sta2_grezzo
             self.mondo.aggiungi_stanza(stanza2)
-        
+
         stanza1 = self.mondo.trova_stanza(id_sta1)
         stanza2 = self.mondo.trova_stanza(id_sta2)
 
@@ -2129,10 +2154,12 @@ class FavellaTransformer(Transformer):
         stanza1.uscite[direzione_norm] = id_sta2
 
         # Connessione automatica di ritorno, se la direzione ha un'opposta nota.
-        direzione_opposta = self.mondo.opposta_di(direzione_norm)
+        # [1.6.0 / Q2] 'senza ritorno' la sopprime: solo A→B.
+        direzione_opposta = None if a_senso_unico else self.mondo.opposta_di(direzione_norm)
         if direzione_opposta:
             stanza2.uscite[direzione_opposta] = id_sta1
-        # [1.5.0 / C13] Un'uscita con una condizione vale nelle due direzioni.
+        # [1.5.0 / C13] Un'uscita con una condizione vale nelle due direzioni (in una
+        # sola, se 'senza ritorno').
         if isinstance(condizionata, UscitaCondizionata):
             regola = (condizionata.condizione, condizionata.testo)
             self.mondo.condizioni_uscite[(id_sta1, direzione_norm)] = regola

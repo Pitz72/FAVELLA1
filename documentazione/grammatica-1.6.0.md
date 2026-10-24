@@ -2015,3 +2015,46 @@ Keyword riservata aggiunta: `sempre`.
 `clamp` (`{min, max, span}`, con `min`/`max` nella forma-operando JSON: un intero
 o `{kind:"var", name}`); `serializza_frase` ha l'op `clamp_decl {name, min, max}`
 → `X resta sempre fra A e B.`.
+
+### §29.2 — Connessione a senso unico (`senza ritorno`) [Q2]
+
+`A collega D a B` è sempre **bidirezionale**: il motore aggiunge l'uscita di
+ritorno `B → A` nella direzione opposta (garantendo che si possa sempre tornare
+indietro). La 1.6 aggiunge un suffisso opzionale che la sopprime.
+
+```ebnf
+def_connessione: ENTITA "collega" DIREZIONE "a" ENTITA uscita_condizionata? senza_ritorno? "."
+senza_ritorno: "senza" "ritorno"
+```
+
+Esempi:
+
+```favella
+La botola collega giù a il pozzo senza ritorno.
+La soglia collega nord a l'abisso se il sigillo è rotto senza ritorno.
+```
+
+**Semantica.**
+
+- Senza il suffisso: comportamento 1.5 invariato (auto-ritorno nella direzione
+  opposta, se la direzione ne ha una; le direzioni custom `Su e giù sono direzioni
+  opposte.` continuano a funzionare).
+- Con `senza ritorno`: viene creata **solo** l'uscita `A → B`. Se la direzione ha
+  un'opposta, l'uscita di ritorno **non** viene aggiunta. Una eventuale uscita
+  condizionata vale allora nella sola direzione A → B.
+- Il suffisso sta in **ultima** posizione, dopo l'eventuale `se …[; altrimenti
+  "…"]`. Lo scanner di Passata 1 lo toglie dal nome della stanza di destinazione
+  (`… a la gola senza ritorno` dichiara la stanza `gola`, non `gola senza ritorno`).
+- Le **conseguenze** `collega`/`non collega più` restano come in 1.5 (il `collega`
+  in conseguenza mantiene l'auto-ritorno): `senza ritorno` è solo della
+  dichiarazione.
+
+**Disambiguazione LALR(1).** Dopo la seconda `ENTITA` (o dopo il testo
+dell'`altrimenti`, o dopo la `condizione`) il lookahead `"senza"` è disgiunto da
+`"se"`/`";"`/`","`/`"altrimenti"`/`"."`. `"senza"` è già riservata (`comando senza
+oggetto`); `"ritorno"` è la keyword nuova (riservata).
+
+**Round-trip Studio.** `analizza_outline` marca ogni uscita esplicita con `oneWay`
+(vero quando la direzione ha un'opposta ma la destinazione non torna indietro di
+lì); `favella_server.rpc_world_graph` riporta `oneWay` sugli archi; `serializza_frase`
+accetta `{op:"connection", …, oneWay:true}` → `… senza ritorno.`.
