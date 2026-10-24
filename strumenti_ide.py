@@ -241,6 +241,41 @@ def analizza_outline(percorso_file, sorgente=None):
         "supporto": "def_supporto", "personaggio": "def_personaggio",
     }
 
+    # [1.6.0 / B1] Quantità iniziali dei contabili: 'Il giocatore ha N …' (inventario)
+    # e 'Ci sono N … in <luogo>' (stanza/contenitore). L'ENTITA è la forma PLURALE,
+    # che risolviamo al canonico via mondo.plurali; il valore lo dà il modello
+    # (quantita_in, che regge anche i numeri in lettere), lo span viene dalla frase.
+    plurali = getattr(mondo, "plurali", {})
+    def _canonico(tok_ent):
+        nid = _norm_token(tok_ent)
+        return plurali.get(nid, nid)
+    stock_per_oid = {}
+    for f in frasi:
+        if f["data"] == "def_giocatore_scorta":
+            ents = f["tok"].get("ENTITA", [])
+            if not ents:
+                continue
+            oc = _canonico(ents[0])
+            stock_per_oid.setdefault(oc, []).append({
+                "placeId": "inventario", "placeName": "Inventario", "prep": None,
+                "n": mondo.quantita_in(oc, "inventario") if hasattr(mondo, "quantita_in") else 0,
+                "span": f["span"]})
+        elif f["data"] == "def_scorta_luogo":
+            ents = f["tok"].get("ENTITA", [])
+            if len(ents) < 2:
+                continue
+            oc = _canonico(ents[0])
+            place = _norm_token(ents[1])
+            pname = (mondo.stanze[place].nome_visualizzato if place in mondo.stanze
+                     else mondo.oggetti[place].nome_visualizzato if place in mondo.oggetti
+                     else place)
+            preps = f["tok"].get("PREP_LUOGO", [])
+            stock_per_oid.setdefault(oc, []).append({
+                "placeId": place, "placeName": pname,
+                "prep": str(preps[0]) if preps else None,
+                "n": mondo.quantita_in(oc, place) if hasattr(mondo, "quantita_in") else 0,
+                "span": f["span"]})
+
     objects = []
     for oid, o in mondo.oggetti.items():
         kind = _kind(o)
@@ -292,6 +327,14 @@ def analizza_outline(percorso_file, sorgente=None):
             if ents and _norm_token(ents[0]) == oid:
                 carry_bonus_span = f["span"]
                 break
+        # [1.6.0 / B1] Un contabile si dichiara con 'def_contabile' (non 'def_oggetto'):
+        # se non c'è una definizione «è una cosa» separata, lo span di definizione è
+        # quello della frase contabile (così «cambia tipo» la riscrive invece di
+        # appenderne una doppia — la Fase 1 lasciava defSpan a None).
+        countable_span = _prima("def_contabile", oid)
+        def_span = _prima(_DEF_PER_KIND[kind], oid)
+        if def_span is None and countable_span is not None:
+            def_span = countable_span
         objects.append({
             "id": oid,
             "name": o.nome_visualizzato,
@@ -299,7 +342,7 @@ def analizza_outline(percorso_file, sorgente=None):
             "prendibile": getattr(o, "prendibile", False),
             "carryBonus": getattr(o, "bonus_capacita", 0),
             "carryBonusSpan": carry_bonus_span,
-            "defSpan": _prima(_DEF_PER_KIND[kind], oid),
+            "defSpan": def_span,
             "descSpan": _prima("def_descrizione", oid),
             "descConditional": _ha_descr_condizionale(frasi, oid),
             "description": descrizione_display(o.descrizione),
@@ -315,6 +358,8 @@ def analizza_outline(percorso_file, sorgente=None):
             # dichiara resta intatta nel buffer (l'editor oggetti non la riscrive).
             "countable": bool(getattr(o, "contabile", False)),
             "plural": getattr(o, "plurale", None),
+            "countableSpan": countable_span,
+            "quantity": stock_per_oid.get(oid, []),
         })
 
     # Direzioni canoniche VALIDE in questo mondo (base nord/sud/est/ovest + quelle
@@ -1160,6 +1205,8 @@ def analizza_variabili(percorso_file, sorgente=None):
 
     # Indicizza le frasi di dichiarazione/valore-iniziale con il loro span.
     decl_stato, decl_cont, init_stato, init_cont, span_invariante = {}, {}, {}, {}, {}
+    # [1.6.0 / C2] Gli span di ogni 'X è V quando C' (più d'uno per stato calcolato).
+    span_calcolato = {}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -1189,6 +1236,11 @@ def analizza_variabili(percorso_file, sorgente=None):
                 # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.' — span della frase
                 # (l'ultima vince, come il motore).
                 span_invariante[nome] = span
+            elif nodo.data == "def_stato_calcolato":
+                # [1.6.0 / C2] 'La protezione è attiva quando …' — una o più frasi per
+                # lo stesso stato calcolato; le raccolgo tutte (sola lettura).
+                if span is not None:
+                    span_calcolato.setdefault(nome, []).append(span)
 
     # Commenti '# valori di X: …' → mappa id-stato -> (valori, span). Ultima vince.
     commenti = {}
@@ -1231,9 +1283,19 @@ def analizza_variabili(percorso_file, sorgente=None):
             "valuesComment": ({"span": cspan, "values": cval} if cval is not None else None),
         })
 
+    # [1.6.0 / C2] Stati calcolati ('X è V quando C'): valori possibili + span, in
+    # sola lettura (l'editor li mostra ma non li riscrive: si cambiano nel testo).
+    computed = []
+    for nome, clausole in getattr(mondo, "stati_calcolati", {}).items():
+        valori = sorted({v for (v, _c) in clausole if v})
+        computed.append({"name": nome, "values": valori,
+                         "spans": list(span_calcolato.get(nome, []))})
+    computed.sort(key=lambda c: c["name"])
+
     states.sort(key=lambda s: s["name"])
     counters.sort(key=lambda c: c["name"])
-    return {"ok": True, "states": states, "counters": counters, "errors": []}
+    return {"ok": True, "states": states, "counters": counters,
+            "computed": computed, "errors": []}
 
 
 def analizza_parole(percorso_file, sorgente=None):

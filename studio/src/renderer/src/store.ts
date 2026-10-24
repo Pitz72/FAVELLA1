@@ -291,17 +291,21 @@ interface StudioState {
     fromId: string,
     direction: string,
     toId: string,
-    opposite?: string
+    opposite?: string,
+    // [1.6.0 / Q2] true = collegamento a senso unico («senza ritorno»).
+    oneWay?: boolean
   ) => Promise<void>
   mapDeleteConnection: (aId: string, bId: string) => Promise<void>
   mapAddRoom: (name: string) => Promise<void>
   // Cambia direzione e/o destinazione di un'uscita, vista da `daId`; la toglie.
+  // [1.6.0 / Q2] `oneWay` (se dato) rende/toglie il «senza ritorno» di un'uscita esplicita.
   cambiaUscita: (a: {
     daId: string
     uscita: OutlineExit
     direzione?: string
     versoId?: string
     opposta?: string
+    oneWay?: boolean
   }) => Promise<void>
   eliminaUscita: (uscita: OutlineExit) => Promise<void>
   // [Studio 1.1] Il cuore delle modifiche: applica N modifiche, anche su file diversi.
@@ -1489,7 +1493,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   // Una connessione nuova fra due stanze. Se la direzione non è ancora valida nel mondo
   // la si dichiara IN COPPIA OPPOSTA (quella data dall'autore, o quella di default per
   // le verticali comuni): senza opposta non si scrive niente.
-  mapAddConnection: async (fromId, direction, toId, opposite) => {
+  mapAddConnection: async (fromId, direction, toId, opposite, oneWay) => {
     set({ editError: null })
     const { outline } = get()
     if (!outline) return
@@ -1506,7 +1510,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ editError: p.errore })
       return
     }
-    const r = await serializza({ op: 'connection', from: da.name, direction: dir, to: a.name })
+    const r = await serializza({ op: 'connection', from: da.name, direction: dir, to: a.name, oneWay })
     if (!r.ok) {
       set({ editError: r.errore })
       return
@@ -1518,7 +1522,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   // viste dalla stanza `daId`. Se l'uscita è solo il ritorno automatico di un'altra frase
   // («Y collega nord a X» dà a X l'uscita a sud) si riscrive quella frase d'origine, con
   // la direzione opposta: il ritorno segue da solo.
-  cambiaUscita: async ({ daId, uscita, direzione, versoId, opposta }) => {
+  cambiaUscita: async ({ daId, uscita, direzione, versoId, opposta, oneWay }) => {
     set({ editError: null })
     const { outline } = get()
     if (!outline) return
@@ -1544,9 +1548,12 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ editError: p.errore })
       return
     }
+    // [1.6.0 / Q2] Preserva (o cambia) il «senza ritorno» su un'uscita esplicita; il
+    // ritorno automatico (implicit) non è mai a senso unico.
+    const ow = oneWay ?? uscita.oneWay
     const spec: SerializeSpec = uscita.implicit
       ? { op: 'connection', from: destinazione.name, direction: p.opposta, to: stanza.name }
-      : { op: 'connection', from: stanza.name, direction: dir, to: destinazione.name }
+      : { op: 'connection', from: stanza.name, direction: dir, to: destinazione.name, oneWay: ow }
     const r = await serializza(spec)
     if (!r.ok) {
       set({ editError: r.errore })

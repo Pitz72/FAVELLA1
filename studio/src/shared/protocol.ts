@@ -182,6 +182,9 @@ export interface GraphEdge {
   direction: string
   // [sidecar 0.12.0 / motore 1.5] L'uscita vale solo mentre una condizione è vera.
   conditional?: boolean
+  // [sidecar 0.14+ / motore 1.6 / Q2] Collegamento a SENSO UNICO («… senza ritorno.»):
+  // la direzione ha un'opposta ma la destinazione non torna indietro di lì.
+  oneWay?: boolean
 }
 
 export interface WorldGraph {
@@ -268,6 +271,9 @@ export interface OutlineExit {
   // [motore 1.5] L'uscita vale solo mentre una condizione è vera ('… se …'): i pannelli
   // non sanno riscriverla, si cambia nel testo.
   conditional?: boolean
+  // [motore 1.6 / Q2] Collegamento a SENSO UNICO («… senza ritorno.»): nessun
+  // auto-ritorno dalla destinazione. Le uscite implicite non sono mai a senso unico.
+  oneWay?: boolean
 }
 
 export interface OutlineRoom {
@@ -308,6 +314,27 @@ export interface OutlineObject {
   location: OutlineLocation | null
   properties: OutlineProperty[]
   aliases: OutlineProperty[]
+  // [1.6.0 / B1] Oggetto CONTABILE («La pozione, plurale "pozioni", è contabile.»):
+  // 'countable' è lo stato, 'plural' la forma plurale dichiarata (null se non contabile).
+  // 'countableSpan' ancora la frase di dichiarazione (per toglierla o cambiarla);
+  // 'quantity' è la quantità iniziale raccolta per luogo (inventario/stanza/contenitore),
+  // ciascuna con lo span della sua frase «Il giocatore ha N …» / «Ci sono N … in …».
+  countable?: boolean
+  plural?: string | null
+  countableSpan?: OutlineSpan | null
+  quantity?: OutlineStock[]
+}
+
+// [1.6.0 / B1] La quantità iniziale di un contabile in un luogo. 'placeId' è
+// 'inventario' oppure l'id di una stanza/contenitore; 'placeName' la sua etichetta;
+// 'prep' la preposizione della frase di luogo (per riscriverla fedele). 'span' ancora
+// la frase «Il giocatore ha N …» / «Ci sono N … in …».
+export interface OutlineStock {
+  placeId: string
+  placeName: string
+  prep: string | null
+  n: number
+  span: OutlineSpan | null
 }
 
 // Coppia di proprietà OPPOSTE (mutuamente esclusive): aperta↔chiusa (default del
@@ -345,10 +372,17 @@ export type SerializeSpec =
   | { op: 'room_def'; name: string }
   | { op: 'object_def'; name: string; kind: ObjectKind }
   | { op: 'description'; name: string; text: string }
-  | { op: 'connection'; from: string; direction: string; to: string }
+  // [motore 1.6 / Q2] oneWay → «… senza ritorno.» (collegamento a senso unico).
+  | { op: 'connection'; from: string; direction: string; to: string; oneWay?: boolean }
   | { op: 'position'; name: string; prep: string; place: string }
   | { op: 'property'; name: string; property: string }
   | { op: 'prendibile'; name: string }
+  // [1.6.0 / B1] Oggetti contabili. 'countable_decl' marca un oggetto come contabile
+  // dichiarandone il plurale; 'stock_player'/'stock_place' danno la quantità iniziale
+  // in inventario o in un luogo (name = la forma PLURALE, es. «pozioni»).
+  | { op: 'countable_decl'; name: string; plural: string }
+  | { op: 'stock_player'; name: string; n: number }
+  | { op: 'stock_place'; name: string; n: number; prep?: string; place: string }
   // [Livello 7] capacità di trasporto: base globale e bonus per-oggetto.
   | { op: 'carry_base'; value: number }
   | { op: 'carry_bonus'; name: string; value: number }
@@ -397,6 +431,9 @@ export type SerializeSpec =
   | { op: 'state_init'; name: string; value: string }
   | { op: 'counter_decl'; name: string }
   | { op: 'counter_init'; name: string; value: number }
+  // [1.6.0 / Q1] «X resta sempre fra A e B.» — invariante di clamp. min/max sono
+  // Operando: l'editor scrive letterali numerici; un estremo dinamico passa intatto.
+  | { op: 'clamp_decl'; name: string; min: Operando; max: Operando }
   | { op: 'state_values_comment'; name: string; values: string[] }
   // Dialoghi/NPC (Fase 6b). 'npc_decl' promuove un oggetto a personaggio;
   // 'dialogue_start' ne fissa il nodo d'ingresso; 'node_line' è la battuta
@@ -669,18 +706,42 @@ export interface VarState {
   valuesComment: { span: OutlineSpan | null; values: string[] } | null
 }
 
+// [1.6.0 / Q1] L'invariante di clamp di un contatore: «La X resta sempre fra A e B.».
+// Gli estremi sono Operando (un letterale numerico o un «[contatore]» dinamico); lo
+// span ancora la frase per riscriverla o toglierla. L'editor edita gli estremi
+// LETTERALI; uno estremo dinamico resta in sola lettura (si cambia nel testo).
+export interface ClampInvariant {
+  min: Operando
+  max: Operando
+  span: OutlineSpan | null
+}
+
 export interface VarCounter {
   name: string
   declSpan: OutlineSpan | null
   // [0.16.0] Valore iniziale (default 0) e span della frase «X parte da N.» (null se assente).
   initial: number
   initialSpan: OutlineSpan | null
+  // [1.6.0 / Q1] Invariante di clamp dichiarata (null se il contatore non ne ha).
+  clamp?: ClampInvariant | null
+}
+
+// [1.6.0 / C2] Uno STATO CALCOLATO («La protezione è attiva quando …»): il suo
+// valore viene da una condizione, non da un'assegnazione. L'editor lo mostra in SOLA
+// LETTURA (si cambia nel testo): 'values' sono i valori che può assumere, 'spans'
+// ancorano ogni frase «X è V quando C» (per toglierle tutte in un colpo).
+export interface VarComputed {
+  name: string
+  values: string[]
+  spans: OutlineSpan[]
 }
 
 export interface WorldVariables {
   ok: boolean
   states: VarState[]
   counters: VarCounter[]
+  // [1.6.0 / C2] Stati calcolati (sola lettura); assente/ vuoto se la storia non ne ha.
+  computed?: VarComputed[]
   errors: Diagnostic[]
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
-import type { ObjectKind, OutlineObject, OutlineLocation, OutlineSpan } from '../../../shared/protocol'
+import type { ObjectKind, OutlineObject, OutlineLocation, OutlineSpan, SerializeSpec } from '../../../shared/protocol'
 import { specPosizione } from '../utils/posizione'
 import { EliminaElemento, RinominaElemento, idDiNome } from './ElementoAzioni'
 import Elenco, { NonPronto, Riquadro, Vuoto } from './Elenco'
@@ -114,7 +114,49 @@ export default function ObjectsEditor(): JSX.Element {
 
   const cambiaTipo = async (k: ObjectKind): Promise<void> => {
     if (!sel || k === sel.kind) return
+    // [1.6.0 / B1] Un contabile è una cosa semplice: non lo si rende contenitore/
+    // supporto (il motore lo rifiuta). Per cambiarne il tipo, prima togli «contabile».
+    if (sel.countable && k !== 'oggetto') return
     await applyStatement({ op: 'object_def', name: sel.name, kind: k }, sel.defSpan)
+  }
+
+  // [1.6.0 / B1] Rende contabile l'oggetto (o ne cambia il plurale): riscrive la frase
+  // «La X, plurale "…", è contabile.».
+  const setContabile = async (plural: string): Promise<void> => {
+    if (!sel) return
+    const p = plural.trim()
+    if (!p) return
+    await applyStatement({ op: 'countable_decl', name: sel.name, plural: p }, sel.countableSpan ?? undefined)
+  }
+  // Toglie «contabile». Se quella frase è anche l'UNICA definizione dell'oggetto, la si
+  // rimpiazza con «è una cosa» (così l'oggetto non sparisce); le quantità restano nel
+  // testo (diventano frasi inerti che i Problemi segnaleranno se serve).
+  const togliContabile = async (): Promise<void> => {
+    if (!sel || !sel.countableSpan) return
+    const soloDef = !sel.defSpan ||
+      (sel.defSpan.file === sel.countableSpan.file && sel.defSpan.line === sel.countableSpan.line)
+    if (soloDef) {
+      await applyStatement({ op: 'object_def', name: sel.name, kind: 'oggetto' }, sel.countableSpan)
+    } else {
+      await deleteStatement(sel.countableSpan, `«${sel.name}» non è più contabile`)
+    }
+  }
+  // Imposta/cambia/toglie una quantità iniziale (inventario o luogo). n<=0 → toglie.
+  const setQuantita = async (
+    place: { id: string; name: string; prep?: string | null },
+    n: number,
+    span?: OutlineSpan | null
+  ): Promise<void> => {
+    if (!sel || !sel.plural) return
+    if (n <= 0) {
+      if (span) await deleteStatement(span)
+      return
+    }
+    const spec: SerializeSpec =
+      place.id === 'inventario'
+        ? { op: 'stock_player', name: sel.plural, n }
+        : { op: 'stock_place', name: sel.plural, n, place: place.name, prep: place.prep ?? 'in' }
+    await applyStatement(spec, span ?? undefined)
   }
   const salvaDescrizione = async (): Promise<void> => {
     if (!sel) return
@@ -332,7 +374,7 @@ export default function ObjectsEditor(): JSX.Element {
                   <span className="campo-etichetta">Tipo</span>
                   <select value={sel.kind} onChange={(e) => void cambiaTipo(e.target.value as ObjectKind)}>
                     {KINDS.map((k) => (
-                      <option key={k} value={k}>
+                      <option key={k} value={k} disabled={sel.countable && k !== 'oggetto'}>
                         {KIND_LABEL[k]}
                       </option>
                     ))}
@@ -377,6 +419,21 @@ export default function ObjectsEditor(): JSX.Element {
               </label>
               <CarryBonusField key={sel.id} value={sel.carryBonus} onSet={setCarryBonus} />
             </Riquadro>
+
+            <Contabile
+              key={'cont' + sel.id}
+              sel={sel}
+              luoghi={[
+                { id: 'inventario', name: 'Inventario' },
+                ...rooms.map((r) => ({ id: r.id, name: r.name })),
+                ...objects
+                  .filter((o) => (o.kind === 'contenitore' || o.kind === 'supporto') && o.id !== sel.id)
+                  .map((o) => ({ id: o.id, name: o.name }))
+              ]}
+              onSetContabile={setContabile}
+              onTogliContabile={togliContabile}
+              onSetQuantita={setQuantita}
+            />
 
             {èContenitore && (
               <Riquadro titolo={sel.kind === 'supporto' ? 'Che cosa c’è sopra' : 'Che cosa c’è dentro'}>
@@ -546,6 +603,166 @@ export default function ObjectsEditor(): JSX.Element {
         )}
       </div>
     </div>
+  )
+}
+
+// [1.6.0 / B1] Pannello dei contabili: «contabile» (con plurale) + le quantità
+// iniziali per luogo. Round-trip via countable_decl / stock_player / stock_place.
+function Contabile({
+  sel,
+  luoghi,
+  onSetContabile,
+  onTogliContabile,
+  onSetQuantita
+}: {
+  sel: OutlineObject
+  luoghi: { id: string; name: string }[]
+  onSetContabile: (plural: string) => void
+  onTogliContabile: () => void
+  onSetQuantita: (place: { id: string; name: string; prep?: string | null }, n: number, span?: OutlineSpan | null) => void
+}): JSX.Element {
+  const contabile = !!sel.countable
+  const [plurale, setPlurale] = useState(sel.plural ?? '')
+  const [errore, setErrore] = useState<string | null>(null)
+  const [addLuogo, setAddLuogo] = useState('')
+  const [addN, setAddN] = useState('1')
+  useEffect(() => {
+    setPlurale(sel.plural ?? '')
+    setErrore(null)
+    setAddLuogo('')
+    setAddN('1')
+  }, [sel.id, sel.plural])
+
+  const quantita = sel.quantity ?? []
+  const usati = new Set(quantita.map((q) => q.placeId))
+  const liberi = luoghi.filter((l) => !usati.has(l.id))
+
+  const toggle = (on: boolean): void => {
+    if (!on) {
+      onTogliContabile()
+      return
+    }
+    const p = plurale.trim()
+    if (!p) {
+      setErrore('Scrivi prima il plurale (es. «pozioni»).')
+      return
+    }
+    setErrore(null)
+    onSetContabile(p)
+  }
+  const salvaPlurale = (): void => {
+    const p = plurale.trim()
+    if (contabile && p && p !== (sel.plural ?? '')) onSetContabile(p)
+  }
+  const aggiungi = (): void => {
+    const l = luoghi.find((x) => x.id === addLuogo)
+    const n = parseInt(addN, 10)
+    if (!l || Number.isNaN(n) || n <= 0) return
+    setAddLuogo('')
+    setAddN('1')
+    onSetQuantita({ id: l.id, name: l.name }, n)
+  }
+
+  return (
+    <Riquadro titolo="Quante copie" aiuto="Un oggetto contabile si conta a copie: pozioni, frecce, monete.">
+      <label className="spunta">
+        <input type="checkbox" checked={contabile} onChange={(e) => toggle(e.target.checked)} />
+        <span>Se ne contano le copie (contabile)</span>
+      </label>
+      <div className="riga-campi">
+        <label className="campo">
+          <span className="campo-etichetta">Plurale</span>
+          <input
+            type="text"
+            placeholder="es. pozioni"
+            value={plurale}
+            aria-invalid={!!errore}
+            onChange={(e) => setPlurale(e.target.value)}
+            onBlur={salvaPlurale}
+            onKeyDown={(e) => e.key === 'Enter' && (contabile ? salvaPlurale() : toggle(true))}
+          />
+        </label>
+        {!contabile && plurale.trim() && (
+          <button className="btn btn-quieto campo-pulsante" onClick={() => toggle(true)}>
+            Rendi contabile
+          </button>
+        )}
+      </div>
+      {errore && <p className="errore-campo">{errore}</p>}
+
+      {contabile && (
+        <>
+          <p className="campo-etichetta" style={{ marginTop: 'var(--s-3)' }}>
+            Quantità iniziali
+          </p>
+          <ul className="gettoni">
+            {quantita.length === 0 && <li className="gettoni-vuoto">nessuna copia posata</li>}
+            {quantita.map((q) => (
+              <li key={q.placeId} className="gettone gettone-qta">
+                <QuantitaRiga q={q} onSet={(n) => onSetQuantita({ id: q.placeId, name: q.placeName, prep: q.prep }, n, q.span)} />
+              </li>
+            ))}
+          </ul>
+          {liberi.length > 0 && (
+            <div className="riga-campi">
+              <label className="campo">
+                <span className="campo-etichetta">Dove</span>
+                <select value={addLuogo} onChange={(e) => setAddLuogo(e.target.value)}>
+                  <option value="">scegli un luogo…</option>
+                  {liberi.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="campo campo-stretto">
+                <span className="campo-etichetta">Quante</span>
+                <input type="number" min={1} value={addN} onChange={(e) => setAddN(e.target.value)} />
+              </label>
+              <button className="btn btn-quieto campo-pulsante" disabled={!addLuogo} onClick={aggiungi}>
+                Aggiungi
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </Riquadro>
+  )
+}
+
+// Una riga «N in <luogo>» con il numero editabile e la × per toglierla.
+function QuantitaRiga({
+  q,
+  onSet
+}: {
+  q: { placeId: string; placeName: string; n: number }
+  onSet: (n: number) => void
+}): JSX.Element {
+  const [v, setV] = useState(String(q.n))
+  useEffect(() => setV(String(q.n)), [q.n])
+  const salva = (): void => {
+    const n = parseInt(v, 10)
+    if (!Number.isNaN(n) && n !== q.n) onSet(n)
+    else if (Number.isNaN(n)) setV(String(q.n))
+  }
+  return (
+    <>
+      <input
+        type="number"
+        min={0}
+        className="qta-input"
+        aria-label={`Quante copie in ${q.placeName}`}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={salva}
+        onKeyDown={(e) => e.key === 'Enter' && salva()}
+      />
+      <span>in {q.placeName}</span>
+      <button aria-label={`Togli le copie in ${q.placeName}`} title="Togli" onClick={() => onSet(0)}>
+        <IconaChiudi size={13} />
+      </button>
+    </>
   )
 }
 

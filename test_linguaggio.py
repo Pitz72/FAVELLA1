@@ -8741,6 +8741,55 @@ def test_studio_160_b1_round_trip():
     # 3. Il menu segnala l'oggetto come contabile col plurale.
     poz = next(o for o in d["menu"]["objects"] if o["id"] == "pozione")
     _check(poz.get("countable") and poz.get("plural") == "pozioni", f"il menu marca il contabile ({poz})")
+    # 4. L'outline espone contabile/plurale/countableSpan e le quantità con span, per
+    # l'editor Oggetti (slice B1 di Studio). La frase 'def_contabile' è anche lo span
+    # di definizione (defSpan), così «cambia tipo» la riscrive invece di appenderne una.
+    from strumenti_ide import analizza_outline
+    src_out = (
+        "La cella è una stanza.\nLa gola è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La pozione, plurale \"pozioni\", è contabile.\nLa pozione è prendibile.\n"
+        "Il giocatore ha 3 pozioni.\n"
+        "Ci sono 2 pozioni in la gola.\n")
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8", delete=False, suffix=".fav") as tmp:
+        tmp.write(src_out); path = tmp.name
+    try:
+        out = analizza_outline(path, sorgente=src_out)
+    finally:
+        os.unlink(path)
+    _check(out.get("ok"), "analizza_outline regge una storia con contabili")
+    oggp = next(o for o in out["objects"] if o["id"] == "pozione")
+    _check(oggp.get("countable") and oggp.get("plural") == "pozioni", f"l'outline marca il contabile ({oggp.get('plural')})")
+    _check(oggp.get("countableSpan") is not None and oggp.get("defSpan") == oggp["countableSpan"],
+           "defSpan di un contabile puro è la frase 'è contabile' (non None)")
+    qta = {q["placeId"]: q["n"] for q in oggp.get("quantity", [])}
+    _check(qta == {"inventario": 3, "gola": 2}, f"le quantità iniziali sono esposte con il luogo ({qta})")
+    _check(all(q.get("span") for q in oggp["quantity"]), "ogni quantità porta lo span della sua frase")
+
+
+def test_studio_160_calcolati_round_trip():
+    print("[1.6.0 / C2: Studio espone gli stati calcolati (sola lettura)]")
+    from strumenti_ide import analizza_variabili
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La torcia è una cosa.\nLa torcia è nella cella.\n"
+        "La protezione è attiva quando il giocatore ha la torcia.\n"
+        "La protezione è debole quando il giocatore è nella cella.\n")
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8", delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        modello = analizza_variabili(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(modello.get("ok"), "analizza_variabili regge gli stati calcolati")
+    calc = {c["name"]: c for c in modello.get("computed", [])}
+    _check("protezione" in calc, f"lo stato calcolato è esposto ({list(calc)})")
+    _check(set(calc["protezione"]["values"]) == {"attiva", "debole"},
+           f"i valori possibili sono raccolti ({calc['protezione']['values']})")
+    _check(len(calc["protezione"]["spans"]) == 2 and all(calc["protezione"]["spans"]),
+           "ogni clausola «… quando …» porta il suo span")
+    # Lo stato calcolato NON compare fra gli stati normali (non è assegnabile).
+    _check("protezione" not in {s["name"] for s in modello.get("states", [])},
+           "uno stato calcolato non è fra gli stati normali")
 
 
 def test_160_guardia_lalr_frasi_nuove():
@@ -9688,6 +9737,7 @@ def main():
         test_160_b1_annulla,
         test_160_b1_errori_dautore,
         test_studio_160_b1_round_trip,
+        test_studio_160_calcolati_round_trip,
         test_studio_160_percorso_completo_con_relazioni,
         test_studio_160_relazioni_pannello_round_trip,
         test_studio_160_riordino_round_trip_integrale,

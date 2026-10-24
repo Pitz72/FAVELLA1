@@ -53,6 +53,16 @@ export function ConnessioneStanze({
             →
           </span>
           <span className="uscita-meta">{b.name}</span>
+          {!e.implicit && !e.conditional && (
+            <label className="spunta spunta-inline" title="A senso unico: da qui non si torna indietro da sola">
+              <input
+                type="checkbox"
+                checked={!!e.oneWay}
+                onChange={() => void cambiaUscita({ daId: a.id, uscita: e, oneWay: !e.oneWay })}
+              />
+              <span>senza ritorno</span>
+            </label>
+          )}
           <button
             className="btn btn-pericolo btn-piccolo"
             title="Toglie il collegamento, anche il ritorno"

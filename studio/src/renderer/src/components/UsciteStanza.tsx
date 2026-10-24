@@ -161,6 +161,24 @@ function UscitaRiga({ stanza, uscita, rooms, direzioni }: {
           con una condizione
         </span>
       )}
+      {/* [1.6.0 / Q2] Senza ritorno: nessun auto-ritorno. Modificabile solo su un'uscita
+          esplicita e senza condizione; altrimenti è un distintivo in sola lettura. */}
+      {!uscita.implicit && !condizionata ? (
+        <label className="spunta spunta-inline" title="A senso unico: dall’altra stanza non si torna qui da sola">
+          <input
+            type="checkbox"
+            checked={!!uscita.oneWay}
+            onChange={() => void cambiaUscita({ daId: stanza.id, uscita, oneWay: !uscita.oneWay })}
+          />
+          <span>senza ritorno</span>
+        </label>
+      ) : (
+        uscita.oneWay && (
+          <span className="distintivo" title="A senso unico: nessun ritorno automatico">
+            senza ritorno
+          </span>
+        )
+      )}
       {condizionata && uscita.span && (
         <button
           className="btn btn-quieto btn-piccolo"
@@ -190,6 +208,7 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
   const [dir, setDir] = useState('')
   const [opposta, setOpposta] = useState<string | undefined>(undefined)
   const [verso, setVerso] = useState('')
+  const [senzaRitorno, setSenzaRitorno] = useState(false)
 
   const stanza = outline?.rooms.find((r) => r.id === stanzaId)
   if (!outline || !stanza) return null
@@ -230,18 +249,24 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
               ))}
             </select>
           </div>
+          <label className="spunta spunta-inline" title="A senso unico: dall’altra stanza non si torna qui da sola">
+            <input type="checkbox" checked={senzaRitorno} onChange={(e) => setSenzaRitorno(e.target.checked)} />
+            <span>senza ritorno</span>
+          </label>
           <button
             className="btn btn-accento"
             disabled={!pronta}
-            title="Aggiunge l'uscita e il ritorno dall'altra stanza"
+            title={senzaRitorno ? 'Aggiunge un’uscita a senso unico' : "Aggiunge l'uscita e il ritorno dall'altra stanza"}
             onClick={() => {
               const d = dir
               const v = verso
               const o = opposta
+              const ow = senzaRitorno
               setDir('')
               setVerso('')
               setOpposta(undefined)
-              void mapAddConnection(stanza.id, d, v, o)
+              setSenzaRitorno(false)
+              void mapAddConnection(stanza.id, d, v, o, ow)
             }}
           >
             Aggiungi l’uscita
@@ -250,7 +275,10 @@ export default function UsciteStanza({ stanzaId }: { stanzaId: string }): JSX.El
       ) : (
         <p className="nota-riquadro">Servono almeno due stanze per collegarle.</p>
       )}
-      <p className="aiuto">Il ritorno dall’altra stanza si scrive da solo: «nord» da qui è «sud» da lì.</p>
+      <p className="aiuto">
+        Il ritorno dall’altra stanza si scrive da solo: «nord» da qui è «sud» da lì — a meno che non scelga «senza
+        ritorno».
+      </p>
     </div>
   )
 }

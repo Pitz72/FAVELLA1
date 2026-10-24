@@ -794,6 +794,33 @@
 .var-counter-init input {
   width: 110px;
 }
+/* [1.6.0 / Q1] La riga dell'invariante di clamp ('resta sempre fra A e B'). */
+.var-clamp {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.var-clamp input {
+  width: 92px;
+}
+.var-clamp-ro {
+  font-weight: 600;
+  color: var(--testo);
+}
+/* [1.6.0 / B1] Una riga di quantità contabile (N in <luogo>) fra i gettoni. */
+.gettone-qta {
+  gap: 6px;
+}
+.qta-input {
+  width: 56px;
+}
+/* Una nota che apre un gruppo in un pannello (es. gli stati calcolati). */
+.pannello-sezione-nota {
+  margin: var(--s-4) 0 var(--s-2);
+  color: var(--testo-2);
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
 .var-badge {
   display: inline-flex;
   align-items: center;

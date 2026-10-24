@@ -183,6 +183,15 @@ function ArcoUscita(props: EdgeProps<DatiUscita>): JSX.Element | null {
   const unaVia = !data?.ritorno
   const se = data?.condizionata ? ' · se…' : ''
   const titolo = data?.condizionata ? 'C’è solo mentre una condizione è vera' : undefined
+  const colore = selected ? 'var(--mappa-linea-scelta)' : 'var(--mappa-linea)'
+  // [1.6.0 / Q2] Un collegamento a senso unico («senza ritorno») porta una FRECCIA
+  // singola verso la destinazione: la direzione è inequivocabile anche a colpo d'occhio.
+  const ah = 11
+  const aw = 5.5
+  const ux = dx / lung
+  const uy = dy / lung
+  const base = { x: pb.x - ux * ah, y: pb.y - uy * ah }
+  const frecciaPunti = `${pb.x},${pb.y} ${base.x - uy * aw},${base.y + ux * aw} ${base.x + uy * aw},${base.y - ux * aw}`
   return (
     <>
       <BaseEdge
@@ -190,7 +199,7 @@ function ArcoUscita(props: EdgeProps<DatiUscita>): JSX.Element | null {
         path={`M ${pa.x},${pa.y} L ${pb.x},${pb.y}`}
         interactionWidth={24}
         style={{
-          stroke: selected ? 'var(--mappa-linea-scelta)' : 'var(--mappa-linea)',
+          stroke: colore,
           strokeWidth: selected ? 3 : 2,
           // Un'uscita senza ritorno (a senso unico) è tratteggiata; una con una
           // condizione (motore 1.5) è a puntini.
@@ -198,6 +207,7 @@ function ArcoUscita(props: EdgeProps<DatiUscita>): JSX.Element | null {
           strokeLinecap: data?.condizionata ? 'round' : undefined
         }}
       />
+      {unaVia && <polygon points={frecciaPunti} fill={colore} stroke="none" />}
       <EdgeLabelRenderer>
         {data?.andata && (
           <div className="arco-etichetta" title={titolo} style={{ transform: `translate(-50%, -50%) translate(${vicinoA.x}px, ${vicinoA.y}px)` }}>
@@ -288,6 +298,8 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const [nuovaDir, setNuovaDir] = useState(false)
   const [ndNome, setNdNome] = useState('')
   const [ndOpp, setNdOpp] = useState('')
+  // [1.6.0 / Q2] Il collegamento nuovo è a senso unico (nessun ritorno automatico).
+  const [senzaRitorno, setSenzaRitorno] = useState(false)
 
   const attivo = editable
 
@@ -357,13 +369,15 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
     setNuovaDir(false)
     setNdNome('')
     setNdOpp('')
+    setSenzaRitorno(false)
   }
   const confermaDirezione = async (dir: string): Promise<void> => {
     const d = dir.trim().toLowerCase()
     if (!picker || !d) return
     const p = picker
+    const ow = senzaRitorno
     chiudiPicker()
-    await addConnection(p.from, d, p.to)
+    await addConnection(p.from, d, p.to, undefined, ow)
   }
   const ndN = ndNome.trim().toLowerCase()
   const ndO = ndOpp.trim().toLowerCase()
@@ -371,8 +385,9 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const confermaNuovaDir = async (): Promise<void> => {
     if (!picker || !ndValido) return
     const p = picker
+    const ow = senzaRitorno
     chiudiPicker()
-    await addConnection(p.from, ndN, p.to, ndO)
+    await addConnection(p.from, ndN, p.to, ndO, ow)
   }
   const erroreNuova = nuovaStanza?.trim() ? nomeOccupato(nuovaStanza) : null
   const confermaNuovaStanza = async (): Promise<void> => {
@@ -480,6 +495,10 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
             )
           }
         >
+          <label className="spunta" title="A senso unico: dalla destinazione non si torna indietro automaticamente">
+            <input type="checkbox" checked={senzaRitorno} onChange={(e) => setSenzaRitorno(e.target.checked)} />
+            <span>Senza ritorno (a senso unico)</span>
+          </label>
           {!nuovaDir ? (
             <div className="griglia-direzioni" role="group" aria-label={`Da ${nomeStanza(picker.from)}, verso`}>
               {direzioniOfferte.map((d) => {

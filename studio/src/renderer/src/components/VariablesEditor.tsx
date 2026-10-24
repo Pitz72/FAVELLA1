@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useStudio } from '../store'
-import type { VarState, VarCounter, OutlineSpan, SerializeSpec } from '../../../shared/protocol'
+import type { VarState, VarCounter, VarComputed, Operando, OutlineSpan, SerializeSpec } from '../../../shared/protocol'
 import Finestra from './Finestra'
 import { NonPronto, Vuoto } from './Elenco'
 import { IconaAggiorna, IconaChiudi, IconaPiu, IconaStella } from './Icone'
+
+// [1.6.0 / Q1] Un estremo del clamp come testo: un letterale è un numero, un estremo
+// dinamico «[contatore]» è un oggetto Operando (l'editor lo mostra ma non lo riscrive).
+function operandoTesto(op: Operando): string {
+  if (typeof op === 'number') return String(op)
+  if (op.kind === 'var') return `[${op.name}]`
+  return `${op.min}–${op.max}`
+}
+function estremoLetterale(op: Operando): number | null {
+  return typeof op === 'number' ? op : null
+}
 
 // Pannello «Stati & Contatori» (parametri di stato del mondo). Idioma dell'IDE:
 // la LISTA nel dock modifica i campi con applicazione IMMEDIATA (un'operazione =
@@ -25,6 +36,7 @@ export default function VariablesEditor(): JSX.Element {
   if (!variables.ok) return <NonPronto cosa="gli stati e i contatori" stato="errori" onRiprova={() => void loadVariables()} />
 
   const { states, counters } = variables
+  const computed = variables.computed ?? []
 
   // Imposta il valore iniziale dello stato (replace della frase 'X è valore.', o
   // append se lo stato non ne aveva ancora uno).
@@ -56,6 +68,17 @@ export default function VariablesEditor(): JSX.Element {
       return
     }
     void applyStatement({ op: 'counter_init', name: c.name, value }, c.initialSpan ?? undefined)
+  }
+
+  // [1.6.0 / Q1] Imposta/riscrive l'invariante di clamp di un contatore
+  // («X resta sempre fra A e B.»). Sostituisce la frase esistente (via span) o la
+  // aggiunge. min/max sono letterali numerici (l'editor non tocca gli estremi dinamici).
+  const setClamp = (c: VarCounter, min: number, max: number): void => {
+    void applyStatement({ op: 'clamp_decl', name: c.name, min, max }, c.clamp?.span ?? undefined)
+  }
+  // Toglie l'invariante: elimina la frase «resta sempre fra …».
+  const removeClamp = (c: VarCounter): void => {
+    if (c.clamp?.span) void deleteStatement(c.clamp.span, `Intervallo di «${c.name}» tolto`)
   }
 
   // Elimina lo stato/contatore: dichiarazione + valore iniziale + commento, in un passo
@@ -124,7 +147,128 @@ export default function VariablesEditor(): JSX.Element {
               </button>
             </div>
             <CounterInitial c={c} onSet={setCounterInitial} />
+            <ClampRow c={c} onSet={setClamp} onRemove={removeClamp} />
           </div>
+        ))}
+
+        {computed.length > 0 && (
+          <>
+            <p className="pannello-sezione-nota">
+              Stati calcolati: il loro valore viene da una condizione («… quando …»). Si leggono come gli
+              altri stati, ma si cambiano nel testo.
+            </p>
+            {computed.map((cs) => (
+              <div key={'calc' + cs.name} className="rule-card">
+                <div className="rule-head">
+                  <span className="rule-verb">calcolato</span>
+                  <span className="rule-target">{cs.name}</span>
+                  <button
+                    className="btn-icona"
+                    aria-label={`Elimina lo stato calcolato ${cs.name}`}
+                    title="Elimina questo stato calcolato (toglie tutte le sue frasi «… quando …»)"
+                    onClick={() => void eliminaSpans(cs.spans, `Stato calcolato «${cs.name}» eliminato`)}
+                  >
+                    <IconaChiudi />
+                  </button>
+                </div>
+                <ComputedValues cs={cs} />
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// [1.6.0 / Q1] L'invariante di clamp di un contatore, editabile inline («resta
+// sempre fra A e B»). Con estremi LETTERALI i due campi sono numerici; se un estremo
+// è dinamico («[soglia]») la riga è in sola lettura (si cambia nel testo).
+function ClampRow({
+  c,
+  onSet,
+  onRemove
+}: {
+  c: VarCounter
+  onSet: (c: VarCounter, min: number, max: number) => void
+  onRemove: (c: VarCounter) => void
+}): JSX.Element {
+  const clamp = c.clamp ?? null
+  const minLett = clamp ? estremoLetterale(clamp.min) : 0
+  const maxLett = clamp ? estremoLetterale(clamp.max) : null
+  const dinamico = !!clamp && (minLett === null || maxLett === null)
+  const [min, setMin] = useState(minLett !== null ? String(minLett) : '0')
+  const [max, setMax] = useState(maxLett !== null ? String(maxLett) : '')
+  useEffect(() => {
+    setMin(clamp && estremoLetterale(clamp.min) !== null ? String(estremoLetterale(clamp.min)) : '0')
+    setMax(clamp && estremoLetterale(clamp.max) !== null ? String(estremoLetterale(clamp.max)) : '')
+  }, [clamp])
+
+  // Un estremo dinamico: nessun campo, solo il testo della frase (sola lettura).
+  if (dinamico && clamp) {
+    return (
+      <div className="var-values var-clamp">
+        <label className="aiuto">resta sempre fra</label>
+        <span className="var-clamp-ro">
+          {operandoTesto(clamp.min)} e {operandoTesto(clamp.max)}
+        </span>
+        <span className="aiuto">· un estremo dipende da un contatore: si cambia nel testo</span>
+        <button className="btn-icona" title="Togli l’intervallo" aria-label={`Togli l’intervallo di ${c.name}`} onClick={() => onRemove(c)}>
+          <IconaChiudi size={14} />
+        </button>
+      </div>
+    )
+  }
+
+  const applica = (): void => {
+    const a = parseInt(min, 10)
+    const b = parseInt(max, 10)
+    if (Number.isNaN(a) || Number.isNaN(b) || b < a) return
+    if (clamp && a === minLett && b === maxLett) return
+    onSet(c, a, b)
+  }
+
+  return (
+    <div className="var-values var-clamp">
+      <label className="aiuto">resta sempre fra</label>
+      <input
+        type="number"
+        aria-label={`Minimo di ${c.name}`}
+        value={min}
+        onChange={(e) => setMin(e.target.value)}
+        onBlur={applica}
+      />
+      <span className="aiuto">e</span>
+      <input
+        type="number"
+        aria-label={`Massimo di ${c.name}`}
+        placeholder="(nessuno)"
+        value={max}
+        onChange={(e) => setMax(e.target.value)}
+        onBlur={applica}
+        onKeyDown={(e) => e.key === 'Enter' && applica()}
+      />
+      {clamp ? (
+        <button className="btn-icona" title="Togli l’intervallo" aria-label={`Togli l’intervallo di ${c.name}`} onClick={() => onRemove(c)}>
+          <IconaChiudi size={14} />
+        </button>
+      ) : (
+        <span className="aiuto">· lascia il massimo vuoto per non avere un intervallo</span>
+      )}
+    </div>
+  )
+}
+
+// [1.6.0 / C2] I valori che uno stato calcolato può assumere (sola lettura).
+function ComputedValues({ cs }: { cs: VarComputed }): JSX.Element {
+  return (
+    <div className="var-values">
+      <div className="objed-chips">
+        {cs.values.length === 0 && <span className="nota-riquadro">nessun valore dichiarato</span>}
+        {cs.values.map((v) => (
+          <span key={v} className="objed-chip">
+            {v}
+          </span>
         ))}
       </div>
     </div>

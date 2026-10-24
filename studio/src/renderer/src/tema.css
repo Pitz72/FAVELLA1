@@ -828,6 +828,14 @@ input[type='radio'] {
   cursor: pointer;
   font-weight: 500;
 }
+/* Una spunta compatta in linea con altri controlli (es. nelle righe delle uscite). */
+.spunta-inline {
+  gap: 5px;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--testo-2);
+  white-space: nowrap;
+}
 
 /* Interruttore (role=switch) */
 .interruttore {
