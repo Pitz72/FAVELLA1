@@ -13,7 +13,7 @@ from strutture import Mondo, ConseguenzaProprieta
 from favella_utils import (normalizza_nome, rendi_testo, frase_indeterminativa, prima_maiuscola,
                            assicura_console_utf8, nome_in_frase, con_preposizione,
                            radice_proprieta, messaggio, scrivi, raccogli_uscita, UscitaMuta,
-                           _scomponi_articolo, normalizza_apostrofi)
+                           _scomponi_articolo, normalizza_apostrofi, conteggio)
 from libreria_azioni import LIBRERIA_AZIONI, muovi_logica_default # Importa anche muovi_logica_default
 
 def mostra_stanza(mondo: Mondo):
@@ -52,7 +52,10 @@ def mostra_stanza(mondo: Mondo):
     if oggetti_nella_stanza:
         # [Livello 5] Articolo indeterminativo concordato (genere/numero inferiti
         # dal nome dichiarato): "Puoi vedere qui: una torcia, un tavolo.".
-        nomi_oggetti = [frase_indeterminativa(ogg.nome_visualizzato) for ogg in oggetti_nella_stanza]
+        # [1.6.0 / B1] Un contabile si mostra col numero concordato di copie qui
+        # ("3 pozioni", "1 pozione"), non con l'articolo indeterminativo.
+        nomi_oggetti = [_etichetta_elenco(mondo, ogg, stanza_corrente.nome)
+                        for ogg in oggetti_nella_stanza]
         scrivi(mondo, f"Puoi vedere qui: {', '.join(nomi_oggetti)}.", "elenco")
 
     # [1.3.0 / M-5] Si vede anche ciò che sta su un supporto o in un contenitore
@@ -82,6 +85,16 @@ def mostra_stanza(mondo: Mondo):
                 voci.append(f"{prima_maiuscola(d)} ({prima_maiuscola(dest.nome_visualizzato)})")
         scrivi(mondo, f"Uscite: {', '.join(voci)}.", "elenco")
 
+def _etichetta_elenco(mondo: Mondo, oggetto, luogo_id: str) -> str:
+    """[1.6.0 / B1] Come un oggetto si nomina in un elenco di presenze. Un contabile
+    si mostra con le copie di QUEL luogo e la concordanza dichiarata ('3 pozioni',
+    '1 pozione'); ogni altro oggetto con l'articolo indeterminativo ('una torcia')."""
+    if getattr(oggetto, "contabile", False):
+        return conteggio(oggetto.nome_visualizzato, oggetto.plurale,
+                         mondo.quantita_in(oggetto.nome, luogo_id))
+    return frase_indeterminativa(oggetto.nome_visualizzato)
+
+
 def _elenca_appoggiati(mondo: Mondo, oggetto, nominati, visti):
     """[1.3.0 / M-5] Mostra «Sul tavolo: una mela, un coltello.» per un supporto
     o un contenitore aperto, poi scende nel suo contenuto."""
@@ -94,7 +107,7 @@ def _elenca_appoggiati(mondo: Mondo, oggetto, nominati, visti):
     da_elencare = figli   # la frase di posto vale solo in una stanza (1.1.0)
     if da_elencare:
         dove = "su" if oggetto.is_supporto else "in"
-        elenco = ", ".join(frase_indeterminativa(f.nome_visualizzato) for f in da_elencare)
+        elenco = ", ".join(_etichetta_elenco(mondo, f, oggetto.nome) for f in da_elencare)
         scrivi(mondo, f"{prima_maiuscola(con_preposizione(dove, oggetto.nome_visualizzato))}: {elenco}.",
                "elenco")
         nominati.extend(f.nome for f in da_elencare)
@@ -1586,12 +1599,47 @@ def _ripiego_senza_oggetto(mondo: Mondo, verbo: str, id_risolto):
     return None
 
 
+# [1.6.0 / B1] Oggetti contabili: numeri scritti a parole accettati nell'input del
+# giocatore ('prendi tre pozioni'). Solo le forme comuni; i numeri in cifre e
+# 'una/un/uno' (=1) e 'tutte/tutti/tutto' (=tutte le copie) sono gestiti a parte.
+_NUMERI_PAROLA_GIOCATORE = {
+    "zero": 0, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+    "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12, "tredici": 13,
+    "quattordici": 14, "quindici": 15, "sedici": 16, "diciassette": 17, "diciotto": 18,
+    "diciannove": 19, "venti": 20,
+}
+# Le azioni di libreria che agiscono su una scorta: prendere/lasciare/consumare N.
+_AZIONI_SCORTA = frozenset(("prendere", "lasciare", "consumare"))
+
+
+def _estrai_quantita(argomento: str):
+    """[1.6.0 / B1] Separa un'eventuale quantità in testa all'argomento: 'prendi 2
+    pozioni' -> (2, 'pozioni'), 'prendi una pozione' -> (1, 'pozione'), 'prendi
+    tutte le pozioni' -> ('tutte', 'le pozioni'). Senza quantità -> (None,
+    argomento) (il default è 1, deciso dalla logica dell'azione)."""
+    parole = argomento.split()
+    if not parole:
+        return None, argomento
+    p0 = parole[0].lower()
+    resto = " ".join(parole[1:])
+    if p0.isdigit():
+        return int(p0), resto
+    if p0 in _NUMERI_PAROLA_GIOCATORE:
+        return _NUMERI_PAROLA_GIOCATORE[p0], resto
+    if p0 in ("una", "un", "uno"):
+        return 1, resto
+    if p0 in ("tutte", "tutti", "tutto"):
+        return "tutte", resto
+    return None, argomento
+
+
 def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) -> bool:
     """Elabora un singolo comando (parsing + applicazione di regole/azioni),
     senza gestire l'avanzamento dei turni. Restituisce True per continuare.
     [1.3.0] ristampa=False: comando di un elenco ('prendi tutto'), la stanza si
     ristampa una volta sola alla fine."""
     mondo._regola_scattata = False   # [1.4.3] vedi _senza_turno
+    mondo._quantita_comando = None   # [1.6.0 / B1] quantità per un contabile
     try:
         comando_pulito = comando_grezzo.strip().lower()
         if not comando_pulito:
@@ -1751,6 +1799,18 @@ def _esegui_comando(mondo: Mondo, comando_grezzo: str, ristampa: bool = True) ->
                                 and verbo_giocatore in senza_tempo)):
             mondo._consultazione = True
         azione = mondo.azioni[nome_azione]
+
+        # [1.6.0 / B1] Quantità per un oggetto contabile: 'prendi 2 pozioni',
+        # 'lascia una pozione', 'consuma tutte le pozioni'. Si stacca il numero in
+        # testa SOLO per prendi/lascia/consuma e solo se resta un nome (così 'prendi
+        # tutto' resta l'elenco di sempre); il nome ripulito prosegue nel flusso
+        # normale (regole d'autore comprese), e la logica dell'azione legge la
+        # quantità da mondo._quantita_comando (default 1 per un contabile).
+        if nome_azione in _AZIONI_SCORTA and argomento_sx:
+            n, resto = _estrai_quantita(argomento_sx)
+            if n is not None and resto.strip():
+                mondo._quantita_comando = n
+                argomento_sx = resto
 
         id_oggetto1 = None
         id_oggetto2 = None
@@ -1992,6 +2052,7 @@ _SENZA_RISTAMPA = frozenset((
     "chiudere", "accendere", "spegnere", "bere", "aspettare", "toccare", "spingere",
     "tirare", "premere", "girare", "rompere", "colpire", "indossare", "togliere",
     "dare", "mostrare", "annusare", "annusare_intorno", "ascoltare", "ascoltare_intorno",
+    "consumare",   # [1.6.0 / B1] consumare copie è un'azione d'inventario
 ))
 
 

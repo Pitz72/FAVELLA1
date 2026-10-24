@@ -3683,7 +3683,11 @@ class FavellaTransformer(Transformer):
                         f"non è una stanza né un contenitore/supporto.")
                     continue
             oggetto.quantita[luogo] = numero
-        # 4. Sincronizza i marker di presenza dalle quantità finali.
+        # 4. Sincronizza i marker di presenza dalle quantità finali. La forma
+        #    plurale dichiarata è anche un ALIAS per l'input del giocatore ('prendi
+        #    pozioni' risolve all'oggetto 'pozione', come trova_oggetto fa per l'autore).
+        for plur, canon in m.plurali.items():
+            m.dichiara_alias(plur, canon)
         for oggetto in m.oggetti.values():
             if oggetto.contabile:
                 m._sincronizza_presenza_contabile(oggetto)

@@ -363,6 +363,9 @@ def chiave_condizione(fonte: str) -> str:
 # (es. '[chi si fida del giocatore]'): il compilatore lo risolve in
 # mondo.liste_relazione, rendi_testo lo rende come elenco dei soggetti correnti.
 _RE_CHI = re.compile(r"^\s*chi\s+\S", re.IGNORECASE)
+# [1.6.0 / B1] Segnaposto-quantità '[quante pozioni]' / '[quanti proiettili]':
+# il numero di copie di un contabile che il giocatore ha con sé.
+_RE_QUANTE = re.compile(r"^\s*(?:quante|quanti|quanto)\s+(.+)$", re.IGNORECASE)
 
 
 def liste_relazione_nel_testo(testo: str) -> list:
@@ -498,6 +501,12 @@ def rendi_testo(mondo, testo: str, _profondita: int = 0) -> str:
             if spec is not None:
                 reso = _elenca_nomi(_nomi_membri_relazione(mondo, spec))
                 return prima_maiuscola(reso) if a_inizio else reso
+        # [1.6.0 / B1] '[quante pozioni]': le copie possedute di un contabile.
+        m_quante = _RE_QUANTE.match(grezzo)
+        if m_quante and trova is not None:
+            oggq = trova(normalizza_nome(m_quante.group(1)))
+            if oggq is not None and getattr(oggq, "contabile", False):
+                return str(mondo.quantita_posseduta(oggq.nome))
         return match.group(0)  # sconosciuto: resta il letterale [nome]
 
     testo = _RE_PLACEHOLDER.sub(_sostituisci, testo)
@@ -592,6 +601,16 @@ def frase_indeterminativa(nome_visualizzato: str) -> str:
         return f"un'{nucleo}" if inizia_vocale else f"una {nucleo}"
     # maschile, oppure genere ignoto ("l'..."): 'uno' davanti a s impura, 'un' altrove
     return f"uno {nucleo}" if s_impura else f"un {nucleo}"
+
+
+def conteggio(nome_visualizzato: str, plurale: str, n: int) -> str:
+    """[1.6.0 / B1] Un oggetto CONTABILE col suo numero e la concordanza DICHIARATA
+    (non indovinata): '3 pozioni', '1 pozione', '0 pozioni'. Il singolare è il
+    nucleo del nome visualizzato (senza articolo); il plurale è la forma data
+    dall'autore ('pozioni'). Solo n == 1 usa il singolare."""
+    _, nucleo_sing = _scomponi_articolo(nome_visualizzato)
+    plur = (plurale or "").strip() or nucleo_sing
+    return f"{n} {nucleo_sing}" if n == 1 else f"{n} {plur}"
 
 
 # [1.3.0 / M-4] L'ITALIANO DEI MESSAGGI DEL MOTORE
