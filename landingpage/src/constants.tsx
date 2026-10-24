@@ -700,7 +700,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.5.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 102 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.6.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — ${MANUAL_PDF_PAGES} pagine, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -861,9 +861,64 @@ Il resto (\`segnala\`, l'IFID, \`I demoni guardano la fine del turno.\`) è nel 
 
 ---
 
+## 8. Le frontiere della 1.6
+
+La 1.6 apre capacità nuove, sempre facoltative e additive: le storie della 1.5 (e della 1.4) girano identiche.
+
+### Relazioni di prima classe
+Una relazione binaria **nominata** collega due parti — entità o il giocatore — con una locuzione d'uso. La dichiari, la asserisci d'autore, la cambi nelle regole e la interroghi.
+
+\`\`\`favella
+"si fida di" è una relazione molti a molti.
+"apre" è una relazione uno a molti ed è reciproca.
+Il giocatore si fida di Saverio.
+La chiave di ottone apre la cella.
+Invece di tradisci Vito: dire "Fatto." e adesso il giocatore non si fida più di Vito.
+Invece di esci se qualcuno si fida del giocatore: dire "Qualcuno conta su di te.".
+\`\`\`
+
+L'arietà (\`uno a uno\` / \`uno a molti\` / \`molti a molti\`) governa gli sfratti delle coppie in conflitto; la reciprocità è facoltativa. \`[chi si fida del giocatore]\` rende l'elenco dei soggetti. In questa prima versione le relazioni sono d'autore e interrogabili, non ancora azionabili dal giocatore.
+
+### Procedure nominate
+Una sequenza di conseguenze dichiarata una volta e richiamata dove serve — anche da un'altra procedura, con una guardia contro i cicli:
+
+\`\`\`favella
+Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.
+Invece di dormi: dire "Dormi fino all'alba." e adesso esegui far passare la notte.
+\`\`\`
+
+### Oggetti contabili
+Una cosa tenuta in **più copie**, con la concordanza **dichiarata** dall'autore (il motore non pluralizza da sé):
+
+\`\`\`favella
+La pozione, plurale "pozioni", è contabile.
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
+\`\`\`
+
+Il giocatore ne prende, lascia o consuma quante vuole (\`prendi 2 pozioni\`, \`prendi una pozione\`, \`prendi tutte le pozioni\`, \`consuma una pozione\`), e la stanza, l'inventario e i contenitori mostrano le copie concordate (\`3 pozioni\`, \`1 pozione\`). Condizioni sulle scorte: \`se il giocatore ha almeno 2 pozioni\` (anche esatto / più di / meno di) e \`se non restano pozioni\`; interpolazione \`[quante pozioni]\`.
+
+### Invariante di clamp
+Tenere un contatore dentro un intervallo si dichiara una volta sola, e il motore la rispetta dopo **ogni** modifica (e sul valore iniziale):
+
+\`\`\`favella
+La sete resta sempre fra 0 e 100.
+\`\`\`
+
+Gli estremi possono essere un numero o un altro contatore (\`… fra 0 e [soglia]\`). ANNULLA riavvolge anche i clamp.
+
+### Connessioni a senso unico
+\`A collega D a B\` crea da sé anche il ritorno \`B → A\`; il suffisso \`senza ritorno\`, in ultima posizione, lo sopprime:
+
+\`\`\`favella
+La botola collega giù a il pozzo senza ritorno.
+\`\`\`
+
+---
+
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.5.0**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.6.0**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
@@ -931,7 +986,9 @@ Ogni turno se l'oro è almeno [prezzo]: dire "Te lo puoi permettere.".
 Il confronto è **dinamico**: se la cella di destra cambia, cambia anche il risultato. Abilita soglie *relative* (gelosie, difficoltà che si adatta) senza batterie di regole a numero fisso.
 
 ### Come gestisco una scorta (3 pozioni, le munizioni, le razioni…)?
-Con un **contatore**. FAVELLA non ha oggetti «in molteplicità» (e non li avrà: i plurali e la concordanza automatica la trasformerebbero in un linguaggio di programmazione, contro lo spirito del progetto). Una scorta è semplicemente un numero che cala quando consumi:
+In due modi, secondo che cosa è la scorta.
+
+**Con un contatore**, quando è una quantità astratta (le munizioni, i punti vita, le razioni): un numero che cala quando consumi, e il testo lo scrivi tu (\`[pozioni]\` interpola la quantità, così resta in italiano corretto).
 \`\`\`favella
 Le pozioni sono un contatore.
 Le pozioni partono da 3.
@@ -939,7 +996,14 @@ Le pozioni partono da 3.
 Invece di bevi se le pozioni è almeno 1: dire "Bevi una pozione. (Ne restano [pozioni].)" e adesso aumenta la salute di 5 e adesso diminuisci le pozioni.
 Invece di bevi se le pozioni è 0: dire "Non hai più pozioni.".
 \`\`\`
-Il testo della scorta lo scrivi tu (\`[pozioni]\` interpola la quantità): così resta in italiano corretto, senza pluralizzazioni inventate dal motore.
+
+**Con un oggetto contabile** (dalla **v1.6.0**), quando è una cosa vera del mondo che il giocatore prende e lascia in più copie. FAVELLA non pluralizza da sé — lo spirito del progetto resta quello — quindi il plurale lo **dichiari tu**, una volta sola:
+\`\`\`favella
+La pozione, plurale "pozioni", è contabile.
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
+\`\`\`
+Poi \`prendi 2 pozioni\`, \`lascia una pozione\`, \`consuma una pozione\` e \`prendi tutte le pozioni\` funzionano da soli, e gli elenchi mostrano «3 pozioni» o «1 pozione» con la concordanza che hai dichiarato. Condizioni sulle scorte: \`se il giocatore ha almeno 2 pozioni\` e \`se non restano pozioni\`; interpolazione \`[quante pozioni]\`.
 
 ### Posso far cambiare il meteo (o un altro stato) a caso?
 Sì, dalla **v0.32.0**. Oltre a dare a uno stato un valore fisso, puoi farglielo **pescare a caso** da un elenco:
@@ -997,4 +1061,4 @@ Nei **nomi** (di stanze, oggetti, stati, contatori) puoi usare solo lettere — 
 
 ---
 
-> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (102 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
+> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (${MANUAL_PDF_PAGES} pagine, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
