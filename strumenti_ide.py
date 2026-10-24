@@ -111,7 +111,8 @@ def analizza_outline(percorso_file, sorgente=None):
             simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    propagate_positions=True,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(testo)
     except Exception:
         # Il Mondo c'è ma le posizioni no: outline senza span (editing degradato).
@@ -308,6 +309,12 @@ def analizza_outline(percorso_file, sorgente=None):
             "location": location,
             "properties": properties,
             "aliases": aliases,
+            # [1.6.0 / B1] Contabile + plurale dichiarato (None se non contabile):
+            # informazione in sola lettura, così il modello dell'outline è completo
+            # come il menu di analizza_regole. La frase 'def_contabile' che lo
+            # dichiara resta intatta nel buffer (l'editor oggetti non la riscrive).
+            "countable": bool(getattr(o, "contabile", False)),
+            "plural": getattr(o, "plurale", None),
         })
 
     # Direzioni canoniche VALIDE in questo mondo (base nord/sud/est/ovest + quelle
@@ -707,7 +714,8 @@ def analizza_regole(percorso_file, sorgente=None):
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    propagate_positions=True,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(testo)
     except Exception:
         tree, mappa_righe = None, []
@@ -960,7 +968,8 @@ def analizza_variabili(percorso_file, sorgente=None):
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    propagate_positions=True,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(testo)
     except Exception:
         tree, mappa_righe, testo = None, [], ""
@@ -1078,7 +1087,8 @@ def analizza_parole(percorso_file, sorgente=None):
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    propagate_positions=True,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(testo)
     except Exception:
         return {"ok": False, "mode": "entrambi", "modeSpan": None, "verbs": [],
@@ -1179,7 +1189,8 @@ def analizza_dialoghi(percorso_file, sorgente=None):
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
                                    propagate_positions=True,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(testo)
     except Exception:
         tree, mappa_righe, testo = None, [], ""
@@ -1511,7 +1522,8 @@ def riordina_sorgente(percorso_file, sorgente=None):
         simboli = costruisci_symbol_table(sorgente)
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   propagate_positions=True, verbi_multi=simboli.verbi_multi)
+                                   propagate_positions=True, verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         tree = parser.parse(sorgente)
     except Exception as e:  # pragma: no cover - difensivo
         return {"ok": False, "reason": f"Riordino non riuscito: {e}"}
@@ -2233,7 +2245,8 @@ def _analizza_storia(percorso_radice, sorgente=None):
         simboli = costruisci_symbol_table(testo)
         _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   propagate_positions=True, verbi_multi=simboli.verbi_multi)
+                                   propagate_positions=True, verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
         albero = parser.parse(testo)
     except Exception:
         return None
