@@ -8072,7 +8072,7 @@ def test_studio_123_il_sidecar_e_le_frasi_nuove():
     archi = {(e["from"], e["direction"]): e.get("conditional") for e in grafo["edges"]}
     _check(archi.get(("sala", "est")) is True and archi.get(("gola", "ovest")) is True
            and archi.get(("sala", "ovest")) is False, f"la mappa sa quali uscite hanno una condizione ({archi})")
-    _check(favella_server.rpc_engine_version({}).get("sidecar") == "0.14.0", "sidecar 0.14.0")
+    _check(favella_server.rpc_engine_version({}).get("sidecar") == "0.15.0", "sidecar 0.15.0")
 
 
 _CORPUS_GUARDIA_150 = (
@@ -9194,7 +9194,43 @@ def test_studio_160_sidecar_regge_i_costrutti():
            "game.exportHtml produce la pagina Pyodide (col motore 1.6.0)")
     ver = favella_server.rpc_engine_version({})
     _check(ver.get("engine") == "1.6.0", f"il sidecar riporta il motore 1.6.0 ({ver.get('engine')})")
-    _check(ver.get("sidecar") == "0.14.0", f"il sidecar passa alla 0.14.0 ({ver.get('sidecar')})")
+    _check(ver.get("sidecar") == "0.15.0", f"il sidecar passa alla 0.15.0 ({ver.get('sidecar')})")
+
+
+def test_studio_160_vincibilita_sidecar():
+    print("[1.6.0 / Studio: world.winnability — grafo di vincibilità]")
+    import favella_server
+    src = (
+        "L'atrio è una stanza.\nLa sala è una stanza.\nIl ripostiglio è una stanza.\n"
+        "Il giocatore comincia nell'atrio.\n"
+        "L'atrio collega nord a la sala.\n"                 # la sala è raggiungibile
+        # il ripostiglio non è collegato a niente → irraggiungibile
+        "La gemma è una cosa.\nLa gemma è nella sala.\nLa gemma è prendibile.\n"
+        "La reliquia è una cosa.\n"                          # mai collocata → orfana
+        "\"deponi\" è un comando senza oggetto.\n"
+        "Invece di deponi se il giocatore ha la gemma: vinci \"Trionfo.\".\n"
+    )
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "prova.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write(src)
+        w = favella_server.rpc_world_winnability({"path": percorso})
+    _check(w.get("ok"), "world.winnability compila e analizza")
+    _check(w["start"] == "atrio", f"la partenza è l'atrio ({w.get('start')})")
+    _check(w["unreachableRooms"] == ["ripostiglio"], f"segnala la stanza irraggiungibile ({w['unreachableRooms']})")
+    _check("reliquia" in w["orphanObjects"], f"segnala l'oggetto orfano ({w['orphanObjects']})")
+    _check(set(w["reachableRooms"]) == {"atrio", "sala"}, f"le stanze raggiungibili ({w['reachableRooms']})")
+    rep = w["report"]
+    _check(rep and rep["vittoria"]["n_sorgenti"] == 1, "c'è una sorgente di vittoria")
+    _check(rep["vittoria"]["esito"] in ("vincibile-staticamente", "ostruzione-possibile"),
+           f"l'esito è calcolato ({rep['vittoria']['esito']})")
+    # Compilazione fallita → ok=False con diagnostiche (non solleva).
+    with tempfile.TemporaryDirectory() as cartella:
+        percorso = os.path.join(cartella, "rotta.fav")
+        with open(percorso, "w", encoding="utf-8") as f:
+            f.write("La stanza è una stanza.\nIl giocatore comincia nel vuoto.\n")
+        w2 = favella_server.rpc_world_winnability({"path": percorso})
+    _check(not w2.get("ok") and w2.get("errors"), "su una storia che non compila: ok=False + errors")
 
 
 def main():
@@ -9751,6 +9787,7 @@ def main():
         test_studio_160_riordino_round_trip_integrale,
         test_studio_160_rinomina_preserva_i_costrutti,
         test_studio_160_sidecar_regge_i_costrutti,
+        test_studio_160_vincibilita_sidecar,
     ]
     print("=" * 60)
     print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")

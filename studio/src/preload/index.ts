@@ -20,6 +20,7 @@ import type {
   WorldRelations,
   WorldDialogues,
   WorldWords,
+  WorldWinnability,
   StoryReorderResult,
   RenameResult,
   ReferencesResult,
@@ -123,6 +124,10 @@ const api = {
   /** [Studio 1.0] Parole e comandi: verbi d'autore, sinonimi, modo dei comandi. */
   worldWords(path?: string, source?: string, sources?: Fonti): Promise<WorldWords> {
     return ipcRenderer.invoke('rpc', 'world.words', path ? { path, source, sources } : {})
+  },
+  /** [1.6.0] Grafo di vincibilità: analisi statica (stanze/oggetti/finali) della storia. */
+  worldWinnability(path?: string, source?: string, sources?: Fonti): Promise<WorldWinnability> {
+    return ipcRenderer.invoke('rpc', 'world.winnability', path ? { path, source, sources } : {})
   },
   /** Genera la frase .fav canonica da una specifica strutturata (round-trip, scrittura). */
   serializeStatement(spec: SerializeSpec): Promise<SerializeResult> {

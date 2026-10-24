@@ -42,6 +42,7 @@
     worldVariables: (path, source, sources) => rpc('world.variables', path ? { path, source, sources } : {}),
     worldRelations: (path, source, sources) => rpc('world.relations', path ? { path, source, sources } : {}),
     worldWords: (path, source, sources) => rpc('world.words', path ? { path, source, sources } : {}),
+    worldWinnability: (path, source, sources) => rpc('world.winnability', path ? { path, source, sources } : {}),
     worldDialogues: (path, source, sources) => rpc('world.dialogues', path ? { path, source, sources } : {}),
     serializeStatement: (spec) => rpc('outline.serialize', spec),
     reorderSource: (path, source) => rpc('source.reorder', { path, source }),

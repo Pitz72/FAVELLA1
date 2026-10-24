@@ -48,6 +48,8 @@ try:
                                riordina_sorgente, riordina_storia, rinomina_entita,
                                riferimenti_entita, sorgenti_vive, serializza_frase)
     from esportazione import esporta_html
+    # [1.6.0] Analisi statica di vincibilità (grafo della vittoria), riusata dall'IDE.
+    import collaudo
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
     from gioco import (elabora_comando, mostra_stanza, intestazione, pulsanti, apri_partita,
@@ -56,7 +58,7 @@ try:
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.14.0"  # Studio: pannello Relazioni (world.relations: dichiarazioni + coppie asserite con span)
+VERSIONE_SIDECAR = "0.15.0"  # Studio: grafo di vincibilità (world.winnability) + computed/quantità/procedure negli analizzatori
 
 
 # ==============================================================================
@@ -566,6 +568,60 @@ def rpc_world_words(params):
     return analizza_parole(percorso, sorgente)
 
 
+import re as _re
+
+def _ids_da_avvisi(avvisi, prefisso, validi):
+    """[1.6.0] Estrae gli id fra apici dagli avvisi del linter ('Stanza 'x'
+    irraggiungibile…', 'Oggetto 'y' mai collocato…'), scartando quelli non più nel
+    mondo. Così l'overlay della mappa evidenzia ESATTAMENTE ciò che il report elenca."""
+    out = []
+    for w in avvisi or []:
+        m = _re.search(prefisso + r"\s+'([^']+)'", str(w))
+        if m and m.group(1) in validi and m.group(1) not in out:
+            out.append(m.group(1))
+    return out
+
+
+def rpc_world_winnability(params):
+    """[1.6.0] Grafo di VINCIBILITÀ: l'analisi statica del motore
+    (collaudo.analizza_vincibilita) sulla storia compilata. È una VISTA (non tocca il
+    .fav): catena della vittoria, stanze irraggiungibili, oggetti orfani, finali
+    irraggiungibili. Oltre al report grezzo, deriva gli id (stanze/oggetti) per
+    evidenziarli sull'overlay della mappa, coerenti con le liste del linter. Stessa
+    risoluzione di world.outline: senza 'path' usa la partita attiva."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    vuoto = {"ok": False, "report": None, "rooms": [], "start": None,
+             "reachableRooms": [], "unreachableRooms": [], "orphanObjects": []}
+    if not percorso:
+        return {**vuoto, "errors": [{"message": "Nessun mondo: apri un .fav o avvia "
+                                                "una partita.", "severity": "error"}]}
+    mondo = compila_mondo(percorso, sorgente)
+    if mondo is None:
+        diag = analizza_file_strutturato(percorso, sorgente=sorgente)
+        return {**vuoto, "errors": diag.get("errors", [])}
+    try:
+        report = collaudo.analizza_vincibilita(mondo)
+    except Exception as e:  # difensivo: l'analisi non deve mai rompere il protocollo
+        return {**vuoto, "errors": [{"message": "Analisi di vincibilità non riuscita: "
+                                                f"{type(e).__name__}: {e}", "severity": "error"}]}
+    rooms = [{"id": rid, "name": getattr(st, "nome_visualizzato", rid)}
+             for rid, st in mondo.stanze.items()]
+    linter = report.get("linter", {})
+    unreachable = _ids_da_avvisi(linter.get("stanze_isolate"), "Stanza", mondo.stanze)
+    orphans = _ids_da_avvisi(linter.get("oggetti_orfani"), "Oggetto", mondo.oggetti)
+    senza = set(unreachable)
+    reachable = [rid for rid in mondo.stanze if rid not in senza]
+    return {"ok": True, "report": report, "rooms": rooms,
+            "start": report.get("partenza"),
+            "reachableRooms": reachable, "unreachableRooms": unreachable,
+            "orphanObjects": orphans, "errors": []}
+
+
 def rpc_source_reorder(params):
     """[Autoformat / blocco C] Riordino canonico del sorgente di un file singolo.
     Richiede 'path' (+ 'source' per il buffer live). Ritorna {ok, text} o
@@ -651,6 +707,7 @@ _METODI = {
     "world.relations": rpc_world_relations,
     "world.dialogues": rpc_world_dialogues,
     "world.words": rpc_world_words,
+    "world.winnability": rpc_world_winnability,
     "source.reorder": rpc_source_reorder,
     "story.reorder": rpc_story_reorder,
     "entity.rename": rpc_entity_rename,

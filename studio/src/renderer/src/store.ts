@@ -18,6 +18,7 @@ import type {
   WorldRelations,
   WorldDialogues,
   WorldWords,
+  WorldWinnability,
   Pulsantiera,
   OutlineExit,
   ReferencesResult,
@@ -185,6 +186,9 @@ interface StudioState {
   dialoguesLoading: boolean
   words: WorldWords | null
   wordsLoading: boolean
+  // [1.6.0] Grafo di vincibilità (una vista del .fav): caricato dall'overlay della mappa.
+  winnability: WorldWinnability | null
+  winnabilityLoading: boolean
   pendingEdit: PendingEdit | null
   // [Studio 1.1] Storie a più file. `inclusioniDisco` è il grafo degli «Includi» letto dai
   // file sul disco (i buffer aperti, più nuovi, lo correggono: vedi grafoCorrente);
@@ -287,6 +291,8 @@ interface StudioState {
   // Editor dialoghi/NPC (Fase 6b)
   loadDialogues: () => Promise<void>
   loadWords: () => Promise<void>
+  // [1.6.0] Analisi di vincibilità (overlay/pannello della mappa).
+  loadWinnability: () => Promise<void>
   mapAddConnection: (
     fromId: string,
     direction: string,
@@ -556,6 +562,7 @@ const PROGETTO_VUOTO: Partial<StudioState> = {
   relations: null,
   dialogues: null,
   words: null,
+  winnability: null,
   pendingEdit: null,
   inclusioniDisco: {},
   destinazioneNuovi: null,
@@ -725,6 +732,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   dialoguesLoading: false,
   words: null,
   wordsLoading: false,
+  winnability: null,
+  winnabilityLoading: false,
   pendingEdit: null,
   inclusioniDisco: {},
   revisione: 0,
@@ -1371,6 +1380,22 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({ dialoguesLoading: false, dialogues: d })
     } catch {
       set({ dialoguesLoading: false })
+    }
+  },
+
+  // [1.6.0] Analisi statica di vincibilità della storia (una vista, non modifica il testo).
+  loadWinnability: async () => {
+    const ctx = contestoStoria(get())
+    if (!ctx) {
+      set({ winnability: null })
+      return
+    }
+    set({ winnabilityLoading: true })
+    try {
+      const w = await window.favella.worldWinnability(ctx.radice, ctx.sorgente, ctx.fonti)
+      set({ winnabilityLoading: false, winnability: w })
+    } catch {
+      set({ winnabilityLoading: false })
     }
   },
 

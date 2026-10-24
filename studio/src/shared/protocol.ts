@@ -818,6 +818,71 @@ export interface WorldRelations {
   errors: Diagnostic[]
 }
 
+// --- [1.6.0] Grafo di vincibilità (analisi statica del motore) --------------------
+//
+// Una VISTA del .fav (non lo modifica): l'IDE mostra «per vincere serve…», le stanze
+// irraggiungibili, gli oggetti orfani, i finali irraggiungibili. Il cuore è il report
+// di collaudo.analizza_vincibilita; in più il sidecar deriva gli id (stanze/oggetti)
+// per evidenziarli sulla mappa, coerenti con le liste del report.
+
+export type WinnabilityEsito = 'vincibile-staticamente' | 'ostruzione-possibile' | 'nessuna-vittoria'
+
+// Un nodo della «catena della vittoria»: un requisito, se è vero all'avvio, e i
+// produttori (conseguenze/azioni) che lo soddisfano, coi loro prerequisiti (ricorsivo).
+export interface WinnabilityChainNode {
+  requisito: string
+  vero_all_avvio: boolean
+  bloccante: boolean
+  ciclico: boolean
+  produttori: {
+    dove: string
+    comando: string | null
+    prerequisiti: WinnabilityChainNode[]
+    troncato?: boolean
+  }[]
+}
+
+// Una sorgente di vittoria (una conseguenza «vinci»): la sua condizione, la catena a
+// ritroso e i requisiti «bloccanti» (né veri all'avvio né producibili).
+export interface WinnabilitySource {
+  tipo: string
+  contesto: string
+  comando: string | null
+  condizione: string
+  catena: WinnabilityChainNode[]
+  bloccanti: string[]
+  ostruzione_sospetta: boolean
+}
+
+export interface WinnabilityReport {
+  versione_motore: string
+  livello: number
+  limite_onesto: string
+  partenza: string | null
+  vittoria: { n_sorgenti: number; esito: WinnabilityEsito; sorgenti: WinnabilitySource[] }
+  linter: {
+    stanze_isolate: string[]
+    oggetti_orfani: string[]
+    regole_morte: string[]
+    stati_inutilizzati: string[]
+  }
+  regole_irraggiungibili: { comando: string; condizione: string; atomi_mai_soddisfacibili: string[] }[]
+  scorte: { dove: string; requisito: string; contatore: string; perche: string }[]
+}
+
+export interface WorldWinnability {
+  ok: boolean
+  report: WinnabilityReport | null
+  // Le stanze del mondo (id→nome), per mappare gli id sull'overlay.
+  rooms: { id: string; name: string }[]
+  start: string | null
+  // Id derivati dal report (coerenti con le liste del linter), per l'overlay sulla mappa.
+  reachableRooms: string[]
+  unreachableRooms: string[]
+  orphanObjects: string[]
+  errors: Diagnostic[]
+}
+
 // --- Editor visuale dei dialoghi (Fase 6b) ---
 
 // Una scelta del giocatore a un nodo. 'outcome' = ramificazione ('conduce' al
