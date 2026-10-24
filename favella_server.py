@@ -44,9 +44,9 @@ try:
     # [1.4.0 / L-7] Gli strumenti per gli editor visuali e l'esportazione hanno
     # moduli propri, fuori dal nucleo del compilatore.
     from strumenti_ide import (analizza_outline, analizza_regole, analizza_variabili,
-                               analizza_dialoghi, analizza_parole, riordina_sorgente,
-                               riordina_storia, rinomina_entita, riferimenti_entita,
-                               sorgenti_vive, serializza_frase)
+                               analizza_relazioni, analizza_dialoghi, analizza_parole,
+                               riordina_sorgente, riordina_storia, rinomina_entita,
+                               riferimenti_entita, sorgenti_vive, serializza_frase)
     from esportazione import esporta_html
     from favella_utils import DIREZIONI_BASE, rendi_testo, raccogli_uscita
     from libreria_azioni import LIBRERIA_AZIONI
@@ -56,7 +56,7 @@ try:
 except Exception as _e:  # pragma: no cover - solo ambiente rotto
     _ENGINE_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
     VERSIONE_MOTORE = "sconosciuta"  # il motore non è importabile
-VERSIONE_SIDECAR = "0.13.0"  # Studio 1.3.0 / motore 1.6.0: relazioni, procedure, clamp, 'senza ritorno', oggetti contabili (round-trip IDE)
+VERSIONE_SIDECAR = "0.14.0"  # Studio: pannello Relazioni (world.relations: dichiarazioni + coppie asserite con span)
 
 
 # ==============================================================================
@@ -510,6 +510,24 @@ def rpc_world_variables(params):
     return analizza_variabili(percorso, sorgente)
 
 
+def rpc_world_relations(params):
+    """[B3] Modello editabile delle RELAZIONI di prima classe con lo span sorgente
+    (dichiarazione + coppie asserite), per il pannello «Relazioni». Stessa risoluzione
+    di world.outline: senza 'path' usa la partita attiva; con 'path' (+ 'source') legge
+    il buffer live."""
+    percorso = params.get("path")
+    if not percorso and _SESSIONE is not None:
+        percorso = _SESSIONE.path
+        sorgente = _SESSIONE.source
+    else:
+        sorgente = params.get("source")
+    if not percorso:
+        return {"ok": False, "relations": [], "members": [],
+                "errors": [{"message": "Nessun mondo: apri un .fav o avvia una "
+                                       "partita.", "severity": "error"}]}
+    return analizza_relazioni(percorso, sorgente)
+
+
 def rpc_world_dialogues(params):
     """[Fase 6b] Modello editabile di NPC e DIALOGHI con lo span sorgente di ogni
     frase, per l'editor visuale dei dialoghi. Stessa risoluzione di world.outline:
@@ -630,6 +648,7 @@ _METODI = {
     "world.outline": rpc_world_outline,
     "world.rules": rpc_world_rules,
     "world.variables": rpc_world_variables,
+    "world.relations": rpc_world_relations,
     "world.dialogues": rpc_world_dialogues,
     "world.words": rpc_world_words,
     "source.reorder": rpc_source_reorder,

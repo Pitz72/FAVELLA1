@@ -8072,7 +8072,7 @@ def test_studio_123_il_sidecar_e_le_frasi_nuove():
     archi = {(e["from"], e["direction"]): e.get("conditional") for e in grafo["edges"]}
     _check(archi.get(("sala", "est")) is True and archi.get(("gola", "ovest")) is True
            and archi.get(("sala", "ovest")) is False, f"la mappa sa quali uscite hanno una condizione ({archi})")
-    _check(favella_server.rpc_engine_version({}).get("sidecar") == "0.13.0", "sidecar 0.13.0")
+    _check(favella_server.rpc_engine_version({}).get("sidecar") == "0.14.0", "sidecar 0.14.0")
 
 
 _CORPUS_GUARDIA_150 = (
@@ -8943,6 +8943,91 @@ def test_studio_160_percorso_completo_con_relazioni():
     _check(rif.get("ok") and len(rif.get("items", [])) >= 1, "riferimenti_entita regge")
 
 
+def test_studio_160_relazioni_pannello_round_trip():
+    print("[1.6.0 / Studio: il pannello Relazioni legge e riscrive in modo fedele]")
+    from strumenti_ide import analizza_relazioni, serializza_frase
+    src = (
+        "La cella è una stanza.\n"                                    # 1
+        "Il giocatore comincia nella cella.\n"                        # 2
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"         # 3-4
+        "Vito è un personaggio.\nVito è nella cella.\n"               # 5-6
+        '"si fida di" è una relazione molti a molti ed è reciproca.\n'  # 7
+        '"serve" è una relazione uno a molti.\n'                      # 8
+        "Il giocatore si fida di Saverio.\n"                          # 9
+        "Saverio serve Vito.\n"                                       # 10
+        "Vito serve il giocatore.\n"                                  # 11
+    )
+    righe = src.split("\n")
+    r = analizza_relazioni("storia.fav", src)
+    _check(r.get("ok") and not r.get("errors"), "analizza_relazioni compila la storia con relazioni")
+
+    per_nome = {x["name"]: x for x in r["relations"]}
+    _check(set(per_nome) == {"si fida di", "serve"}, f"le due relazioni dichiarate ({sorted(per_nome)})")
+    fida = per_nome.get("si fida di", {})
+    serve = per_nome.get("serve", {})
+    _check(fida.get("arity") == "molti-a-molti" and fida.get("reciprocal") is True
+           and fida.get("prep") == "di" and fida.get("base") == "si fida",
+           f"«si fida di»: arietà/reciprocità/preposizione/base ({fida.get('arity')}, {fida.get('reciprocal')}, {fida.get('prep')})")
+    _check(serve.get("arity") == "uno-a-molti" and serve.get("reciprocal") is False
+           and serve.get("prep") is None, "«serve»: uno-a-molti, non reciproca, senza preposizione")
+
+    # Le dichiarazioni portano lo span della frase giusta.
+    _check(fida.get("declSpan", {}).get("line") == 7 and serve.get("declSpan", {}).get("line") == 8,
+           f"lo span della dichiarazione punta alla frase giusta ({fida.get('declSpan')}, {serve.get('declSpan')})")
+
+    # Le coppie: SOLO le frasi scritte d'autore (niente rovescio della reciprocità).
+    coppie_fida = [(p["a"], p["b"]) for p in fida.get("pairs", [])]
+    coppie_serve = [(p["a"], p["b"]) for p in serve.get("pairs", [])]
+    _check(coppie_fida == [("giocatore", "saverio")],
+           f"«si fida di»: una sola coppia asserita, senza il rovescio derivato ({coppie_fida})")
+    _check(coppie_serve == [("saverio", "vito"), ("vito", "giocatore")],
+           f"«serve»: le due coppie asserite nell'ordine del testo ({coppie_serve})")
+
+    # Round-trip in LETTURA: ogni coppia ri-serializzata via relation_fact riproduce
+    # ESATTAMENTE la frase sorgente (impronta identica); idem per le dichiarazioni.
+    for rel in r["relations"]:
+        for p in rel["pairs"]:
+            fatto = serializza_frase({"op": "relation_fact", "aName": p["aName"],
+                                      "base": p["base"], "prep": p["prep"], "bName": p["bName"]})
+            orig = righe[p["span"]["line"] - 1]
+            _check(fatto.get("ok") and fatto.get("text") == orig,
+                   f"coppia ri-serializzata identica alla sorgente ({fatto.get('text')!r})")
+        d = serializza_frase({"op": "relation_decl", "locution": rel["locution"],
+                              "arity": rel["arity"], "reciprocal": rel["reciprocal"]})
+        orig = righe[rel["declSpan"]["line"] - 1]
+        _check(d.get("ok") and d.get("text") == orig,
+               f"dichiarazione ri-serializzata identica alla sorgente ({d.get('text')!r})")
+
+    # TOGLI una coppia: si elimina la frase al suo span → la storia resta valida e la
+    # coppia sparisce (le altre restano). Emula lo splice del pannello sullo span.
+    span = serve["pairs"][0]["span"]  # "Saverio serve Vito." alla riga 10
+    nuove = [l for i, l in enumerate(righe, start=1) if i != span["line"]]
+    src2 = "\n".join(nuove)
+    _check(compila(src2)[0] is not None, "la storia resta valida dopo aver tolto una coppia")
+    r2 = analizza_relazioni("storia.fav", src2)
+    coppie_serve2 = [(p["a"], p["b"]) for p in next(x for x in r2["relations"] if x["name"] == "serve")["pairs"]]
+    _check(coppie_serve2 == [("vito", "giocatore")],
+           f"tolta la coppia giusta, le altre restano ({coppie_serve2})")
+
+    # AGGIUNGI una relazione e una coppia: si serializzano e si appendono → compila e
+    # il modello le riporta (round-trip in SCRITTURA).
+    decl = serializza_frase({"op": "relation_decl", "locution": "teme",
+                             "arity": "molti-a-molti", "reciprocal": False})
+    fatto = serializza_frase({"op": "relation_fact", "aName": "Vito", "base": "teme",
+                              "prep": None, "bName": "Saverio"})
+    src3 = src + decl["text"] + "\n" + fatto["text"] + "\n"
+    _check(compila(src3)[0] is not None, "la storia resta valida dopo aver aggiunto relazione e coppia")
+    r3 = analizza_relazioni("storia.fav", src3)
+    teme = next((x for x in r3["relations"] if x["name"] == "teme"), None)
+    _check(teme is not None and [(p["a"], p["b"]) for p in teme["pairs"]] == [("vito", "saverio")],
+           "la relazione e la coppia aggiunte compaiono nel modello")
+
+    # I membri per il form «aggiungi coppia»: il giocatore in testa + le entità.
+    ids = {m["id"] for m in r["members"]}
+    _check("giocatore" in ids and {"saverio", "vito"} <= ids and r["members"][0]["id"] == "giocatore",
+           f"i membri offrono il giocatore (in testa) e le entità ({sorted(ids)})")
+
+
 def test_studio_160_riordino_round_trip_integrale():
     print("[1.6.0 / Studio: il riordino di una storia 1.6.0 non perde e non altera nulla]")
     from strumenti_ide import riordina_sorgente
@@ -9032,6 +9117,7 @@ def test_studio_160_sidecar_regge_i_costrutti():
         grafo = favella_server.rpc_world_graph({"path": percorso})
         regole = favella_server.rpc_world_rules({"path": percorso})
         variabili = favella_server.rpc_world_variables({"path": percorso})
+        relazioni = favella_server.rpc_world_relations({"path": percorso})
         esportata = favella_server.rpc_game_export_html({"path": percorso})
     _check(avvio.get("ok"), "session.start compila e avvia la storia 1.6.0")
     _check("Scorte: 3" in conta.get("output", ""),
@@ -9044,11 +9130,14 @@ def test_studio_160_sidecar_regge_i_costrutti():
     clamp = {c["name"] for c in variabili.get("counters", []) if c.get("clamp")}
     _check(variabili.get("ok") and clamp == {"sete", "vigore"},
            "world.variables espone le invarianti di clamp")
+    _check(relazioni.get("ok") and len(relazioni.get("relations", [])) == 3
+           and any(p for r in relazioni["relations"] for p in r["pairs"]),
+           "world.relations espone le relazioni dichiarate e le coppie asserite")
     _check(esportata.get("ok") and "<html" in esportata.get("html", "").lower(),
            "game.exportHtml produce la pagina Pyodide (col motore 1.6.0)")
     ver = favella_server.rpc_engine_version({})
     _check(ver.get("engine") == "1.6.0", f"il sidecar riporta il motore 1.6.0 ({ver.get('engine')})")
-    _check(ver.get("sidecar") == "0.13.0", f"il sidecar passa alla 0.13.0 ({ver.get('sidecar')})")
+    _check(ver.get("sidecar") == "0.14.0", f"il sidecar passa alla 0.14.0 ({ver.get('sidecar')})")
 
 
 def main():
@@ -9600,6 +9689,7 @@ def main():
         test_160_b1_errori_dautore,
         test_studio_160_b1_round_trip,
         test_studio_160_percorso_completo_con_relazioni,
+        test_studio_160_relazioni_pannello_round_trip,
         test_studio_160_riordino_round_trip_integrale,
         test_studio_160_rinomina_preserva_i_costrutti,
         test_studio_160_sidecar_regge_i_costrutti,

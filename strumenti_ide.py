@@ -939,6 +939,177 @@ def analizza_regole(percorso_file, sorgente=None):
     return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
 
 
+def analizza_relazioni(percorso_file, sorgente=None):
+    """[Favella Studio / B3] Modello editabile delle RELAZIONI di prima classe, per
+    il pannello «Relazioni». Combina la VERITÀ SEMANTICA (compila_mondo: le relazioni
+    dichiarate, con arietà/reciprocità/preposizione) con le POSIZIONI di un secondo
+    parse: lo span della frase di dichiarazione e, per ciascuna relazione, le COPPIE
+    «soggetto → oggetto» ASSERITE d'autore (le frasi top-level 'Il giocatore si fida
+    di Saverio.'), ognuna con il proprio span.
+
+    La griglia riflette le FRASI SCRITTE (scatola di vetro), non la chiusura
+    semantica: le coppie derivate (il rovescio di una relazione reciproca, le
+    cancellazioni dell'arietà) NON compaiono come righe, perché non hanno una frase
+    propria da editare. Le asserzioni con un quantificatore ('qualcuno'/'qualcosa',
+    che il motore rifiuta come asserzione) restano fuori dalla griglia: il testo le
+    conserva verbatim e il pannello Problemi le segnala.
+
+    Ritorna un dict serializzabile in JSON:
+      {ok, relations[], members[], errors[]}
+      relation = {name, locution, arity, reciprocal, prep, base, declSpan,
+                  pairs[{op:'relation', a, b, aName, bName, rel, base, prep, span}]}
+      member   = {id, name, kind}  (il giocatore + ogni entità: per «aggiungi coppia»)
+    'span'/'declSpan' = {file, line, endLine} nel sorgente ORIGINALE (rimappato dagli
+    Includi), null se la frase non si trova (parse degradato). Difensiva: su errore di
+    compilazione ritorna ok=False + errors; non solleva mai verso il protocollo."""
+    diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
+    if not diag.get("ok"):
+        return {"ok": False, "relations": [], "members": [],
+                "errors": diag.get("errors", [])}
+    mondo = compila_mondo(percorso_file, sorgente)
+    if mondo is None:
+        return {"ok": False, "relations": [], "members": [],
+                "errors": diag.get("errors", [])}
+
+    # Posizioni: secondo parse posizionato (come analizza_regole/analizza_outline).
+    try:
+        if sorgente is not None:
+            testo, mappa_righe, _err = _espandi_inclusioni_seedable(percorso_file, sorgente)
+        else:
+            testo, mappa_righe, _err = espandi_inclusioni(percorso_file)
+        simboli = costruisci_symbol_table(testo)
+        _cp, nomi_dir, _de = valida_direzioni_dichiarate(simboli.coppie_direzioni, simboli)
+        parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
+                                   propagate_positions=True,
+                                   verbi_multi=simboli.verbi_multi,
+                                   relazioni=simboli.relazioni, procedure=simboli.procedure)
+        tree = parser.parse(testo)
+    except Exception:
+        tree, mappa_righe = None, []
+
+    def _riga_orig(linea_espansa):
+        if (mappa_righe and isinstance(linea_espansa, int)
+                and 1 <= linea_espansa <= len(mappa_righe)):
+            return mappa_righe[linea_espansa - 1]
+        return percorso_file, linea_espansa
+
+    def _span(line_exp, end_exp):
+        if line_exp is None:
+            return None
+        f_o, r_o = _riga_orig(line_exp)
+        _f2, r_end = _riga_orig(end_exp) if end_exp is not None else (f_o, r_o)
+        return {"file": f_o, "line": r_o, "endLine": r_end}
+
+    # Verità semantica: le relazioni dichiarate (nome-locuzione -> info base/prep).
+    relazioni_mondo = getattr(mondo, "relazioni", {})
+    info_rel = {nome: _rel_info_json(mondo, nome) for nome in relazioni_mondo}
+    # base-normalizzata -> nome-relazione, come fa il compilatore (l'ultima
+    # dichiarazione con quella base vince): i fatti si risolvono allo stesso modo.
+    base_a_nome = {}
+    for nome, info in info_rel.items():
+        base_a_nome[" ".join(str(info["base"]).lower().split())] = nome
+
+    def _membro_oggetto(sub):
+        """L'id-membro OGGETTO dal sottoalbero rel_ogg (rel_giocatore/rel_entita/…)."""
+        if not isinstance(sub, Tree):
+            return None
+        if sub.data == "rel_giocatore":
+            return REL_GIOCATORE
+        if sub.data == "rel_qualcuno":
+            return REL_QUALCUNO
+        if sub.data == "rel_qualcosa":
+            return REL_QUALCOSA
+        if sub.data == "rel_entita":
+            for ch in sub.children:
+                if isinstance(ch, Token):
+                    return normalizza_nome(str(ch))
+        return None
+
+    # Scansione del parse: span delle dichiarazioni + coppie asserite d'autore.
+    decl_span = {}         # nome-relazione -> span della frase di dichiarazione
+    coppie_per_rel = {}    # nome-relazione -> lista di coppie (nell'ordine del testo)
+    if tree is not None:
+        for nodo in tree.children:
+            if not isinstance(nodo, Tree):
+                continue
+            meta = getattr(nodo, "meta", None)
+            line = getattr(meta, "line", None) if meta else None
+            end = getattr(meta, "end_line", line) if meta else None
+            if nodo.data == "def_relazione":
+                quotati = [c for c in nodo.children
+                           if isinstance(c, Token) and c.type == "TESTO_QUOTATO"]
+                if quotati:
+                    nome = _spoglia_quotato(str(quotati[0]))
+                    if nome in relazioni_mondo and nome not in decl_span:
+                        decl_span[nome] = _span(line, end)
+            elif nodo.data in ("fatto_rel_gioc", "fatto_rel_ent"):
+                figli = list(nodo.children)
+                if nodo.data == "fatto_rel_gioc":
+                    a, resto = REL_GIOCATORE, figli
+                else:
+                    a, resto = None, []
+                    for ch in figli:
+                        if a is None and isinstance(ch, Token) and ch.type == "ENTITA":
+                            a = normalizza_nome(str(ch))
+                        else:
+                            resto.append(ch)
+                    if a is None:
+                        continue
+                rel_tok = next((c for c in resto
+                                if isinstance(c, Token) and c.type == "RELAZIONE"), None)
+                sub = next((c for c in resto if isinstance(c, Tree)), None)
+                if rel_tok is None or sub is None:
+                    continue
+                nome = base_a_nome.get(" ".join(str(rel_tok).lower().split()))
+                if nome is None:
+                    continue
+                b = _membro_oggetto(sub)
+                # I quantificatori non sono asserzioni valide: fuori dalla griglia (il
+                # testo li conserva verbatim; i Problemi segnalano l'errore d'autore).
+                if b is None or a in (REL_QUALCUNO, REL_QUALCOSA) or b in (REL_QUALCUNO, REL_QUALCOSA):
+                    continue
+                voce = {"op": "relation", "a": a, "b": b,
+                        "aName": _rel_membro_surface(mondo, a),
+                        "bName": _rel_membro_surface(mondo, b),
+                        "span": _span(line, end)}
+                voce.update(info_rel.get(nome, {"rel": nome, "base": nome, "prep": None}))
+                coppie_per_rel.setdefault(nome, []).append(voce)
+
+    relations = []
+    for nome in sorted(relazioni_mondo):
+        rel = relazioni_mondo[nome]
+        info = info_rel.get(nome, {"base": nome, "prep": None})
+        relations.append({
+            "name": nome,
+            "locution": rel.locuzione,
+            "arity": rel.arieta,
+            "reciprocal": bool(rel.reciproca),
+            "prep": getattr(rel, "prep", None),
+            "base": info.get("base"),
+            "declSpan": decl_span.get(nome),
+            "pairs": coppie_per_rel.get(nome, []),
+        })
+
+    # Membri possibili per il form «aggiungi coppia»: il giocatore + ogni entità, col
+    # nome a metà frase (già pronto per aName/bName del serializzatore relation_fact).
+    # La grammatica accetta come membro il giocatore, un oggetto/personaggio o una
+    # stanza (una relazione può legare una cosa a un luogo, es. «la chiave apre la cella»).
+    members = [{"id": REL_GIOCATORE, "name": "il giocatore", "kind": "giocatore"}]
+    for oid, o in mondo.oggetti.items():
+        members.append({
+            "id": oid,
+            "name": _rel_membro_surface(mondo, oid),
+            "kind": ("personaggio" if getattr(o, "is_personaggio", False)
+                     else "contenitore" if getattr(o, "is_contenitore", False)
+                     else "supporto" if getattr(o, "is_supporto", False)
+                     else "oggetto"),
+        })
+    for rid in mondo.stanze:
+        members.append({"id": rid, "name": _rel_membro_surface(mondo, rid), "kind": "stanza"})
+
+    return {"ok": True, "relations": relations, "members": members, "errors": []}
+
+
 def analizza_variabili(percorso_file, sorgente=None):
     """[Favella Studio / Stati] Modello editabile di STATI e CONTATORI con lo span
     sorgente delle frasi rilevanti, per il pannello «Stati & Contatori». Ritorna:
