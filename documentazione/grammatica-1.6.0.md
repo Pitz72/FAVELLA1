@@ -2151,3 +2151,46 @@ ha le op `relation_decl` e `relation_fact`.
 `ogni` nelle asserzioni (`Il passe-partout apre ogni porta`) e le relazioni
 azionabili dal giocatore. Il modello (`Relazione` con `soggetti_di`/`oggetti_di`,
 arietà, reciprocità) è già pronto per reggerle.
+
+### §29.4 — Procedure nominate (C1)
+
+Una sequenza NOMINATA di conseguenze, dichiarata una volta e richiamabile come
+conseguenza. Senza parametri in questa prima versione.
+
+```ebnf
+def_procedura: "Definisci" TESTO_QUOTATO "come" ":" conseguenza ( "e" "adesso"? conseguenza )* "."
+cons_procedura: "esegui" PROCEDURA
+```
+
+(`cons_procedura` è un'alternativa di `?conseguenza`; qui ha un nome di comodo per
+l'anti-drift.)
+
+Esempi:
+
+```favella
+Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.
+Invece di dormi: dire "Ti addormenti." e adesso esegui far passare la notte.
+```
+
+**Semantica.**
+
+- La dichiarazione nomina (fra virgolette, come un verbo) una lista di
+  **conseguenze**; non contiene `dire` (una procedura cambia lo stato, il testo lo
+  dice la regola che la richiama). Lo scanner di Passata 1 raccoglie i nomi →
+  terminale CHIUSO `PROCEDURA` (come `VERBO_MULTI`).
+- L'invocazione `esegui <nome>` usa il nome **bare** (il terminale chiuso lo
+  riconosce senza ambiguità) ed esegue in ordine le conseguenze del corpo; il corpo
+  e le sue conseguenze sono statici (catturati fuori dall'istantanea; lo stato che
+  cambiano è ANNULLA-safe come sempre).
+- Una procedura può richiamarne un'altra (o se stessa): una guardia di profondità
+  (50) evita i cicli infiniti, ignorando silenziosamente l'invocazione oltre il
+  limite.
+- Parole riservate nuove: `definisci`, `esegui` (`come` era già riservata).
+
+**Disambiguazione LALR(1).** `def_procedura` parte dalla riservata `Definisci`
+(nessun'altra dichiarazione) e `cons_procedura` dalla riservata `esegui` (nessun'altra
+conseguenza) → 0-ambiguo.
+
+**Round-trip Studio.** `analizza_regole.menu.procedures` elenca i nomi; una
+conseguenza-invocazione è il JSON `{op:"callProc", name}` (riscritta in `esegui
+<nome>`); `serializza_frase` ha l'op `procedure_def {name, consequences[]}`.

@@ -33,6 +33,7 @@ from strutture import (
     ConseguenzaSegnala, Arrivo,
     Relazione, CondizioneRelazione, ConseguenzaRelazioneAggiungi,
     ConseguenzaRelazioneTogli, REL_QUALCUNO, REL_QUALCOSA, REL_GIOCATORE,
+    ConseguenzaProcedura,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
@@ -148,6 +149,11 @@ PAROLE_RISERVATE = frozenset({
     # [1.6.0 / Q2] 'A collega nord a B senza ritorno.': connessione a senso unico.
     # 'senza' è già riservata; 'ritorno' è nuova.
     "ritorno",
+    # [1.6.0 / B3] relazioni di prima classe: parole della dichiarazione e dei
+    # quantificatori d'interrogazione ('qualcosa' era già di fatto riservata).
+    "relazione", "molti", "ed", "reciproca", "reciproco", "qualcuno",
+    # [1.6.0 / C1] 'Definisci "…" come: …' / 'esegui "…"'.
+    "definisci", "esegui",
 })
 
 
@@ -172,6 +178,10 @@ class TabellaSimboli:
         # reciproca, prep}. La 'base' (locuzione senza la preposizione finale) è ciò
         # che la grammatica incassa nel terminale chiuso RELAZIONE.
         self.relazioni = {}
+        # [1.6.0 / C1] Procedure nominate dichiarate ('Definisci "far passare la
+        # notte" come: …'): i nomi normalizzati. Diventano il terminale CHIUSO
+        # PROCEDURA (come VERBO_MULTI), usato nell'invocazione 'esegui "…"'.
+        self.procedure = set()
 
     @property
     def tutti(self):
@@ -242,6 +252,13 @@ _PREP_RELAZIONE_FINALI = frozenset({"di", "a", "da", "su", "con", "per", "in",
                                     "fra", "tra", "verso", "contro"})
 
 
+# [1.6.0 / C1] Dichiarazione di una procedura nominata: 'Definisci "far passare
+# la notte" come: …'. Come i verbi, va cercata prima di svuotare le stringhe
+# quotate (il nome vive nelle virgolette). Serve solo il NOME (il corpo lo legge
+# la Passata 2).
+_RE_DEF_PROCEDURA = re.compile(r'\bdefinisci\s+"([^"]+)"\s+come\s*:', re.IGNORECASE)
+
+
 def _scomponi_locuzione(locuzione: str):
     """[1.6.0 / B3] Divide una locuzione di relazione in (base, preposizione
     finale). 'si fida di' -> ('si fida', 'di'); 'apre' -> ('apre', None). La base
@@ -305,6 +322,11 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
             "reciproca": bool(m.group(3)),
             "prep": prep,
         }
+    # [1.6.0 / C1] Procedure nominate (anche loro prima di svuotare le stringhe).
+    for m in _RE_DEF_PROCEDURA.finditer(senza_commenti):
+        nome = " ".join(m.group(1).lower().split())
+        if nome:
+            tab.procedure.add(nome)
     pulito = _RE_QUOTATO.sub('""', pulito)
     pulito = _RE_COMMENTO.sub("", pulito)
 
@@ -453,6 +475,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_invariante         // [1.6.0 / Q1]
                   | def_relazione          // [1.6.0 / B3]
                   | def_relazione_fatto    // [1.6.0 / B3]
+                  | def_procedura          // [1.6.0 / C1]
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -702,6 +725,15 @@ _GRAMMAR_TEMPLATE = r"""
     // non ne ha e _rel_prep resta assente.
     _rel_prep: "di" | "del" | "dello" | "della" | "dei" | "degli" | "delle" | "dell'" | "d'"
              | "a" | "al" | "allo" | "alla" | "ai" | "agli" | "alle" | "all'"
+
+    // --- [1.6.0 / C1] PROCEDURE NOMINATE ---
+    // 'Definisci "far passare la notte" come: <conseguenza> e adesso <conseguenza>.'
+    // definisce una sequenza NOMINATA di conseguenze, richiamabile come conseguenza
+    // con 'esegui "far passare la notte"'. Senza parametri in questa prima versione.
+    // Inizia con la riservata "Definisci": nessun'altra dichiarazione parte così →
+    // LALR(1) 0-ambiguo. Il corpo è una lista di conseguenze (niente 'dire': una
+    // procedura cambia lo stato, il testo lo dice la regola che la richiama).
+    def_procedura: "Definisci" TESTO_QUOTATO "come" ":" conseguenza ( "e" "adesso"? conseguenza )* "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -986,6 +1018,10 @@ _GRAMMAR_TEMPLATE = r"""
                 | ENTITA RELAZIONE _rel_prep? rel_ogg                        -> cons_rel_ent_agg
                 | "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cons_rel_gioc_tog
                 | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg           -> cons_rel_ent_tog
+                // [1.6.0 / C1] Invocazione di una procedura nominata: 'esegui "far
+                // passare la notte"'. Parte dalla keyword nuova "esegui" → disgiunta
+                // dalle altre conseguenze.
+                | "esegui" PROCEDURA                                         -> cons_procedura
                 // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
                 // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
                 // (mai un'ENTITA: 'giocatore' è riservata), distinta da
@@ -1133,6 +1169,11 @@ _GRAMMAR_TEMPLATE = r"""
     // in 'del'/'alla'). Vuota -> regex che non matcha mai.
     RELAZIONE.3: /(?:__RELAZIONI__)\b/i
 
+    // [1.6.0 / C1] PROCEDURA: alternanza CHIUSA dei nomi di procedura dichiarati
+    // ('far passare la notte'), generata per-file (come VERBO_MULTI). Priorità
+    // ALTA (.3) e confine di parola. Vuota -> regex che non matcha mai.
+    PROCEDURA.3: /(?:__PROCEDURE__)\b/i
+
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
 
@@ -1239,6 +1280,16 @@ def _costruisci_alt_relazioni(relazioni=()) -> str:
     return "|".join(_pattern_nome(b) for b in basi)
 
 
+def _costruisci_alt_procedure(procedure=()) -> str:
+    """[1.6.0 / C1] Corpo regex dell'alternanza del terminale PROCEDURA: i nomi
+    delle procedure dichiarate ('far passare la notte'), con spazi flessibili e
+    ordinati per lunghezza decrescente (longest-match). Vuoto -> non matcha mai."""
+    nomi = sorted(set(p for p in procedure if p), key=len, reverse=True)
+    if not nomi:
+        return r"[^\s\S]"
+    return "|".join(_pattern_nome(n) for n in nomi)
+
+
 # ------------------------------------------------------------------------------
 # [1.3.0] PAROLE CHIAVE CON CONFINE DI PAROLA, SENZA DISTINZIONE DI MAIUSCOLE
 # ------------------------------------------------------------------------------
@@ -1305,7 +1356,7 @@ def _parole_chiave_con_confine(grammatica: str) -> str:
 
 
 def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=(),
-                          relazioni=()) -> str:
+                          relazioni=(), procedure=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
     ENTITA, VARIABILE, DIREZIONE, VERBO_MULTI e RELAZIONE risolti dai simboli noti
     (Passata 2). VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include
@@ -1316,6 +1367,7 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=(),
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
     grammatica = grammatica.replace("__RELAZIONI__", _costruisci_alt_relazioni(relazioni))
+    grammatica = grammatica.replace("__PROCEDURE__", _costruisci_alt_procedure(procedure))
     return _parole_chiave_con_confine(grammatica)
 
 
@@ -1330,7 +1382,8 @@ _CACHE_PARSER: dict = {}
 
 
 def costruisci_parser(simboli, variabili=(), direzioni=(),
-                      propagate_positions=False, verbi_multi=(), relazioni=()) -> Lark:
+                      propagate_positions=False, verbi_multi=(), relazioni=(),
+                      procedure=()) -> Lark:
     """Istanzia (o riusa dalla cache) il parser LALR(1) per i simboli dati. LALR è
     unambiguo per costruzione: un'eventuale ambiguità grammaticale emergerebbe qui
     come GrammarError a build-time, non come scelta silenziosa a runtime.
@@ -1339,7 +1392,7 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
     finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, propagate_positions)
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1350,10 +1403,10 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
 
 
 def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=(),
-                                 relazioni=()) -> Lark:
+                                 relazioni=(), procedure=()) -> Lark:
     """[1.3.0 / M-6] Un parser che legge una sola condizione ('la porta è
     aperta'), per i testi condizionali. Cachato come quello principale."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, "condizione")
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1816,6 +1869,10 @@ class FavellaTransformer(Transformer):
         # la riconduco all'id canonico (la locuzione intera, 'si fida di').
         base = " ".join(token.value.lower().split())
         return self._base_relazione.get(base, base)
+
+    def PROCEDURA(self, token):
+        # [1.6.0 / C1] Il nome di una procedura, normalizzato (spazi singoli).
+        return " ".join(token.value.lower().split())
 
     def PREP_AZIONE(self, token):
         return token.value.lower()
@@ -2326,6 +2383,28 @@ class FavellaTransformer(Transformer):
 
     def cond_rel_qualcosa_neg(self, locuzione, ogg):
         return CondizioneNot(CondizioneRelazione(locuzione, REL_QUALCOSA, ogg))
+
+    # --- [1.6.0 / C1] Procedure nominate ---
+
+    def def_procedura(self, nome_quotato, *conseguenze):
+        # 'Definisci "far passare la notte" come: <conseguenze>.'. Il corpo è una
+        # lista di Conseguenza; lo registriamo nel mondo (l'ultima definizione per
+        # quel nome vince). Le conseguenze del corpo vanno validate come le altre.
+        nome = " ".join(normalizza_apostrofi(str(nome_quotato)).lower().split())
+        if not nome:
+            self.errori.append("«Definisci» vuole il nome della procedura fra virgolette.")
+            return None
+        corpo = [c for c in conseguenze if isinstance(c, Conseguenza)]
+        if nome in self.mondo.procedure:
+            self.warnings.append(f"La procedura «{nome_quotato}» è definita due volte: vale l'ultima.")
+        self.mondo.procedure[nome] = corpo
+        self._pending_conseguenze.append(corpo)   # le conseguenze del corpo si validano
+        return None
+
+    def cons_procedura(self, nome_proc):
+        # 'esegui "far passare la notte"'. Il nome è il terminale PROCEDURA (chiuso):
+        # esiste per costruzione, quindi non serve validarlo qui.
+        return ConseguenzaProcedura(nome_proc)
 
     def def_direzioni(self, dir_a, dir_b):
         # [Livello 4 / L1] La coppia è già stata raccolta in Passata 1 e applicata
@@ -4460,7 +4539,8 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         # [1.3.0] Tutti gli errori di sintassi in una volta (analizza_con_recupero).
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4481,7 +4561,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
         transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi, simboli.relazioni)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
         transformer.transform(tree)
 
@@ -4692,7 +4772,8 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         # [1.3.0] Tutti gli errori di sintassi, ciascuno con la sua posizione.
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4710,7 +4791,7 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                     "worldSummary": None}
         transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi, simboli.relazioni)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
         _avvisa_partenza_implicita(transformer, mappa_righe)
@@ -4802,11 +4883,12 @@ def compila_mondo(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi,
-                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                                   procedure=simboli.procedure)
         tree = parser.parse(testo)
         transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
-                                        simboli.verbi_multi, simboli.relazioni)
+                                        simboli.verbi_multi, simboli.relazioni, simboli.procedure)
         transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]
         transformer.transform(tree)
         transformer.valida_post()

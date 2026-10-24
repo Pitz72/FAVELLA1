@@ -8149,6 +8149,10 @@ _CORPUS_GUARDIA_160 = (
     "Ogni turno se il giocatore si fida di qualcuno: aumenta la sete.\n"
     "\"elenca\" è un comando senza oggetto.\n"
     "Invece di elenca: dire \"Si fidano di te: [chi si fida del giocatore].\".\n"
+    # [C1] Procedura nominata: dichiarazione (corpo di conseguenze) e invocazione.
+    "Definisci \"riposa un poco\" come: diminuisci la sete e adesso aumenta il vigore.\n"
+    "\"pernotta\" è un comando senza oggetto.\n"
+    "Invece di pernotta: dire \"Dormi.\" e adesso esegui riposa un poco e adesso aumenta la sete.\n"
 )
 
 
@@ -8567,19 +8571,94 @@ def test_160_relazioni_additivo_nessuna_relazione():
     _check(mondo is not None and not mondo.relazioni, "nessuna relazione; la storia compila come prima")
 
 
+def test_160_procedure():
+    print("[1.6.0 / C1: procedure nominate — Definisci … come: … / esegui …]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa stanchezza è un contatore.\n"
+        "La lampada è una cosa.\nLa lampada è nella cella.\nLa lampada è accesa.\n"
+        'Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.\n'
+        '"dormi" è un comando senza oggetto.\n'
+        'Invece di dormi: dire "Dormi." e adesso esegui far passare la notte.\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(len(mondo.procedure.get("far passare la notte", [])) == 3,
+           "il corpo della procedura ha le tre conseguenze")
+    esegui(mondo, "dormi")
+    _check(mondo.variabili["sete"] == 10 and mondo.variabili["stanchezza"] == 5,
+           "l'invocazione esegue le conseguenze del corpo")
+    _check("spenta" in mondo.oggetti["lampada"].proprieta, "anche i cambi di proprietà")
+    esegui(mondo, "annulla")
+    _check(mondo.variabili["sete"] == 0 and "accesa" in mondo.oggetti["lampada"].proprieta,
+           "ANNULLA riavvolge gli effetti della procedura")
+
+
+def test_160_procedure_ricorsione():
+    print("[1.6.0 / C1: una procedura che richiama se stessa non blocca il motore]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "I passi sono un contatore.\n"
+        'Definisci "gira" come: aumenta i passi e adesso esegui gira.\n'
+        '"rotea" è un comando senza oggetto.\n'
+        "Invece di rotea: esegui gira.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila una procedura ricorsiva")
+    esegui(mondo, "rotea")
+    _check(0 < mondo.variabili["passi"] <= 60,
+           f"la ricorsione è limitata, niente blocco (passi={mondo.variabili.get('passi')})")
+
+
+def test_studio_160_procedure_round_trip():
+    print("[1.6.0 / C1: round-trip Studio delle procedure]")
+    from strumenti_ide import _serializza_regola
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nIl vigore è un contatore.\n"
+        'Definisci "riposa" come: diminuisci la sete di 3 e adesso aumenta il vigore.\n'
+        '"pernotta" è un comando senza oggetto.\n'
+        'Invece di pernotta: dire "Riposi." e adesso esegui riposa.\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        d = analizza_regole(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(d.get("ok"), "analizza_regole regge")
+    _check("riposa" in d["menu"]["procedures"], "il menu elenca la procedura")
+    r = d["rules"][0]
+    _check(r["consequences"] == [{"op": "callProc", "name": "riposa"}],
+           f"la conseguenza-invocazione è nel modello ({r['consequences']})")
+    frase = _serializza_regola(dict(r, op="rule"))
+    _check("esegui riposa" in frase, f"la regola si riscrive con l'invocazione ({frase})")
+    decl = serializza_frase({"op": "procedure_def", "name": "riposa", "consequences": [
+        {"op": "count", "name": "sete", "mode": "diminuisci", "value": 3},
+        {"op": "count", "name": "vigore", "mode": "aumenta", "value": 1}]})
+    _check(decl.get("text") == "Definisci \"riposa\" come: diminuisci sete di 3 e adesso aumenta vigore.",
+           f"serializza la dichiarazione ({decl})")
+    # Ricompila la dichiarazione riscritta.
+    m2, _ = compila("La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+                    "La sete è un contatore.\nIl vigore è un contatore.\n" + decl["text"] + "\n")
+    _check(m2 is not None and "riposa" in m2.procedure, "la dichiarazione riscritta ricompila")
+
+
 def test_160_guardia_lalr_frasi_nuove():
     print("[1.6.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA_160)
     try:
         costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli),
-                          verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
+                          verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                          procedure=simboli.procedure)
         ok, msg = True, ""
     except GrammarError as e:
         ok, msg = False, str(e)
     _check(ok, f"LALR(1) senza conflitti ({msg})")
     grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili,
                                        _nomi_direzioni(simboli), verbi_multi=simboli.verbi_multi,
-                                       relazioni=simboli.relazioni)
+                                       relazioni=simboli.relazioni, procedure=simboli.procedure)
     albero = Lark(grammatica, start="start", parser="earley", ambiguity="explicit").parse(_CORPUS_GUARDIA_160)
     _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
     mondo, log = compila(_CORPUS_GUARDIA_160)
@@ -9122,6 +9201,9 @@ def main():
         test_studio_160_relazioni_round_trip,
         test_160_relazioni_interpolazione,
         test_160_relazioni_additivo_nessuna_relazione,
+        test_160_procedure,
+        test_160_procedure_ricorsione,
+        test_studio_160_procedure_round_trip,
         test_160_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)

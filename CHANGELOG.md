@@ -53,6 +53,16 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   generato per-file; round-trip Studio: `analizza_regole.menu.relations` +
   condizioni/conseguenze `op:"relation"`, `serializza_frase` op `relation_decl`/
   `relation_fact`.)
+- **Procedure nominate (C1)** — una sequenza nominata di conseguenze, dichiarata
+  una volta e richiamabile: `Definisci "far passare la notte" come: aumenta la sete
+  di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.`, poi
+  `Invece di dormi: … e adesso esegui far passare la notte.`. Senza parametri in
+  questa prima versione; il corpo è una lista di conseguenze (il testo lo dice la
+  regola che la richiama). Una procedura può richiamarne un'altra o se stessa, con
+  una guardia di profondità contro i cicli. Parole riservate nuove: `definisci`,
+  `esegui`. (`def_procedura`, `cons_procedura`; terminale chiuso `PROCEDURA`;
+  round-trip Studio: `menu.procedures`, conseguenza `op:"callProc"`,
+  `serializza_frase` op `procedure_def`.)
 
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto

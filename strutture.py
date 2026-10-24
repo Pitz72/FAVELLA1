@@ -455,6 +455,33 @@ class ConseguenzaRelazioneTogli(Conseguenza):
             rel.togli(self.a, self.b)
 
 
+class ConseguenzaProcedura(Conseguenza):
+    """[1.6.0 / C1] Invoca una procedura nominata ('esegui "far passare la
+    notte"'): esegue in ordine le conseguenze del suo corpo. Una guardia di
+    profondità evita i cicli (una procedura che, direttamente o no, richiama se
+    stessa): oltre il limite l'invocazione è silenziosamente ignorata."""
+    LIMITE_RICORSIONE = 50
+
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def esegui(self, mondo: 'Mondo'):
+        corpo = (getattr(mondo, "procedure", None) or {}).get(self.nome)
+        if not corpo:
+            return
+        in_corso = getattr(mondo, "_procedure_in_corso", None)
+        if in_corso is None:
+            in_corso = mondo._procedure_in_corso = []
+        if len(in_corso) >= self.LIMITE_RICORSIONE:
+            return
+        in_corso.append(self.nome)
+        try:
+            for c in corpo:
+                c.esegui(mondo)
+        finally:
+            in_corso.pop()
+
+
 class ConseguenzaVariabile(Conseguenza):
     """[Livello 3] Imposta il valore di uno 'stato' globale (es. 'e adesso il
     semaforo è verde')."""
@@ -1214,6 +1241,11 @@ class Mondo:
         # compilatore: chiave normalizzata -> (nome_relazione, id_membro). L'elenco
         # vero è ricalcolato a ogni resa dalle coppie correnti (come condizioni_testo).
         self.liste_relazione: Dict[str, tuple] = {}
+        # [1.6.0 / C1] Procedure nominate: nome -> lista di Conseguenza (il corpo).
+        # Statico (scritto dal compilatore). Il contatore di ricorsione, invece, è
+        # volatile (sessione del comando in corso).
+        self.procedure: Dict[str, list] = {}
+        self._procedure_in_corso: list = []
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1533,6 +1565,8 @@ class Mondo:
                        # [1.5.0] i segnali per l'ospite (come gli annunci) e il
                        # calcolo in corso degli stati calcolati
                        "segnali", "_calcolo_in_corso", "_partenza_dopo_apertura",
+                       # [1.6.0 / C1] la pila di ricorsione delle procedure in corso
+                       "_procedure_in_corso",
                        # [1.4.0] l'uscita dell'host e ciò che il giocatore ha scoperto
                        "uscita", "verbi_scoperti", "argomenti_scoperti")
 
@@ -1552,7 +1586,9 @@ class Mondo:
                       # [1.6.0 / B3] la struttura delle relazioni e gli elenchi di
                       # testo risolti sono statici; lo STATO (le coppie) sta dentro
                       # i Relazione, che restano nell'istantanea come 'relazioni'.
-                      "liste_relazione")
+                      "liste_relazione",
+                      # [1.6.0 / C1] i corpi delle procedure sono statici.
+                      "procedure")
 
     def cattura_stato(self) -> dict:
         """[0.21.0 / A3] Istantanea profonda dello stato MUTABILE del mondo, per

@@ -27,7 +27,7 @@ from strutture import (
     ConseguenzaVariabileCopia, ConseguenzaSegnala,
     OperandoCasuale, OperandoNumero, OperandoVariabile,
     CondizioneRelazione, ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli,
-    REL_GIOCATORE, REL_QUALCUNO, REL_QUALCOSA,
+    REL_GIOCATORE, REL_QUALCUNO, REL_QUALCOSA, ConseguenzaProcedura,
 )
 from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QUADRA_CHIUSA
 from compilatore import (
@@ -608,6 +608,9 @@ def _conseq_to_json(c, mondo):
                 "destName": _nome_stanza(mondo, c.destinazione) if c.destinazione else None}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
+    if isinstance(c, ConseguenzaProcedura):
+        # [1.6.0 / C1] 'esegui "far passare la notte"'.
+        return {"op": "callProc", "name": c.nome}
     if isinstance(c, (ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli)):
         # [1.6.0 / B3] 'il giocatore si fida di Vito' / 'il giocatore non si fida
         # più di Vito'. 'remove' distingue le due; 'a'/'b' gli ID, i Name le forme.
@@ -666,7 +669,8 @@ def analizza_regole(percorso_file, sorgente=None):
     Difensiva: su errore restituisce ok=False + errors, non solleva."""
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     vuoto_menu = {"verbs": [], "objects": [], "rooms": [],
-                  "directions": [], "states": [], "counters": [], "relations": []}
+                  "directions": [], "states": [], "counters": [], "relations": [],
+                  "procedures": []}
     if not diag.get("ok"):
         return {"ok": False, "rules": [], "events": [], "demons": [], "menu": vuoto_menu,
                 "errors": diag.get("errors", [])}
@@ -899,6 +903,8 @@ def analizza_regole(percorso_file, sorgente=None):
              "reciprocal": bool(rel.reciproca), "prep": getattr(rel, "prep", None)}
             for nome, rel in sorted(getattr(mondo, "relazioni", {}).items())
         ],
+        # [1.6.0 / C1] Le procedure nominate (nomi), per il costruttore di regole.
+        "procedures": sorted(getattr(mondo, "procedure", {}).keys()),
     }
 
     return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
@@ -1785,6 +1791,9 @@ def _serializza_conseguenza(c):
     if op == "relation":
         # [1.6.0 / B3] 'il giocatore si fida di Vito' / '… non si fida più di Vito'.
         return _frase_relazione(c, togli=bool(c.get("remove")))
+    if op == "callProc":
+        # [1.6.0 / C1] 'esegui <nome procedura>' (il nome è bare, come i verbi).
+        return f"esegui {c['name']}"
     if op == "unprop":
         # [1.3.0 / M-2] 'X non è più P'.
         return f"{c['name']} non è più {c['prop']}"
@@ -2039,6 +2048,14 @@ def serializza_frase(spec):
             # stessa shape JSON delle conseguenze/condizioni di relazione.
             frase = _frase_relazione(spec)
             return {"ok": True, "text": frase[:1].upper() + frase[1:] + "."}
+        if op == "procedure_def":
+            # [1.6.0 / C1] 'Definisci "far passare la notte" come: <cons> e adesso <cons>.'
+            corpo = [_serializza_conseguenza(c) for c in spec.get("consequences", [])]
+            if not corpo:
+                raise ValueError("Una procedura richiede almeno una conseguenza.")
+            return {"ok": True,
+                    "text": f"Definisci {_quota(str(spec['name']).strip())} come: "
+                            + " e adesso ".join(corpo) + "."}
         if op == "state_values_comment":
             # Commento canonico per persistere l'elenco dei valori ammessi di uno
             # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo
