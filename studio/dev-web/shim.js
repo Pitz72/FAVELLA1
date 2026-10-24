@@ -40,6 +40,7 @@
     worldOutline: (path, source, sources) => rpc('world.outline', path ? { path, source, sources } : {}),
     worldRules: (path, source, sources) => rpc('world.rules', path ? { path, source, sources } : {}),
     worldVariables: (path, source, sources) => rpc('world.variables', path ? { path, source, sources } : {}),
+    worldRelations: (path, source, sources) => rpc('world.relations', path ? { path, source, sources } : {}),
     worldWords: (path, source, sources) => rpc('world.words', path ? { path, source, sources } : {}),
     worldDialogues: (path, source, sources) => rpc('world.dialogues', path ? { path, source, sources } : {}),
     serializeStatement: (spec) => rpc('outline.serialize', spec),

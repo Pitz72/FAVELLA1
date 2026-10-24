@@ -176,13 +176,18 @@ marca da `branding/icone/`. Il motore Python va prima congelato con PyInstaller 
 
 ## Allineamento al linguaggio (FAVELLA 1.6.0)
 
-Il motore vivo importato dal sidecar è a **v1.6.0** (sidecar 0.13.0): compilare, **▶ Giocare**
+Il motore vivo importato dal sidecar è a **v1.6.0** (sidecar 0.14.0): compilare, **▶ Giocare**
 ed **📦 Esportare** funzionano su qualunque storia 1.6.0, comprese le frasi nuove —
 l'invariante di clamp, le connessioni «senza ritorno», le relazioni di prima classe, le
 procedure nominate e gli oggetti contabili. Quelle frasi si scrivono nell'**editor di testo**;
 gli strumenti visuali (riordino, rinomina, pannelli) le **riconoscono e non le perdono**, e
 riordinare una storia 1.6.0 non cambia il gioco. Gli editor dedicati a quei costrutti arrivano
-nelle prossime versioni; fino ad allora passano intatti per il testo e l'outline.
+uno per uno; fino ad allora passano intatti per il testo e l'outline.
+
+Il primo editor dedicato alla 1.6.0 è il **pannello «Relazioni»** (sezione Mondo, RPC
+`world.relations`): una griglia con le relazioni di prima classe dichiarate (arietà e
+reciprocità) e, per ciascuna, le coppie «soggetto → oggetto» scritte dall'autore, da
+collegare/togliere; round-trip canonico via `relation_decl`/`relation_fact` + splice in Monaco.
 
 Gli **editor visuali della logica** (⚙ Regole, 💬 Dialoghi) coprono la grammatica fino
 a 0.18.0 **e i Temi 1-5** (v0.9.22): quantità dinamiche dei contatori (`[contatore]`,

@@ -4,6 +4,26 @@ Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipenden
 da quello del linguaggio/motore FAVELLA (dentro Studio 1.3.0 c'è il motore **v1.6.0**).
 Schema: [SemVer](https://semver.org/lang/it/).
 
+## [Non rilasciato] — Editor dedicati ai costrutti 1.6.0
+
+Gli editor visuali per le frasi nuove della 1.6.0, uno per uno (dopo la 1.3.0, che le
+faceva solo passare intatte per il testo).
+
+### Aggiunto
+- **Pannello «Relazioni»** (sezione Mondo). Una griglia leggibile mostra le relazioni di
+  prima classe dichiarate — con la loro arietà (uno a uno / uno a molti / molti a molti) e
+  la reciprocità — e, sotto ciascuna, le coppie «soggetto → oggetto» scritte dall'autore
+  (es. «il giocatore → Saverio» per «si fida di»). Si collega o si toglie una coppia con due
+  menu dei membri (il giocatore e ogni entità/stanza), e si crea una relazione nuova da una
+  modale (locuzione, arietà, reciprocità). Ogni modifica genera la frase .fav **canonica**
+  tramite il sidecar (`relation_decl` / `relation_fact`) e la splicia nel testo: Monaco resta
+  la fonte di verità, la griglia è una vista sincronizzata. La griglia riflette le **frasi
+  scritte** (scatola di vetro), non la chiusura semantica: il rovescio di una relazione
+  reciproca e gli sfratti dell'arietà non compaiono come righe doppione; le forme non ancora
+  rappresentabili (es. le interrogazioni dentro le regole) restano intatte nel testo.
+- Il sidecar espone `world.relations` (nuovo metodo): le relazioni dichiarate e le coppie
+  asserite, ciascuna con lo **span sorgente** per la modifica chirurgica. Sidecar **0.14.0**.
+
 ## [1.3.0] — 2026-10-24 — Il motore FAVELLA 1.6.0
 
 Dentro c'è il motore **1.6.0**, «le frontiere nuove». Le frasi nuove si scrivono nell'editor
