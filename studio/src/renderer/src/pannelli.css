@@ -1073,6 +1073,145 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* [1.6.0] Overlay di vincibilità: stanza irraggiungibile dal punto di partenza. */
+.react-flow__node.stanza-mappa.irraggiungibile {
+  border-color: var(--errore);
+  border-style: dashed;
+  background: var(--errore-tenue);
+  opacity: 0.92;
+}
+.react-flow__node.stanza-mappa.irraggiungibile::after {
+  content: 'irraggiungibile';
+  position: absolute;
+  top: -11px;
+  right: 8px;
+  padding: 1px 8px;
+  border-radius: var(--r-tondo);
+  background: var(--errore);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* Il pannello «Si può vincere?» sopra la tela della mappa. */
+.mappa-vincibilita {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  width: 300px;
+  max-width: calc(100% - var(--s-6));
+  max-height: calc(100% - var(--s-6));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--superficie-1);
+  border: var(--spessore) solid var(--linea);
+  border-radius: var(--r-2);
+  box-shadow: var(--ombra-3);
+  z-index: 5;
+}
+.mappa-vinc-testa {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: var(--spessore) solid var(--linea);
+}
+.mappa-vinc-testa h2 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--t-m);
+  font-weight: 700;
+  color: var(--testo-titolo);
+}
+.mappa-vinc-corpo {
+  overflow-y: auto;
+  padding: var(--s-3) var(--s-4) var(--s-4);
+}
+.mappa-vincibilita .nota-riquadro,
+.mappa-vincibilita > .aiuto {
+  padding: var(--s-3) var(--s-4) var(--s-4);
+}
+.vinc-esito {
+  margin: 0 0 var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-1);
+  font-weight: 700;
+  font-size: var(--t-s);
+}
+.vinc-esito.vinc-ok {
+  background: var(--smeraldo-tenue);
+  color: var(--smeraldo);
+}
+.vinc-esito.vinc-attenzione {
+  background: var(--ambra-tenue);
+  color: var(--ambra);
+}
+.vinc-esito.vinc-male {
+  background: var(--errore-tenue);
+  color: var(--errore);
+}
+.vinc-sez {
+  margin-top: var(--s-3);
+}
+.vinc-sez h3 {
+  margin: 0 0 var(--s-1);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--testo-2);
+}
+.vinc-via {
+  margin-bottom: var(--s-2);
+  padding-left: var(--s-2);
+  border-left: 3px solid var(--smeraldo);
+}
+.vinc-via-testa code,
+.vinc-elenco code {
+  font-family: var(--font-codice);
+  font-size: var(--t-xs);
+  color: var(--accento-forte);
+}
+.vinc-cond {
+  font-size: var(--t-xs);
+  color: var(--testo-2);
+}
+.vinc-blocchi {
+  margin: var(--s-1) 0 0;
+  padding-left: var(--s-4);
+  font-size: var(--t-xs);
+  color: var(--errore);
+}
+.vinc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.vinc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--r-tondo);
+  background: var(--superficie-3);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+.vinc-chip-male {
+  background: var(--errore-tenue);
+  color: var(--errore);
+}
+.vinc-elenco {
+  margin: 0;
+  padding-left: var(--s-4);
+  font-size: var(--t-xs);
+  color: var(--testo-2);
+  line-height: 1.5;
+}
+.vinc-nota {
+  margin-top: var(--s-4);
+}
 .mappa .react-flow__handle {
   width: 12px;
   height: 12px;

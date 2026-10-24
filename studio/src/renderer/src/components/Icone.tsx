@@ -78,6 +78,17 @@ export function IconaPiu({ size = 16 }: { size?: number }): JSX.Element {
   )
 }
 
+// [1.6.0] Bersaglio: il grafo di vincibilità (lo scopo da raggiungere).
+export function IconaBersaglio({ size = 16 }: { size?: number }): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...P}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function IconaCartella({ size = 16 }: { size?: number }): JSX.Element {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...P}>

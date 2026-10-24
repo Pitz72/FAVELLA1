@@ -14,11 +14,12 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useStudio, infoStoria } from '../store'
-import type { WorldGraph } from '../../../shared/protocol'
+import type { WorldGraph, WorldWinnability } from '../../../shared/protocol'
 import { ConnessioneStanze, SchedaStanzaMappa } from './ConnessioneStanze'
 import Finestra from './Finestra'
-import { IconaAllinea, IconaAggiorna, IconaPiu } from './Icone'
+import { IconaAllinea, IconaAggiorna, IconaPiu, IconaBersaglio } from './Icone'
 import { Vuoto } from './Elenco'
+import VincibilitaPannello from './VincibilitaPannello'
 
 // Posizioni MANUALI delle stanze, ricordate per STORIA (il file principale) nel
 // localStorage. Il layout automatico vale solo per le stanze senza posizione salvata.
@@ -287,6 +288,11 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
   const addConnection = useStudio((s) => s.mapAddConnection)
   const addRoom = useStudio((s) => s.mapAddRoom)
   const nomeOccupato = useStudio((s) => s.nomeOccupato)
+  // [1.6.0] Overlay di vincibilità: una vista (non modifica il testo).
+  const winnability = useStudio((s) => s.winnability)
+  const loadWinnability = useStudio((s) => s.loadWinnability)
+  const revisione = useStudio((s) => s.revisione)
+  const [mostraVinc, setMostraVinc] = useState(false)
   // Le posizioni manuali si ricordano per storia (il file principale), solo nell'IDE.
   const radice = useStudio((s) => (editable ? (infoStoria(s)?.radice ?? null) : null))
   const colori = useColoriMappa()
@@ -308,6 +314,14 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
     if (attivo) void loadOutline()
   }, [attivo, loadOutline])
 
+  // [1.6.0] Con l'overlay acceso, ricalcola la vincibilità all'accensione e mentre si
+  // scrive (debounce), come fa la mappa con la topologia. È una vista, non scrive nulla.
+  useEffect(() => {
+    if (!attivo || !mostraVinc) return
+    const t = setTimeout(() => void loadWinnability(), 300)
+    return () => clearTimeout(t)
+  }, [attivo, mostraVinc, revisione, loadWinnability])
+
   const current = snapshot?.currentRoom ?? null
   const edges = useMemo(() => (graph ? costruisciArchi(graph) : []), [graph])
 
@@ -319,20 +333,23 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
     }
     const auto = disponiStanze(graph)
     const saved = loadPositions(radice)
+    // [1.6.0] Con l'overlay, le stanze irraggiungibili dal punto di partenza sono marcate.
+    const irraggiungibili = mostraVinc && winnability?.ok ? new Set(winnability.unreachableRooms) : null
     const next: Node[] = graph.rooms.map((r) => {
       const sp = saved[r.id]
       const ap = auto.get(r.id) ?? { x: 0, y: 0 }
-      const flags = [r.isStart ? 'partenza' : '', r.id === current ? 'attuale' : ''].filter(Boolean)
+      const irr = !!irraggiungibili?.has(r.id)
+      const flags = [r.isStart ? 'partenza' : '', r.id === current ? 'attuale' : '', irr ? 'irraggiungibile' : ''].filter(Boolean)
       return {
         id: r.id,
         position: sp ?? { x: ap.x * GAP_X, y: ap.y * GAP_Y },
         data: { label: r.name },
         className: ['stanza-mappa', ...flags].join(' '),
-        ariaLabel: `${r.name}${r.isStart ? ', partenza' : ''}${r.id === current ? ', sei qui' : ''}`
+        ariaLabel: `${r.name}${r.isStart ? ', partenza' : ''}${r.id === current ? ', sei qui' : ''}${irr ? ', irraggiungibile' : ''}`
       }
     })
     setNodes(next)
-  }, [graph, current, radice, setNodes])
+  }, [graph, current, radice, setNodes, mostraVinc, winnability])
 
   if (!graph || !graph.ok) {
     const msg = graph?.errors?.[0]?.message
@@ -422,6 +439,15 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
             <IconaAllinea />
             Riallinea
           </button>
+          <button
+            className={'btn btn-piccolo ' + (mostraVinc ? 'btn-accento' : 'btn-quieto')}
+            aria-pressed={mostraVinc}
+            title="Mostra se la storia si può vincere: stanze irraggiungibili, oggetti orfani, che cosa serve per vincere"
+            onClick={() => setMostraVinc((v) => !v)}
+          >
+            <IconaBersaglio />
+            Vincibilità
+          </button>
           <p className="mappa-aiuto">
             Trascina da un pallino a un’altra stanza per collegarle · clicca un collegamento per cambiarlo · clicca una
             stanza per le sue uscite
@@ -466,6 +492,14 @@ export default function MapView({ compact = false, editable = false }: MapViewPr
           )}
         </ReactFlow>
         {nodoSel && attivo && <SchedaStanzaMappa id={nodoSel} onChiudi={() => setNodoSel(null)} />}
+        {mostraVinc && (
+          <VincibilitaPannello
+            dati={winnability}
+            nomeStanza={nomeStanza}
+            onChiudi={() => setMostraVinc(false)}
+            onRicarica={() => void loadWinnability()}
+          />
+        )}
       </div>
 
       {picker && (
