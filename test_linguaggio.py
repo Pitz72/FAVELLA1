@@ -8681,6 +8681,14 @@ def test_studio_160_procedure_round_trip():
         os.unlink(path)
     _check(d.get("ok"), "analizza_regole regge")
     _check("riposa" in d["menu"]["procedures"], "il menu elenca la procedura")
+    # [slice C1] L'editor riceve anche le DEFINIZIONI (corpo + span), per listarle/riscriverle.
+    procs = {p["name"]: p for p in d.get("procedures", [])}
+    _check("riposa" in procs and procs["riposa"].get("span") is not None,
+           f"la definizione della procedura è esposta con lo span ({list(procs)})")
+    _check(procs["riposa"]["consequences"] == [
+        {"op": "count", "name": "sete", "mode": "diminuisci", "value": 3},
+        {"op": "count", "name": "vigore", "mode": "aumenta", "value": 1}],
+        f"il corpo della procedura è nel modello ({procs['riposa']['consequences']})")
     r = d["rules"][0]
     _check(r["consequences"] == [{"op": "callProc", "name": "riposa"}],
            f"la conseguenza-invocazione è nel modello ({r['consequences']})")

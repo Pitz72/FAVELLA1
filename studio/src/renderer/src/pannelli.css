@@ -321,6 +321,12 @@
 .rule-card.demon {
   border-left-color: var(--viola);
 }
+.rule-card.procedura {
+  border-left-color: var(--smeraldo);
+}
+.rule-card.procedura .rule-verb {
+  color: var(--smeraldo);
+}
 .rule-head {
   display: flex;
   flex-wrap: wrap;

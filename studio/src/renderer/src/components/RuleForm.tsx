@@ -15,7 +15,7 @@ import {
   CondGroup,
   ConsRow,
   CONS_LABEL,
-  CONS_GROUPS,
+  consGroups,
   defaultAtom,
   defaultCons,
   arricchisciCons,
@@ -436,7 +436,7 @@ export default function RuleForm({
             ))}
             <div className="objed-add">
               <select value={addKind} onChange={(e) => setAddKind(e.target.value as ConsKind)}>
-                {CONS_GROUPS.map((g) => (
+                {consGroups(menu).map((g) => (
                   <optgroup key={g.label} label={g.label}>
                     {g.kinds.map((k) => (
                       <option key={k} value={k}>
@@ -478,7 +478,7 @@ export default function RuleForm({
                   ))}
                   <div className="objed-add">
                     <select value={altrAddKind} onChange={(e) => setAltrAddKind(e.target.value as ConsKind)}>
-                      {CONS_GROUPS.map((g) => (
+                      {consGroups(menu).map((g) => (
                         <optgroup key={g.label} label={g.label}>
                           {g.kinds.map((k) => (
                             <option key={k} value={k}>

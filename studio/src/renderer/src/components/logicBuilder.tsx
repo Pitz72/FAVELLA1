@@ -55,6 +55,8 @@ export interface LogicMenu {
   states: string[]
   counters: string[]
   stateValues: Record<string, string[]>
+  // [1.6.0 / C1] I nomi delle procedure nominate (per la conseguenza «esegui …»).
+  procedures?: string[]
 }
 
 // Tipi di conseguenza offerti dal builder.
@@ -69,6 +71,7 @@ export type ConsKind =
   | 'pick'
   | 'dark'
   | 'movePNG'
+  | 'callProc'
 export const CONS_LABEL: Record<ConsKind, string> = {
   prop: 'cambia una proprietà di un oggetto',
   var: 'cambia il valore di uno stato',
@@ -79,7 +82,8 @@ export const CONS_LABEL: Record<ConsKind, string> = {
   varCopy: 'copia uno stato in un altro', // Tema 3
   pick: 'sorteggia il valore di uno stato', // Tema 2b
   dark: 'una stanza diventa buia o si illumina', // Tema 4a
-  movePNG: 'sposta un personaggio' // A5
+  movePNG: 'sposta un personaggio', // A5
+  callProc: 'esegui una procedura' // [1.6.0 / C1]
 }
 
 // [UX 2026-06-17] Raggruppamento del menu «Fai questo…» per progressive disclosure:
@@ -90,6 +94,14 @@ export const CONS_GROUPS: { label: string; kinds: ConsKind[] }[] = [
   { label: 'Il mondo cambia', kinds: ['dark', 'movePNG'] },
   { label: 'Il caso e gli stati che si parlano', kinds: ['pick', 'varCopy'] }
 ]
+
+// [1.6.0 / C1] I gruppi del menu «Fai questo…» per un dato menu: i gruppi fissi, più
+// «Procedure» (esegui …) solo se la storia ne dichiara. Così l'opzione non è un vicolo
+// cieco dove non ci sono procedure da richiamare.
+export function consGroups(menu: LogicMenu): { label: string; kinds: ConsKind[] }[] {
+  if (!menu.procedures || menu.procedures.length === 0) return CONS_GROUPS
+  return [...CONS_GROUPS, { label: 'Procedure', kinds: ['callProc'] }]
+}
 
 // Confronti su contatore (etichette leggibili). Include ≤ (al massimo) e ≠.
 export const CMP_LABELS: Record<CountCmp, string> = {
@@ -136,6 +148,8 @@ export function conseqText(c: RuleConsequence): string {
       return c.dark ? `${c.name} → buia` : `${c.name} → illuminata`
     case 'movePNG':
       return c.adjacent ? `${c.name} → cambia stanza` : `${c.name} → ${c.destName ?? '?'}`
+    case 'callProc':
+      return `esegui ${c.name}`
     default:
       return '…'
   }
@@ -330,6 +344,10 @@ export function defaultCons(kind: ConsKind, menu: LogicMenu): RuleConsequence | 
     }
     // Senza stanze, solo il movimento adiacente è possibile.
     return { op: 'movePNG', png: png.id, name: png.name, adjacent: true, dest: null, destName: null }
+  }
+  if (kind === 'callProc') {
+    const p = menu.procedures?.[0]
+    return p ? { op: 'callProc', name: p } : null
   }
   return { op: 'end', outcome: 'vinci' }
 }
@@ -1000,6 +1018,21 @@ export function ConsRow({
         <span className="cons-arrow" title="Un segnale per chi ospita la storia (un suono, un effetto): il giocatore non legge niente">
           segnala “{c.name}”
         </span>
+      )}
+      {c.op === 'callProc' && (
+        // [1.6.0 / C1] «esegui <procedura>»: scegli una procedura dichiarata. Se la
+        // procedura corrente non è (più) nel menu, la mostro comunque per non perderla.
+        <>
+          <span className="cons-arrow">esegui</span>
+          <select value={c.name} onChange={(e) => onChange({ op: 'callProc', name: e.target.value })}>
+            {!(menu.procedures ?? []).includes(c.name) && <option value={c.name}>{c.name}</option>}
+            {(menu.procedures ?? []).map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </>
       )}
       {c.op === 'end' && (
         <>

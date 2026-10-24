@@ -5,10 +5,25 @@ import type {
   GameEvent,
   Demon,
   RuleCondition,
+  RuleConsequence,
+  ProcedureDef,
+  RulesMenu,
   OutlineSpan
 } from '../../../shared/protocol'
 import RuleForm from './RuleForm'
-import { CMP_LABELS, operandoText, conseqRepresentable, conseqText } from './logicBuilder'
+import Finestra from './Finestra'
+import {
+  CMP_LABELS,
+  operandoText,
+  conseqRepresentable,
+  conseqText,
+  ConsRow,
+  consGroups,
+  CONS_LABEL,
+  defaultCons,
+  arricchisciCons,
+  type ConsKind
+} from './logicBuilder'
 import { NonPronto, Vuoto } from './Elenco'
 import { IconaAggiorna, IconaChiudi, IconaMatita, IconaPiu } from './Icone'
 
@@ -139,12 +154,15 @@ export default function RulesEditor(): JSX.Element {
     demon?: Demon | null
     span: OutlineSpan | null
   } | null>(null)
+  // [1.6.0 / C1] La modale delle procedure (null = chiusa; proc=null = creazione).
+  const [editingProc, setEditingProc] = useState<{ proc: ProcedureDef | null; span: OutlineSpan | null } | null>(null)
 
   if (!isFav) return <NonPronto cosa="le regole" stato="nessun-file" />
   if (!rules) return <NonPronto cosa="le regole" stato={loading ? 'carico' : 'vuoto'} onRiprova={() => void loadRules()} />
   if (!rules.ok) return <NonPronto cosa="le regole" stato="errori" onRiprova={() => void loadRules()} />
 
   const { rules: regole, events, demons } = rules
+  const procedures = rules.procedures ?? []
 
   return (
     <div className="ruled">
@@ -155,9 +173,19 @@ export default function RulesEditor(): JSX.Element {
           Eventi <span className="elenco-conto">{events.length}</span>
           <span className="pannello-sep" aria-hidden="true">·</span>
           Demoni <span className="elenco-conto">{demons.length}</span>
+          <span className="pannello-sep" aria-hidden="true">·</span>
+          Procedure <span className="elenco-conto">{procedures.length}</span>
         </h2>
         <button className="btn-icona" aria-label="Rileggi le regole" title="Rileggi" onClick={() => void loadRules()}>
           <IconaAggiorna />
+        </button>
+        <button
+          className="btn btn-quieto btn-piccolo"
+          title="Una procedura raccoglie più conseguenze sotto un nome, da richiamare con «esegui»"
+          onClick={() => setEditingProc((v) => (v ? null : { proc: null, span: null }))}
+        >
+          <IconaPiu size={15} />
+          Nuova procedura
         </button>
         <button
           className="btn btn-accento btn-piccolo"
@@ -179,12 +207,58 @@ export default function RulesEditor(): JSX.Element {
         />
       )}
 
+      {editingProc && (
+        <ProcedureForm
+          menu={rules.menu}
+          proc={editingProc.proc}
+          span={editingProc.span}
+          nomiUsati={procedures.map((p) => p.name)}
+          onDone={() => setEditingProc(null)}
+        />
+      )}
+
       <div className="ruled-body">
-        {regole.length === 0 && events.length === 0 && demons.length === 0 && (
+        {regole.length === 0 && events.length === 0 && demons.length === 0 && procedures.length === 0 && (
           <Vuoto titolo="Ancora nessuna regola">
             Una regola dice che cosa succede quando il giocatore fa qualcosa: «Invece di apri la porta: …». Creane una con «Nuova regola».
           </Vuoto>
         )}
+
+        {procedures.map((p, i) => {
+          const editabile = p.consequences.every(conseqRepresentable)
+          return (
+            <div key={'p' + i} className="rule-card procedura">
+              <div className="rule-head">
+                <span className="rule-verb">procedura</span>
+                <span className="rule-target">{p.name}</span>
+                {p.span &&
+                  (editabile ? (
+                    <button className="btn btn-quieto btn-piccolo" onClick={() => setEditingProc({ proc: p, span: p.span })}>
+                      <IconaMatita />
+                      Modifica
+                    </button>
+                  ) : (
+                    <button className="btn btn-quieto btn-piccolo" title="Troppo complessa per l’editor: modificala nel testo" onClick={() => requestReveal(p.span!.file, p.span!.line, 1)}>
+                      <IconaMatita />
+                      Nel testo
+                    </button>
+                  ))}
+                {p.span && (
+                  <button className="btn-icona" aria-label={`Elimina la procedura ${p.name}`} title="Elimina questa procedura" onClick={() => void deleteStatement(p.span!, `Procedura «${p.name}» tolta`)}>
+                    <IconaChiudi />
+                  </button>
+                )}
+              </div>
+              <div className="rule-then">
+                {p.consequences.map((c, j) => (
+                  <span key={j} className="rule-chip">
+                    {conseqText(c)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        })}
 
         {regole.map((r, i) => (
           <div key={'r' + i} className="rule-card">
@@ -332,5 +406,111 @@ export default function RulesEditor(): JSX.Element {
         ))}
       </div>
     </div>
+  )
+}
+
+// [1.6.0 / C1] La modale per creare/riscrivere una procedura nominata: un nome e una
+// catena di conseguenze (lo stesso builder delle regole). «esegui <procedura>» può
+// richiamarne un'altra. Round-trip via l'op procedure_def (sostituisce lo span).
+function ProcedureForm({
+  menu,
+  proc,
+  span,
+  nomiUsati,
+  onDone
+}: {
+  menu: RulesMenu
+  proc: ProcedureDef | null
+  span: OutlineSpan | null
+  nomiUsati: string[]
+  onDone: () => void
+}): JSX.Element {
+  const applyStatement = useStudio((s) => s.applyStatement)
+  const inModifica = !!proc
+  const [nome, setNome] = useState(proc?.name ?? '')
+  const [cons, setCons] = useState<RuleConsequence[]>(arricchisciCons(proc?.consequences ?? [], menu))
+  const [addKind, setAddKind] = useState<ConsKind>('prop')
+
+  const nomeNorm = nome.trim().toLowerCase()
+  // In creazione il nome dev'essere libero; in modifica è fisso (così gli «esegui» non si rompono).
+  const nomeLibero = inModifica || (!!nomeNorm && !nomiUsati.map((n) => n.toLowerCase()).includes(nomeNorm))
+  const valido = nome.trim().length > 0 && cons.length > 0 && nomeLibero
+
+  const aggiungi = (): void => {
+    const c = defaultCons(addKind, menu)
+    if (c) setCons((prev) => [...prev, c])
+  }
+  const salva = async (): Promise<void> => {
+    if (!valido) return
+    await applyStatement({ op: 'procedure_def', name: nome.trim(), consequences: cons }, span ?? undefined)
+    onDone()
+  }
+
+  return (
+    <Finestra
+      titolo={inModifica ? 'Modifica la procedura' : 'Una procedura nuova'}
+      sottotitolo="Una procedura raccoglie più conseguenze sotto un nome; le regole la richiamano con «esegui»."
+      onChiudi={onDone}
+      larga
+      azioni={
+        <>
+          <button className="btn btn-quieto" onClick={onDone}>
+            Annulla
+          </button>
+          <button className="btn btn-primario" disabled={!valido} onClick={() => void salva()}>
+            {inModifica ? 'Scrivi la procedura' : 'Crea la procedura'}
+          </button>
+        </>
+      }
+    >
+      <div className="modulo">
+        <div className="objed-field">
+          <label>Nome</label>
+          <input
+            autoFocus={!inModifica}
+            value={nome}
+            disabled={inModifica}
+            aria-invalid={!nomeLibero}
+            placeholder="es. riposa un poco"
+            onChange={(e) => setNome(e.target.value)}
+          />
+          {inModifica ? (
+            <p className="aiuto">Il nome non si cambia qui: rinominarlo scollegherebbe gli «esegui» che lo citano.</p>
+          ) : (
+            !nomeLibero && nomeNorm && <p className="errore-campo">Esiste già una procedura con questo nome.</p>
+          )}
+        </div>
+
+        <div className="objed-field">
+          <label>Fai questo… (almeno una conseguenza)</label>
+          {cons.length === 0 && <span className="nota-riquadro">nessuna conseguenza</span>}
+          {cons.map((c, i) => (
+            <ConsRow
+              key={i}
+              c={c}
+              menu={menu}
+              onChange={(nc) => setCons((prev) => prev.map((x, j) => (j === i ? nc : x)))}
+              onRemove={() => setCons((prev) => prev.filter((_, j) => j !== i))}
+            />
+          ))}
+          <div className="objed-add">
+            <select value={addKind} onChange={(e) => setAddKind(e.target.value as ConsKind)}>
+              {consGroups(menu).map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.kinds.map((k) => (
+                    <option key={k} value={k}>
+                      {CONS_LABEL[k]}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <button className="btn btn-quieto btn-piccolo" onClick={aggiungi}>
+              + conseguenza
+            </button>
+          </div>
+        </div>
+      </div>
+    </Finestra>
   )
 }

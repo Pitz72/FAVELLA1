@@ -457,6 +457,9 @@ export type SerializeSpec =
   // forme a metà frase (il serializzatore articola la preposizione e la maiuscola).
   | { op: 'relation_decl'; locution: string; arity: RelationArity; reciprocal: boolean }
   | { op: 'relation_fact'; aName: string; base: string; prep: string | null; bName: string }
+  // [1.6.0 / C1] Procedura nominata: 'Definisci "…" come: <cons> e adesso <cons>.'.
+  // 'consequences' riusa la shape delle conseguenze delle regole.
+  | { op: 'procedure_def'; name: string; consequences: RuleConsequence[] }
 
 export interface SerializeResult {
   ok: boolean
@@ -562,6 +565,8 @@ export type RuleConsequence =
   | { op: 'pick'; name: string; values: string[]; kind: 'stato' | 'contatore' }
   // [v1.0.0 / Tema 4a] buio commutabile di una stanza: «la radura diventa buia/illuminata».
   | { op: 'dark'; room: string; name: string; dark: boolean }
+  // [1.6.0 / C1] Esegue una procedura nominata: «esegui <procedura>» (nome bare).
+  | { op: 'callProc'; name: string }
   // [v1.0.0 / A5] movimento di un personaggio: «la guardia va in corridoio» (dest fissa)
   // o «il gatto cambia stanza» (adiacente, a caso). prep/place calcolati dalla UI come 'move'.
   | {
@@ -681,6 +686,19 @@ export interface RulesMenu {
   // Valori ammessi per ogni stato (osservati ∪ commento canonico). Alimenta il
   // dropdown del valore-stato nel builder di regole. Mappa id-stato -> valori.
   stateValues: Record<string, string[]>
+  // [1.6.0 / B3] Relazioni dichiarate (per le conseguenze/condizioni di relazione).
+  relations?: { name: string; locution: string; arity: RelationArity; reciprocal: boolean; prep: string | null }[]
+  // [1.6.0 / C1] I nomi delle procedure nominate, per la conseguenza «esegui …».
+  procedures?: string[]
+}
+
+// [1.6.0 / C1] Una procedura nominata («Definisci "…" come: …»): il nome, lo span
+// della frase e il corpo (catena di conseguenze). L'editor la mostra, la crea e la
+// riscrive (sostituendo lo span); «esegui …» la richiama come conseguenza.
+export interface ProcedureDef {
+  name: string
+  span: OutlineSpan | null
+  consequences: RuleConsequence[]
 }
 
 export interface WorldRules {
@@ -689,6 +707,8 @@ export interface WorldRules {
   events: GameEvent[]
   demons: Demon[]
   menu: RulesMenu
+  // [1.6.0 / C1] Le procedure nominate con il loro corpo (assente/ vuoto se nessuna).
+  procedures?: ProcedureDef[]
   errors: Diagnostic[]
 }
 

@@ -34,7 +34,7 @@ from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QU
 from compilatore import (
     VERBI_VALIDI, costruisci_symbol_table, costruisci_parser, valida_direzioni_dichiarate,
     espandi_inclusioni, _espandi_inclusioni_seedable, analizza_file_strutturato,
-    compila_mondo,
+    compila_mondo, normalizza_apostrofi,
 )
 
 
@@ -782,6 +782,7 @@ def analizza_regole(percorso_file, sorgente=None):
     frasi_regola = []   # {span, verbo, risposta}
     frasi_evento = []   # {span, tipo, n, risposta}
     frasi_demone = []   # {span, mode, risposta}
+    span_procedura = {}  # [1.6.0 / C1] nome procedura normalizzato -> span (ultima vince)
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -791,6 +792,14 @@ def analizza_regole(percorso_file, sorgente=None):
             end = getattr(meta, "end_line", line) if meta else None
             span = _span(line, end)
             tok = _tokens_per_tipo(nodo)
+            if nodo.data == "def_procedura":
+                # Nome normalizzato come nel compilatore (apostrofi, minuscole, spazi).
+                quotati = tok.get("TESTO_QUOTATO", [])
+                if quotati:
+                    nome_p = " ".join(normalizza_apostrofi(_spoglia_quotato(str(quotati[0]))).lower().split())
+                    if nome_p:
+                        span_procedura[nome_p] = span
+                continue
             if nodo.data == "def_regola":
                 verbi = tok.get("VERBO", [])
                 quotati = tok.get("TESTO_QUOTATO", [])
@@ -981,7 +990,19 @@ def analizza_regole(percorso_file, sorgente=None):
         "procedures": sorted(getattr(mondo, "procedure", {}).keys()),
     }
 
-    return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
+    # [1.6.0 / C1] Le DEFINIZIONI delle procedure, col corpo (catena di conseguenze) e
+    # lo span della frase «Definisci "…" come: …», per l'editor che le crea/riscrive.
+    procedures = []
+    for nome, corpo in getattr(mondo, "procedure", {}).items():
+        procedures.append({
+            "name": nome,
+            "span": span_procedura.get(nome),
+            "consequences": [_conseq_to_json(c, mondo) for c in corpo],
+        })
+    procedures.sort(key=lambda p: p["name"])
+
+    return {"ok": True, "rules": rules, "events": events, "demons": demons,
+            "menu": menu, "procedures": procedures, "errors": []}
 
 
 def analizza_relazioni(percorso_file, sorgente=None):
