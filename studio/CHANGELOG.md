@@ -1,8 +1,43 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (dentro Studio 1.2.3 c'è il motore **v1.5.0**).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.3.0 c'è il motore **v1.6.0**).
 Schema: [SemVer](https://semver.org/lang/it/).
+
+## [1.3.0] — 2026-10-24 — Il motore FAVELLA 1.6.0
+
+Dentro c'è il motore **1.6.0**, «le frontiere nuove». Le frasi nuove si scrivono nell'editor
+di testo; gli strumenti visuali (riordino, rinomina, pannelli) le riconoscono, non le perdono
+e non le rompono. Le storie scritte con la 1.5 e con la 1.4 si aprono e si giocano come prima.
+Gli editor dedicati alle frasi nuove arrivano nelle prossime versioni: per ora quelle frasi
+restano nel testo, intatte, e passano indenni per il riordino e la rinomina.
+
+### Motore
+- **FAVELLA 1.6.0**: l'**invariante di clamp** («La sete resta sempre fra 0 e 100.»), le
+  connessioni **«senza ritorno»**, le **relazioni di prima classe** («"si fida di" è una
+  relazione molti a molti [ed è reciproca].», con asserzioni, conseguenze, interrogazioni e
+  l'interpolazione «[chi si fida del giocatore]»), le **procedure nominate** («Definisci "…"
+  come: …» / «esegui …») e gli **oggetti contabili** («La pozione, plurale "pozioni", è
+  contabile.», con quantità, «prendi/lascia N», «consuma» e le concordanze). Il sidecar passa
+  alla **0.13.0**.
+
+### Corretto (il round-trip con le frasi 1.6.0)
+- **Gli strumenti dell'IDE si rompevano appena una storia usava una relazione o una
+  procedura.** Relazioni e procedure usano terminali generati per-file: il parser che gli
+  strumenti ricostruiscono per ricavare gli span delle frasi non li riceveva (li riceveva
+  solo il compilatore vero). Così, su qualunque storia 1.6.0 che li usasse, il **riordino**,
+  la **rinomina** e il pannello **Parole & comandi** fallivano in blocco, e l'editor di
+  **logica** perdeva lo span di *ogni* regola (niente modifica chirurgica). Ora tutti gli
+  strumenti costruiscono il parser con le stesse relazioni e procedure del compilatore:
+  riordino, rinomina, riferimenti e tutti i pannelli reggono le storie 1.6.0.
+- **Il pannello Stanze & oggetti non sapeva che un oggetto è contabile.** L'outline ora porta
+  anche `countable` e il plurale dichiarato (in sola lettura, come già il menu delle regole);
+  la frase «… è contabile.» resta intatta nel testo.
+
+### Note per chi scrive storie 1.6.0
+- Riordinare una storia 1.6.0 conserva ogni costrutto e non cambia il gioco (stessa impronta
+  di partita). Le frasi non ancora coperte da un editor dedicato finiscono in fondo al file,
+  verbatim: valide e intatte.
 
 ## [1.2.3] — 2026-10-15 — Il motore FAVELLA 1.5.0
 

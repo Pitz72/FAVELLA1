@@ -1,6 +1,6 @@
 # Favella Studio
 
-<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.2.3 — l'ambiente di scrittura per FAVELLA 1"></p>
+<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.3.0 — l'ambiente di scrittura per FAVELLA 1"></p>
 
 **L'ambiente di scrittura visuale per il linguaggio FAVELLA 1.** Scrivi la tua avventura in
 italiano, vedi le stanze diventare una mappa, componi dialoghi e regole senza scrivere una
@@ -174,11 +174,15 @@ marca da `branding/icone/`. Il motore Python va prima congelato con PyInstaller 
       va lanciato su Windows (vedi PACKAGING.md). **+ Autoformat (↕ Riordina)** e **drag mappa
       persistente**: l'IDE è completo.
 
-## Allineamento al linguaggio (FAVELLA 1.0.0)
+## Allineamento al linguaggio (FAVELLA 1.6.0)
 
-Il motore vivo importato dal sidecar è già a **v1.0.0**: compilare, **▶ Giocare** ed
-**📦 Esportare** funzionano su qualunque storia 1.0.0, inclusi i costrutti dei Temi 1-5
-(quantità dinamiche, casualità, indirezione fra stati, mondo dinamico).
+Il motore vivo importato dal sidecar è a **v1.6.0** (sidecar 0.13.0): compilare, **▶ Giocare**
+ed **📦 Esportare** funzionano su qualunque storia 1.6.0, comprese le frasi nuove —
+l'invariante di clamp, le connessioni «senza ritorno», le relazioni di prima classe, le
+procedure nominate e gli oggetti contabili. Quelle frasi si scrivono nell'**editor di testo**;
+gli strumenti visuali (riordino, rinomina, pannelli) le **riconoscono e non le perdono**, e
+riordinare una storia 1.6.0 non cambia il gioco. Gli editor dedicati a quei costrutti arrivano
+nelle prossime versioni; fino ad allora passano intatti per il testo e l'outline.
 
 Gli **editor visuali della logica** (⚙ Regole, 💬 Dialoghi) coprono la grammatica fino
 a 0.18.0 **e i Temi 1-5** (v0.9.22): quantità dinamiche dei contatori (`[contatore]`,
