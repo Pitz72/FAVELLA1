@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import BrandMark from "./BrandMark";
 import { GitHubIcon } from "./icons";
-import { GITHUB_URL } from "../constants";
+import { GITHUB_URL, ENGINE_VERSION } from "../constants";
 import { navigate, useRoute } from "../router";
 
 // Barra del design 2026: una pillola di vetro che galleggia in alto. Le voci
 // principali sono sempre sotto gli occhi; il resto sta in «Altro». Su telefono
 // diventa un menu a tutto schermo con le voci in grande.
+//
+// «Novità» è una voce di PRIMO LIVELLO e in evidenza (pillola ambra con il
+// numero di versione corrente): le novità del linguaggio non stanno più
+// nascoste in fondo al menu «Altro».
 
 const primary = [
   { name: "Progetto", href: "/progetto" },
@@ -16,8 +20,9 @@ const primary = [
   { name: "Studio", href: "/studio" },
   { name: "Galleria", href: "/galleria" },
 ];
+// La voce in evidenza: che cosa è nuovo, col numero di versione del motore.
+const NEWS_HREF = "/aggiornamenti";
 const more = [
-  { name: "Novità", href: "/aggiornamenti", hint: "Che cosa è cambiato" },
   { name: "Libreria", href: "/libreria", hint: "Moduli pronti da includere" },
   { name: "Collabora", href: "/collabora", hint: "Dai una mano" },
   { name: "Download", href: "/download", hint: "Tutto ciò che si scarica" },
@@ -105,6 +110,26 @@ const Header = () => {
               </a>
             );
           })}
+          {/* Novità — voce in evidenza, con la versione del motore in un badge */}
+          <a
+            href={NEWS_HREF}
+            onClick={(e) => go(e, NEWS_HREF)}
+            aria-label={`Novità — FAVELLA ${ENGINE_VERSION}`}
+            className={`relative ml-1 flex items-center gap-2 rounded-full border px-3.5 py-2 font-display text-[13.5px] font-semibold transition-colors duration-200 ${
+              route === NEWS_HREF
+                ? "border-favella-amber/60 bg-favella-amber/15 text-favella-amber"
+                : "border-favella-amber/35 bg-favella-amber/[0.08] text-favella-amber hover:border-favella-amber/60 hover:bg-favella-amber/15"
+            }`}
+          >
+            <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ring-pulse rounded-full bg-favella-amber" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-favella-amber" />
+            </span>
+            Novità
+            <span className="rounded-full bg-favella-amber/20 px-1.5 py-px font-mono text-[10.5px] font-bold leading-none tracking-tight text-favella-amber">
+              {ENGINE_VERSION}
+            </span>
+          </a>
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setAltro((v) => !v)}
@@ -190,6 +215,30 @@ const Header = () => {
                 </svg>
               </button>
             </div>
+            {/* Novità in evidenza, in cima al menu del telefono */}
+            <a
+              href={NEWS_HREF}
+              onClick={(e) => go(e, NEWS_HREF)}
+              className={`mb-7 flex items-center justify-between gap-4 rounded-2xl border px-5 py-4 transition-colors ${
+                route === NEWS_HREF
+                  ? "border-favella-amber/60 bg-favella-amber/15"
+                  : "border-favella-amber/35 bg-favella-amber/[0.08] hover:border-favella-amber/60 hover:bg-favella-amber/15"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <span aria-hidden="true" className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ring-pulse rounded-full bg-favella-amber" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-favella-amber" />
+                </span>
+                <span>
+                  <span className="block font-display text-[19px] font-bold tracking-[-0.02em] text-favella-amber">Novità</span>
+                  <span className="block font-mono text-[11px] uppercase tracking-[0.16em] text-favella-text-muted">Che cosa è cambiato</span>
+                </span>
+              </span>
+              <span className="rounded-full bg-favella-amber/20 px-2.5 py-1 font-mono text-[12px] font-bold text-favella-amber">
+                {ENGINE_VERSION}
+              </span>
+            </a>
             <nav className="flex flex-col" aria-label="Menu">
               {allItems.map((item, i) => (
                 <a
