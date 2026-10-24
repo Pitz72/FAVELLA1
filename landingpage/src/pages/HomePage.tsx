@@ -31,6 +31,11 @@ const FRASI = [
   "La porta di ferro è chiusa.",
   "Il tavolo è un supporto.",
   'Quando la tensione è almeno 8: dire "Il portale ti risucchia." e adesso perdi.',
+  // Le frontiere nuove della 1.6.0.
+  "La sete resta sempre fra 0 e 100.",
+  '"si fida di" è una relazione molti a molti.',
+  'La pozione, plurale "pozioni", è contabile.',
+  "La botola collega giù a il pozzo senza ritorno.",
 ];
 
 const Frase = ({ s }: { s: string }) => (
@@ -70,7 +75,7 @@ const Home = () => {
         <GlyphField />
         <div className="relative mx-auto max-w-[1240px]">
           <Reveal>
-            <Pill tone="emerald">FAVELLA 1 · {ENGINE_VERSION} · le lezioni del Relitto</Pill>
+            <Pill tone="emerald">FAVELLA 1 · {ENGINE_VERSION} · le frontiere nuove</Pill>
           </Reveal>
           <Reveal delay={90}>
             <h1 className="mt-8 font-display text-[clamp(52px,10.4vw,164px)] font-bold leading-[0.9] tracking-[-0.06em] text-favella-text-primary">
@@ -193,7 +198,8 @@ const Home = () => {
                 </h3>
                 <p className="mt-4 max-w-[520px] font-serif text-[16.5px] leading-[1.65] text-favella-text-secondary">
                   Il testo, le stanze su una mappa da trascinare, gli oggetti, i personaggi, le regole e la prova della storia, in
-                  un'app sola. Ogni gesto si scrive nel testo.
+                  un'app sola. La 1.4.0 aggiunge gli editor delle frasi nuove della 1.6.0 e il grafo di vincibilità. Ogni gesto si
+                  scrive nel testo.
                 </p>
                 <div className="relative mt-8 flex-1 overflow-hidden rounded-t-2xl border border-b-0 border-favella-cyan/20 shadow-[0_-20px_80px_-30px_rgba(34,211,238,0.35)]">
                   <img

@@ -50,21 +50,21 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/": {
     title: "FAVELLA 1 — Scrivi storie, non codice",
     description:
-      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.5.0: il linguaggio è completo e cresce solo aggiungendo. Parser LALR(1), 1292 test.",
+      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.6.0, le frontiere nuove: relazioni di prima classe, procedure nominate, oggetti contabili — tutte additive. Parser LALR(1), 1498 test.",
     og: "/og/home.png",
     type: "website",
   },
   "/progetto": {
     title: "Il progetto — FAVELLA 1",
     description:
-      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 1292 test — al servizio della narrativa interattiva.",
+      "La visione dietro FAVELLA 1: un linguaggio in cui l'italiano è il codice. Ingegneria vera — parser LALR(1) a zero ambiguità, 1498 test — al servizio della narrativa interattiva.",
     og: "/og/progetto.png",
     type: "article",
   },
   "/aggiornamenti": {
     title: "Novità e roadmap — FAVELLA 1",
     description:
-      "Le ultime novità di FAVELLA 1, il changelog e la roadmap: dalla v1.0.0 (linguaggio completo) alla 1.5.0, con l'ecosistema: pacchetto pip, libreria di moduli, galleria di storie, Favella Studio e il manuale anche su carta.",
+      "Le ultime novità di FAVELLA 1, il changelog e la roadmap: dalla v1.0.0 (linguaggio completo) alla 1.6.0, le frontiere nuove — relazioni, procedure, oggetti contabili — e Favella Studio 1.4.0 col grafo di vincibilità. Con l'ecosistema: pacchetto pip, libreria di moduli, galleria di storie e il manuale anche su carta.",
     og: "/og/aggiornamenti.png",
     type: "website",
   },
@@ -92,7 +92,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/studio": {
     title: "Favella Studio — FAVELLA 1",
     description:
-      "Favella Studio 1.2.3: l'ambiente di scrittura visuale per FAVELLA 1, col motore 1.5.0 e la sua guida all'uso. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, con tema notte o carta e contrasto alto, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
+      "Favella Studio 1.4.0: l'ambiente di scrittura visuale per FAVELLA 1, col motore 1.6.0 e la sua guida all'uso. Testo, mappa, oggetti, personaggi, regole e prova della storia in un'app sola, con gli editor delle frasi nuove (relazioni, procedure, oggetti contabili) e il grafo di vincibilità. Tema notte o carta e contrasto alto, per Windows e Linux (su Mac la costruisci da te). Gratuito e open source.",
     og: "/og/studio.png",
     type: "website",
   },

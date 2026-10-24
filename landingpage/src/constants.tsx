@@ -181,7 +181,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "logic",
     title: "Logica narrativa completa",
-    body: "Stati, contatori, condizioni con e / oppure / non, fine partita, eventi a turni e «demoni» che sorvegliano il mondo e scattano da soli.",
+    body: "Stati, contatori (tenuti dentro un intervallo con una sola frase), condizioni con e / oppure / non, procedure nominate da richiamare, relazioni di prima classe fra le entità, oggetti contabili, eventi a turni e «demoni» che sorvegliano il mondo e scattano da soli.",
   },
   {
     icon: "dialog",
@@ -511,7 +511,7 @@ export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
     title: "Si cresce solo aggiungendo",
-    body: "FAVELLA 1 è completo. La 1.5.0 ha aggiunto ciò che ha insegnato il remake de «Il Relitto Silente», e le storie già scritte girano identiche: è la regola da sempre. Il linguaggio si muove solo quando una storia vera ne mostra il bisogno; quello che funziona oggi funzionerà anche fra dieci anni.",
+    body: "FAVELLA 1 è completo. La 1.6.0 ha aperto frontiere nuove — relazioni di prima classe, procedure nominate, oggetti contabili, invariante di clamp, connessioni a senso unico — e le storie già scritte girano identiche: è la regola da sempre. Il linguaggio si muove solo quando una storia vera ne mostra il bisogno; quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
     area: "ecosistema",
@@ -531,7 +531,7 @@ Con l'avvento dei Large Language Models quel sogno è diventato un progetto conc
 
 Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di ${MANUAL_PDF_PAGES} pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto. Nell'autunno del 2026 il remake de «Il Relitto Silente», il gioco più grande scritto in FAVELLA, ha insegnato ancora qualcosa, e la 1.5.0 l'ha raccolto senza toccare le storie già scritte. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di ${MANUAL_PDF_PAGES} pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto. Nell'autunno del 2026 il remake de «Il Relitto Silente», il gioco più grande scritto in FAVELLA, ha insegnato ancora qualcosa, e la 1.5.0 l'ha raccolto senza toccare le storie già scritte. Poi la 1.6.0 ha aperto frontiere nuove: le relazioni di prima classe fra le entità (chi si fida di chi, quale chiave apre quale porta), le procedure nominate da richiamare, gli oggetti contabili, l'invariante di clamp che tiene un contatore in un intervallo e le connessioni a senso unico — sempre in modo additivo, con le storie di ieri che girano identiche. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
