@@ -26,6 +26,8 @@ from strutture import (
     ConseguenzaSpostamentoGiocatore, ConseguenzaTogliProprieta, ConseguenzaVariabile,
     ConseguenzaVariabileCopia, ConseguenzaSegnala,
     OperandoCasuale, OperandoNumero, OperandoVariabile,
+    CondizioneRelazione, ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli,
+    REL_GIOCATORE, REL_QUALCUNO, REL_QUALCOSA,
 )
 from favella_utils import normalizza_nome, _scomponi_articolo, QUADRA_APERTA, QUADRA_CHIUSA
 from compilatore import (
@@ -403,6 +405,54 @@ def _kind_variabile(mondo, nome):
     return "contatore" if isinstance(mondo.variabili.get(nome), int) else "stato"
 
 
+# [1.6.0 / B3] Articolazione della preposizione di una locuzione di relazione per
+# la RISCRITTURA: 'di' + 'il giocatore' -> 'del giocatore'; 'a' + 'la guardia' ->
+# 'alla guardia'. Solo 'di' e 'a' (le preposizioni di relazione tipiche); per le
+# altre si ripiega sulla forma piana 'prep nome' (che il parser accetta comunque).
+_FUSIONE_PREP = {
+    "di": {"il": "del", "lo": "dello", "la": "della", "i": "dei",
+           "gli": "degli", "le": "delle", "l'": "dell'"},
+    "a":  {"il": "al", "lo": "allo", "la": "alla", "i": "ai",
+           "gli": "agli", "le": "alle", "l'": "all'"},
+}
+
+
+def _articola_prep(prep, nome):
+    """Fonde la preposizione finale di una relazione con l'articolo dell'oggetto.
+    Senza preposizione (es. 'apre') ritorna il solo nome."""
+    if not prep:
+        return nome
+    art, nucleo = _scomponi_articolo(nome)
+    tavola = _FUSIONE_PREP.get(prep)
+    if art and tavola and art.lower() in tavola:
+        fusa = tavola[art.lower()]
+        return f"{fusa}{nucleo}" if fusa.endswith("'") else f"{fusa} {nucleo}"
+    return f"{prep} {nome}"
+
+
+def _rel_membro_surface(mondo, member_id):
+    """[1.6.0 / B3] Forma visualizzata (a metà frase, con articolo) di un membro di
+    relazione: il giocatore, un'entità, o un quantificatore d'interrogazione."""
+    if member_id == REL_GIOCATORE:
+        return "il giocatore"
+    if member_id == REL_QUALCUNO:
+        return "qualcuno"
+    if member_id == REL_QUALCOSA:
+        return "qualcosa"
+    return _articolo_in_minuscolo(_nome_entita(mondo, member_id))
+
+
+def _rel_info_json(mondo, nome_rel):
+    """Dati della relazione necessari alla riscrittura (base della locuzione e
+    preposizione finale)."""
+    rel = getattr(mondo, "relazioni", {}).get(nome_rel)
+    if rel is None:
+        return {"rel": nome_rel, "base": nome_rel, "prep": None}
+    prep = getattr(rel, "prep", None)
+    base = rel.locuzione[:-(len(prep) + 1)] if prep and rel.locuzione.endswith(" " + prep) else rel.locuzione
+    return {"rel": nome_rel, "base": base, "prep": prep}
+
+
 # [Favella Studio / Stati] Commento canonico che persiste l'elenco dei valori
 # ammessi di uno stato: '# valori di <nome>: a, b, c'. Il motore lo ignora (è un
 # commento); il sidecar lo legge per popolare i dropdown anche con valori non
@@ -518,6 +568,15 @@ def _cond_to_json(c, mondo):
         # [1.3.0 / M-10] 'il personaggio ha X'.
         return {"op": "npcHas", "npc": c.id_png, "npcName": _nome_entita(mondo, c.id_png),
                 "id": c.id_oggetto, "name": _nome_entita(mondo, c.id_oggetto)}
+    if isinstance(c, CondizioneRelazione):
+        # [1.6.0 / B3] 'il giocatore si fida di Saverio', 'qualcuno si fida del
+        # giocatore'. 'a'/'b' sono gli ID (o le sentinelle qualcuno/qualcosa);
+        # 'aName'/'bName' le forme a metà frase, con l'info per riscrivere.
+        voce = {"op": "relation", "a": c.a, "b": c.b,
+                "aName": _rel_membro_surface(mondo, c.a),
+                "bName": _rel_membro_surface(mondo, c.b)}
+        voce.update(_rel_info_json(mondo, c.nome_rel))
+        return voce
     return {"op": "unknown"}
 
 
@@ -549,6 +608,15 @@ def _conseq_to_json(c, mondo):
                 "destName": _nome_stanza(mondo, c.destinazione) if c.destinazione else None}
     if isinstance(c, ConseguenzaContatore):
         return {"op": "count", "name": c.nome, "mode": c.modo, "value": _operando_to_json(c.valore)}
+    if isinstance(c, (ConseguenzaRelazioneAggiungi, ConseguenzaRelazioneTogli)):
+        # [1.6.0 / B3] 'il giocatore si fida di Vito' / 'il giocatore non si fida
+        # più di Vito'. 'remove' distingue le due; 'a'/'b' gli ID, i Name le forme.
+        voce = {"op": "relation", "remove": isinstance(c, ConseguenzaRelazioneTogli),
+                "a": c.a, "b": c.b,
+                "aName": _rel_membro_surface(mondo, c.a),
+                "bName": _rel_membro_surface(mondo, c.b)}
+        voce.update(_rel_info_json(mondo, c.nome_rel))
+        return voce
     if isinstance(c, ConseguenzaSpostamento):
         dest = c.destinazione
         dest_name = dest if dest in ("inventario", "nulla") else _nome_entita(mondo, dest)
@@ -598,7 +666,7 @@ def analizza_regole(percorso_file, sorgente=None):
     Difensiva: su errore restituisce ok=False + errors, non solleva."""
     diag = analizza_file_strutturato(percorso_file, sorgente=sorgente)
     vuoto_menu = {"verbs": [], "objects": [], "rooms": [],
-                  "directions": [], "states": [], "counters": []}
+                  "directions": [], "states": [], "counters": [], "relations": []}
     if not diag.get("ok"):
         return {"ok": False, "rules": [], "events": [], "demons": [], "menu": vuoto_menu,
                 "errors": diag.get("errors", [])}
@@ -825,6 +893,12 @@ def analizza_regole(percorso_file, sorgente=None):
         "states": sorted(states),
         "counters": sorted(counters),
         "stateValues": state_values,
+        # [1.6.0 / B3] Relazioni dichiarate, per i costruttori di regole/fatti.
+        "relations": [
+            {"name": nome, "locution": rel.locuzione, "arity": rel.arieta,
+             "reciprocal": bool(rel.reciproca), "prep": getattr(rel, "prep", None)}
+            for nome, rel in sorted(getattr(mondo, "relazioni", {}).items())
+        ],
     }
 
     return {"ok": True, "rules": rules, "events": events, "demons": demons, "menu": menu, "errors": []}
@@ -1559,6 +1633,20 @@ def _serializza_operando(v):
     return str(v)
 
 
+def _frase_relazione(c, negato=False, togli=False):
+    """[1.6.0 / B3] Ricostruisce la frase di relazione da un JSON {aName, base,
+    prep, bName}. 'negato' per l'interrogazione negativa ('X non …'); 'togli' per
+    la conseguenza di rimozione ('X non … più …')."""
+    sogg = c["aName"]
+    base = c["base"]
+    coda = _articola_prep(c.get("prep"), c["bName"])
+    if togli:
+        return f"{sogg} non {base} più {coda}"
+    if negato:
+        return f"{sogg} non {base} {coda}"
+    return f"{sogg} {base} {coda}"
+
+
 def _serializza_condizione(c):
     """[Fase 6c] Condizione JSON (ricorsiva) → testo .fav canonico. Vincoli della
     grammatica: NOT solo su has/prop/var/varEq (infisso «non»); contatori/gruppi non
@@ -1586,6 +1674,9 @@ def _serializza_condizione(c):
     if op == "npcHas":
         # [1.3.0 / M-10] 'il personaggio ha X'.
         return f"{c['npcName']} ha {c['name']}"
+    if op == "relation":
+        # [1.6.0 / B3] 'il giocatore si fida di Saverio'.
+        return _frase_relazione(c)
     if op == "count":
         cmp, v = c["cmp"], _serializza_operando(c["value"])
         if cmp == "==":
@@ -1618,7 +1709,10 @@ def _serializza_condizione(c):
             return f"{t['name']} non è {_luogo_di_condizione(t)}"
         if t["op"] == "npcHas":
             return f"{t['npcName']} non ha {t['name']}"
-        raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato o posizione.")
+        if t["op"] == "relation":
+            # [1.6.0 / B3] 'il giocatore non si fida di Vito'.
+            return _frase_relazione(t, negato=True)
+        raise ValueError("La negazione è ammessa solo su possesso, proprietà, stato, posizione o relazione.")
     if op in ("and", "or"):
         sep = " e " if op == "and" else " oppure "
         def _grp(x):
@@ -1688,6 +1782,9 @@ def _serializza_conseguenza(c):
         base = "aumenta" if mode == "aumenta" else "diminuisci"
         # Ometti 'di 1' (default); ogni operando dinamico è esplicito.
         return f"{base} {c['name']}" + ("" if v == 1 else f" di {_serializza_operando(v)}")
+    if op == "relation":
+        # [1.6.0 / B3] 'il giocatore si fida di Vito' / '… non si fida più di Vito'.
+        return _frase_relazione(c, togli=bool(c.get("remove")))
     if op == "unprop":
         # [1.3.0 / M-2] 'X non è più P'.
         return f"{c['name']} non è più {c['prop']}"
@@ -1929,6 +2026,19 @@ def serializza_frase(spec):
                     "text": f"{str(spec['name']).strip()} resta sempre fra "
                             f"{_serializza_operando(spec['min'])} e "
                             f"{_serializza_operando(spec['max'])}."}
+        if op == "relation_decl":
+            # [1.6.0 / B3] '"si fida di" è una relazione molti a molti [ed è reciproca].'
+            arieta = str(spec.get("arity", "molti-a-molti")).replace("-", " ").strip()
+            if arieta not in ("uno a uno", "uno a molti", "molti a molti"):
+                raise ValueError(f"Arietà non valida: {spec.get('arity')!r}.")
+            coda = " ed è reciproca" if spec.get("reciprocal") else ""
+            return {"ok": True,
+                    "text": f"{_quota(str(spec['locution']).strip())} è una relazione {arieta}{coda}."}
+        if op == "relation_fact":
+            # [1.6.0 / B3] Asserzione: 'Il giocatore si fida di Saverio.'. Accetta la
+            # stessa shape JSON delle conseguenze/condizioni di relazione.
+            frase = _frase_relazione(spec)
+            return {"ok": True, "text": frase[:1].upper() + frase[1:] + "."}
         if op == "state_values_comment":
             # Commento canonico per persistere l'elenco dei valori ammessi di uno
             # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo

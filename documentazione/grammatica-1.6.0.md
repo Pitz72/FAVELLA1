@@ -2058,3 +2058,88 @@ oggetto`); `"ritorno"` è la keyword nuova (riservata).
 (vero quando la direzione ha un'opposta ma la destinazione non torna indietro di
 lì); `favella_server.rpc_world_graph` riporta `oneWay` sugli archi; `serializza_frase`
 accetta `{op:"connection", …, oneWay:true}` → `… senza ritorno.`.
+
+### §29.3 — Relazioni di prima classe (B3) [relations]
+
+Ispirate alle *relations* di Inform 7, mai avute in FAVELLA. Una relazione binaria
+**nominata** collega due parti (entità o il giocatore) con una locuzione d'uso
+('si fida di', 'apre'). In questa prima versione è **d'autore e interrogabile**,
+non azionabile dal giocatore.
+
+```ebnf
+def_relazione: TESTO_QUOTATO "è" "una" "relazione" arieta reciprocita? "."
+arieta: "uno" "a" "uno"     -> arieta_uno_uno
+      | "uno" "a" "molti"   -> arieta_uno_molti
+      | "molti" "a" "molti" -> arieta_molti_molti
+reciprocita: "ed" "è" ( "reciproca" | "reciproco" )
+
+def_relazione_fatto: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg "." -> fatto_rel_gioc
+                   | ENTITA RELAZIONE _rel_prep? rel_ogg "."            -> fatto_rel_ent
+
+rel_ogg: "il" "giocatore" -> rel_giocatore
+       | "giocatore"       -> rel_giocatore
+       | ENTITA            -> rel_entita
+       | "qualcuno"         -> rel_qualcuno
+       | "qualcosa"         -> rel_qualcosa
+
+cond_relazione: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg -> cond_rel_gioc
+              | ENTITA RELAZIONE _rel_prep? rel_ogg            -> cond_rel_ent
+              | "qualcuno" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcuno
+              | "qualcosa" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcosa
+cond_relazione_neg: "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cond_rel_gioc_neg
+                  | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg            -> cond_rel_ent_neg
+                  | "qualcuno" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcuno_neg
+                  | "qualcosa" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcosa_neg
+
+cons_relazione_aggiungi: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg              -> cons_rel_gioc_agg
+                       | ENTITA RELAZIONE _rel_prep? rel_ogg                        -> cons_rel_ent_agg
+cons_relazione_togli: "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg    -> cons_rel_gioc_tog
+                    | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg              -> cons_rel_ent_tog
+```
+
+(Le due conseguenze vivono fra le alternative di `?conseguenza`; qui hanno un nome
+di comodo per l'anti-drift.)
+
+**Meccanica dei terminali.** La locuzione dichiarata è spezzata dallo scanner di
+Passata 1 in **base** (ciò che il terminale CHIUSO `RELAZIONE` incassa, come
+`VERBO_MULTI`) e **preposizione finale** (`di`/`a`/…): 'si fida di' → base
+'si fida' + prep 'di'; 'apre' → base 'apre', nessuna prep. In uso la preposizione
+si legge a parte (`_rel_prep`, filtrata) e si articola con l'articolo
+dell'oggetto: 'di' + 'il giocatore' → 'del giocatore'; 'di' + 'la cella' →
+'della cella' (ma anche la forma piana 'di la cella' è accettata).
+
+**Operandi.** Il giocatore (`il giocatore`, o `giocatore` nudo dopo una prep.
+articolata), un'ENTITA, e — **solo nelle interrogazioni** — i quantificatori
+esistenziali `qualcuno`/`qualcosa` (nelle asserzioni/conseguenze il transformer li
+rifiuta con un errore gentile). I soggetti sono **inlinati** (non un nonterminale
+riducibile) proprio perché condividano il prefisso con le altre regole su `il
+giocatore`/ENTITA e divergano sul token dopo il soggetto (o dopo `non`): RELAZIONE
+vs copula/`ha`/`collega`/… → LALR(1) 0-ambiguo.
+
+**Semantica.**
+
+- **Dichiarazione** (una volta): nome-locuzione + arietà (`uno a uno`, `uno a
+  molti`, `molti a molti`) + `ed è reciproca` opzionale. La reciprocità asserisce
+  anche la coppia inversa; l'arietà sfratta le coppie in conflitto quando se ne
+  aggiunge una (uno-a-uno: una per lato; uno-a-molti: un solo soggetto per ogni
+  oggetto). È raccolta in Passata 1 e pre-popolata nel mondo (come le direzioni),
+  quindi un fatto può precederla.
+- **Asserzione d'autore** (top-level) e **conseguenza** (`e adesso …`): aggiunge
+  (`il giocatore si fida di Saverio`) o toglie (`… non si fida più di Saverio`)
+  una coppia.
+- **Interrogazione** (`se …`): coppia precisa, oppure esistenziale con
+  `qualcuno`/`qualcosa` su un lato, anche negata (`non si fida di`).
+- Lo stato (le coppie) vive nel mondo → catturato dalle istantanee: **ANNULLA**
+  riavvolge le relazioni.
+
+**Round-trip Studio.** `analizza_regole` espone le relazioni dichiarate in
+`menu.relations` e le condizioni/conseguenze di relazione come JSON `{op:
+"relation", a, b, aName, bName, rel, base, prep, remove?}`; il serializzatore le
+riscrive (`_serializza_condizione`/`_serializza_conseguenza`), e `serializza_frase`
+ha le op `relation_decl` e `relation_fact`.
+
+**Cosa resta aperto (estensioni, non in questa versione).** L'interpolazione a
+corredo `[chi si fida del giocatore]` (elenco dei soggetti); il quantificatore
+`ogni` nelle asserzioni (`Il passe-partout apre ogni porta`); le relazioni
+azionabili dal giocatore. Il modello (`Relazione` con `soggetti_di`/`oggetti_di`,
+arietà, reciprocità) è già pronto per reggerle.

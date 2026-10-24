@@ -34,6 +34,24 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
   riservata nuova: `ritorno`. (`senza_ritorno`; round-trip Studio:
   `analizza_outline.exits[].oneWay`, `rpc_world_graph` edge `oneWay`,
   `serializza_frase` op `connection` con `oneWay`.)
+- **Relazioni di prima classe (B3)** — ispirate alle *relations* di Inform 7, mai
+  avute in FAVELLA. Una relazione binaria nominata collega due parti (entità o il
+  giocatore) con una locuzione d'uso: `"si fida di" è una relazione molti a molti.`,
+  `"apre" è una relazione uno a molti ed è reciproca.`. Si **asserisce** d'autore
+  (`Il giocatore si fida di Saverio.`, `La chiave di ottone apre la cella.`), si
+  cambia nelle regole (`e adesso il giocatore si fida di Vito`, `… non si fida più
+  di Vito`) e si **interroga** (`se il giocatore si fida di Saverio`, `se qualcuno
+  si fida del giocatore`, anche negata). Arietà (`uno a uno`/`uno a molti`/`molti a
+  molti`, con sfratto delle coppie in conflitto) e reciprocità opzionale; lo stato
+  è catturato dalle istantanee (ANNULLA lo riavvolge). In questa prima versione è
+  d'autore e interrogabile, **non** azionabile dal giocatore. Restano aperte
+  (estensioni): l'interpolazione `[chi si fida del giocatore]`, il quantificatore
+  `ogni` nelle asserzioni, le relazioni azionabili. Parole riservate nuove:
+  `relazione`, `molti`, `ed`, `reciproca`, `reciproco`, `qualcuno`. (`def_relazione`,
+  `def_relazione_fatto`, `cond_relazione`, `cons_rel_*`; terminale chiuso `RELAZIONE`
+  generato per-file; round-trip Studio: `analizza_regole.menu.relations` +
+  condizioni/conseguenze `op:"relation"`, `serializza_frase` op `relation_decl`/
+  `relation_fact`.)
 
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto

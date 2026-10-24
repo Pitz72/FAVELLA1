@@ -8127,6 +8127,26 @@ _CORPUS_GUARDIA_160 = (
     "La gola collega giù a la cripta senza ritorno.\n"
     "Il corridoio collega sud a il pozzo se la fuga è lontana senza ritorno.\n"
     "La cripta collega su a il pozzo se la fuga è lontana; altrimenti \"Chiuso.\" senza ritorno.\n"
+    # [B3] Relazioni di prima classe: dichiarazione (arietà + reciprocità),
+    # asserzioni (player-soggetto, entità-entità con e senza preposizione),
+    # conseguenze (aggiungi/togli), interrogazioni (concrete, con quantificatore,
+    # negate, player come oggetto articolato 'del giocatore').
+    "Saverio è un personaggio.\nSaverio è nella cella.\n"
+    "Vito è un personaggio.\nVito è nella cella.\n"
+    "La chiave di ottone è una cosa.\nLa chiave di ottone è nella cella.\n"
+    "\"si fida di\" è una relazione molti a molti.\n"
+    "\"apre\" è una relazione uno a molti.\n"
+    "\"è amico di\" è una relazione molti a molti ed è reciproca.\n"
+    "Il giocatore si fida di Saverio.\n"
+    "La chiave di ottone apre la cella.\n"
+    "Saverio è amico di Vito.\n"
+    "\"accusa\" è un comando.\n\"perdona\" è un comando senza oggetto.\n"
+    "\"indaga\" è un comando senza oggetto.\n\"controlla\" è un comando senza oggetto.\n"
+    "Invece di accusa Vito: dire \"Accusa.\" e adesso il giocatore si fida di Vito.\n"
+    "Invece di perdona: dire \"Perdono.\" e adesso il giocatore non si fida più di Saverio.\n"
+    "Invece di indaga se il giocatore si fida di Saverio: dire \"Fiducia.\".\n"
+    "Prima di controlla se qualcuno si fida del giocatore e il giocatore non si fida di Vito: dire \"Eco.\".\n"
+    "Ogni turno se il giocatore si fida di qualcuno: aumenta la sete.\n"
 )
 
 
@@ -8363,18 +8383,173 @@ def test_studio_160_senza_ritorno_round_trip():
            "la frase riscritta ricompila ancora a senso unico")
 
 
+def test_160_relazioni_base():
+    print("[1.6.0 / B3: relazioni — dichiarazione, asserzione, interrogazione, conseguenze]")
+    from strutture import REL_GIOCATORE
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        "La chiave di ottone è una cosa.\nLa chiave di ottone è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        '"apre" è una relazione uno a molti.\n'
+        "Il giocatore si fida di Saverio.\n"              # asserzione (player soggetto)
+        "La chiave di ottone apre la cella.\n"            # asserzione (ent-ent, senza prep)
+        '"accusa" è un comando.\n"perdona" è un comando senza oggetto.\n'
+        '"chiedi" è un comando senza oggetto.\n"spia" è un comando senza oggetto.\n'
+        '"controlla" è un comando senza oggetto.\n'
+        'Invece di accusa Vito: dire "Accusa." e adesso il giocatore si fida di Vito.\n'
+        'Invece di perdona: dire "Perdono." e adesso il giocatore non si fida più di Saverio.\n'
+        'Invece di chiedi se il giocatore si fida di Saverio: dire "Fiducia in Saverio.".\n'
+        'Invece di spia se qualcuno si fida del giocatore: dire "Qualcuno si fida di te.".\n'
+        'Invece di controlla se il giocatore non si fida di Vito: dire "Diffidi di Vito.".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    rel = mondo.relazioni["si fida di"]
+    _check(rel.vale(REL_GIOCATORE, "saverio"), "asserzione iniziale: il giocatore si fida di Saverio")
+    _check(mondo.relazioni["apre"].vale("chiave di ottone", "cella"),
+           "asserzione entità-entità senza preposizione ('apre')")
+    _check("Fiducia in Saverio" in esegui(mondo, "chiedi"), "interrogazione concreta vera")
+    _check("Diffidi di Vito" in esegui(mondo, "controlla"), "interrogazione negata (non si fida di Vito)")
+    _check("Qualcuno si fida di te" not in esegui(mondo, "spia"),
+           "nessuno si fida ancora del giocatore")
+    esegui(mondo, "accusa Vito")
+    _check(rel.vale(REL_GIOCATORE, "vito"), "la conseguenza aggiunge la fiducia in Vito")
+    esegui(mondo, "perdona")
+    _check(not mondo.relazioni["si fida di"].vale(REL_GIOCATORE, "saverio"),
+           "la conseguenza toglie la fiducia in Saverio")
+    # ANNULLA riavvolge le relazioni (stato del mondo). Dopo il ripristino la
+    # mappa è nuova: la si rilegge dal mondo (il vecchio riferimento è obsoleto).
+    esegui(mondo, "annulla")
+    _check(mondo.relazioni["si fida di"].vale(REL_GIOCATORE, "saverio"),
+           "ANNULLA ripristina la fiducia in Saverio")
+
+
+def test_160_relazioni_qualcuno_e_oggetto():
+    print("[1.6.0 / B3: 'qualcuno' soggetto, player come oggetto articolato]")
+    from strutture import REL_GIOCATORE
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Saverio si fida del giocatore.\n"                 # entità soggetto, player oggetto
+        '"spia" è un comando senza oggetto.\n'
+        'Invece di spia se qualcuno si fida del giocatore: dire "Sei osservato.".\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila 'Saverio si fida del giocatore'")
+    _check(mondo.relazioni["si fida di"].vale("saverio", REL_GIOCATORE),
+           "la coppia (Saverio, giocatore) è asserita")
+    _check("Sei osservato" in esegui(mondo, "spia"),
+           "'qualcuno si fida del giocatore' è vera")
+
+
+def test_160_relazioni_arieta_reciprocita():
+    print("[1.6.0 / B3: arietà e reciprocità]")
+    # uno-a-uno: una sola coppia per ciascun lato (eviction).
+    src_uno = (
+        "La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+        "Anna è un personaggio.\nAnna è nella sala.\n"
+        "Bea è un personaggio.\nBea è nella sala.\n"
+        '"ama" è una relazione uno a uno.\n'
+        "Il giocatore ama Anna.\nIl giocatore ama Bea.\n"   # la seconda sostituisce la prima
+    )
+    m = runtime(src_uno)
+    from strutture import REL_GIOCATORE
+    coppie = m.relazioni["ama"].coppie
+    _check(coppie == {(REL_GIOCATORE, "bea")}, f"uno-a-uno: vale solo l'ultima coppia ({coppie})")
+    # reciproca: asserire A→B asserisce anche B→A.
+    src_rec = (
+        "La sala è una stanza.\nIl giocatore comincia nella sala.\n"
+        "Anna è un personaggio.\nAnna è nella sala.\n"
+        '"è amico di" è una relazione molti a molti ed è reciproca.\n'
+        "Il giocatore è amico di Anna.\n"
+    )
+    m2 = runtime(src_rec)
+    rel = m2.relazioni["è amico di"]
+    _check(rel.vale(REL_GIOCATORE, "anna") and rel.vale("anna", REL_GIOCATORE),
+           "reciproca: la coppia vale nei due versi")
+
+
+def test_160_relazioni_errori():
+    print("[1.6.0 / B3: 'qualcuno'/'qualcosa' solo nelle domande]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Il giocatore si fida di qualcuno.\n"   # quantificatore in un'asserzione: errore
+    )
+    mondo, log = compila(src)
+    _check(mondo is None and "qualcuno" in log.lower() and "domanda" in log.lower(),
+           "un quantificatore come oggetto di un'asserzione è un errore gentile")
+
+
+def test_studio_160_relazioni_round_trip():
+    print("[1.6.0 / B3: round-trip Studio di relazioni (regole + dichiarazioni)]")
+    from strumenti_ide import _serializza_regola
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Saverio è un personaggio.\nSaverio è nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        "Il giocatore si fida di Saverio.\n"
+        '"accusa" è un comando.\n'
+        'Invece di accusa Vito se il giocatore si fida di Saverio e il giocatore non si fida di Vito: '
+        'dire "Ok." e adesso il giocatore si fida di Vito e adesso il giocatore non si fida più di Saverio.\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        d = analizza_regole(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(d.get("ok"), "analizza_regole regge")
+    rels = {r["name"]: r for r in d["menu"]["relations"]}
+    _check(rels.get("si fida di", {}).get("arity") == "molti-a-molti"
+           and rels["si fida di"].get("prep") == "di",
+           "il menu elenca la relazione con arietà e preposizione")
+    r = d["rules"][0]
+    frase = _serializza_regola(dict(r, op="rule"))
+    for atteso in ["il giocatore si fida di Saverio", "il giocatore non si fida di Vito",
+                   "il giocatore si fida di Vito", "il giocatore non si fida più di Saverio"]:
+        _check(atteso in frase, f"la regola si riscrive con «{atteso}»")
+    # Riscrittura ricompilabile con la stessa semantica.
+    src2 = "\n".join(src.splitlines()[:-1]) + "\n" + frase + "\n"
+    m2, _ = compila(src2)
+    _check(m2 is not None, "la regola riscritta ricompila")
+    # Serializzazione della dichiarazione e del fatto.
+    decl = serializza_frase({"op": "relation_decl", "locution": "si fida di",
+                             "arity": "molti-a-molti", "reciprocal": False})
+    _check(decl.get("text") == '"si fida di" è una relazione molti a molti.',
+           f"serializza la dichiarazione ({decl})")
+
+
+def test_160_relazioni_additivo_nessuna_relazione():
+    print("[1.6.0 / B3: senza relazioni dichiarate, 'si fida'/'apre' restano parole comuni]")
+    # Nessuna relazione dichiarata → RELAZIONE non matcha: le vecchie frasi valgono.
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La chiave è una cosa.\nLa chiave è nella cella.\n"
+        "La chiave è lucente.\n"
+    )
+    mondo, _ = compila(src)
+    _check(mondo is not None and not mondo.relazioni, "nessuna relazione; la storia compila come prima")
+
+
 def test_160_guardia_lalr_frasi_nuove():
     print("[1.6.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
     simboli = costruisci_symbol_table(_CORPUS_GUARDIA_160)
     try:
         costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli),
-                          verbi_multi=simboli.verbi_multi)
+                          verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
         ok, msg = True, ""
     except GrammarError as e:
         ok, msg = False, str(e)
     _check(ok, f"LALR(1) senza conflitti ({msg})")
     grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili,
-                                       _nomi_direzioni(simboli), verbi_multi=simboli.verbi_multi)
+                                       _nomi_direzioni(simboli), verbi_multi=simboli.verbi_multi,
+                                       relazioni=simboli.relazioni)
     albero = Lark(grammatica, start="start", parser="earley", ambiguity="explicit").parse(_CORPUS_GUARDIA_160)
     _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
     mondo, log = compila(_CORPUS_GUARDIA_160)
@@ -8910,6 +9085,12 @@ def main():
         test_160_senza_ritorno_con_condizione,
         test_160_direzioni_opposte_non_rotte,
         test_studio_160_senza_ritorno_round_trip,
+        test_160_relazioni_base,
+        test_160_relazioni_qualcuno_e_oggetto,
+        test_160_relazioni_arieta_reciprocita,
+        test_160_relazioni_errori,
+        test_studio_160_relazioni_round_trip,
+        test_160_relazioni_additivo_nessuna_relazione,
         test_160_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)

@@ -31,6 +31,8 @@ from strutture import (
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
     Operando, OperandoNumero, OperandoVariabile, OperandoCasuale, _come_operando,
     ConseguenzaSegnala, Arrivo,
+    Relazione, CondizioneRelazione, ConseguenzaRelazioneAggiungi,
+    ConseguenzaRelazioneTogli, REL_QUALCUNO, REL_QUALCOSA, REL_GIOCATORE,
 )
 from libreria_azioni import LIBRERIA_AZIONI
 from favella_utils import (
@@ -164,6 +166,11 @@ class TabellaSimboli:
         # i multiparola servono alla grammatica (terminale chiuso VERBO_MULTI); i
         # verbi monoparola restano coperti da VERBO=WORD (aperto).
         self.verbi_multi = set()
+        # [1.6.0 / B3] Relazioni binarie nominate dichiarate ('"si fida di" è una
+        # relazione molti a molti.'): id-canonico -> dict {locuzione, base, arieta,
+        # reciproca, prep}. La 'base' (locuzione senza la preposizione finale) è ciò
+        # che la grammatica incassa nel terminale chiuso RELAZIONE.
+        self.relazioni = {}
 
     @property
     def tutti(self):
@@ -220,6 +227,29 @@ _RE_COMMENTO = re.compile(r"#[^\n]*")
 # comando.'. Va cercato PRIMA di azzerare le stringhe quotate (lo scanner le
 # svuota), perché il nome del comando vive proprio dentro le virgolette.
 _RE_DEF_VERBO = re.compile(r'"([^"]+)"\s+è\s+un\s+comando\b', re.IGNORECASE)
+# [1.6.0 / B3] Dichiarazione di una relazione: '"si fida di" è una relazione
+# molti a molti [ed è reciproca].'. Come per i verbi, va cercata PRIMA di svuotare
+# le stringhe quotate (la locuzione vive dentro le virgolette).
+_RE_DEF_RELAZIONE = re.compile(
+    r'"([^"]+)"\s+è\s+una\s+relazione\s+'
+    r'(uno\s+a\s+uno|uno\s+a\s+molti|molti\s+a\s+molti)'
+    r'(\s+ed\s+è\s+reciproc[ao])?\s*\.', re.IGNORECASE)
+# Preposizioni che possono chiudere una locuzione di relazione ('si fida DI',
+# 'appartiene A'): la 'base' del terminale RELAZIONE le lascia fuori, perché in
+# uso si articolano con l'articolo ('del giocatore', 'alla guardia').
+_PREP_RELAZIONE_FINALI = frozenset({"di", "a", "da", "su", "con", "per", "in",
+                                    "fra", "tra", "verso", "contro"})
+
+
+def _scomponi_locuzione(locuzione: str):
+    """[1.6.0 / B3] Divide una locuzione di relazione in (base, preposizione
+    finale). 'si fida di' -> ('si fida', 'di'); 'apre' -> ('apre', None). La base
+    è ciò che il terminale RELAZIONE incassa; la preposizione (articolabile) è
+    letta a parte in uso."""
+    parole = " ".join(locuzione.lower().split()).split()
+    if len(parole) >= 2 and parole[-1] in _PREP_RELAZIONE_FINALI:
+        return " ".join(parole[:-1]), parole[-1]
+    return " ".join(parole), None
 
 # [0.30.0 / A1] Carattere NON consentito in un nome dichiarato. Un nome (di
 # entità, stato/contatore, direzione, verbo multiparola) diventa un TERMINALE
@@ -259,6 +289,21 @@ def costruisci_symbol_table(testo: str) -> TabellaSimboli:
         verbo = " ".join(m.group(1).lower().split())
         if " " in verbo:
             tab.verbi_multi.add(verbo)
+    # [1.6.0 / B3] Relazioni nominate (anche loro prima di svuotare le stringhe).
+    for m in _RE_DEF_RELAZIONE.finditer(senza_commenti):
+        locuzione = " ".join(m.group(1).lower().split())
+        if not locuzione:
+            continue
+        base, prep = _scomponi_locuzione(locuzione)
+        if not base:
+            continue
+        tab.relazioni[locuzione] = {
+            "locuzione": locuzione,
+            "base": base,
+            "arieta": " ".join(m.group(2).lower().split()).replace(" ", "-"),
+            "reciproca": bool(m.group(3)),
+            "prep": prep,
+        }
     pulito = _RE_QUOTATO.sub('""', pulito)
     pulito = _RE_COMMENTO.sub("", pulito)
 
@@ -405,6 +450,8 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_ifid               // [1.5.0]
                   | def_demoni_fine_turno  // [1.5.0 / D]
                   | def_invariante         // [1.6.0 / Q1]
+                  | def_relazione          // [1.6.0 / B3]
+                  | def_relazione_fatto    // [1.6.0 / B3]
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -619,6 +666,42 @@ _GRAMMAR_TEMPLATE = r"""
     // che come limite ri-pescato a ogni scrittura non avrebbe senso.
     def_invariante: VARIABILE "resta" "sempre" "fra" operando_confronto "e" operando_confronto "."
 
+    // --- [1.6.0 / B3] RELAZIONI DI PRIMA CLASSE ---
+    // Una relazione binaria NOMINATA (ispirata alle *relations* di Inform 7): si
+    // dichiara una volta con la locuzione d'uso (fra virgolette, come un verbo),
+    // l'arietà e l'eventuale reciprocità. La locuzione diventa il terminale CHIUSO
+    // RELAZIONE (la sua BASE, senza la preposizione finale). D'autore e
+    // interrogabile, non azionabile dal giocatore in questa prima versione.
+    //   '"si fida di" è una relazione molti a molti ed è reciproca.'
+    def_relazione: TESTO_QUOTATO "è" "una" "relazione" arieta reciprocita? "."
+    arieta: "uno" "a" "uno"     -> arieta_uno_uno
+          | "uno" "a" "molti"   -> arieta_uno_molti
+          | "molti" "a" "molti" -> arieta_molti_molti
+    reciprocita: "ed" "è" ( "reciproca" | "reciproco" )
+    // Asserzione d'autore (top-level): 'Il giocatore si fida di Saverio.',
+    // 'La chiave di ottone apre la cella.'. Il SOGGETTO è inlinato ("il giocatore"
+    // oppure ENTITA, mai un quantificatore): così condivide il prefisso con le
+    // altre dichiarazioni (def_giocatore*, def_proprieta/…) e diverge sul token
+    // DOPO il soggetto (RELAZIONE vs copula/collega/si/dà/ha/comincia/…) → LALR(1)
+    // 0-ambiguo. La preposizione finale, se c'è, è _rel_prep (filtrata: si articola
+    // in 'del'/'alla'). L'OGGETTO è rel_ogg (nonterminale, posizione libera).
+    def_relazione_fatto: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg "." -> fatto_rel_gioc
+                       | ENTITA RELAZIONE _rel_prep? rel_ogg "."            -> fatto_rel_ent
+    // L'oggetto di una relazione: il giocatore ('il giocatore' o, dopo una prep.
+    // articolata, 'giocatore' nudo), un'ENTITA, oppure — SOLO nelle interrogazioni
+    // — 'qualcuno'/'qualcosa' (il transformer li rifiuta in asserzioni/conseguenze).
+    rel_ogg: "il" "giocatore" -> rel_giocatore
+           | "giocatore"       -> rel_giocatore
+           | ENTITA            -> rel_entita
+           | "qualcuno"         -> rel_qualcuno
+           | "qualcosa"         -> rel_qualcosa
+    // Preposizione finale di relazione, articolata, FILTRATA (prefisso '_'): non
+    // produce figli, così i metodi del transformer vedono solo l'oggetto e la
+    // RELAZIONE. Le forme sono quelle di 'di' e 'a' (le relazioni tipiche); 'apre'
+    // non ne ha e _rel_prep resta assente.
+    _rel_prep: "di" | "del" | "dello" | "della" | "dei" | "degli" | "delle" | "dell'" | "d'"
+             | "a" | "al" | "allo" | "alla" | "ai" | "agli" | "alle" | "all'"
+
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
     // (sempre opposte, per garantire l'auto-ritorno). Entrambi gli operandi sono
@@ -789,6 +872,8 @@ _GRAMMAR_TEMPLATE = r"""
               | cond_posizione_oggetto_neg
               | cond_png_ha
               | cond_png_ha_neg
+              | cond_relazione       // [1.6.0 / B3]
+              | cond_relazione_neg   // [1.6.0 / B3]
               | cond_non_gruppo
               | "(" cond_or ")"
     cond_possesso: "il" "giocatore" "ha" ENTITA
@@ -859,6 +944,20 @@ _GRAMMAR_TEMPLATE = r"""
     // "ha" (o "non" "ha") è disgiunto da _copula.
     cond_png_ha: ENTITA "ha" ENTITA
     cond_png_ha_neg: ENTITA "non" "ha" ENTITA
+    // [1.6.0 / B3] Interrogazione di una relazione: 'se il giocatore si fida di
+    // Saverio', 'se qualcuno si fida del giocatore', 'se il giocatore non si fida
+    // (più) di Vito'. Il SOGGETTO è inlinato (il giocatore / ENTITA / qualcuno /
+    // qualcosa): così condivide il prefisso con le altre cond_base (copula/"ha")
+    // e diverge sul token dopo il soggetto (o dopo "non"): RELAZIONE vs "ha"/copula
+    // → LALR(1) 0-ambiguo. 'più' è opzionale e innocuo in interrogazione.
+    cond_relazione: "il" "giocatore" RELAZIONE _rel_prep? rel_ogg -> cond_rel_gioc
+                  | ENTITA RELAZIONE _rel_prep? rel_ogg            -> cond_rel_ent
+                  | "qualcuno" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcuno
+                  | "qualcosa" RELAZIONE _rel_prep? rel_ogg         -> cond_rel_qualcosa
+    cond_relazione_neg: "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cond_rel_gioc_neg
+                      | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg            -> cond_rel_ent_neg
+                      | "qualcuno" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcuno_neg
+                      | "qualcosa" "non" RELAZIONE "più"? _rel_prep? rel_ogg         -> cond_rel_qualcosa_neg
 
     // --- CONSEGUENZE ---
     // La destinazione dello spostamento è un'ENTITA: include i nomi dichiarati e
@@ -876,6 +975,16 @@ _GRAMMAR_TEMPLATE = r"""
                 // [1.3.0 / M-10] 'la guardia ha la chiave': l'oggetto passa al
                 // personaggio. Dopo ENTITA il lookahead "ha" è nuovo.
                 | ENTITA "ha" ENTITA               -> cons_png_riceve
+                // [1.6.0 / B3] Asserire/togliere una coppia di relazione: 'il
+                // giocatore si fida di Vito' / 'il giocatore non si fida più di
+                // Vito'. Soggetto inlinato (il giocatore / ENTITA): dopo il
+                // soggetto (o dopo "non") il lookahead RELAZIONE è disgiunto dalle
+                // altre conseguenze su ENTITA/"il giocatore" (copula/collega/ha/va/
+                // cambia/diventa).
+                | "il" "giocatore" RELAZIONE _rel_prep? rel_ogg              -> cons_rel_gioc_agg
+                | ENTITA RELAZIONE _rel_prep? rel_ogg                        -> cons_rel_ent_agg
+                | "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cons_rel_gioc_tog
+                | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg           -> cons_rel_ent_tog
                 // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
                 // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
                 // (mai un'ENTITA: 'giocatore' è riservata), distinta da
@@ -1015,6 +1124,14 @@ _GRAMMAR_TEMPLATE = r"""
     // Vuota (nessun verbo multiparola) -> regex che non matcha mai.
     VERBO_MULTI.3: /(?:__VERBI_MULTI__)\b/i
 
+    // [1.6.0 / B3] RELAZIONE: alternanza CHIUSA delle BASI delle locuzioni di
+    // relazione dichiarate ('si fida', 'apre'), generata per-file (come
+    // VERBO_MULTI). Priorità ALTA (.3) e confine di parola, così la locuzione
+    // intera vince il longest-match contro i singoli WORD. La preposizione finale
+    // ('di'/'a') non è nella base: in uso si legge a parte (_rel_prep, articolabile
+    // in 'del'/'alla'). Vuota -> regex che non matcha mai.
+    RELAZIONE.3: /(?:__RELAZIONI__)\b/i
+
     VERBO: WORD
     WORD: /[a-zA-ZÀ-ÿ0-9']+/
 
@@ -1104,6 +1221,23 @@ def _costruisci_alt_verbi_multi(verbi_multi=()) -> str:
     return "|".join(_pattern_nome(v) for v in verbi)
 
 
+def _costruisci_alt_relazioni(relazioni=()) -> str:
+    """[1.6.0 / B3] Corpo regex dell'alternanza del terminale RELAZIONE: le BASI
+    delle locuzioni di relazione dichiarate ('si fida', 'apre'), con spazi
+    flessibili e ordinate per lunghezza decrescente (longest-match). La
+    preposizione finale ('di'/'a') NON è nella base: in uso si legge a parte (si
+    articola in 'del'/'alla'…). Vuoto -> regex che non matcha mai."""
+    basi = []
+    for info in (relazioni.values() if isinstance(relazioni, dict) else relazioni):
+        base = info.get("base") if isinstance(info, dict) else info
+        if base:
+            basi.append(base)
+    basi = sorted(set(basi), key=len, reverse=True)
+    if not basi:
+        return r"[^\s\S]"
+    return "|".join(_pattern_nome(b) for b in basi)
+
+
 # ------------------------------------------------------------------------------
 # [1.3.0] PAROLE CHIAVE CON CONFINE DI PAROLA, SENZA DISTINZIONE DI MAIUSCOLE
 # ------------------------------------------------------------------------------
@@ -1169,15 +1303,18 @@ def _parole_chiave_con_confine(grammatica: str) -> str:
     return "\n".join(righe_out) + "\n" + "\n".join(definizioni) + "\n"
 
 
-def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=()) -> str:
+def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=(),
+                          relazioni=()) -> str:
     """Restituisce la grammatica concreta per questo file, con i terminali
-    ENTITA, VARIABILE, DIREZIONE e VERBO_MULTI risolti dai simboli noti (Passata 2).
-    VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include le direzioni
-    personalizzate (Livello 4); VERBO_MULTI i verbi custom multi-parola (0.18.0)."""
+    ENTITA, VARIABILE, DIREZIONE, VERBO_MULTI e RELAZIONE risolti dai simboli noti
+    (Passata 2). VARIABILE è la classe degli 'stati' (Livello 3); DIREZIONE include
+    le direzioni personalizzate (Livello 4); VERBO_MULTI i verbi custom multi-parola
+    (0.18.0); RELAZIONE le locuzioni di relazione (1.6.0 / B3)."""
     grammatica = _GRAMMAR_TEMPLATE.replace("__ENTITA__", _costruisci_regex_entita(simboli))
     grammatica = grammatica.replace("__VARIABILE__", _costruisci_regex_nomi(variabili))
     grammatica = grammatica.replace("__DIREZIONE_ALT__", _costruisci_alt_direzioni(direzioni))
     grammatica = grammatica.replace("__VERBI_MULTI__", _costruisci_alt_verbi_multi(verbi_multi))
+    grammatica = grammatica.replace("__RELAZIONI__", _costruisci_alt_relazioni(relazioni))
     return _parole_chiave_con_confine(grammatica)
 
 
@@ -1192,7 +1329,7 @@ _CACHE_PARSER: dict = {}
 
 
 def costruisci_parser(simboli, variabili=(), direzioni=(),
-                      propagate_positions=False, verbi_multi=()) -> Lark:
+                      propagate_positions=False, verbi_multi=(), relazioni=()) -> Lark:
     """Istanzia (o riusa dalla cache) il parser LALR(1) per i simboli dati. LALR è
     unambiguo per costruzione: un'eventuale ambiguità grammaticale emergerebbe qui
     come GrammarError a build-time, non come scelta silenziosa a runtime.
@@ -1201,7 +1338,7 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     resta byte-stabile) annota ogni nodo dell'albero con riga/colonna iniziali e
     finali. Lo usa SOLO il percorso additivo dell'IDE (analizza_outline) per
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni)
     chiave = (grammatica, propagate_positions)
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1211,10 +1348,11 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     return parser
 
 
-def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=()) -> Lark:
+def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_multi=(),
+                                 relazioni=()) -> Lark:
     """[1.3.0 / M-6] Un parser che legge una sola condizione ('la porta è
     aperta'), per i testi condizionali. Cachato come quello principale."""
-    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi)
+    grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni)
     chiave = (grammatica, "condizione")
     parser = _CACHE_PARSER.get(chiave)
     if parser is None:
@@ -1551,7 +1689,7 @@ class FavellaTransformer(Transformer):
     """
     Visita l'albero sintattico generato da Lark e popola l'oggetto Mondo.
     """
-    def __init__(self, coppie_direzioni=()):
+    def __init__(self, coppie_direzioni=(), relazioni=()):
         super().__init__()
         self.mondo = Mondo()
         self.errori = []        # Errori bloccanti: la compilazione fallisce
@@ -1612,6 +1750,20 @@ class FavellaTransformer(Transformer):
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
         for dir_a, dir_b in coppie_direzioni:
             self.mondo.dichiara_direzione_opposta(dir_a, dir_b)
+        # [1.6.0 / B3] Le relazioni sono raccolte in Passata 1 e pre-popolate qui,
+        # così asserzioni e interrogazioni funzionano a prescindere dall'ordine
+        # (un fatto può precedere la dichiarazione). `_base_relazione` mappa la
+        # BASE della locuzione (ciò che il terminale RELAZIONE matcha) all'id
+        # canonico (la locuzione intera, 'si fida di').
+        self._base_relazione = {}
+        info_rel = relazioni.values() if isinstance(relazioni, dict) else relazioni
+        for info in info_rel:
+            rel = Relazione(info["locuzione"], info["locuzione"],
+                            arieta=info.get("arieta", "molti-a-molti"),
+                            reciproca=bool(info.get("reciproca")),
+                            prep=info.get("prep"))
+            self.mondo.dichiara_relazione(rel)
+            self._base_relazione[" ".join(info["base"].lower().split())] = info["locuzione"]
 
     # --- Nodi Entità e Testo ---
 
@@ -1657,6 +1809,12 @@ class FavellaTransformer(Transformer):
 
     def DIREZIONE(self, token):
         return token.value.lower()
+
+    def RELAZIONE(self, token):
+        # [1.6.0 / B3] La BASE di una locuzione di relazione ('si fida', 'apre');
+        # la riconduco all'id canonico (la locuzione intera, 'si fida di').
+        base = " ".join(token.value.lower().split())
+        return self._base_relazione.get(base, base)
 
     def PREP_AZIONE(self, token):
         return token.value.lower()
@@ -2074,6 +2232,99 @@ class FavellaTransformer(Transformer):
         self._pending_invarianti.append(
             (nome, str(var_grezzo), _come_operando(minimo), _come_operando(massimo)))
         return None
+
+    # --- [1.6.0 / B3] Relazioni di prima classe ---
+
+    def def_relazione(self, *_):
+        # La relazione è già stata raccolta in Passata 1 e pre-popolata in __init__
+        # (come le coppie di direzioni): qui niente da fare.
+        return None
+
+    # L'OGGETTO di una relazione (rel_ogg) tramite gli alias rel_giocatore/…: tornano
+    # l'ID-membro o la sentinella del quantificatore.
+    def rel_giocatore(self, *_):
+        return REL_GIOCATORE
+
+    def rel_entita(self, ent_grezzo):
+        return normalizza_nome(ent_grezzo)
+
+    def rel_qualcuno(self, *_):
+        return REL_QUALCUNO
+
+    def rel_qualcosa(self, *_):
+        return REL_QUALCOSA
+
+    def _rel_quantificatore(self, operando):
+        return operando in (REL_QUALCUNO, REL_QUALCOSA)
+
+    def _rel_ogg_concreto(self, ogg, locuzione, contesto):
+        """[B3] 'qualcuno'/'qualcosa' valgono solo nelle interrogazioni: come
+        oggetto di un'asserzione o di una conseguenza sono un errore gentile."""
+        if self._rel_quantificatore(ogg):
+            self.errori.append(
+                f"«qualcuno»/«qualcosa» valgono solo in una domanda ('se …'), non "
+                f"in {contesto} della relazione «{locuzione}»: indica chi di preciso.")
+            return False
+        return True
+
+    # Asserzioni d'autore (top-level): applicano subito la coppia (la relazione è
+    # già in mondo.relazioni; gli ID-entità sono dichiarati per costruzione).
+    def _asserisci(self, sogg, locuzione, ogg):
+        if not self._rel_ogg_concreto(ogg, locuzione, "un'asserzione"):
+            return
+        rel = self.mondo.relazioni.get(locuzione)
+        if rel is not None:
+            rel.aggiungi(sogg, ogg)
+
+    def fatto_rel_gioc(self, locuzione, ogg):
+        self._asserisci(REL_GIOCATORE, locuzione, ogg)
+        return None
+
+    def fatto_rel_ent(self, ent_grezzo, locuzione, ogg):
+        self._asserisci(normalizza_nome(ent_grezzo), locuzione, ogg)
+        return None
+
+    # Conseguenze (azionate d'autore da regole/eventi/demoni).
+    def cons_rel_gioc_agg(self, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneAggiungi(locuzione, REL_GIOCATORE, ogg)
+
+    def cons_rel_ent_agg(self, ent_grezzo, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneAggiungi(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    def cons_rel_gioc_tog(self, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneTogli(locuzione, REL_GIOCATORE, ogg)
+
+    def cons_rel_ent_tog(self, ent_grezzo, locuzione, ogg):
+        self._rel_ogg_concreto(ogg, locuzione, "una conseguenza")
+        return ConseguenzaRelazioneTogli(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    # Interrogazioni (condizioni). Il soggetto è noto dall'alias della regola.
+    def cond_rel_gioc(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_GIOCATORE, ogg)
+
+    def cond_rel_ent(self, ent_grezzo, locuzione, ogg):
+        return CondizioneRelazione(locuzione, normalizza_nome(ent_grezzo), ogg)
+
+    def cond_rel_qualcuno(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_QUALCUNO, ogg)
+
+    def cond_rel_qualcosa(self, locuzione, ogg):
+        return CondizioneRelazione(locuzione, REL_QUALCOSA, ogg)
+
+    def cond_rel_gioc_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_GIOCATORE, ogg))
+
+    def cond_rel_ent_neg(self, ent_grezzo, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, normalizza_nome(ent_grezzo), ogg))
+
+    def cond_rel_qualcuno_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_QUALCUNO, ogg))
+
+    def cond_rel_qualcosa_neg(self, locuzione, ogg):
+        return CondizioneNot(CondizioneRelazione(locuzione, REL_QUALCOSA, ogg))
 
     def def_direzioni(self, dir_a, dir_b):
         # [Livello 4 / L1] La coppia è già stata raccolta in Passata 1 e applicata
@@ -4187,7 +4438,7 @@ def analizza_file(percorso_file: str) -> Mondo | None:
 
         # 2. PASSATA 2 — Parsing formale LALR(1) con ENTITA, VARIABILE e DIREZIONE chiusi.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
         # [1.3.0] Tutti gli errori di sintassi in una volta (analizza_con_recupero).
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4206,9 +4457,9 @@ def analizza_file(percorso_file: str) -> Mondo | None:
             return None
 
         # 3. TRASFORMAZIONE (AST -> Oggetti Python)
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni)
         transformer.mondo.file_storia = os.path.basename(percorso_file)   # [1.3.0 / L-6]
         transformer.transform(tree)
 
@@ -4419,7 +4670,7 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, nomi_dir,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
         # [1.3.0] Tutti gli errori di sintassi, ciascuno con la sua posizione.
         tree, errori_sintassi = analizza_con_recupero(parser, testo)
         if errori_sintassi:
@@ -4435,9 +4686,9 @@ def analizza_file_strutturato(percorso_file, sorgente=None):
                 errors.append(_diag(messaggio, file=f_o, line=r_o, col=col, code=codice))
             return {"ok": False, "errors": errors, "warnings": warnings,
                     "worldSummary": None}
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, nomi_dir,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni)
         transformer.transform(tree)
         transformer.valida_post()  # include il linter (analisi_statica)
         _avvisa_partenza_implicita(transformer, mappa_righe)
@@ -4529,11 +4780,11 @@ def compila_mondo(percorso_file, sorgente=None):
 
         # PASSATA 2 — parsing LALR + trasformazione + validazione semantica.
         parser = costruisci_parser(simboli.tutti, simboli.variabili, _nomi,
-                                   verbi_multi=simboli.verbi_multi)
+                                   verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni)
         tree = parser.parse(testo)
-        transformer = FavellaTransformer(coppie_dir)
+        transformer = FavellaTransformer(coppie_dir, relazioni=simboli.relazioni)
         transformer.argomenti_parser = (simboli.tutti, simboli.variabili, _nomi,
-                                        simboli.verbi_multi)
+                                        simboli.verbi_multi, simboli.relazioni)
         transformer.mondo.file_storia = os.path.basename(percorso_file or "")   # [1.3.0 / L-6]
         transformer.transform(tree)
         transformer.valida_post()
