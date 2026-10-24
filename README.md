@@ -1,22 +1,27 @@
 # FAVELLA 1
 
 <p align="center">
-  <img src="assets/banner.png" alt="FAVELLA 1 — versione 1.5.0 — L'italiano è il linguaggio di programmazione" width="880">
+  <img src="branding/materiale/banner-favella1-v1.6.0.svg" alt="FAVELLA 1 — versione 1.6.0 — L'italiano è il linguaggio di programmazione" width="880">
 </p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**
 
 È un progetto nato come esperimento, con una missione ambiziosa: rendere lo sviluppo di avventure testuali accessibile a tutti, specialmente a scrittori e game designer, usando la lingua italiana come un vero e proprio linguaggio di programmazione.
 
-> ### 🛰️ FAVELLA 1.5.0 — le lezioni del Relitto
+> ### 🛰️ FAVELLA 1.6.0 — le frontiere nuove
 >
-> Il linguaggio era completo alla 1.4.4. Poi il remake de **«Il Relitto Silente»**, il gioco più
-> grande mai scritto in FAVELLA, ha mostrato che cosa costa ancora fatica a chi scrive una storia
-> lunga: divieti da ripetere oggetto per oggetto, eventi da far accadere una volta sola, testi
-> copiati dieci volte. La **1.5.0** raccoglie quelle lezioni in un'unica versione, con le
-> correzioni che le hanno accompagnate. Si cresce solo aggiungendo: **tutte le storie scritte
-> con la 1.4 girano identiche** (provato su undici storie ufficiali, comando per comando).
-> **Favella Studio 1.2.3** è la casa di scrittura, col motore 1.5.0 dentro. Licenza MIT.
+> Il linguaggio era maturo alla 1.5.0. La **1.6.0** ne allarga i confini con cinque costrutti,
+> tutti facoltativi: le **relazioni di prima classe** (`"si fida di" è una relazione molti a
+> molti.`, che si asserisce, si cambia nelle regole e si interroga), le **procedure nominate**
+> (`Definisci "far passare la notte" come: …`, una sequenza di conseguenze richiamabile con
+> `esegui …`), gli **oggetti contabili** (`La pozione, plurale "pozioni", è contabile.`, con le
+> quantità e `prendi`/`lascia`/`consuma N`), l'**invariante di clamp** (`La sete resta sempre fra
+> 0 e 100.`, riapplicata dal motore dopo ogni modifica) e le **connessioni a senso unico** (`La
+> botola collega giù a il pozzo senza ritorno.`); più qualche correzione di diagnostica. Si cresce
+> solo aggiungendo: **tutte le storie scritte con la 1.5 girano identiche** (le dieci storie
+> ufficiali hanno compilazione identica, byte per byte, e gioco invariato). **Favella Studio
+> 1.4.0** è la casa di scrittura, col motore 1.6.0 dentro, il pannello **Relazioni** e il **grafo
+> di vincibilità**. Licenza MIT.
 
 ---
 
@@ -72,45 +77,60 @@ la **galleria di storie** (vedi sotto): `favella1 libreria copia <nome>` e
 
 ## 📘 Il manuale
 
-C'è un **manuale d'autore completo**: 21 capitoli, 102 pagine, dall'installazione fino
-a demoni, dialoghi e casualità d'autore. Il PDF è allineato al linguaggio **1.5.0**:
-le frasi nuove stanno nei capitoli a cui appartengono (uscite con una condizione,
-stati calcolati, `e basta`, `per la prima volta`, `e poi dire`, gli arrivi…) e nel
-riepilogo; la semantica precisa è nella [spec](documentazione/grammatica-1.5.0.md), §28.
+C'è un **manuale d'autore completo**: 22 capitoli, 113 pagine, dall'installazione fino
+a demoni, dialoghi, relazioni e oggetti contabili. Il PDF è allineato al linguaggio **1.6.0**:
+le frasi nuove stanno nei capitoli a cui appartengono (le relazioni, le procedure nominate,
+gli oggetti contabili, l'invariante di clamp, le connessioni «senza ritorno») e nel
+riepilogo; la semantica precisa è nella [spec](documentazione/grammatica-1.6.0.md), §29–§30.
 
 - **Ebook PDF, gratuito**: [`documentazione/manuale/manuale.pdf`](documentazione/manuale/manuale.pdf)
-- **Edizione cartacea**: la **Terza edizione** (96 pagine a colori, allineata alla 1.4.4, 13,51 €) è [su Amazon.it](https://www.amazon.it/dp/B0H6SKM9JR), l'ultima su carta. Le frasi della 1.5.0 sono nel PDF; tutto ciò che il libro insegna vale anche nella 1.5.0
+- **Edizione cartacea**: la **Terza edizione** (96 pagine a colori, allineata alla 1.4.4, 13,51 €) è [su Amazon.it](https://www.amazon.it/dp/B0H6SKM9JR), l'ultima su carta. Le frasi della 1.6.0 sono nel PDF; tutto ciò che il libro insegna vale anche nella 1.6.0
 
 ---
 
-## 🛰️ Stato Attuale: v1.5.0 — le lezioni del Relitto
+## 🛰️ Stato Attuale: v1.6.0 — le frontiere nuove
 
-La **1.5.0** porta nel linguaggio ciò che ha insegnato il remake de «Il Relitto Silente».
-Frasi nuove, tutte facoltative:
+La **1.6.0** allarga i confini del linguaggio con cinque frontiere, tutte facoltative e
+additive (le frasi della 1.5 restano valide e col medesimo significato):
 
-- `Prima di sintonizza qualcosa se la protezione è attiva: dire "PROTEZIONE VITALE." e basta.`
-  — un divieto che vale per tutto, controllato prima di ogni altra regola;
-- `La protezione è attiva quando l'aria è meno di 30 e la fuga è lontana.` — uno stato che si
-  calcola da solo e si legge come ogni stato;
-- `Invece di prendi il disco per la prima volta: …` (e `Quando … per la prima volta`);
-- `e adesso il giocatore va nella gola` (mostra la stanza) e `… si ritrova nella gola` (no);
-- `… e adesso aumenta l'aria di 20 e poi dire "Aria: [aria]."` — il testo dopo le conseguenze;
-- `I ganci si chiamano anche "casse", "uncini" e "rampini".`;
-- `Il testo "presa di servizio" è "…".` richiamato con `[presa di servizio]`, e regole su più
-  verbi: `Invece di usa oppure accendi il faro: …`;
-- `"esamina" non fa passare il tempo.`; `e adesso segnala "gemito"` (per l'app che ospita la
-  storia);
-- `Quando il giocatore entra nella stiva: …` — all'arrivo, prima della descrizione;
-- `La cucina collega nord a la cantina se la botola è aperta; altrimenti "La botola è chiusa.".`;
-- `I demoni guardano la fine del turno.`, `La riga di stato è "…".`, `L'IFID è "…".`.
+- **Relazioni di prima classe** — una relazione binaria nominata fra due parti, con la sua
+  locuzione d'uso: `"si fida di" è una relazione molti a molti.`, `"apre" è una relazione uno a
+  molti ed è reciproca.`. Si **asserisce** (`Il giocatore si fida di Saverio.`), si **cambia**
+  nelle regole (`e adesso il giocatore si fida di Vito`, `… non si fida più di Vito`) e si
+  **interroga** (`se il giocatore si fida di Saverio`, `se qualcuno si fida del giocatore`,
+  anche negata); l'interpolazione `[chi si fida del giocatore]` ne elenca i soggetti. Arietà
+  (`uno a uno` / `uno a molti` / `molti a molti`) e reciprocità opzionale. In questa prima
+  versione è d'autore e interrogabile, non ancora azionabile dal giocatore.
+- **Procedure nominate** — una sequenza di conseguenze dichiarata una volta e richiamabile:
+  `Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza
+  di 5.`, poi `Invece di dormi: … e adesso esegui far passare la notte.`. Una procedura può
+  richiamarne un'altra o se stessa, con una guardia di profondità contro i cicli.
+- **Oggetti contabili** — una cosa tenuta in più copie, con il plurale **dichiarato** (mai
+  indovinato): `La pozione, plurale "pozioni", è contabile.`. Quantità in inventario, in una
+  stanza o in un contenitore (`Il giocatore ha 3 pozioni.`, `Ci sono 5 frecce in la faretra.`);
+  il giocatore `prendi 2 pozioni`, `lascia una pozione`, `consuma una pozione`; condizioni sulle
+  scorte (`se il giocatore ha almeno 2 pozioni`, `se non restano pozioni`) e interpolazione
+  `[quante pozioni]`. È la prima frontiera che tocca il loop di gioco.
+- **Invariante di clamp** — `La sete resta sempre fra 0 e 100.`: si dichiara una volta e il
+  motore la applica da sé dopo **ogni** scrittura del contatore (`aumenta`, `diminuisci`,
+  `diventa`, le copie…), non più solo quando l'autore ricorda `resta fra A e B`. Gli estremi
+  possono essere un numero o un altro contatore (`… fra 0 e [soglia]`).
+- **Connessione a senso unico** — `La botola collega giù a il pozzo senza ritorno.`: il
+  suffisso `senza ritorno` sopprime l'uscita di ritorno che il motore aggiungerebbe, anche dopo
+  un'uscita condizionata.
 
-E poi: i `[se]` si annidano, la tipografia italiana passa intatta nei testi (`po’`,
-`“ATTENZIONE”`), i salvataggi non si dichiarano più «diversi» a torto, il linter avvisa di
-ciò che si scrive e non si legge mai; per chi collauda, `favella1 trascrivi` e i percorsi con
-le attese (`# atteso: l'aria è almeno 20`); per chi costruisce un'app intorno al motore,
-`apri_partita`, `nuova_partita` e `prova` in `gioco.py`. Le storie della 1.4 girano
-identiche. Dettagli nel [CHANGELOG](CHANGELOG.md), nel [piano](documentazione/piano-1.5.0.md)
-e nella [spec](documentazione/grammatica-1.5.0.md), §28.
+E poi qualche correzione di diagnostica. Lo stato di relazioni, procedure, scorte e clamp è
+catturato dalle istantanee: **ANNULLA** lo riavvolge. Le storie della 1.5 girano identiche.
+Dettagli nel [CHANGELOG](CHANGELOG.md) e nella [spec](documentazione/grammatica-1.6.0.md),
+§29–§30.
+
+La **1.5.0** raccolse le lezioni del remake de «Il Relitto Silente»: frasi facoltative nuove
+(`Prima di … : dire "…" e basta.`, gli stati calcolati `La protezione è attiva quando …`, `per
+la prima volta`, `il giocatore va in` / `si ritrova in`, `e poi dire`, le uscite con una
+condizione, la riga di stato, l'IFID), i `[se]` annidati, la tipografia italiana intatta nei
+testi, e gli strumenti di collaudo (`favella1 trascrivi`, i percorsi con le attese). Le storie
+della 1.4 giravano identiche. Dettagli nel [CHANGELOG](CHANGELOG.md), nel
+[piano](documentazione/piano-1.5.0.md) e nella [spec](documentazione/grammatica-1.5.0.md), §28.
 
 La **1.4.4** cambia solo *dove* il motore dice che sta un errore. Alcuni errori nascono
 dopo l'analisi della frase e la riga va cercata nel testo: prima vinceva la prima riga
@@ -196,9 +216,9 @@ allo stato» (v0.34.0). La 1.0.0 non introduce modifiche di grammatica rispetto 
 
 La grammatica resta **LALR(1) non ambigua per costruzione** (parser a due passate:
 symbol-table → LALR con i nomi come token chiusi), con una guardia anti-ambiguità
-permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1292
+permanente nella suite (verifica Earley a zero alberi ambigui). Suite di **1498
 asserzioni** del linguaggio + **50** del collaudatore statico, tutte verdi (`pytest`:
-453 passati). Spec tecnica: [`documentazione/grammatica-1.5.0.md`](documentazione/grammatica-1.5.0.md).
+488 passati). Spec tecnica: [`documentazione/grammatica-1.6.0.md`](documentazione/grammatica-1.6.0.md).
 
 > Dopo la 1.0.0 il linguaggio cresce **solo aggiungendo**: le 1.x portano frasi e
 > strumenti nuovi quando una storia vera ne mostra il bisogno, senza toccare ciò
@@ -228,19 +248,19 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.5.0** | header di modulo |
-| Compilatore, nucleo (`compilatore.py`) | **1.5.0** | header di modulo |
-| Strumenti per l'IDE (`strumenti_ide.py`) | **1.5.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Esportazione HTML (`esportazione.py`) | **1.5.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Strutture dati (`strutture.py`) | **1.5.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.5.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.5.0** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.5.0** | nuovo nella 1.2.0; trascrizione, percorsi con le attese e riprese nella 1.5.0 |
-| Specifica formale della grammatica | **1.5.0** | [`documentazione/grammatica-1.5.0.md`](documentazione/grammatica-1.5.0.md) — *1.4 + le lezioni del Relitto e le idee rimaste (§28)* |
-| Suite di test | **1.5.0** | 1292 asserzioni linguaggio + 50 collaudo (pytest 453) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.5.0 | protocollo 0.12.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1, + riga di stato, uscite con una condizione e stati calcolati per Studio 1.2.3) |
+| Motore / interprete (`gioco.py`) | **1.6.0** | header di modulo |
+| Compilatore, nucleo (`compilatore.py`) | **1.6.0** | header di modulo |
+| Strumenti per l'IDE (`strumenti_ide.py`) | **1.6.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Esportazione HTML (`esportazione.py`) | **1.6.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Strutture dati (`strutture.py`) | **1.6.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.6.0** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.6.0** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.6.0** | nuovo nella 1.2.0; trascrizione, percorsi con le attese e riprese nella 1.5.0 |
+| Specifica formale della grammatica | **1.6.0** | [`documentazione/grammatica-1.6.0.md`](documentazione/grammatica-1.6.0.md) — *1.5 + le frontiere nuove: relazioni, procedure, contabili, clamp, senso unico (§29–§30)* |
+| Suite di test | **1.6.0** | 1498 asserzioni linguaggio + 50 collaudo (pytest 488) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.6.0 | protocollo 0.15.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1, + riga di stato e uscite condizionate per Studio 1.2.3, + relazioni, procedure, contabili, clamp e grafo di vincibilità per Studio 1.4.0) |
 
-> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **21 capitoli, 102 pagine, allineato al linguaggio 1.5.0** (novità anche nella spec, §22, §23 e §28). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
+> La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **22 capitoli, 113 pagine, allineato al linguaggio 1.6.0** (novità anche nella spec, §29 e §30). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 
 ---
 
@@ -367,8 +387,8 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
     `Includi`-bili (`favella1/libreria/`) e la **galleria di storie**
     (`favella1/galleria/`), giocabili da CLI. Dettagli di confezionamento e
     procedura di rilascio in [PACKAGING.md](PACKAGING.md).
--   ✅ **Manuale d'autore** — *fatto*: 21 capitoli, 102 pagine (PDF allineato al
-    linguaggio 1.5.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
+-   ✅ **Manuale d'autore** — *fatto*: 22 capitoli, 113 pagine (PDF allineato al
+    linguaggio 1.6.0), con «La Casa di Via Stradivari» e «Il Relitto Silente» come
     esempi guida. Disponibile come **ebook PDF scaricabile** in
     [`documentazione/manuale/`](documentazione/manuale/) e in **edizione cartacea
     su Amazon**.
@@ -383,21 +403,20 @@ L'evoluzione **non riguarda più il linguaggio**, ma il suo **ecosistema**:
 
 ## ✦ Favella Studio — l'ambiente di scrittura
 
-<p align="center">
-  <img src="branding/materiale/banner-favella-studio-v1.2.3.png" alt="Favella Studio 1.2.3 — l'ambiente di scrittura per FAVELLA 1" width="880">
-</p>
-
-In [`studio/`](studio/) c'è **Favella Studio 1.2.3**: l'ambiente di scrittura visuale per FAVELLA.
+In [`studio/`](studio/) c'è **Favella Studio 1.4.0**: l'ambiente di scrittura visuale per FAVELLA.
 Cinque sezioni nell'ordine in cui si scrive una storia — **Storia** (il testo), **Mondo** (stanze,
-oggetti, mappa da trascinare), **Personaggi** (dialoghi), **Regole** (regole, eventi, stati, parole e
-comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra di gioco a parte per
-provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro l'app (Studio 1.2.3
-contiene il motore 1.5.0): non serve installarlo. Si legge in tema notte o carta, anche a contrasto alto, e si usa tutto da
-tastiera.
+oggetti, mappa da trascinare, **relazioni**), **Personaggi** (dialoghi), **Regole** (regole, eventi,
+stati, procedure, parole e comandi), **Prova** (la partita con i pulsanti-verbo) — più una finestra
+di gioco a parte per provare la storia come la vedrebbe chi la riceve. Il motore Python è dentro
+l'app (Studio 1.4.0 contiene il motore 1.6.0): non serve installarlo. Dalla 1.4.0 ci sono gli editor
+dedicati ai costrutti della 1.6.0 — il **pannello Relazioni**, gli oggetti contabili, le procedure,
+l'invariante di clamp e i collegamenti «senza ritorno» — e il **grafo di vincibilità**, una vista
+che dice se la storia si può davvero vincere. Si legge in tema notte o carta, anche a contrasto
+alto, e si usa tutto da tastiera.
 
-- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.2.3).
+- **Windows** e **Linux**: gli installer sono nella [Release «Favella Studio»](https://github.com/Pitz72/FAVELLA1/releases/tag/studio-v1.4.0).
 - **macOS**: si costruisce in cinque minuti sul proprio Mac, con un comando: [`studio/BUILD-MACOS.md`](studio/BUILD-MACOS.md).
-- **La guida all'uso** (46 pagine, PDF accessibile): [`studio/guida/guida-favella-studio.pdf`](studio/guida/guida-favella-studio.pdf), anche dentro l'app.
+- **La guida all'uso** (47 pagine, PDF accessibile): [`studio/guida/guida-favella-studio.pdf`](studio/guida/guida-favella-studio.pdf), anche dentro l'app.
 - Presentazione e schermate: [favella.eu/studio](https://www.favella.eu/studio). Licenza MIT.
 
 Dettagli, architettura e istruzioni di build: [`studio/README.md`](studio/README.md).
