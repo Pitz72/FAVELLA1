@@ -870,7 +870,7 @@ def analizza_variabili(percorso_file, sorgente=None):
         return {"file": f_o, "line": r_o, "endLine": r_end}
 
     # Indicizza le frasi di dichiarazione/valore-iniziale con il loro span.
-    decl_stato, decl_cont, init_stato, init_cont = {}, {}, {}, {}
+    decl_stato, decl_cont, init_stato, init_cont, span_invariante = {}, {}, {}, {}, {}
     if tree is not None:
         for nodo in tree.children:
             if not isinstance(nodo, Tree):
@@ -896,6 +896,10 @@ def analizza_variabili(percorso_file, sorgente=None):
                 # [0.16.0] 'La forza parte da N.' — valore iniziale del contatore.
                 nums = tok.get("NUMERO", [])
                 init_cont[nome] = (int(str(nums[0])) if nums else None, span)
+            elif nodo.data == "def_invariante":
+                # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.' — span della frase
+                # (l'ultima vince, come il motore).
+                span_invariante[nome] = span
 
     # Commenti '# valori di X: …' → mappa id-stato -> (valori, span). Ultima vince.
     commenti = {}
@@ -907,12 +911,20 @@ def analizza_variabili(percorso_file, sorgente=None):
     for nome in mondo.variabili:
         if _kind_variabile(mondo, nome) == "contatore":
             val = mondo.variabili.get(nome)
+            # [1.6.0 / Q1] Invariante di clamp dichiarata ('X resta sempre fra A e B'):
+            # gli estremi sono Operando (NUMERO o '[contatore]') → forma JSON.
+            limiti = getattr(mondo, "invarianti_clamp", {}).get(nome)
+            clamp = ({"min": _operando_to_json(limiti[0]),
+                      "max": _operando_to_json(limiti[1]),
+                      "span": span_invariante.get(nome)}
+                     if limiti else None)
             counters.append({
                 "name": nome,
                 "declSpan": decl_cont.get(nome),
                 # [0.16.0 / B.2] valore iniziale (default 0) + span della frase 'parte da'.
                 "initial": val if isinstance(val, int) else 0,
                 "initialSpan": (init_cont.get(nome) or (None, None))[1],
+                "clamp": clamp,
             })
             continue
         iniziale = mondo.variabili.get(nome)
@@ -1807,6 +1819,7 @@ def serializza_frase(spec):
       state_decl     {name}          →  'X è uno stato.'
       state_init     {name, value}   →  'X è valore.' (valore iniziale dello stato)
       counter_decl   {name}          →  'X è un contatore.'
+      clamp_decl     {name, min, max} → 'X resta sempre fra A e B.'  [1.6.0 / Q1]
       state_values_comment {name, values[]} → '# valori di X: a, b' (commento, ignorato dal motore)
       rule  {verb, target?, condition?, response, consequences[]} → 'Invece di …'
       event {mode:'al'|'ogni', n, response, consequences[]}        → 'Al turno N: …'
@@ -1899,6 +1912,13 @@ def serializza_frase(spec):
             # [0.16.0 / B.2] 'X parte da N.' — valore iniziale di un contatore.
             return {"ok": True,
                     "text": f"{str(spec['name']).strip()} parte da {int(spec['value'])}."}
+        if op == "clamp_decl":
+            # [1.6.0 / Q1] 'X resta sempre fra A e B.' — invariante di clamp. 'min'/
+            # 'max' sono operandi (un int letterale o {kind:'var'} → '[contatore]').
+            return {"ok": True,
+                    "text": f"{str(spec['name']).strip()} resta sempre fra "
+                            f"{_serializza_operando(spec['min'])} e "
+                            f"{_serializza_operando(spec['max'])}."}
         if op == "state_values_comment":
             # Commento canonico per persistere l'elenco dei valori ammessi di uno
             # stato, inclusi quelli non ancora usati in nessuna regola. Il motore lo

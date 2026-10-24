@@ -29,7 +29,7 @@ from strutture import (
     ConseguenzaSceltaStato,
     ConseguenzaContatore, ConseguenzaBuioStanza,
     OpzioneDialogo, VariantiDescrizione, testi_di_descrizione, descrizione_display,
-    Operando, OperandoNumero, OperandoVariabile, OperandoCasuale,
+    Operando, OperandoNumero, OperandoVariabile, OperandoCasuale, _come_operando,
     ConseguenzaSegnala, Arrivo,
 )
 from libreria_azioni import LIBRERIA_AZIONI
@@ -138,6 +138,10 @@ PAROLE_RISERVATE = frozenset({
     # [1.5.0] le parole delle frasi nuove: 'e basta', 'e poi dire', 'per la
     # prima volta', 'si ritrova', 'segnala', 'si chiamano anche', 'entra', l'IFID
     "basta", "poi", "volta", "ritrova", "segnala", "chiamano", "entra", "ifid",
+    # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.': l'invariante di clamp
+    # dichiarata. 'resta'/'fra' sono già usate dalla conseguenza 'X resta fra A e
+    # B'; qui conta la parola nuova 'sempre', che distingue la dichiarazione.
+    "sempre",
 })
 
 
@@ -392,6 +396,7 @@ _GRAMMAR_TEMPLATE = r"""
                   | def_riga_stato         // [1.5.0]
                   | def_ifid               // [1.5.0]
                   | def_demoni_fine_turno  // [1.5.0 / D]
+                  | def_invariante         // [1.6.0 / Q1]
 
     // --- DEFINIZIONI BASE ---
     // [0.18.0 / A5] COPULA flessibile nel numero: 'è' (singolare) oppure 'sono'
@@ -587,6 +592,17 @@ _GRAMMAR_TEMPLATE = r"""
     // [0.27.0 / A] "partono" plurale per i nomi-contatore plurali ('Le vite
     // partono da 3.'), coerente con la copula plurale di def_contatore.
     def_contatore_iniziale: VARIABILE ("parte" | "partono") "da" _numero "."
+    // [1.6.0 / Q1] INVARIANTE di clamp dichiarata: 'La sete resta sempre fra 0 e
+    // 100.'. A differenza della conseguenza 'X resta fra A e B' (cons_limita, da
+    // richiamare a mano a ogni modifica), il motore la applica da solo dopo ogni
+    // scrittura del contatore. Inizia con VARIABILE come def_stato*/def_contatore*:
+    // dopo VARIABILE il lookahead "resta" è disgiunto da copula/"parte"/"partono"
+    // → LALR(1) 0-ambiguo. La parola "sempre" distingue questo contesto (top-level)
+    // dalla conseguenza (dopo ':', dove "resta" è seguito da "fra"): i due "resta"
+    // vivono in stati LALR distinti, quindi non entrano in conflitto. Gli estremi
+    // sono operando_confronto (NUMERO o '[contatore]'): niente estrazione casuale,
+    // che come limite ri-pescato a ogni scrittura non avrebbe senso.
+    def_invariante: VARIABILE "resta" "sempre" "fra" operando_confronto "e" operando_confronto "."
 
     // --- TOPOLOGIA: DIREZIONI PERSONALIZZATE (Livello 4 / L1) ---
     // 'Alto e basso sono direzioni opposte.' dichiara una coppia di direzioni
@@ -1572,6 +1588,9 @@ class FavellaTransformer(Transformer):
         self._variabili_volute = set()   # L4: stati e contatori «(voluto)»
         self._pending_tempo_libero = []  # C10: verbi che non fanno passare il tempo
         self._pending_arrivi = []        # C12: (Arrivo, stanza_grezzo)
+        # [1.6.0 / Q1] Invarianti di clamp dichiarate ('X resta sempre fra A e B'),
+        # validate in valida_post (il contatore può essere dichiarato dopo).
+        self._pending_invarianti = []    # (nome, grezzo, Operando min, Operando max)
         # [Livello 4 / L1] Le direzioni personalizzate sono raccolte in Passata 1
         # e pre-popolate qui, così l'auto-ritorno delle connessioni non dipende
         # dall'ordine in cui compaiono dichiarazione e 'collega'.
@@ -2028,6 +2047,16 @@ class FavellaTransformer(Transformer):
         nome = normalizza_nome(var_grezzo)
         self._avvisa_valore_doppio(nome, var_grezzo, numero)
         self.mondo.variabili[nome] = numero
+        return None
+
+    def def_invariante(self, var_grezzo, minimo, massimo):
+        # [1.6.0 / Q1] 'La sete resta sempre fra 0 e 100.'. minimo/massimo sono già
+        # Operando (operando_confronto -> operando_numero/operando_variabile). La
+        # validazione (il nome è un contatore, l'intervallo è sano) è differita a
+        # valida_post: il contatore può essere dichiarato dopo l'invariante.
+        nome = normalizza_nome(var_grezzo)
+        self._pending_invarianti.append(
+            (nome, str(var_grezzo), _come_operando(minimo), _come_operando(massimo)))
         return None
 
     def def_direzioni(self, dir_a, dir_b):
@@ -3158,6 +3187,29 @@ class FavellaTransformer(Transformer):
                     f"{_con_articolo(t_lhs)} e '{raw_rhs}' è {_con_articolo(t_rhs)}. "
                     f"La forma '{raw_lhs} {scritto} {raw_rhs}' vale solo fra due "
                     f"stati; per i contatori usa il valore fra parentesi '[{altro}]'.")
+        # [1.6.0 / Q1] Invarianti di clamp dichiarate: validazione e applicazione
+        # ai valori iniziali. Un invariante vale solo per un CONTATORE (valore
+        # intero): su uno stato simbolico, o su un nome mai dichiarato come
+        # contatore, è un errore d'autore gentile. Gli estremi che citano un altro
+        # contatore '[soglia]' sono controllati qui (il contatore dev'esistere).
+        for nome, grezzo, op_min, op_max in self._pending_invarianti:
+            if not isinstance(m.variabili.get(nome), int):
+                self.errori.append(
+                    f"L'invariante «{grezzo} resta sempre fra …» vale solo per un "
+                    f"contatore: dichiara prima «{grezzo} è un contatore.».")
+                continue
+            mancanti = [n for n in (_variabili_in_operando(op_min) | _variabili_in_operando(op_max))
+                        if not isinstance(m.variabili.get(n), int)]
+            if mancanti:
+                self.errori.append(
+                    f"L'invariante di «{grezzo}» usa come estremo un nome che non è "
+                    f"un contatore: {', '.join(sorted(mancanti))}.")
+                continue
+            if nome in m.invarianti_clamp:
+                self.warnings.append(
+                    f"«{grezzo}» ha due invarianti di clamp: vale l'ultima.")
+            m.invarianti_clamp[nome] = (op_min, op_max)
+        m.applica_invarianti_iniziali()
         for id_ogg1, ogg1_grezzo, id_ogg2, ogg2_grezzo in self._pending_regole_target:
             if id_ogg1 == "<categoria>":   # [1.3.0 / M-9] 'qualcosa (di …)'
                 if id_ogg2 and not m.trova_oggetto(id_ogg2):

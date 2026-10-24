@@ -4,6 +4,28 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [Non rilasciata] — 1.6.0 (in sviluppo): le frontiere nuove
+
+> Versione di lavoro, **non rilasciata**. Raccoglie l'espansione del linguaggio
+> oltre la 1.5.0, tutta additiva: le frasi valide in 1.5 restano valide e col
+> medesimo significato; le dieci storie ufficiali hanno compilazione identica
+> (impronta vuota byte-per-byte) e gioco deterministico invariato. Semantica
+> precisa in `documentazione/grammatica-1.6.0.md`, §29.
+
+#### Frasi nuove
+- **Invariante di clamp dichiarata** — `La sete resta sempre fra 0 e 100.`. Finora
+  tenere un contatore dentro un intervallo si poteva solo con la *conseguenza* `X
+  resta fra A e B`, da richiamare a mano a ogni modifica (dimenticarla lasciava i
+  contatori andare sotto zero o sfondare il massimo). Ora si dichiara una volta e
+  il motore la applica da solo dopo **ogni** scrittura del contatore (`aumenta`,
+  `diminuisci`, `diventa`, `moltiplica`, `dividi`, `modulo`, copie, `resta fra`) e
+  sul valore iniziale. Gli estremi possono essere un numero o un altro contatore
+  (`… fra 0 e [soglia]`). Lo stato è catturato dalle istantanee: ANNULLA riavvolge
+  anche i clamp. L'invariante su uno stato simbolico, o con un estremo che non è un
+  contatore, è un errore d'autore gentile. Parola riservata nuova: `sempre`.
+  (`def_invariante`; round-trip Studio: `analizza_variabili.counters[].clamp`,
+  `serializza_frase` op `clamp_decl`.)
+
 ## [1.5.0] - 2026-10-15
 ### 🛰️ Le lezioni del Relitto
 Il remake de «Il Relitto Silente» (quattordici moduli, 362 regole, una risorsa che cala a

@@ -22,7 +22,7 @@ from compilatore import (
     costruisci_parser, PAROLE_RISERVATE, valida_direzioni_dichiarate,
     espandi_inclusioni, _GRAMMAR_TEMPLATE, analizza_file_strutturato,
 )
-from strumenti_ide import analizza_regole
+from strumenti_ide import analizza_regole, analizza_variabili, serializza_frase
 
 
 def _nomi_direzioni(simboli):
@@ -3319,7 +3319,7 @@ def test_include_errore_attribuito_al_file():
 # fallisce.
 
 _SPEC_EBNF = os.path.join(os.path.dirname(__file__), "documentazione",
-                          "grammatica-1.5.0.md")
+                          "grammatica-1.6.0.md")
 
 
 def _nomi_regole_grammatica():
@@ -3336,7 +3336,7 @@ def _nomi_regole_grammatica():
 def test_spec_ebnf_esiste():
     print("[spec EBNF: il documento tecnico versionato esiste]")
     _check(os.path.exists(_SPEC_EBNF),
-           "documentazione/grammatica-1.5.0.md è presente")
+           "documentazione/grammatica-1.6.0.md è presente")
 
 
 def _blocchi_ebnf_della_spec(spec: str) -> str:
@@ -8098,6 +8098,180 @@ def test_150_guardia_lalr_frasi_nuove():
     _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
 
 
+# =============================================================================
+# [1.6.0] LE FRONTIERE NUOVE: invariante di clamp, 'senza ritorno', relazioni B3
+# =============================================================================
+
+# Corpus che esercita, in una sola storia, tutte le frasi NUOVE della 1.6.0.
+# Cresce con ogni fetta; la guardia (test_160_guardia_lalr_frasi_nuove) verifica
+# che LALR(1) si costruisca senza conflitti e che Earley produca UN SOLO albero.
+_CORPUS_GUARDIA_160 = (
+    "La cella è una stanza.\nIl corridoio è una stanza.\n"
+    "Il giocatore comincia nella cella.\n"
+    # [Q1] Invariante di clamp dichiarata: letterale e con estremo '[contatore]'.
+    "La sete è un contatore.\nLa sete parte da 50.\n"
+    "La soglia è un contatore.\nLa soglia parte da 80.\n"
+    "Il vigore è un contatore.\n"
+    "La sete resta sempre fra 0 e 100.\n"
+    "Il vigore resta sempre fra 0 e [soglia].\n"
+    "\"bevi\" è un comando senza oggetto.\n"
+    "Invece di bevi: diminuisci la sete di 40 e adesso aumenta il vigore di 1000.\n"
+)
+
+
+def test_160_invariante_clamp():
+    print("[1.6.0 / Q1: invariante di clamp dichiarato]")
+    src = (
+        "La cella è una stanza.\n"
+        "Il giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa sete parte da 150.\n"
+        "La sete resta sempre fra 0 e 100.\n"
+        "La soglia è un contatore.\nLa soglia parte da 80.\n"
+        "Il vigore è un contatore.\n"
+        "Il vigore resta sempre fra 0 e [soglia].\n"
+        '"bevi" è un comando senza oggetto.\n'
+        '"soffri" è un comando senza oggetto.\n'
+        '"spingi" è un comando senza oggetto.\n'
+        '"fissa" è un comando senza oggetto.\n'
+        "Invece di bevi: diminuisci la sete di 40.\n"
+        "Invece di soffri: aumenta la sete di 999.\n"
+        "Invece di spingi: il vigore diventa 500.\n"
+        "Invece di fissa: diminuisci il vigore di 999.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check(mondo.variabili["sete"] == 100, "valore iniziale fuori scala clampa all'avvio (150 -> 100)")
+    _check(mondo.variabili["vigore"] == 0, "il vigore parte da 0, dentro [soglia]")
+    esegui(mondo, "soffri")
+    _check(mondo.variabili["sete"] == 100, "aumenta oltre il massimo resta clampato a 100")
+    esegui(mondo, "bevi")
+    _check(mondo.variabili["sete"] == 60, "una diminuzione nel range non viene toccata (60)")
+    esegui(mondo, "bevi"); esegui(mondo, "bevi")
+    _check(mondo.variabili["sete"] == 0, "diminuire sotto lo zero clampa a 0")
+    esegui(mondo, "spingi")
+    _check(mondo.variabili["vigore"] == 80, "'diventa 500' clampa all'estremo dinamico [soglia]=80")
+    esegui(mondo, "fissa")
+    _check(mondo.variabili["vigore"] == 0, "scendere sotto 0 clampa a 0 (anche col massimo dinamico)")
+
+
+def test_160_invariante_clamp_annulla():
+    print("[1.6.0 / Q1: il clamp è stato, ANNULLA lo riavvolge]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La forza è un contatore.\nLa forza parte da 5.\n"
+        "La forza resta sempre fra 0 e 10.\n"
+        '"grida" è un comando senza oggetto.\n'
+        "Invece di grida: aumenta la forza di 999.\n"
+    )
+    mondo = runtime(src)
+    esegui(mondo, "grida")
+    _check(mondo.variabili["forza"] == 10, "dopo grida la forza è clampata a 10")
+    esegui(mondo, "annulla")
+    _check(mondo.variabili["forza"] == 5, "ANNULLA riporta la forza a 5")
+
+
+def test_160_invariante_errori():
+    print("[1.6.0 / Q1: l'invariante solo su un contatore, con estremi dichiarati]")
+    # Su uno STATO simbolico: errore bloccante gentile.
+    src_stato = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Il meteo è uno stato.\nIl meteo è sereno.\n"
+        "Il meteo resta sempre fra 0 e 3.\n"
+    )
+    mondo, log = compila(src_stato)
+    _check(mondo is None and "contatore" in log.lower(),
+           "invariante su uno stato: errore che rimanda al contatore")
+    # Estremo '[x]' dove x è uno STATO, non un contatore: errore bloccante.
+    src_stato_bound = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La vita è un contatore.\n"
+        "Il livello è uno stato.\nIl livello è alto.\n"
+        "La vita resta sempre fra 0 e [livello].\n"
+    )
+    mondo2, log2 = compila(src_stato_bound)
+    _check(mondo2 is None and "non è un contatore" in log2.lower(),
+           "estremo che cita uno stato invece di un contatore: errore")
+
+
+def test_160_invariante_additivo_vecchia_conseguenza():
+    print("[1.6.0 / Q1: la conseguenza 'resta fra' (senza 'sempre') resta valida e invariata]")
+    # La forma-conseguenza del 1.3.0 non deve cambiare: niente 'sempre', vale solo
+    # dove la si richiama.
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La forza è un contatore.\nLa forza parte da 50.\n"
+        '"tara" è un comando senza oggetto.\n'
+        "Invece di tara: la forza resta fra 0 e 10.\n"
+    )
+    mondo = runtime(src)
+    _check(mondo is not None and "forza" not in mondo.invarianti_clamp,
+           "'resta fra' (conseguenza) non dichiara un'invariante permanente")
+    _check(mondo.variabili["forza"] == 50, "all'avvio la forza resta 50 (nessun clamp automatico)")
+    esegui(mondo, "tara")
+    _check(mondo.variabili["forza"] == 10, "la conseguenza 'resta fra' agisce solo quando richiamata")
+
+
+def test_studio_160_invariante_round_trip():
+    print("[1.6.0 / Q1: round-trip Studio dell'invariante di clamp]")
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa sete parte da 50.\n"
+        "La soglia è un contatore.\nLa soglia parte da 80.\n"
+        "Il vigore è un contatore.\n"
+        "La sete resta sempre fra 0 e 100.\n"
+        "Il vigore resta sempre fra 0 e [soglia].\n"
+    )
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8",
+                                     delete=False, suffix=".fav") as tmp:
+        tmp.write(src); path = tmp.name
+    try:
+        modello = analizza_variabili(path, sorgente=src)
+    finally:
+        os.unlink(path)
+    _check(modello.get("ok"), "analizza_variabili regge")
+    per_nome = {c["name"]: c for c in modello.get("counters", [])}
+    _check(per_nome.get("sete", {}).get("clamp") == {"min": 0, "max": 100,
+           "span": per_nome["sete"]["clamp"]["span"]},
+           f"la sete porta la sua invariante letterale ({per_nome.get('sete', {}).get('clamp')})")
+    cv = per_nome.get("vigore", {}).get("clamp")
+    _check(cv and cv["min"] == 0 and cv["max"] == {"kind": "var", "name": "soglia"},
+           f"il vigore porta l'invariante con estremo dinamico ({cv})")
+    _check(per_nome["sete"]["clamp"]["span"] is not None, "l'invariante ha uno span sorgente")
+    # Riscrittura dall'editor → stessa semantica.
+    t1 = serializza_frase({"op": "clamp_decl", "name": "la sete", "min": 0, "max": 100})
+    t2 = serializza_frase({"op": "clamp_decl", "name": "il vigore",
+                           "min": 0, "max": {"kind": "var", "name": "soglia"}})
+    _check(t1.get("text") == "la sete resta sempre fra 0 e 100.", f"serializza letterale ({t1})")
+    _check(t2.get("text") == "il vigore resta sempre fra 0 e [soglia].", f"serializza dinamica ({t2})")
+    # Ricompilando la frase riscritta, l'invariante è identica.
+    src2 = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "La sete è un contatore.\nLa soglia è un contatore.\nIl vigore è un contatore.\n"
+        + t1["text"] + "\n" + t2["text"] + "\n"
+    )
+    mondo2, _ = compila(src2)
+    _check(mondo2 is not None and "sete" in mondo2.invarianti_clamp and "vigore" in mondo2.invarianti_clamp,
+           "la frase riscritta ricompila con le stesse invarianti")
+
+
+def test_160_guardia_lalr_frasi_nuove():
+    print("[1.6.0: guardia LALR(1) e zero ambiguità sulle frasi nuove]")
+    simboli = costruisci_symbol_table(_CORPUS_GUARDIA_160)
+    try:
+        costruisci_parser(simboli.tutti, simboli.variabili, _nomi_direzioni(simboli),
+                          verbi_multi=simboli.verbi_multi)
+        ok, msg = True, ""
+    except GrammarError as e:
+        ok, msg = False, str(e)
+    _check(ok, f"LALR(1) senza conflitti ({msg})")
+    grammatica = costruisci_grammatica(simboli.tutti, simboli.variabili,
+                                       _nomi_direzioni(simboli), verbi_multi=simboli.verbi_multi)
+    albero = Lark(grammatica, start="start", parser="earley", ambiguity="explicit").parse(_CORPUS_GUARDIA_160)
+    _check(_conta_ambig(albero) == 0, "nessun nodo ambiguo")
+    mondo, log = compila(_CORPUS_GUARDIA_160)
+    _check(mondo is not None, f"il corpus compila {'' if mondo else log[-400:]}")
+
+
 def main():
     # [1.4.3] Con l'uscita rediretta su file, in Windows la console è cp1252 e le
     # descrizioni dei test con «→» o simili interrompevano la suite a metà.
@@ -8617,6 +8791,13 @@ def main():
         test_150_studio_regge_le_frasi_nuove,
         test_studio_123_il_sidecar_e_le_frasi_nuove,
         test_150_guardia_lalr_frasi_nuove,
+        # [1.6.0] Le frontiere nuove.
+        test_160_invariante_clamp,
+        test_160_invariante_clamp_annulla,
+        test_160_invariante_errori,
+        test_160_invariante_additivo_vecchia_conseguenza,
+        test_studio_160_invariante_round_trip,
+        test_160_guardia_lalr_frasi_nuove,
     ]
     print("=" * 60)
     print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")

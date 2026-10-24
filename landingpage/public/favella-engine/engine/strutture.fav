@@ -398,7 +398,7 @@ class ConseguenzaVariabile(Conseguenza):
         self.valore = valore
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = self.valore
+        mondo.scrivi_variabile(self.nome, self.valore)
 
 class ConseguenzaVariabileCopia(Conseguenza):
     """[0.34.0 / Tema 3] Copia per INDIREZIONE del valore di uno stato in un altro:
@@ -415,7 +415,7 @@ class ConseguenzaVariabileCopia(Conseguenza):
         self.sorgente = sorgente
 
     def esegui(self, mondo: 'Mondo'):
-        mondo.variabili[self.nome] = mondo.valore_variabile(self.sorgente)
+        mondo.scrivi_variabile(self.nome, mondo.valore_variabile(self.sorgente))
 
 class ConseguenzaSceltaStato(Conseguenza):
     """[0.32.0 / Tema 2b] Assegna a uno «stato» un valore SIMBOLICO scelto a caso
@@ -433,7 +433,7 @@ class ConseguenzaSceltaStato(Conseguenza):
         # L'elenco ha sempre >=1 valore (la grammatica richiede almeno una
         # PROPRIETA dopo 'fra'); la guardia difende comunque da un elenco vuoto.
         if self.valori:
-            mondo.variabili[self.nome] = mondo.rng.choice(self.valori)
+            mondo.scrivi_variabile(self.nome, mondo.rng.choice(self.valori))
 
 class ConseguenzaContatore(Conseguenza):
     """[Livello 3] Mutazione di un contatore: 'aumenta X (di N)', 'diminuisci X
@@ -453,22 +453,22 @@ class ConseguenzaContatore(Conseguenza):
             attuale = 0
         quantita = self.valore.valore(mondo)
         if self.modo == "aumenta":
-            mondo.variabili[self.nome] = attuale + quantita
+            mondo.scrivi_variabile(self.nome, attuale + quantita)
         elif self.modo == "diminuisci":
-            mondo.variabili[self.nome] = attuale - quantita
+            mondo.scrivi_variabile(self.nome, attuale - quantita)
         elif self.modo == "moltiplica":      # [1.3.0 / M-7]
-            mondo.variabili[self.nome] = attuale * quantita
+            mondo.scrivi_variabile(self.nome, attuale * quantita)
         elif self.modo == "dividi":
             # Divisione intera verso lo zero (7/2 = 3, -7/2 = -3); per zero il
             # contatore non cambia (non c'è un risultato sensato).
             if quantita != 0:
-                mondo.variabili[self.nome] = int(attuale / quantita)
+                mondo.scrivi_variabile(self.nome, int(attuale / quantita))
         elif self.modo == "modulo":
             # Il resto sempre fra 0 e N-1: 'riduci l'ora modulo 24'.
             if quantita != 0:
-                mondo.variabili[self.nome] = attuale % abs(quantita)
+                mondo.scrivi_variabile(self.nome, attuale % abs(quantita))
         else:  # diventa
-            mondo.variabili[self.nome] = quantita
+            mondo.scrivi_variabile(self.nome, quantita)
 
 
 class ConseguenzaLimita(Conseguenza):
@@ -484,7 +484,7 @@ class ConseguenzaLimita(Conseguenza):
         basso, alto = self.minimo.valore(mondo), self.massimo.valore(mondo)
         if basso > alto:
             basso, alto = alto, basso
-        mondo.variabili[self.nome] = max(basso, min(alto, attuale))
+        mondo.scrivi_variabile(self.nome, max(basso, min(alto, attuale)))
 
 class ConseguenzaFinePartita(Conseguenza):
     """[Livello 3] Termina la partita con un esito ('vinta', 'persa',
@@ -1088,6 +1088,13 @@ class Mondo:
         # che contengono una parola-stato. Dichiarate con 'X è uno stato.';
         # valore None finché non assegnate. Sono lo stato non legato a un oggetto.
         self.variabili: Dict[str, Optional[str]] = {}
+        # [1.6.0 / Q1] Invarianti di clamp DICHIARATE: 'La sete resta sempre fra 0
+        # e 100.'. Mappa nome-contatore -> (Operando minimo, Operando massimo). A
+        # differenza della conseguenza 'X resta fra A e B' (da richiamare a ogni
+        # modifica), questa è applicata dal motore AUTOMATICAMENTE dopo ogni
+        # scrittura del contatore (vedi scrivi_variabile): il contatore non può
+        # mai uscire dall'intervallo, senza che l'autore debba ricordarsene.
+        self.invarianti_clamp: Dict[str, tuple] = {}
         # [Livello 3 / M5] Coppie di proprietà che si escludono a vicenda.
         # Mappa simmetrica proprietà -> insieme delle sue opposte. Le coppie
         # aperta↔chiusa e accesa↔spenta sono precaricate come default; l'autore può
@@ -1314,6 +1321,41 @@ class Mondo:
     def dichiara_contatore(self, nome: str):
         """Dichiara un contatore numerico (valore iniziale 0 se non già presente)."""
         self.variabili.setdefault(nome, 0)
+
+    def scrivi_variabile(self, nome: str, valore):
+        """[1.6.0 / Q1] Unico punto di scrittura di uno stato/contatore: imposta il
+        valore e poi applica l'eventuale invariante di clamp dichiarata ('X resta
+        sempre fra A e B'). Ogni conseguenza che muta un contatore (aumenta,
+        diminuisci, diventa, moltiplica, dividi, modulo, copia, scelta, limita)
+        passa di qui, così l'invariante vale dopo OGNI scrittura."""
+        self.variabili[nome] = valore
+        if self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
+
+    def _applica_invariante_clamp(self, nome: str):
+        """Riporta il contatore `nome` dentro l'intervallo della sua invariante, se
+        ne ha una. Agisce solo su valori interi (uno stato simbolico non si
+        clampa). Gli estremi sono Operando: possono leggere altri contatori
+        ('[soglia]'), risolti al momento della scrittura."""
+        limiti = self.invarianti_clamp.get(nome)
+        if limiti is None:
+            return
+        attuale = self.variabili.get(nome)
+        if not isinstance(attuale, int):
+            return
+        basso, alto = limiti[0].valore(self), limiti[1].valore(self)
+        if basso > alto:
+            basso, alto = alto, basso
+        corretto = max(basso, min(alto, attuale))
+        if corretto != attuale:
+            self.variabili[nome] = corretto
+
+    def applica_invarianti_iniziali(self):
+        """[1.6.0 / Q1] Applica ogni invariante di clamp ai valori INIZIALI dei
+        contatori, una volta sola a fine compilazione: anche 'La forza parte da
+        150.' con 'La forza resta sempre fra 0 e 100.' nasce già nell'intervallo."""
+        for nome in self.invarianti_clamp:
+            self._applica_invariante_clamp(nome)
 
     def dichiara_opposte(self, prop_a: str, prop_b: str):
         """Registra che due proprietà sono opposte (relazione simmetrica). Le
