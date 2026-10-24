@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.5.0)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.0)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.5.0";
-export const VERSION_LABEL = "v1.5.0 — Le lezioni del Relitto";
+export const VERSION = "1.6.0";
+export const VERSION_LABEL = "v1.6.0 — Le frontiere nuove";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.5.0";
+export const ENGINE_VERSION = "1.6.0";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -67,7 +67,12 @@ export const SITE_URL = "https://favella.eu";
 //   al tramonto) nel banner della Galleria e nella notizia in evidenza, in webp in public/viaggiatore/; il banner
 //   distingue la web (1.23.0, definitiva, /esperimento invariato) dalla desktop (1.35.0, Windows e Linux, coi suoi
 //   plus); i link di download puntano alla release v1.35.0.
-export const SITE_VERSION = "2.11.0";
+// · 2.12.0 = motore 1.6.0, «le frontiere nuove» (relazioni di prima classe, procedure nominate, oggetti contabili,
+//   invariante di clamp, connessioni a senso unico) e Favella Studio 1.4.0 (un editor per ogni frase nuova + il
+//   grafo di vincibilità): header con «Novità» voce di primo livello in evidenza, reparti informativo/didattico/news
+//   aggiornati, numeri di versione e conteggio dei test (1498) allineati. ⚠️ VERSION→1.6.0 e STUDIO_VERSION→1.4.0
+//   fanno puntare i download a v1.6.0 (tag già esistente) e studio-v1.4.0 (tag DA PUBBLICARE dalla madre).
+export const SITE_VERSION = "2.12.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -76,10 +81,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.5.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.5.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.5.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.5.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.0";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.0-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.0-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.0-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -99,7 +104,7 @@ export const VIAGGIATORE_PAGES_URL = "https://pitz72.github.io/il-viaggiatore-fa
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.2.3";
+export const STUDIO_VERSION = "1.4.0";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -154,7 +159,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1292, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1498, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -222,6 +227,22 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Linguaggio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "FAVELLA 1.6.0: le frontiere nuove",
+    body: "Dopo la 1.5.0 il linguaggio apre cinque frontiere, tutte facoltative e additive: le storie di ieri girano identiche. Le relazioni di prima classe collegano due parti con una locuzione tua — «\"si fida di\" è una relazione molti a molti.», «La chiave di ottone apre la cella.» — da asserire, cambiare nelle regole e interrogare («se qualcuno si fida del giocatore»). Le procedure nominate danno un nome a una sequenza di conseguenze da richiamare dove serve («Definisci \"far passare la notte\" come: …», poi «esegui far passare la notte»). Gli oggetti contabili tengono una cosa in più copie con la concordanza che dichiari tu («La pozione, plurale \"pozioni\", è contabile.»): il giocatore ne prende, lascia e consuma quante vuole. L'invariante di clamp tiene un contatore in un intervallo con una frase sola («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («… collega giù a il pozzo senza ritorno.»). Dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità.",
+    cta: { label: "Scarica FAVELLA 1.6.0", href: "/download" },
+  },
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "Favella Studio 1.4.0: gli editor delle frontiere, e il grafo di vincibilità",
+    body: "Studio porta dentro il motore 1.6.0 e, per ogni frase nuova, un editor dedicato: il pannello Relazioni (le coppie «soggetto → oggetto» in una griglia, da collegare o togliere), gli oggetti contabili nel pannello Oggetti (spunta «contabile», plurale e quantità per luogo), l'invariante di clamp e gli stati calcolati fra i contatori, le procedure nominate fra le regole, e i collegamenti a senso unico sulla mappa con una freccia singola. La novità più grande è il grafo di vincibilità: un interruttore sulla mappa accende una vista che dice se la storia si può davvero vincere, segna le stanze irraggiungibili ed elenca che cosa serve per arrivare in fondo, gli oggetti orfani, le regole che non scattano mai e le scorte che non bastano. Ogni modifica dai pannelli rigenera la frase .fav canonica e la scrive nel testo. Le storie scritte prima si aprono e si giocano come sempre.",
+    cta: { label: "Scarica Favella Studio 1.4.0", href: "/studio" },
+  },
   {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
@@ -543,6 +564,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.6.0",
+    title: "Le frontiere nuove",
+    content: "Cinque frontiere nuove, tutte facoltative. Le relazioni di prima classe collegano due parti con una locuzione dichiarata («\"si fida di\" è una relazione molti a molti.»), da asserire d'autore, cambiare nelle regole e interrogare, con arietà e reciprocità. Le procedure nominate danno un nome a una sequenza di conseguenze, richiamabile anche da un'altra procedura («Definisci \"…\" come: …», poi «esegui …»). Gli oggetti contabili tengono una cosa in più copie, col plurale dichiarato dall'autore (prendi/lascia/consuma N, condizioni e interpolazione sulle scorte). L'invariante di clamp tiene un contatore in un intervallo («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («senza ritorno»). Tutto additivo: dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità. Favella Studio 1.4.0 porta gli editor di tutte queste frasi e il grafo di vincibilità.",
+  },
   {
     version: "1.5.0",
     title: "Le lezioni del Relitto",
