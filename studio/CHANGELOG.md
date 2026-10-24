@@ -1,15 +1,37 @@
 # Changelog — Favella Studio
 
 Tutte le versioni rilevanti dell'IDE Favella Studio. Il versioning è indipendente
-da quello del linguaggio/motore FAVELLA (dentro Studio 1.3.0 c'è il motore **v1.6.0**).
+da quello del linguaggio/motore FAVELLA (dentro Studio 1.4.0 c'è il motore **v1.6.0**).
 Schema: [SemVer](https://semver.org/lang/it/).
 
-## [Non rilasciato] — Editor dedicati ai costrutti 1.6.0
+## [1.4.0] — Editor dedicati ai costrutti 1.6.0 (in attesa di integrazione nella catena Studio)
 
 Gli editor visuali per le frasi nuove della 1.6.0, uno per uno (dopo la 1.3.0, che le
-faceva solo passare intatte per il testo).
+faceva solo passare intatte per il testo), più il **grafo di vincibilità** — una vista
+che dice se la storia si può davvero vincere. Round-trip fedele: ogni modifica rigenera
+la frase .fav **canonica** tramite il sidecar e la splicia nel testo (Monaco resta la
+fonte di verità); ciò che non è ancora rappresentabile a UI passa intatto.
 
 ### Aggiunto
+- **Invariante di clamp** nel pannello «Stati e contatori». Ogni contatore mostra «resta
+  sempre fra A e B» (`clamp_decl`); gli estremi letterali si editano, un estremo dinamico
+  («[soglia]») resta in sola lettura (si cambia nel testo). Compaiono anche gli **stati
+  calcolati** («X è V quando C»), in sola lettura.
+- **Oggetti contabili** nel pannello «Oggetti»: spunta «contabile» + plurale + le quantità
+  iniziali per luogo (inventario / stanza / contenitore), via `countable_decl` /
+  `stock_player` / `stock_place`. «Cambia tipo» su un contabile non duplica più la
+  definizione; il tipo non-oggetto è disabilitato finché è contabile.
+- **Collegamenti «senza ritorno»** (a senso unico) in Mappa e nelle uscite: una **freccia
+  singola** li distingue, una spunta li crea o li toglie (`connection` con `oneWay`).
+- **Procedure nominate** (sezione Regole): la conseguenza «esegui <procedura>» (`callProc`)
+  nel costruttore di regole/eventi/demoni e una sezione «Procedure» per crearle, listarle,
+  riscriverle (`procedure_def`) ed eliminarle.
+- **Grafo di vincibilità** (il differenziante): un interruttore «Vincibilità» sulla mappa
+  accende un overlay che marca le stanze irraggiungibili e un pannello «Si può vincere?»
+  con l'esito (vincibile / ostruzione possibile / nessuna vittoria), «per vincere serve…»,
+  gli oggetti orfani, le regole che non scattano mai e le scorte che non bastano. È una
+  vista (non tocca il .fav), si aggiorna mentre si scrive. Nuovo metodo sidecar
+  `world.winnability` (riusa `collaudo.analizza_vincibilita`). Sidecar **0.15.0**.
 - **Pannello «Relazioni»** (sezione Mondo). Una griglia leggibile mostra le relazioni di
   prima classe dichiarate — con la loro arietà (uno a uno / uno a molti / molti a molti) e
   la reciprocità — e, sotto ciascuna, le coppie «soggetto → oggetto» scritte dall'autore
@@ -22,7 +44,12 @@ faceva solo passare intatte per il testo).
   reciproca e gli sfratti dell'arietà non compaiono come righe doppione; le forme non ancora
   rappresentabili (es. le interrogazioni dentro le regole) restano intatte nel testo.
 - Il sidecar espone `world.relations` (nuovo metodo): le relazioni dichiarate e le coppie
-  asserite, ciascuna con lo **span sorgente** per la modifica chirurgica. Sidecar **0.14.0**.
+  asserite, ciascuna con lo **span sorgente** per la modifica chirurgica.
+
+### Sidecar
+- `world.winnability` (nuovo) e i campi aggiunti agli analizzatori esistenti
+  (`analizza_variabili.computed`, `analizza_outline.countable/quantity`,
+  `analizza_regole.procedures`): **VERSIONE_SIDECAR 0.13.0 → 0.15.0**.
 
 ## [1.3.0] — 2026-10-24 — Il motore FAVELLA 1.6.0
 

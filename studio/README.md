@@ -1,6 +1,6 @@
 # Favella Studio
 
-<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.3.0 — l'ambiente di scrittura per FAVELLA 1"></p>
+<p align="center"><img src="branding/favella-studio-banner.jpg" width="880" alt="Favella Studio 1.4.0 — l'ambiente di scrittura per FAVELLA 1"></p>
 
 **L'ambiente di scrittura visuale per il linguaggio FAVELLA 1.** Scrivi la tua avventura in
 italiano, vedi le stanze diventare una mappa, componi dialoghi e regole senza scrivere una
@@ -176,18 +176,25 @@ marca da `branding/icone/`. Il motore Python va prima congelato con PyInstaller 
 
 ## Allineamento al linguaggio (FAVELLA 1.6.0)
 
-Il motore vivo importato dal sidecar è a **v1.6.0** (sidecar 0.14.0): compilare, **▶ Giocare**
+Il motore vivo importato dal sidecar è a **v1.6.0** (sidecar 0.15.0): compilare, **▶ Giocare**
 ed **📦 Esportare** funzionano su qualunque storia 1.6.0, comprese le frasi nuove —
 l'invariante di clamp, le connessioni «senza ritorno», le relazioni di prima classe, le
-procedure nominate e gli oggetti contabili. Quelle frasi si scrivono nell'**editor di testo**;
-gli strumenti visuali (riordino, rinomina, pannelli) le **riconoscono e non le perdono**, e
-riordinare una storia 1.6.0 non cambia il gioco. Gli editor dedicati a quei costrutti arrivano
-uno per uno; fino ad allora passano intatti per il testo e l'outline.
+procedure nominate e gli oggetti contabili. Dalla **1.4.0** tutti questi costrutti hanno il
+loro **editor dedicato** (oltre al pannello «Relazioni»): l'invariante di clamp e gli stati
+calcolati in «Stati e contatori», i contabili (plurale + quantità) in «Oggetti», il «senza
+ritorno» in Mappa/uscite (freccia singola), le procedure nominate in «Regole» (crea/riscrivi
++ conseguenza «esegui …»). Ciò che non è ancora rappresentabile a UI passa **intatto** per il
+testo e l'outline; riordinare o rinominare una storia 1.6.0 non cambia il gioco.
 
-Il primo editor dedicato alla 1.6.0 è il **pannello «Relazioni»** (sezione Mondo, RPC
-`world.relations`): una griglia con le relazioni di prima classe dichiarate (arietà e
-reciprocità) e, per ciascuna, le coppie «soggetto → oggetto» scritte dall'autore, da
-collegare/togliere; round-trip canonico via `relation_decl`/`relation_fact` + splice in Monaco.
+Il **pannello «Relazioni»** (sezione Mondo, RPC `world.relations`): una griglia con le
+relazioni di prima classe dichiarate (arietà e reciprocità) e, per ciascuna, le coppie
+«soggetto → oggetto» scritte dall'autore, da collegare/togliere; round-trip canonico via
+`relation_decl`/`relation_fact` + splice in Monaco.
+
+Il **grafo di vincibilità** (RPC `world.winnability`, interruttore «Vincibilità» sulla
+mappa) è una **vista** dell'analisi statica del motore (`collaudo.analizza_vincibilita`):
+evidenzia le stanze irraggiungibili, dice «per vincere serve…», segnala gli oggetti orfani,
+i finali e le regole irraggiungibili e le scorte che non bastano. Non modifica il `.fav`.
 
 Gli **editor visuali della logica** (⚙ Regole, 💬 Dialoghi) coprono la grammatica fino
 a 0.18.0 **e i Temi 1-5** (v0.9.22): quantità dinamiche dei contatori (`[contatore]`,
