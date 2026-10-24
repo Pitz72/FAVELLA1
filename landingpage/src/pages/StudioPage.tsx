@@ -97,14 +97,15 @@ const SCHERMATE = [
   },
 ] as const;
 
-// Che cosa si può fare dai pannelli, oltre al testo.
+// Le novità della 1.4.0: un editor per ogni frase nuova della 1.6.0, più il
+// grafo di vincibilità (il differenziante).
 const NOVITA = [
-  ["Notte, carta, contrasto alto", "Tre modi di leggere, che valgono anche per il testo e per la mappa: un tema scuro, uno chiaro, e il contrasto alto per tutti e due. Ogni testo sta ad almeno 4,5:1 sul suo fondo."],
-  ["Ogni modifica si annulla", "Quello che fai dai pannelli si disfa con «Annulla» o con Ctrl+Z, anche nei file che non hai aperto. Dopo un'eliminazione, l'avviso ha il suo «Annulla»."],
-  ["Tutto da tastiera", "Sezioni, elenchi, schede, menu e finestre si usano con le frecce, Invio ed Esc. Il racconto della partita lo leggono i lettori di schermo."],
-  ["Aggiornamenti col tuo permesso", "Studio chiede prima di collegarsi a internet. Una versione nuova si installa solo se la sua impronta coincide con quella pubblicata, e solo dopo averti chiesto dei file non salvati."],
-  ["Una storia o una cartella", "Ctrl+O apre un file .fav, Ctrl+Maiusc+O una cartella; se nella cartella c'è una storia sola, si apre da sé. Il principale e i moduli che include li crei, li includi, li togli."],
-  ["Una mappa che si legge", "Ogni collegamento ha la direzione scritta accanto alla stanza da cui la prendi; le uscite a senso unico sono tratteggiate, e le posizioni delle stanze si ricordano."],
+  ["Il grafo di vincibilità", "L'interruttore «Vincibilità» sulla mappa accende una vista che dice se la storia si può davvero vincere: le stanze irraggiungibili si marcano, e un pannello «Si può vincere?» elenca che cosa serve per arrivare in fondo, gli oggetti che non servono a nulla, le regole che non scattano mai e le scorte che non bastano. Si aggiorna mentre scrivi, e non tocca il testo."],
+  ["Il pannello Relazioni", "Le relazioni di prima classe della 1.6.0 in una griglia leggibile: chi si fida di chi, quale chiave apre quale porta. Vedi ogni coppia «soggetto → oggetto» scritta dall'autore, la aggiungi o la togli con due menu dei membri, e crei una relazione nuova da una finestra. Ogni modifica genera la frase .fav canonica e la scrive nel testo."],
+  ["Oggetti contabili", "Nel pannello Oggetti una spunta «contabile», il plurale e le quantità iniziali per luogo — inventario, stanza o contenitore. Le pozioni, le frecce, le razioni si tengono in più copie, con la concordanza che l'autore dichiara una volta sola."],
+  ["Clamp e stati calcolati", "Ogni contatore mostra «resta sempre fra A e B»: lo dichiari una volta e il motore lo tiene nell'intervallo da solo. Nello stesso pannello compaiono gli stati calcolati («X è V quando C»), in sola lettura."],
+  ["Procedure nominate", "Una sezione «Procedure» per crearle, listarle e riscriverle, e la conseguenza «esegui <procedura>» pronta nel costruttore di regole, eventi e demoni: una sequenza di azioni dichiarata una volta e richiamata dove serve."],
+  ["Collegamenti a senso unico", "Le connessioni «senza ritorno» della 1.6.0 si distinguono sulla mappa con una freccia singola, e una spunta le crea o le toglie. Le uscite con una condizione restano a linea tratteggiata, e le posizioni delle stanze si ricordano."],
 ] as const;
 
 const SEZIONI = [
@@ -222,10 +223,10 @@ const StudioPage = () => {
             tone="amber"
             title={
               <>
-                Rivisto da cima a fondo, <Ink>per leggere bene.</Ink>
+                Gli editor delle <Ink>frontiere nuove.</Ink>
               </>
             }
-            lead="Una revisione completa, riga per riga, e un'interfaccia ridisegnata per chi ci vede poco. Stanze, oggetti, personaggi, uscite, regole e dialoghi si creano e si cambiano dai pannelli, e il testo resta sempre uguale a ciò che fai."
+            lead="Favella Studio 1.4.0 porta un editor dedicato a ogni frase nuova della 1.6.0 — relazioni, procedure, oggetti contabili, clamp, senso unico — e il grafo di vincibilità, la vista che dice se la storia si può davvero finire. Ogni modifica dai pannelli rigenera la frase .fav canonica e la scrive nel testo, che resta la fonte di verità."
           />
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {NOVITA.map(([t, d], i) => (

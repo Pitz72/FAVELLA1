@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.5.0)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.0)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.5.0";
-export const VERSION_LABEL = "v1.5.0 — Le lezioni del Relitto";
+export const VERSION = "1.6.0";
+export const VERSION_LABEL = "v1.6.0 — Le frontiere nuove";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.5.0";
+export const ENGINE_VERSION = "1.6.0";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -67,7 +67,12 @@ export const SITE_URL = "https://favella.eu";
 //   al tramonto) nel banner della Galleria e nella notizia in evidenza, in webp in public/viaggiatore/; il banner
 //   distingue la web (1.23.0, definitiva, /esperimento invariato) dalla desktop (1.35.0, Windows e Linux, coi suoi
 //   plus); i link di download puntano alla release v1.35.0.
-export const SITE_VERSION = "2.11.0";
+// · 2.12.0 = motore 1.6.0, «le frontiere nuove» (relazioni di prima classe, procedure nominate, oggetti contabili,
+//   invariante di clamp, connessioni a senso unico) e Favella Studio 1.4.0 (un editor per ogni frase nuova + il
+//   grafo di vincibilità): header con «Novità» voce di primo livello in evidenza, reparti informativo/didattico/news
+//   aggiornati, numeri di versione e conteggio dei test (1498) allineati. ⚠️ VERSION→1.6.0 e STUDIO_VERSION→1.4.0
+//   fanno puntare i download a v1.6.0 (tag già esistente) e studio-v1.4.0 (tag DA PUBBLICARE dalla madre).
+export const SITE_VERSION = "2.12.0";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -76,10 +81,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.5.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.5.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.5.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.5.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.0";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.0-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.0-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.0-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -99,7 +104,7 @@ export const VIAGGIATORE_PAGES_URL = "https://pitz72.github.io/il-viaggiatore-fa
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
-export const STUDIO_VERSION = "1.2.3";
+export const STUDIO_VERSION = "1.4.0";
 const _STUDIO_REL = `https://github.com/Pitz72/FAVELLA1/releases/download/studio-v${STUDIO_VERSION}`;
 export const DOWNLOAD_STUDIO_WINDOWS = `${_STUDIO_REL}/FavellaStudio-Setup-${STUDIO_VERSION}.exe`;
 export const DOWNLOAD_STUDIO_LINUX = `${_STUDIO_REL}/FavellaStudio-${STUDIO_VERSION}.AppImage`;
@@ -154,7 +159,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1292, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1498, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -181,7 +186,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "logic",
     title: "Logica narrativa completa",
-    body: "Stati, contatori, condizioni con e / oppure / non, fine partita, eventi a turni e «demoni» che sorvegliano il mondo e scattano da soli.",
+    body: "Stati, contatori (tenuti dentro un intervallo con una sola frase), condizioni con e / oppure / non, procedure nominate da richiamare, relazioni di prima classe fra le entità, oggetti contabili, eventi a turni e «demoni» che sorvegliano il mondo e scattano da soli.",
   },
   {
     icon: "dialog",
@@ -222,6 +227,22 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    tag: "Linguaggio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "FAVELLA 1.6.0: le frontiere nuove",
+    body: "Dopo la 1.5.0 il linguaggio apre cinque frontiere, tutte facoltative e additive: le storie di ieri girano identiche. Le relazioni di prima classe collegano due parti con una locuzione tua — «\"si fida di\" è una relazione molti a molti.», «La chiave di ottone apre la cella.» — da asserire, cambiare nelle regole e interrogare («se qualcuno si fida del giocatore»). Le procedure nominate danno un nome a una sequenza di conseguenze da richiamare dove serve («Definisci \"far passare la notte\" come: …», poi «esegui far passare la notte»). Gli oggetti contabili tengono una cosa in più copie con la concordanza che dichiari tu («La pozione, plurale \"pozioni\", è contabile.»): il giocatore ne prende, lascia e consuma quante vuole. L'invariante di clamp tiene un contatore in un intervallo con una frase sola («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («… collega giù a il pozzo senza ritorno.»). Dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità.",
+    cta: { label: "Scarica FAVELLA 1.6.0", href: "/download" },
+  },
+  {
+    tag: "Studio",
+    date: "Ottobre 2026",
+    emphasis: "primary",
+    title: "Favella Studio 1.4.0: gli editor delle frontiere, e il grafo di vincibilità",
+    body: "Studio porta dentro il motore 1.6.0 e, per ogni frase nuova, un editor dedicato: il pannello Relazioni (le coppie «soggetto → oggetto» in una griglia, da collegare o togliere), gli oggetti contabili nel pannello Oggetti (spunta «contabile», plurale e quantità per luogo), l'invariante di clamp e gli stati calcolati fra i contatori, le procedure nominate fra le regole, e i collegamenti a senso unico sulla mappa con una freccia singola. La novità più grande è il grafo di vincibilità: un interruttore sulla mappa accende una vista che dice se la storia si può davvero vincere, segna le stanze irraggiungibili ed elenca che cosa serve per arrivare in fondo, gli oggetti orfani, le regole che non scattano mai e le scorte che non bastano. Ogni modifica dai pannelli rigenera la frase .fav canonica e la scrive nel testo. Le storie scritte prima si aprono e si giocano come sempre.",
+    cta: { label: "Scarica Favella Studio 1.4.0", href: "/studio" },
+  },
   {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
@@ -511,7 +532,7 @@ export const NEXT_EVOLUTIONS: RoadmapItem[] = [
   {
     area: "strumenti",
     title: "Si cresce solo aggiungendo",
-    body: "FAVELLA 1 è completo. La 1.5.0 ha aggiunto ciò che ha insegnato il remake de «Il Relitto Silente», e le storie già scritte girano identiche: è la regola da sempre. Il linguaggio si muove solo quando una storia vera ne mostra il bisogno; quello che funziona oggi funzionerà anche fra dieci anni.",
+    body: "FAVELLA 1 è completo. La 1.6.0 ha aperto frontiere nuove — relazioni di prima classe, procedure nominate, oggetti contabili, invariante di clamp, connessioni a senso unico — e le storie già scritte girano identiche: è la regola da sempre. Il linguaggio si muove solo quando una storia vera ne mostra il bisogno; quello che funziona oggi funzionerà anche fra dieci anni.",
   },
   {
     area: "ecosistema",
@@ -531,7 +552,7 @@ Con l'avvento dei Large Language Models quel sogno è diventato un progetto conc
 
 Sotto la prosa c'è ingegneria vera. Il primo motore a espressioni regolari è stato sostituito da un compilatore a due passate con un parser formale LALR(1) (Lark/EBNF), reso non ambiguo per costruzione: i nomi di stanze e oggetti diventano token "chiusi" raccolti da una symbol-table, così l'italiano resta naturale ma la grammatica resta deterministica. Da lì il linguaggio è cresciuto per livelli — logica composita, stato di gioco, estendibilità, espressività narrativa, NPC e dialoghi, maturità della toolchain, capacità di trasporto, reattività dei "demoni" — fino a un mondo che si comporta da vivo: buio e luce, personaggi che camminano, pronomi, descrizioni che variano, il caso e le quantità, gli stati che si parlano. Ogni passo è protetto da una suite oggi a ${STATS_NUMERI.test} test, più ${STATS_NUMERI.collaudo} di collaudo.
 
-Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di ${MANUAL_PDF_PAGES} pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto. Nell'autunno del 2026 il remake de «Il Relitto Silente», il gioco più grande scritto in FAVELLA, ha insegnato ancora qualcosa, e la 1.5.0 l'ha raccolto senza toccare le storie già scritte. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
+Con la versione 1.0.0 il linguaggio si è dichiarato completo: ogni costrutto aveva trovato il suo posto. Da allora le versioni 1.x possono solo aggiungere, senza toccare ciò che funziona. La 1.2 ha portato i salvataggi, un collaudo che gioca partite vere e il posto iniziale degli oggetti: tutte cose venute fuori scrivendo un gioco vero, Il Viaggiatore. Il linguaggio ha il suo manuale — un «Manuale di Programmazione» tipografico di ${MANUAL_PDF_PAGES} pagine che racconta ogni costrutto con una storia d'esempio dall'inizio alla fine — e tutto un ecosistema intorno: un installer per Windows, macOS e Linux con la riga di comando «favella1», un playground che funziona offline, il pacchetto «pip install favella1», una libreria di moduli da includere e una galleria di avventure giocabili. La casa ufficiale del progetto è favella.eu; il codice è su GitHub, pubblico e aperto. Nell'autunno del 2026 il remake de «Il Relitto Silente», il gioco più grande scritto in FAVELLA, ha insegnato ancora qualcosa, e la 1.5.0 l'ha raccolto senza toccare le storie già scritte. Poi la 1.6.0 ha aperto frontiere nuove: le relazioni di prima classe fra le entità (chi si fida di chi, quale chiave apre quale porta), le procedure nominate da richiamare, gli oggetti contabili, l'invariante di clamp che tiene un contatore in un intervallo e le connessioni a senso unico — sempre in modo additivo, con le storie di ieri che girano identiche. Il codice resta pubblico, con licenza MIT, come riferimento per chi voglia imparare, riprendere il lavoro o portarlo altrove.`;
 
 // --------------------------------------------------------------------
 //  Changelog (sintesi delle release recenti)
@@ -543,6 +564,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.6.0",
+    title: "Le frontiere nuove",
+    content: "Cinque frontiere nuove, tutte facoltative. Le relazioni di prima classe collegano due parti con una locuzione dichiarata («\"si fida di\" è una relazione molti a molti.»), da asserire d'autore, cambiare nelle regole e interrogare, con arietà e reciprocità. Le procedure nominate danno un nome a una sequenza di conseguenze, richiamabile anche da un'altra procedura («Definisci \"…\" come: …», poi «esegui …»). Gli oggetti contabili tengono una cosa in più copie, col plurale dichiarato dall'autore (prendi/lascia/consuma N, condizioni e interpolazione sulle scorte). L'invariante di clamp tiene un contatore in un intervallo («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («senza ritorno»). Tutto additivo: dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità. Favella Studio 1.4.0 porta gli editor di tutte queste frasi e il grafo di vincibilità.",
+  },
   {
     version: "1.5.0",
     title: "Le lezioni del Relitto",
@@ -700,7 +726,7 @@ export const UPDATE_LOGS: UpdateLog[] = [
 // --------------------------------------------------------------------
 export const MANUAL_CONTENT = `# Guida rapida a FAVELLA 1
 
-Una panoramica essenziale della sintassi alla **v1.5.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — 102 pagine, 21 capitoli, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
+Una panoramica essenziale della sintassi alla **v1.6.0**, pensata per cominciare subito. Per la trattazione organica di tutti i costrutti c'è il **Manuale di Programmazione** completo — ${MANUAL_PDF_PAGES} pagine, scaricabile in PDF da GitHub. La filosofia è una sola: **il tuo codice è una storia**. Scrivi frasi in italiano, ognuna chiusa da un **punto \`.\`**; i commenti iniziano con \`#\`.
 
 ---
 
@@ -861,9 +887,64 @@ Il resto (\`segnala\`, l'IFID, \`I demoni guardano la fine del turno.\`) è nel 
 
 ---
 
+## 8. Le frontiere della 1.6
+
+La 1.6 apre capacità nuove, sempre facoltative e additive: le storie della 1.5 (e della 1.4) girano identiche.
+
+### Relazioni di prima classe
+Una relazione binaria **nominata** collega due parti — entità o il giocatore — con una locuzione d'uso. La dichiari, la asserisci d'autore, la cambi nelle regole e la interroghi.
+
+\`\`\`favella
+"si fida di" è una relazione molti a molti.
+"apre" è una relazione uno a molti ed è reciproca.
+Il giocatore si fida di Saverio.
+La chiave di ottone apre la cella.
+Invece di tradisci Vito: dire "Fatto." e adesso il giocatore non si fida più di Vito.
+Invece di esci se qualcuno si fida del giocatore: dire "Qualcuno conta su di te.".
+\`\`\`
+
+L'arietà (\`uno a uno\` / \`uno a molti\` / \`molti a molti\`) governa gli sfratti delle coppie in conflitto; la reciprocità è facoltativa. \`[chi si fida del giocatore]\` rende l'elenco dei soggetti. In questa prima versione le relazioni sono d'autore e interrogabili, non ancora azionabili dal giocatore.
+
+### Procedure nominate
+Una sequenza di conseguenze dichiarata una volta e richiamata dove serve — anche da un'altra procedura, con una guardia contro i cicli:
+
+\`\`\`favella
+Definisci "far passare la notte" come: aumenta la sete di 10 e adesso aumenta la stanchezza di 5 e adesso la lampada è spenta.
+Invece di dormi: dire "Dormi fino all'alba." e adesso esegui far passare la notte.
+\`\`\`
+
+### Oggetti contabili
+Una cosa tenuta in **più copie**, con la concordanza **dichiarata** dall'autore (il motore non pluralizza da sé):
+
+\`\`\`favella
+La pozione, plurale "pozioni", è contabile.
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
+\`\`\`
+
+Il giocatore ne prende, lascia o consuma quante vuole (\`prendi 2 pozioni\`, \`prendi una pozione\`, \`prendi tutte le pozioni\`, \`consuma una pozione\`), e la stanza, l'inventario e i contenitori mostrano le copie concordate (\`3 pozioni\`, \`1 pozione\`). Condizioni sulle scorte: \`se il giocatore ha almeno 2 pozioni\` (anche esatto / più di / meno di) e \`se non restano pozioni\`; interpolazione \`[quante pozioni]\`.
+
+### Invariante di clamp
+Tenere un contatore dentro un intervallo si dichiara una volta sola, e il motore la rispetta dopo **ogni** modifica (e sul valore iniziale):
+
+\`\`\`favella
+La sete resta sempre fra 0 e 100.
+\`\`\`
+
+Gli estremi possono essere un numero o un altro contatore (\`… fra 0 e [soglia]\`). ANNULLA riavvolge anche i clamp.
+
+### Connessioni a senso unico
+\`A collega D a B\` crea da sé anche il ritorno \`B → A\`; il suffisso \`senza ritorno\`, in ultima posizione, lo sopprime:
+
+\`\`\`favella
+La botola collega giù a il pozzo senza ritorno.
+\`\`\`
+
+---
+
 ## Domande frequenti (FAQ)
 
-*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.5.0**.*
+*Domande raccolte da chi sta davvero scrivendo storie con FAVELLA. Riferite alla **v1.6.0**.*
 
 ### Il giocatore può salvare la partita?
 Sì, dalla versione 1.2, e tu non devi scrivere niente. \`salva\` mette da parte la partita, \`salva mattina\` le dà un nome; \`carica\` o \`carica mattina\` la riprende esattamente dov'era, anche a metà di una conversazione. Nel terminale il salvataggio è un file (\`mattina.salvataggio\`) nella cartella da cui si gioca; nel browser resta nella memoria del browser. Se nella tua storia \`carica\` è un comando tuo (\`"carica" è un comando.\` per un fucile), vince il tuo.
@@ -931,7 +1012,9 @@ Ogni turno se l'oro è almeno [prezzo]: dire "Te lo puoi permettere.".
 Il confronto è **dinamico**: se la cella di destra cambia, cambia anche il risultato. Abilita soglie *relative* (gelosie, difficoltà che si adatta) senza batterie di regole a numero fisso.
 
 ### Come gestisco una scorta (3 pozioni, le munizioni, le razioni…)?
-Con un **contatore**. FAVELLA non ha oggetti «in molteplicità» (e non li avrà: i plurali e la concordanza automatica la trasformerebbero in un linguaggio di programmazione, contro lo spirito del progetto). Una scorta è semplicemente un numero che cala quando consumi:
+In due modi, secondo che cosa è la scorta.
+
+**Con un contatore**, quando è una quantità astratta (le munizioni, i punti vita, le razioni): un numero che cala quando consumi, e il testo lo scrivi tu (\`[pozioni]\` interpola la quantità, così resta in italiano corretto).
 \`\`\`favella
 Le pozioni sono un contatore.
 Le pozioni partono da 3.
@@ -939,7 +1022,14 @@ Le pozioni partono da 3.
 Invece di bevi se le pozioni è almeno 1: dire "Bevi una pozione. (Ne restano [pozioni].)" e adesso aumenta la salute di 5 e adesso diminuisci le pozioni.
 Invece di bevi se le pozioni è 0: dire "Non hai più pozioni.".
 \`\`\`
-Il testo della scorta lo scrivi tu (\`[pozioni]\` interpola la quantità): così resta in italiano corretto, senza pluralizzazioni inventate dal motore.
+
+**Con un oggetto contabile** (dalla **v1.6.0**), quando è una cosa vera del mondo che il giocatore prende e lascia in più copie. FAVELLA non pluralizza da sé — lo spirito del progetto resta quello — quindi il plurale lo **dichiari tu**, una volta sola:
+\`\`\`favella
+La pozione, plurale "pozioni", è contabile.
+Il giocatore ha 3 pozioni.
+Ci sono 5 frecce in la faretra.
+\`\`\`
+Poi \`prendi 2 pozioni\`, \`lascia una pozione\`, \`consuma una pozione\` e \`prendi tutte le pozioni\` funzionano da soli, e gli elenchi mostrano «3 pozioni» o «1 pozione» con la concordanza che hai dichiarato. Condizioni sulle scorte: \`se il giocatore ha almeno 2 pozioni\` e \`se non restano pozioni\`; interpolazione \`[quante pozioni]\`.
 
 ### Posso far cambiare il meteo (o un altro stato) a caso?
 Sì, dalla **v0.32.0**. Oltre a dare a uno stato un valore fisso, puoi farglielo **pescare a caso** da un elenco:
@@ -997,4 +1087,4 @@ Nei **nomi** (di stanze, oggetti, stati, contatori) puoi usare solo lettere — 
 
 ---
 
-> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (102 pagine, 21 capitoli, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;
+> Questa è solo la punta dell'iceberg. Il **Manuale di Programmazione** completo (${MANUAL_PDF_PAGES} pagine, in PDF) tratta ogni costrutto nel dettaglio; codice, specifica della grammatica e la demo «Il Relitto Silente» sono tutti pubblici su GitHub.`;

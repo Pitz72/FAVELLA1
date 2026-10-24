@@ -82,7 +82,7 @@ const CollaboratePage = () => (
           Un linguaggio completo, aperto a <Ink>chiunque.</Ink>
         </>
       }
-      lead={`FAVELLA 1 è completo e cresce solo aggiungendo: la ${VERSION} raccoglie le lezioni del remake de «Il Relitto Silente», senza toccare le storie già scritte. È interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.`}
+      lead={`FAVELLA 1 è completo e cresce solo aggiungendo: la ${VERSION} apre frontiere nuove — relazioni di prima classe, procedure nominate, oggetti contabili — senza toccare le storie già scritte. È interamente pubblico su GitHub, con licenza MIT: codice, grammatica, documentazione, esempi e Favella Studio. Se l'idea ti accende, prendila: leggila, imparaci, portala dove vuoi.`}
     >
       <Btn href={GITHUB_URL} size="lg">
         Apri il repository

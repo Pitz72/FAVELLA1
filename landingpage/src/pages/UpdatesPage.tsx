@@ -56,10 +56,10 @@ const UpdatesPage = () => {
         eyebrow="Novità e roadmap"
         title={
           <>
-            Quello che è stato, e come <Ink>finisce.</Ink>
+            Quello che è stato, e come <Ink>cresce.</Ink>
           </>
         }
-        lead={`Il diario del progetto: come FAVELLA è arrivata alla 1.0, che cosa è venuto dopo, e perché adesso, con la ${VERSION}, è finita.`}
+        lead={`Il diario del progetto: come FAVELLA è arrivata alla 1.0, che cosa è venuto dopo, e dove si spinge adesso con la ${VERSION}, le frontiere nuove.`}
       />
 
       {/* ═════════ IN EVIDENZA ═════════ */}
