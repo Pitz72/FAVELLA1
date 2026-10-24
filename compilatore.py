@@ -642,13 +642,19 @@ _GRAMMAR_TEMPLATE = r"""
     //       decide l'opzionale, entrambi NON continuatori di condizione (solo
     //       "oppure"/"e"/")") → reduce deterministico, LALR(1) 0-ambiguo.
     // Entrambe riusano l'albero `condizione` e la coda di conseguenze 'e adesso'.
-    def_demone: "Ogni" "turno" "se" condizione ":" _esito_temporale "." -> demone_ogni
+    // [1.5.0 / C3] 'prima_volta?' è accettato anche su 'Ogni turno se' e 'N turni
+    // dopo che' solo per RAGGIUNGERE la diagnostica mirata nel transformer
+    // (demone_ogni/demone_dopo): su questi demoni 'per la prima volta' resta un
+    // errore, ma con un messaggio d'autore invece dell'errore grezzo del parser.
+    // LALR(1) 0-ambiguo: dopo la condizione il lookahead "per" (inizio di
+    // prima_volta) è disgiunto dai continuatori "oppure"/"e"/")" e da ":".
+    def_demone: "Ogni" "turno" "se" condizione prima_volta? ":" _esito_temporale "." -> demone_ogni
               // [1.5.0 / C3] '… per la prima volta': una volta sola in tutta la partita.
               | "Quando" condizione ( "diventa" "vera" )? prima_volta? ":" _esito_temporale "." -> demone_quando
               // [1.3.0 / M-7] Timer che parte da un fatto: 'Tre turni dopo che la
               // miccia è accesa: …' (scatta N turni dopo il fronte di salita).
               // Inizia con NUMERO: nessun'altra dichiarazione comincia così.
-              | _numero ( "turno" | "turni" ) "dopo" "che" condizione ":" _esito_temporale "." -> demone_dopo
+              | _numero ( "turno" | "turni" ) "dopo" "che" condizione prima_volta? ":" _esito_temporale "." -> demone_dopo
 
     // --- NPC E DIALOGHI (Livello 5b) ---
     // Etichette dei nodi e testi delle opzioni sono SEMPRE quotati (vocabolario
@@ -2154,6 +2160,8 @@ class FavellaTransformer(Transformer):
     # --- [1.3.0 / M-6] Presentazione ---
 
     def def_titolo(self, testo):
+        if self.mondo.titolo and self.mondo.titolo != testo:
+            self.warnings.append("Il titolo è dichiarato due volte: vale l'ultima.")
         self.mondo.titolo = testo
         return None
 
@@ -2199,6 +2207,8 @@ class FavellaTransformer(Transformer):
                 f"L'IFID «{testo}» non è valido: usa da 8 a 63 lettere maiuscole, cifre e "
                 f"trattini (per esempio un UUID: «favella1 ifid» te ne dà uno).")
             return None
+        if self.mondo.ifid and self.mondo.ifid != ifid:
+            self.warnings.append("L'IFID è dichiarato due volte: vale l'ultima.")
         self.mondo.ifid = ifid
         return None
 
@@ -2223,10 +2233,14 @@ class FavellaTransformer(Transformer):
         return None
 
     def def_autore(self, testo):
+        if self.mondo.autore and self.mondo.autore != testo:
+            self.warnings.append("L'autore è dichiarato due volte: vale l'ultima.")
         self.mondo.autore = testo
         return None
 
     def def_prologo(self, testo):
+        if self.mondo.prologo and self.mondo.prologo != testo:
+            self.warnings.append("Il prologo è dichiarato due volte: vale l'ultima.")
         self.mondo.prologo = testo
         return None
 

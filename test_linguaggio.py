@@ -7688,6 +7688,19 @@ def test_150_c3_per_la_prima_volta():
     _check("Odore" not in esegui(m, "nord"), "rientrando, il demone 'per la prima volta' tace")
     _check("prime_volte" not in runtime("La sala è una stanza.\n").stato_essenziale(),
            "le storie che non lo usano hanno l'impronta di sempre")
+    # [1.5.0 / C3] 'per la prima volta' su «Ogni turno se» e «N turni dopo che» resta
+    # un errore, ma la grammatica ora lo accetta per RAGGIUNGERE il messaggio d'autore
+    # (demone_ogni/demone_dopo), invece dell'errore grezzo del parser.
+    _m, log = compila("La sala è una stanza.\nIl giocatore comincia in la sala.\n"
+                      "L'aria è un contatore.\nL'aria parte da 10.\n"
+                      "Ogni turno se l'aria è più di 0 per la prima volta: diminuisci l'aria.\n")
+    _check(_m is None and "non per «Ogni turno se" in log,
+           "«per la prima volta» su «Ogni turno se»: messaggio d'autore, non errore del parser")
+    _m, log = compila("La sala è una stanza.\nIl giocatore comincia in la sala.\n"
+                      "La fuga è uno stato.\n"
+                      "3 turni dopo che la fuga è iniziata per la prima volta: dire \"x\".\n")
+    _check(_m is None and "non per «N turni dopo che" in log,
+           "«per la prima volta» su «N turni dopo che»: messaggio d'autore, non errore del parser")
 
 
 def test_150_c4_spostare_il_giocatore():
@@ -7981,6 +7994,21 @@ def test_150_riga_di_stato_e_ifid():
            "la pagina esportata ha la riga di stato e non scrive i segnali")
     _m, log = compila("La sala è una stanza.\nL'IFID è \"abc\".\n")
     _check(_m is None and "IFID" in log, "un IFID non valido è un errore")
+    # [1.5.0] Coerenza linter: titolo/autore/prologo/IFID dichiarati due volte con
+    # valori diversi avvisano «vale l'ultima», come già la riga di stato e i testi.
+    _m, log = compila("La sala è una stanza.\nIl giocatore comincia in la sala.\n"
+                      "Il titolo è \"a\". Il titolo è \"b\".\n"
+                      "L'autore è \"x\". L'autore è \"y\".\n"
+                      "Il prologo è \"p1\". Il prologo è \"p2\".\n"
+                      "L'IFID è \"AAAAAAAA-1111-4222-8333-944455556666\". "
+                      "L'IFID è \"BBBBBBBB-1111-4222-8333-944455556666\".\n")
+    _check(_m is not None, "le doppie dichiarazioni non bloccano: vale l'ultima")
+    for quale in ("Il titolo", "L'autore", "Il prologo", "L'IFID"):
+        _check(f"{quale} è dichiarato due volte" in log,
+               f"avviso di doppia dichiarazione per «{quale}»")
+    _m, log = compila("La sala è una stanza.\nIl titolo è \"solo\".\n")
+    _check(_m is not None and "dichiarato due volte" not in log,
+           "una sola dichiarazione del titolo non avvisa")
 
 
 def test_150_studio_regge_le_frasi_nuove():
