@@ -24,7 +24,14 @@ ogni dichiarazione. Le dichiarazioni trovate sono **le stesse**, nello stesso pu
 lo stesso nome: confrontate su 114 file `.fav` (le storie ufficiali, la galleria, Il
 Viaggiatore, il Relitto) e su 20 mila testi costruiti a caso con 54 mila dichiarazioni.
 La ricerca sul Relitto scende da 126 a 6 ms, la compilazione a 101 ms in CPython, quasi
-quella della 1.5.0 (il resto è la grammatica più grande, che costruisce le sue tabelle).
+quella della 1.5.0.
+
+Alla **prima** compilazione di un processo, quella che paga chi apre una partita, resta
+un costo che non è un difetto: la grammatica della 1.6 è più grande, e il parser LALR si
+costruisce da capo (543 ms contro 781 sul Relitto, misurati con il profilatore). Dentro
+Pyodide, dove l'app del Relitto lo costruisce a ogni avvio, la compilazione passa così da
+0,93 a 0,80 secondi; la 1.5.0 ne prendeva 0,62. Per scendere ancora servirebbe una cache
+del parser fra un avvio e l'altro: un lavoro a sé, non una correzione.
 
 Le intestazioni dei moduli, rimaste alla 1.5.0, dicono 1.6.1. Le copie del motore nel
 sito (`landingpage/public/favella-engine/engine/`) sono risincronizzate.
