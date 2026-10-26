@@ -8954,6 +8954,47 @@ def test_160_b1_errori_dautore():
     _check(m3 is None and "contabile" in log3, "condizione di scorta su un non contabile: errore")
 
 
+def test_161_b1_ricerca_ancorata():
+    print("[1.6.1 / B1: la ricerca delle dichiarazioni di contabili parte solo dove comincia una frase]")
+    import time
+    import compilatore as _c
+    # Il modello della 1.6.0, come riferimento: il nome pigro si provava a ogni carattere.
+    riferimento = re.compile(
+        r'(?P<nome>[^,.\n]+?)\s*,\s*plurale\s+"(?P<plur>[^"]+)"\s*,\s*(?:è|sono)\s+contabile\s*\.',
+        re.IGNORECASE)
+    casi = [
+        'La pozione, plurale "pozioni", è contabile.',
+        'X è una stanza. La pozione, plurale "pozioni", è contabile.',
+        'X è una stanza.La pozione,plurale "pozioni",è contabile.',
+        '\n\n   La freccia , plurale "frecce" , è contabile .',
+        'Ah, la pozione, plurale "pozioni", è contabile.',
+        'Le gemme, plurale "gemme", sono contabile.',
+        'Il dado, plurale "dadi", è contabile. Il sasso, plurale "sassi", è contabile.',
+        'Il testo "a, b. c" è "x". Il dado, plurale "dadi", è contabile.',
+        ', plurale "niente", è contabile.',
+        'Il dado, plurale "dadi", è contabil.',
+    ]
+    for s in casi:
+        a = [(m.span(), m.group("nome"), m.group("plur")) for m in riferimento.finditer(s)]
+        b = [(m.span(), m.group("nome"), m.group("plur")) for m in _c._RE_DEF_CONTABILE.finditer(s)]
+        _check(a == b, f"le stesse dichiarazioni della 1.6.0 in {s.strip()[:44]!r}")
+    simboli = costruisci_symbol_table('X è una stanza. La pozione, plurale "pozioni", è contabile.\n'
+                                      '   Il dado, plurale "dadi", è contabile.\n')
+    _check(simboli.plurali == {"pozioni": "pozione", "dadi": "dado"},
+           f"dopo un punto e dopo un a capo: le due dichiarazioni ({simboli.plurali})")
+    # Un sorgente lungo senza contabili: prima ogni carattere faceva ripartire la ricerca
+    # fino al separatore seguente (sul Relitto Silente 126 ms a compilazione), ora no.
+    testo = ('La descrizione è "' + "parole senza separatori " * 3 + '".\n') * 1500
+    t0 = time.perf_counter()
+    list(riferimento.finditer(testo))
+    prima = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    list(_c._RE_DEF_CONTABILE.finditer(testo))
+    adesso = time.perf_counter() - t0
+    _check(adesso * 4 < prima,
+           f"su {len(testo)} caratteri senza contabili costa molto meno ({1000 * adesso:.1f} ms contro {1000 * prima:.1f})")
+
+
 # =============================================================================
 # [1.6.0 / Studio] IL ROUND-TRIP DEGLI STRUMENTI VISUALI SU UNA STORIA COMPLETA
 # -----------------------------------------------------------------------------
@@ -9193,7 +9234,9 @@ def test_studio_160_sidecar_regge_i_costrutti():
     _check(esportata.get("ok") and "<html" in esportata.get("html", "").lower(),
            "game.exportHtml produce la pagina Pyodide (col motore 1.6.0)")
     ver = favella_server.rpc_engine_version({})
-    _check(ver.get("engine") == "1.6.0", f"il sidecar riporta il motore 1.6.0 ({ver.get('engine')})")
+    from strutture import VERSIONE_MOTORE
+    _check(ver.get("engine") == VERSIONE_MOTORE,
+           f"il sidecar riporta il motore {VERSIONE_MOTORE} ({ver.get('engine')})")
     _check(ver.get("sidecar") == "0.15.0", f"il sidecar passa alla 0.15.0 ({ver.get('sidecar')})")
 
 
@@ -9780,6 +9823,7 @@ def main():
         test_160_b1_condizioni,
         test_160_b1_annulla,
         test_160_b1_errori_dautore,
+        test_161_b1_ricerca_ancorata,
         test_studio_160_b1_round_trip,
         test_studio_160_calcolati_round_trip,
         test_studio_160_percorso_completo_con_relazioni,
@@ -9790,7 +9834,7 @@ def main():
         test_studio_160_vincibilita_sidecar,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.5.0)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.6.1)")
     print("=" * 60)
     for t in tests:
         t()

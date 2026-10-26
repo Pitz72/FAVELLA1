@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.5.0)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.6.1)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 #
 # [1.4.0 / L-7] Questo è il NUCLEO del compilatore: parole riservate, scanner
@@ -271,8 +271,15 @@ _RE_DEF_PROCEDURA = re.compile(r'\bdefinisci\s+"([^"]+)"\s+come\s*:', re.IGNOREC
 # "pozioni", è contabile.'. Come verbi/relazioni/procedure va cercata PRIMA di
 # svuotare le stringhe quotate (il plurale vive nelle virgolette). Introduce
 # l'oggetto (il singolare) e la sua forma plurale dichiarata.
+# [1.6.1] Il nome comincia solo dove può cominciare un tratto di frase: a inizio
+# testo, dopo un punto, un a capo o una virgola (`(?<![^,.\n])`). È la posizione
+# da cui la ricerca trovava già ogni dichiarazione (il nome non attraversa né
+# virgole, né punti, né a capo), quindi le dichiarazioni trovate sono le stesse;
+# ma prima il nome pigro si provava a OGNI carattere del sorgente, fino al
+# separatore seguente: sui 221 mila caratteri del Relitto Silente 126 ms a
+# compilazione senza trovare niente, 6 ms con l'ancora.
 _RE_DEF_CONTABILE = re.compile(
-    r'(?P<nome>[^,.\n]+?)\s*,\s*plurale\s+"(?P<plur>[^"]+)"\s*,\s*(?:è|sono)\s+contabile\s*\.',
+    r'(?<![^,.\n])(?P<nome>[^,.\n]+?)\s*,\s*plurale\s+"(?P<plur>[^"]+)"\s*,\s*(?:è|sono)\s+contabile\s*\.',
     re.IGNORECASE)
 
 

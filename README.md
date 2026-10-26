@@ -88,7 +88,13 @@ riepilogo; la semantica precisa è nella [spec](documentazione/grammatica-1.6.0.
 
 ---
 
-## 🛰️ Stato Attuale: v1.6.0 — le frontiere nuove
+## 🛰️ Stato Attuale: v1.6.1 — le frontiere nuove
+
+> **1.6.1** (27 ottobre 2026): solo una correzione di velocità. Con la 1.6.0 la
+> compilazione di una storia lunga costava quasi il doppio (Il Relitto Silente: 178 ms
+> contro 93), per un'espressione regolare che cercava gli oggetti contabili a ogni
+> carattere del sorgente; ora 101 ms. Linguaggio e gioco invariati
+> ([CHANGELOG](CHANGELOG.md)).
 
 La **1.6.0** allarga i confini del linguaggio con cinque frontiere, tutte facoltative e
 additive (le frasi della 1.5 restano valide e col medesimo significato):
@@ -248,17 +254,17 @@ Dalla v0.18.0 il progetto adotta **un unico numero di versione** per tutto il li
 
 | Componente | Versione | Riferimento |
 |---|---|---|
-| Motore / interprete (`gioco.py`) | **1.6.0** | header di modulo |
-| Compilatore, nucleo (`compilatore.py`) | **1.6.0** | header di modulo |
-| Strumenti per l'IDE (`strumenti_ide.py`) | **1.6.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Esportazione HTML (`esportazione.py`) | **1.6.0** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
-| Strutture dati (`strutture.py`) | **1.6.0** | `VERSIONE_MOTORE` + `Mondo.__str__` |
-| Libreria azioni (`libreria_azioni.py`) | **1.6.0** | header di modulo |
-| Collaudatore statico (`collaudo.py`) | **1.6.0** | usa `VERSIONE_MOTORE` |
-| Collaudatore dinamico (`esploratore.py`) | **1.6.0** | nuovo nella 1.2.0; trascrizione, percorsi con le attese e riprese nella 1.5.0 |
+| Motore / interprete (`gioco.py`) | **1.6.1** | header di modulo |
+| Compilatore, nucleo (`compilatore.py`) | **1.6.1** | header di modulo |
+| Strumenti per l'IDE (`strumenti_ide.py`) | **1.6.1** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Esportazione HTML (`esportazione.py`) | **1.6.1** | nuovo nella 1.4.0 (prima in `compilatore.py`) |
+| Strutture dati (`strutture.py`) | **1.6.1** | `VERSIONE_MOTORE` + `Mondo.__str__` |
+| Libreria azioni (`libreria_azioni.py`) | **1.6.1** | header di modulo |
+| Collaudatore statico (`collaudo.py`) | **1.6.1** | usa `VERSIONE_MOTORE` |
+| Collaudatore dinamico (`esploratore.py`) | **1.6.1** | nuovo nella 1.2.0; trascrizione, percorsi con le attese e riprese nella 1.5.0 |
 | Specifica formale della grammatica | **1.6.0** | [`documentazione/grammatica-1.6.0.md`](documentazione/grammatica-1.6.0.md) — *1.5 + le frontiere nuove: relazioni, procedure, contabili, clamp, senso unico (§29–§30)* |
-| Suite di test | **1.6.0** | 1498 asserzioni linguaggio + 50 collaudo (pytest 488) |
-| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.6.0 | protocollo 0.15.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1, + riga di stato e uscite condizionate per Studio 1.2.3, + relazioni, procedure, contabili, clamp e grafo di vincibilità per Studio 1.4.0) |
+| Suite di test | **1.6.1** | 1510 asserzioni linguaggio + 50 collaudo (pytest 489) |
+| Sidecar di compilazione (`favella_server.py`) | `VERSIONE_MOTORE` 1.6.1 | protocollo 0.15.0 (+ eventi, + pulsanti-verbo, + strumenti di Studio 1.1, + riga di stato e uscite condizionate per Studio 1.2.3, + relazioni, procedure, contabili, clamp e grafo di vincibilità per Studio 1.4.0) |
 
 > La 1.0.0 è una **milestone**: la grammatica è invariata rispetto alla 0.34.0, quindi la spec di traguardo `grammatica-1.0.0.md` ne è una copia con la nota di chiusura. Le etichette di versione più vecchie nelle sezioni storiche qui sotto (es. «Grammatica v0.4.0», «v0.7.0») sono **conservate come cronaca** e non riflettono lo stato attuale. La **1.0.1** è una patch di sola distribuzione (igiene dei nomi dei moduli installati, vedi [CHANGELOG.md](CHANGELOG.md)): la **specifica del linguaggio resta la 1.0.0** e non cambierà. Il manuale d'autore completo, in PDF tipografico, è in [`documentazione/manuale/`](documentazione/manuale/) ([manuale.pdf](documentazione/manuale/manuale.pdf)): **22 capitoli, 113 pagine, allineato al linguaggio 1.6.0** (novità anche nella spec, §29 e §30). La **1.1.0** ha aggiunto una frase, il posto iniziale degli oggetti (§18 della spec), ed è arrivata al pubblico dentro la **1.2.0** (SALVA/CARICA, collaudo dinamico, sinonimi dei verbi d'autore: §20).
 

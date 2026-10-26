@@ -4,6 +4,37 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.6.1] - 2026-10-27
+### ⏱️ La compilazione torna veloce
+Trovato aggiornando il remake de «Il Relitto Silente» alla 1.6.0. Nessuna frase nuova,
+grammatica e comportamento del gioco invariati: cambia solo **quanto** ci mette il
+compilatore.
+
+Con la 1.6.0 il Relitto (quattordici moduli, 221 mila caratteri) compilava in quasi il
+doppio del tempo della 1.5.0: 178 ms contro 93 in CPython, 0,90 secondi contro 0,61
+dentro Pyodide, dove l'app del gioco li paga all'avvio. Il tempo in più era quasi tutto in
+una sola espressione regolare della prima passata, quella che cerca le dichiarazioni
+degli oggetti contabili (`La pozione, plurale "pozioni", è contabile.`): il nome
+dell'oggetto si provava a **ogni carattere** del sorgente, fino al separatore seguente,
+anche in una storia che di contabili non ne ha. Sul Relitto: 126 ms per non trovare niente.
+
+Ora il nome si prova solo dove può cominciare un tratto di frase (a inizio testo, dopo un
+punto, un a capo o una virgola), che è proprio la posizione da cui la ricerca trovava già
+ogni dichiarazione. Le dichiarazioni trovate sono **le stesse**, nello stesso punto e con
+lo stesso nome: confrontate su 114 file `.fav` (le storie ufficiali, la galleria, Il
+Viaggiatore, il Relitto) e su 20 mila testi costruiti a caso con 54 mila dichiarazioni.
+La ricerca sul Relitto scende da 126 a 6 ms, la compilazione a 101 ms in CPython, quasi
+quella della 1.5.0 (il resto è la grammatica più grande, che costruisce le sue tabelle).
+
+Le intestazioni dei moduli, rimaste alla 1.5.0, dicono 1.6.1. Le copie del motore nel
+sito (`landingpage/public/favella-engine/engine/`) sono risincronizzate.
+
+**Test.** `test_linguaggio.py`: 1 test nuovo, le stesse dichiarazioni della 1.6.0 nei casi
+limite e la ricerca che non riparte più da ogni carattere (1510 asserzioni); il test del
+sidecar legge la versione da `VERSIONE_MOTORE` invece di cablarla; collaudo 50.
+
+---
+
 ## [1.6.0] - 2026-10-24 — le frontiere nuove
 
 > Raccoglie l'espansione del linguaggio

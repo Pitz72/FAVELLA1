@@ -1,5 +1,5 @@
 # gioco.py
-# Interprete Interattivo per FAVELLA 1 (v1.5.0)
+# Interprete Interattivo per FAVELLA 1 (v1.6.1)
 
 import copy
 import json
