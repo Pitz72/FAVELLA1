@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.0)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.1)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.6.0";
-export const VERSION_LABEL = "v1.6.0 — Le frontiere nuove";
+export const VERSION = "1.6.1";
+export const VERSION_LABEL = "v1.6.1 — Le frontiere nuove";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.6.0";
+export const ENGINE_VERSION = "1.6.1";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -72,7 +72,10 @@ export const SITE_URL = "https://favella.eu";
 //   grafo di vincibilità): header con «Novità» voce di primo livello in evidenza, reparti informativo/didattico/news
 //   aggiornati, numeri di versione e conteggio dei test (1498) allineati. ⚠️ VERSION→1.6.0 e STUDIO_VERSION→1.4.0
 //   fanno puntare i download a v1.6.0 (tag già esistente) e studio-v1.4.0 (tag DA PUBBLICARE dalla madre).
-export const SITE_VERSION = "2.12.0";
+// · 2.12.1 = motore 1.6.1: la compilazione torna veloce (la ricerca dei contabili non riparte più da ogni
+//   carattere). Download, motore del browser, notizia, changelog e conteggio dei test (1510) allineati; il
+//   manuale PDF dice v1.6.1, e le sue pagine sono 113 (il numero qui era rimasto a 102).
+export const SITE_VERSION = "2.12.1";
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";
@@ -81,10 +84,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.0";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.0-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.0-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.0-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.1";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.1-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.1-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.1-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -129,7 +132,7 @@ export const MANUAL_PDF_URL = "https://github.com/Pitz72/FAVELLA1/raw/main/docum
 export const AMAZON_PAPERBACK_URL = "https://www.amazon.it/dp/B0H6SKM9JR";
 export const MANUAL_PRICE = "13,51 €";
 // Il PDF gratuito (documentazione/manuale/manuale.pdf) è sempre l'ultima edizione.
-export const MANUAL_PDF_PAGES = 102;
+export const MANUAL_PDF_PAGES = 113;
 export const MANUAL_PDF_EDITION = "Terza edizione";
 // Ciò che oggi si compra su Amazon.it, verificato sulla scheda del libro il 15 ottobre 2026: la
 // terza edizione (96 pagine, FAVELLA 1.4.4), stessa scheda e stesso ASIN della seconda. Il prezzo
@@ -159,7 +162,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1498, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1510, collaudo: 50, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -230,10 +233,18 @@ export const NEWS: NewsItem[] = [
   {
     tag: "Linguaggio",
     date: "Ottobre 2026",
+    emphasis: "normal",
+    title: "FAVELLA 1.6.1: la compilazione torna veloce",
+    body: "Una correzione sola, trovata aggiornando il remake de «Il Relitto Silente» alla 1.6.0. La ricerca delle dichiarazioni degli oggetti contabili ripartiva da ogni carattere del sorgente, anche nelle storie che di contabili non ne hanno, e una storia lunga come il Relitto si compilava in quasi il doppio del tempo della 1.5.0. Ora la ricerca parte solo dove può cominciare una frase e trova le stesse dichiarazioni, provate su tutte le storie ufficiali e su ventimila testi costruiti a caso: il Relitto torna a 101 millisecondi, contro i 178 della 1.6.0. Nessuna frase nuova, e le storie si giocano identiche.",
+    cta: { label: "Scarica FAVELLA 1.6.1", href: "/download" },
+  },
+  {
+    tag: "Linguaggio",
+    date: "Ottobre 2026",
     emphasis: "primary",
     title: "FAVELLA 1.6.0: le frontiere nuove",
     body: "Dopo la 1.5.0 il linguaggio apre cinque frontiere, tutte facoltative e additive: le storie di ieri girano identiche. Le relazioni di prima classe collegano due parti con una locuzione tua — «\"si fida di\" è una relazione molti a molti.», «La chiave di ottone apre la cella.» — da asserire, cambiare nelle regole e interrogare («se qualcuno si fida del giocatore»). Le procedure nominate danno un nome a una sequenza di conseguenze da richiamare dove serve («Definisci \"far passare la notte\" come: …», poi «esegui far passare la notte»). Gli oggetti contabili tengono una cosa in più copie con la concordanza che dichiari tu («La pozione, plurale \"pozioni\", è contabile.»): il giocatore ne prende, lascia e consuma quante vuole. L'invariante di clamp tiene un contatore in un intervallo con una frase sola («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («… collega giù a il pozzo senza ritorno.»). Dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità.",
-    cta: { label: "Scarica FAVELLA 1.6.0", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.1", href: "/download" },
   },
   {
     tag: "Studio",
@@ -564,6 +575,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.6.1",
+    title: "La compilazione torna veloce",
+    content: "Trovato aggiornando il remake de «Il Relitto Silente» alla 1.6.0: la ricerca delle dichiarazioni degli oggetti contabili si provava a ogni carattere del sorgente, fino al separatore seguente, e una storia lunga si compilava in quasi il doppio del tempo (il Relitto: 178 millisecondi contro i 93 della 1.5.0). Ora parte solo dove può cominciare una frase, che è proprio dove trovava già ogni dichiarazione: le stesse dichiarazioni, nello stesso punto, e il Relitto torna a 101 millisecondi. Nessuna frase nuova, il gioco non cambia.",
+  },
   {
     version: "1.6.0",
     title: "Le frontiere nuove",

@@ -50,7 +50,7 @@ export const SEO_BY_PATH: Record<RoutePath, SeoEntry> = {
   "/": {
     title: "FAVELLA 1 — Scrivi storie, non codice",
     description:
-      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.6.0, le frontiere nuove: relazioni di prima classe, procedure nominate, oggetti contabili — tutte additive. Parser LALR(1), 1498 test.",
+      "FAVELLA 1 è un linguaggio di programmazione open-source in cui l'italiano È il codice: scrivi avventure testuali con frasi in italiano. Versione 1.6.1, le frontiere nuove: relazioni di prima classe, procedure nominate, oggetti contabili — tutte additive. Parser LALR(1), 1498 test.",
     og: "/og/home.png",
     type: "website",
   },
