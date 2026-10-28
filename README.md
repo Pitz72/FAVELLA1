@@ -95,6 +95,12 @@ riepilogo; la semantica precisa è nella [spec](documentazione/grammatica-1.6.0.
 > contro 93), per un'espressione regolare che cercava gli oggetti contabili a ogni
 > carattere del sorgente; ora 101 ms. Linguaggio e gioco invariati
 > ([CHANGELOG](CHANGELOG.md)).
+>
+> **1.6.2 — NON RILASCIATA.** Sul ramo `main` ci sono correzioni successive alla 1.6.1:
+> il linter e il collaudo vedono i teletrasporti del giocatore e le procedure, ed
+> `esegui` col nome fra virgolette dà un messaggio leggibile. Non c'è una Release, non è
+> su PyPI né sul sito, e il motore si dichiara ancora 1.6.1. Linguaggio e gioco
+> invariati ([CHANGELOG](CHANGELOG.md)).
 
 La **1.6.0** allarga i confini del linguaggio con cinque frontiere, tutte facoltative e
 additive (le frasi della 1.5 restano valide e col medesimo significato):
