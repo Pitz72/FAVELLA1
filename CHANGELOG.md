@@ -4,6 +4,33 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.6.2] - non pubblicata (solo sul ramo `main`, 2026-10-28)
+### 🔎 Il linter e il collaudo vedono teletrasporti e procedure
+Correzioni trovate nella revisione finale del motore. Nessuna frase nuova, grammatica e
+comportamento del gioco invariati: cambiano solo gli avvisi e il collaudo statico. Il
+numero di versione del motore resta 1.6.1 (niente Release, PyPI né sito).
+
+- **Stanze raggiunte col teletrasporto.** Una stanza in cui si arriva solo con
+  `e adesso il giocatore va in …` (o `è in`, `si ritrova in`) era segnalata
+  «irraggiungibile». Ora la destinazione conta come raggiunta, e da lì si prosegue per le
+  uscite.
+- **Procedure.** Le conseguenze dentro `Definisci "…" come: …` restavano invisibili al
+  linter: un contatore cambiato solo da una procedura era «mai usato», una stanza raggiunta
+  solo da una procedura «irraggiungibile».
+- **Collaudo statico** (`favella1 collaudo`): oltre una stanza raggiunta col
+  teletrasporto si prosegue per le uscite (prima le stanze successive risultavano
+  isolate); contano anche le conseguenze degli arrivi (`Quando il giocatore entra in …`)
+  e dei corpi delle procedure, con la condizione della regola che le esegue: una
+  vittoria dentro una procedura ora si vede.
+- **`esegui` con il nome fra virgolette** (`esegui "riposa"`) dava «Mi aspettavo:
+  PROCEDURA». Ora il messaggio dice di scrivere il nome della procedura senza virgolette
+  (com'è nel manuale). Corretti anche i commenti del codice che mostravano le virgolette.
+
+Test: tre nuovi in `test_linguaggio.py` (teletrasporto, procedure, virgolette; 1520
+passati) e uno in `test_collaudo.py` (54 passati). Copie del motore nel sito risincronizzate.
+
+---
+
 ## [1.6.1] - 2026-10-27
 ### ⏱️ La compilazione torna veloce
 Trovato aggiornando il remake de «Il Relitto Silente» alla 1.6.0. Nessuna frase nuova,

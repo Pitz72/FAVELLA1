@@ -8995,6 +8995,57 @@ def test_161_b1_ricerca_ancorata():
            f"su {len(testo)} caratteri senza contabili costa molto meno ({1000 * adesso:.1f} ms contro {1000 * prima:.1f})")
 
 
+def test_162_linter_teletrasporto():
+    print("[1.6.2: una stanza raggiunta col teletrasporto non è «irraggiungibile»]")
+    src = (
+        "L'atrio è una stanza.\nLa cripta è una stanza.\nL'ossario è una stanza.\n"
+        "La cripta collega nord a l'ossario.\n"
+        "La leva è una cosa.\nLa leva è nell'atrio.\n"
+        '"tira" è un comando.\n'
+        'Invece di tira la leva: dire "Il pavimento si apre." e adesso il giocatore va in la cripta.\n'
+        "Il giocatore comincia nell'atrio.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("'cripta' irraggiungibile" not in log, "la destinazione del teletrasporto è raggiunta")
+    _check("'ossario' irraggiungibile" not in log, "e da lì si prosegue per le uscite")
+    mondo, log = compila(src.replace("La cripta collega nord a l'ossario.\n", ""))
+    _check("'ossario' irraggiungibile" in log, "una stanza davvero isolata resta segnalata")
+
+
+def test_162_linter_procedure():
+    print("[1.6.2: il linter vede le conseguenze dentro le procedure]")
+    src = (
+        "L'atrio è una stanza.\nLa cripta è una stanza.\n"
+        "La paura è un contatore.\n"
+        'Definisci "cadere giù" come: aumenta la paura e adesso il giocatore va in la cripta.\n'
+        '"salta" è un comando senza oggetto.\n'
+        'Invece di salta: dire "Cadi. Paura: [paura]." e adesso esegui cadere giù.\n'
+        "Il giocatore comincia nell'atrio.\n"
+    )
+    mondo, log = compila(src)
+    _check(mondo is not None, "compila")
+    _check("'cripta' irraggiungibile" not in log, "il teletrasporto dentro la procedura conta")
+    _check("'paura'" not in log, f"il contatore cambiato dalla procedura non è «mai usato»")
+    mondo, log = compila(src.replace("[paura]", "niente"))
+    _check("'paura' cambia ma nessuno lo legge" in log,
+           "senza letture resta l'avviso giusto («cambia ma nessuno lo legge»)")
+
+
+def test_162_esegui_fra_virgolette():
+    print("[1.6.2: «esegui» con il nome fra virgolette dà un errore leggibile]")
+    src = (
+        "L'atrio è una stanza.\nLa paura è un contatore.\n"
+        'Definisci "spaventa" come: aumenta la paura.\n'
+        '"salta" è un comando senza oggetto.\n'
+        'Invece di salta: esegui "spaventa".\n'
+    )
+    mondo, log = compila(src)
+    _check(mondo is None, "non compila")
+    _check("senza virgolette" in log and "PROCEDURA" not in log,
+           "il messaggio dice di scrivere il nome senza virgolette")
+
+
 # =============================================================================
 # [1.6.0 / Studio] IL ROUND-TRIP DEGLI STRUMENTI VISUALI SU UNA STORIA COMPLETA
 # -----------------------------------------------------------------------------
@@ -9824,6 +9875,9 @@ def main():
         test_160_b1_annulla,
         test_160_b1_errori_dautore,
         test_161_b1_ricerca_ancorata,
+        test_162_linter_teletrasporto,
+        test_162_linter_procedure,
+        test_162_esegui_fra_virgolette,
         test_studio_160_b1_round_trip,
         test_studio_160_calcolati_round_trip,
         test_studio_160_percorso_completo_con_relazioni,

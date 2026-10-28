@@ -479,8 +479,8 @@ class ConseguenzaRelazioneTogli(Conseguenza):
 
 
 class ConseguenzaProcedura(Conseguenza):
-    """[1.6.0 / C1] Invoca una procedura nominata ('esegui "far passare la
-    notte"'): esegue in ordine le conseguenze del suo corpo. Una guardia di
+    """[1.6.0 / C1] Invoca una procedura nominata ('esegui far passare la
+    notte'): esegue in ordine le conseguenze del suo corpo. Una guardia di
     profondità evita i cicli (una procedura che, direttamente o no, richiama se
     stessa): oltre il limite l'invocazione è silenziosamente ignorata."""
     LIMITE_RICORSIONE = 50

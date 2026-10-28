@@ -261,6 +261,29 @@ def test_scorte_con_ricarica_non_segnalate():
     _check(rep["vittoria"]["esito"] == "vincibile-staticamente", "vincibile")
 
 
+def test_162_teletrasporto_e_procedure():
+    print("[1.6.2: oltre un teletrasporto si prosegue; procedure e arrivi contano]")
+    src = (
+        "L'atrio è una stanza.\nLa cripta è una stanza.\nL'ossario è una stanza.\n"
+        "La cripta collega nord a l'ossario.\n"
+        "La leva è una cosa.\nLa leva è nell'atrio.\n"
+        '"tira" è un comando.\n'
+        'Definisci "scendere" come: il giocatore va in la cripta.\n'
+        'Invece di tira la leva: dire "Il pavimento si apre." e adesso esegui scendere.\n'
+        'Definisci "uscire" come: vinci "Sei fuori.".\n'
+        'Quando il giocatore entra nell\'ossario: esegui uscire.\n'
+        "Il giocatore comincia nell'atrio.\n"
+    )
+    mondo = compila(src)
+    _check(mondo is not None, "la storia compila")
+    rep = analizza_vincibilita(mondo)
+    _check(not rep["linter"]["stanze_isolate"],
+           f"nessuna stanza isolata ({rep['linter']['stanze_isolate']})")
+    vitt = rep["vittoria"]
+    _check(vitt["n_sorgenti"] == 1, "la vittoria dentro una procedura e vista")
+    _check(vitt["esito"] == "vincibile-staticamente", f"esito: {vitt['esito']}")
+
+
 def main():
     from favella_utils import assicura_console_utf8   # [1.4.3] uscita rediretta in cp1252
     assicura_console_utf8()
@@ -273,6 +296,7 @@ def main():
         test_demo_reali_vincibili,
         test_scorte_che_non_crescono,
         test_scorte_con_ricarica_non_segnalate,
+        test_162_teletrasporto_e_procedure,
     ]
     print("=" * 60)
     print("TEST COLLAUDO (B1.1 - analisi statica)")

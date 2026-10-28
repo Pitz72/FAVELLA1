@@ -152,7 +152,7 @@ PAROLE_RISERVATE = frozenset({
     # [1.6.0 / B3] relazioni di prima classe: parole della dichiarazione e dei
     # quantificatori d'interrogazione ('qualcosa' era già di fatto riservata).
     "relazione", "molti", "ed", "reciproca", "reciproco", "qualcuno",
-    # [1.6.0 / C1] 'Definisci "…" come: …' / 'esegui "…"'.
+    # [1.6.0 / C1] 'Definisci "…" come: …' / 'esegui …' (il nome senza virgolette).
     "definisci", "esegui",
 })
 
@@ -180,7 +180,7 @@ class TabellaSimboli:
         self.relazioni = {}
         # [1.6.0 / C1] Procedure nominate dichiarate ('Definisci "far passare la
         # notte" come: …'): i nomi normalizzati. Diventano il terminale CHIUSO
-        # PROCEDURA (come VERBO_MULTI), usato nell'invocazione 'esegui "…"'.
+        # PROCEDURA (come VERBO_MULTI), usato nell'invocazione 'esegui …' (senza virgolette).
         self.procedure = set()
         # [1.6.0 / B1] Oggetti contabili: mappa id-FORMA-PLURALE -> id-canonico
         # ('pozioni' -> 'pozione'), raccolta da 'La pozione, plurale "pozioni", è
@@ -782,7 +782,7 @@ _GRAMMAR_TEMPLATE = r"""
     // --- [1.6.0 / C1] PROCEDURE NOMINATE ---
     // 'Definisci "far passare la notte" come: <conseguenza> e adesso <conseguenza>.'
     // definisce una sequenza NOMINATA di conseguenze, richiamabile come conseguenza
-    // con 'esegui "far passare la notte"'. Senza parametri in questa prima versione.
+    // con 'esegui far passare la notte'. Senza parametri in questa prima versione.
     // Inizia con la riservata "Definisci": nessun'altra dichiarazione parte così →
     // LALR(1) 0-ambiguo. Il corpo è una lista di conseguenze (niente 'dire': una
     // procedura cambia lo stato, il testo lo dice la regola che la richiama).
@@ -1100,9 +1100,9 @@ _GRAMMAR_TEMPLATE = r"""
                 | ENTITA RELAZIONE _rel_prep? rel_ogg                        -> cons_rel_ent_agg
                 | "il" "giocatore" "non" RELAZIONE "più"? _rel_prep? rel_ogg -> cons_rel_gioc_tog
                 | ENTITA "non" RELAZIONE "più"? _rel_prep? rel_ogg           -> cons_rel_ent_tog
-                // [1.6.0 / C1] Invocazione di una procedura nominata: 'esegui "far
-                // passare la notte"'. Parte dalla keyword nuova "esegui" → disgiunta
-                // dalle altre conseguenze.
+                // [1.6.0 / C1] Invocazione di una procedura nominata: 'esegui far
+                // passare la notte' (il nome senza virgolette). Parte dalla
+                // keyword nuova "esegui" → disgiunta dalle altre conseguenze.
                 | "esegui" PROCEDURA                                         -> cons_procedura
                 // [0.18.0 / B2] Teletrasporto del giocatore: 'e adesso il
                 // giocatore è in [stanza]'. Inizia con la keyword "il" "giocatore"
@@ -1567,6 +1567,10 @@ _DESCRIZIONI_ATTESI = {
     "TESTO_QUOTATO": "un testo fra virgolette",
     "VERBO": "un verbo",
     "VERBO_MULTI": "un comando di più parole",
+    # [1.6.2] Prima l'autore leggeva 'Mi aspettavo: PROCEDURA' (per esempio
+    # scrivendo il nome fra virgolette dopo 'esegui').
+    "PROCEDURA": "il nome di una procedura dichiarata, senza virgolette (esegui far passare la notte)",
+    "RELAZIONE": "una relazione dichiarata (per esempio «si fida di»)",
     "DIREZIONE": "una direzione",
     "PREP_LUOGO": "una preposizione di luogo (in, nel, sul…)",
     "PREP_AZIONE": "una preposizione (su, con, in, a, da…)",
@@ -2496,7 +2500,7 @@ class FavellaTransformer(Transformer):
         return None
 
     def cons_procedura(self, nome_proc):
-        # 'esegui "far passare la notte"'. Il nome è il terminale PROCEDURA (chiuso):
+        # 'esegui far passare la notte'. Il nome è il terminale PROCEDURA (chiuso):
         # esiste per costruzione, quindi non serve validarlo qui.
         return ConseguenzaProcedura(nome_proc)
 
@@ -4096,18 +4100,23 @@ class FavellaTransformer(Transformer):
         self._lint_inventario_senza_ripresa()
 
     def _lint_stanze_irraggiungibili(self):
-        # Reachability dal punto di partenza sulla sola topologia statica
-        # ('collega' -> stanza.uscite). Il giocatore non viene mai spostato da una
-        # conseguenza, quindi le uscite sono l'unico modo di cambiare stanza: una
-        # stanza non raggiunta qui è davvero irraggiungibile a runtime. La
-        # partenza è quella dichiarata ('Il giocatore comincia in X.'); in
-        # mancanza, la prima stanza definita (come imposta_posizione_iniziale).
+        # Reachability dal punto di partenza sulla topologia ('collega' ->
+        # stanza.uscite, più i passaggi aperti in partita). La partenza è quella
+        # dichiarata ('Il giocatore comincia in X.'); in mancanza, la prima stanza
+        # definita (come imposta_posizione_iniziale).
+        # [1.6.2] Anche una conseguenza può spostare il giocatore ('e adesso il
+        # giocatore va in la cripta', dalla 0.18.0): la sua destinazione conta come
+        # raggiunta, e da lì si prosegue per le uscite. Fino alla 1.6.1 una stanza
+        # raggiunta solo così era segnalata «irraggiungibile». Criterio
+        # conservativo, come il resto del linter: la condizione della regola non
+        # si guarda (meglio un avviso in meno che uno falso).
         m = self.mondo
         if not m.stanze:
             return
         partenza = (m.posizione_iniziale if m.posizione_iniziale in m.stanze
                     else next(iter(m.stanze)))
         aperture = {}
+        teletrasporti = []
         for cons in self._tutte_le_conseguenze():
             if isinstance(cons, ConseguenzaCollegamento) and cons.destinazione:
                 aperture.setdefault(cons.id_stanza, []).append(cons)
@@ -4115,8 +4124,10 @@ class FavellaTransformer(Transformer):
                 if opposta:
                     aperture.setdefault(cons.destinazione, []).append(
                         ConseguenzaCollegamento(cons.destinazione, opposta, cons.id_stanza))
+            elif isinstance(cons, ConseguenzaSpostamentoGiocatore):
+                teletrasporti.append(cons.id_stanza)
         raggiunte = set()
-        coda = [partenza]
+        coda = [partenza] + teletrasporti
         while coda:
             corrente = coda.pop()
             if corrente in raggiunte:
@@ -4332,6 +4343,11 @@ class FavellaTransformer(Transformer):
             conseguenze.extend(arg.conseguenze)
         for arrivo in m.arrivi:            # [1.5.0 / C12]
             conseguenze.extend(arrivo.conseguenze)
+        # [1.6.2] I corpi delle procedure ('Definisci "…" come: …'): fino alla 1.6.1
+        # restavano fuori, e un contatore cambiato solo da una procedura era «mai
+        # usato», una stanza raggiunta solo da una procedura «irraggiungibile».
+        for corpo in m.procedure.values():
+            conseguenze.extend(corpo)
         return conseguenze
 
     def _tutti_i_testi(self):

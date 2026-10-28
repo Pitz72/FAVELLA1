@@ -35,6 +35,7 @@ from strutture import (
     ConseguenzaContatore, ConseguenzaTogliProprieta, ConseguenzaCollegamento,
     ConseguenzaPngRiceve, ConseguenzaMovimentoPNG,
     ConseguenzaFinePartita, ConseguenzaSpostamento, ConseguenzaSpostamentoGiocatore,
+    ConseguenzaProcedura,
 )
 from favella_utils import radice_proprieta
 
@@ -164,9 +165,10 @@ def _vero_all_avvio(atomo, negato: bool, mondo) -> bool:
 
 def _produttori(mondo):
     """Indicizza OGNI conseguenza del mondo con il suo contesto di sblocco. Una
-    voce = {conseguenza, contesto, condizione_sblocco, comando}. Copre le quattro
-    sedi in cui una conseguenza può vivere: regole, eventi, demoni, opzioni di
-    dialogo (le stesse di FavellaTransformer._tutte_le_conseguenze)."""
+    voce = {conseguenza, contesto, condizione_sblocco, comando}. Copre le sedi in
+    cui una conseguenza può vivere: regole, eventi, demoni, opzioni di dialogo,
+    argomenti, arrivi e corpi delle procedure (le stesse di
+    FavellaTransformer._tutte_le_conseguenze)."""
     voci = []
     for r in mondo.regole:
         bersaglio = r.id_oggetto_bersaglio
@@ -207,7 +209,36 @@ def _produttori(mondo):
         for cons in arg.conseguenze:
             voci.append({"conseguenza": cons, "contesto": f"argomento ({comando})",
                          "condizione_sblocco": arg.condizione, "comando": comando})
-    return voci
+    # [1.6.2] Gli arrivi ('Quando il giocatore entra in …', 1.5.0) e i corpi delle
+    # procedure ('esegui …', 1.6.0) restavano fuori. Le conseguenze di una
+    # procedura valgono dove la si esegue: stesso contesto e stessa condizione.
+    for arrivo in getattr(mondo, "arrivi", ()):
+        for cons in arrivo.conseguenze:
+            voci.append({"conseguenza": cons, "contesto": f"arrivo in «{arrivo.id_stanza}»",
+                         "condizione_sblocco": arrivo.condizione, "comando": None})
+    return _con_le_procedure(mondo, voci)
+
+
+def _con_le_procedure(mondo, voci):
+    """[1.6.2] Accanto a ogni 'esegui …' le conseguenze del corpo della procedura
+    (anche annidate; una procedura che richiama se stessa si apre una volta)."""
+    procedure = getattr(mondo, "procedure", None) or {}
+    if not procedure:
+        return voci
+    risultato = []
+    for voce in voci:
+        risultato.append(voce)
+        coda, aperte = [voce["conseguenza"]], set()
+        while coda:
+            cons = coda.pop(0)
+            if not isinstance(cons, ConseguenzaProcedura) or cons.nome in aperte:
+                continue
+            aperte.add(cons.nome)
+            for interna in procedure.get(cons.nome, ()):
+                risultato.append(dict(voce, conseguenza=interna,
+                                      contesto=f"{voce['contesto']}, procedura «{cons.nome}»"))
+                coda.append(interna)
+    return risultato
 
 
 def _verso_richiesto(atomo, negato: bool):
@@ -313,8 +344,19 @@ def _stanze_raggiungibili(mondo, partenza) -> set:
     """Stanze raggiungibili dal punto di partenza percorrendo le uscite
     (`collega`), più — euristicamente — ogni destinazione di un teletrasporto
     del giocatore (`adesso il giocatore è in X`)."""
+    # Teletrasporti: una conseguenza può spostare il giocatore in una stanza non
+    # connessa dalle uscite. La consideriamo raggiungibile (euristica).
+    # [1.3.0 / M-8] Un passaggio aperto in partita porta alla sua stanza.
+    # [1.6.2] Da queste stanze si prosegue per le uscite: prima si fermava lì, e
+    # le stanze oltre un teletrasporto risultavano irraggiungibili.
+    arrivi_extra = []
+    for cons in _tutte_le_conseguenze(mondo):
+        if isinstance(cons, ConseguenzaSpostamentoGiocatore):
+            arrivi_extra.append(cons.id_stanza)
+        if isinstance(cons, ConseguenzaCollegamento) and cons.destinazione:
+            arrivi_extra.append(cons.destinazione)
     raggiunte = set()
-    coda = [partenza] if partenza else []
+    coda = ([partenza] if partenza else []) + arrivi_extra
     while coda:
         corrente = coda.pop()
         if corrente in raggiunte or corrente is None:
@@ -325,14 +367,6 @@ def _stanze_raggiungibili(mondo, partenza) -> set:
             for dest in stanza.uscite.values():
                 if dest not in raggiunte:
                     coda.append(dest)
-    # Teletrasporti: una conseguenza può spostare il giocatore in una stanza non
-    # connessa dalle uscite. La consideriamo raggiungibile (euristica).
-    for cons in _tutte_le_conseguenze(mondo):
-        if isinstance(cons, ConseguenzaSpostamentoGiocatore):
-            raggiunte.add(cons.id_stanza)
-        # [1.3.0 / M-8] Un passaggio aperto in partita porta alla sua stanza.
-        if isinstance(cons, ConseguenzaCollegamento) and cons.destinazione:
-            raggiunte.add(cons.destinazione)
     return raggiunte
 
 
