@@ -75,7 +75,18 @@ export const SITE_URL = "https://favella.eu";
 // · 2.12.1 = motore 1.6.1: la compilazione torna veloce (la ricerca dei contabili non riparte più da ogni
 //   carattere). Download, motore del browser, notizia, changelog e conteggio dei test (1510) allineati; il
 //   manuale PDF dice v1.6.1, e le sue pagine sono 113 (il numero qui era rimasto a 102).
-export const SITE_VERSION = "2.12.1";
+// · 2.13.0 = il video «FAVELLA — La storia» (YouTube, 2:33) sotto la testata della home. Si mostra una copertina
+//   locale e il lettore di YouTube, dal dominio senza cookie (youtube-nocookie.com), si carica solo al play:
+//   la CSP apre frame-src a quel solo dominio; privacy e cookie lo dicono.
+export const SITE_VERSION = "2.13.0";
+
+/** Il video racconto di FAVELLA su YouTube (vedi components/VideoStoria.tsx). */
+export const VIDEO_STORIA = {
+  id: "8d-8NcyTQ3Q",
+  titolo: "FAVELLA — La storia",
+  durata: "2:33",
+  url: "https://www.youtube.com/watch?v=8d-8NcyTQ3Q",
+} as const;
 
 export const GITHUB_URL = "https://github.com/Pitz72/FAVELLA1";
 export const RELEASES_URL = "https://github.com/Pitz72/FAVELLA1/releases/latest";

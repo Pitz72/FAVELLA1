@@ -43,6 +43,11 @@ const CookiePage = () => (
           </Link>
           .
         </P>
+        <P>
+          Il video della home, ospitato su YouTube, si carica allo stesso modo: fino al play vedi solo una copertina servita dal nostro dominio, senza alcuna richiesta a
+          YouTube. Se premi play, il lettore arriva da <em>youtube-nocookie.com</em> (modalità con privacy avanzata), che durante la riproduzione può salvare strumenti
+          tecnici propri nel tuo browser, secondo l'informativa di Google. È una tua scelta esplicita, e puoi sempre guardare il video direttamente su YouTube.
+        </P>
 
         <H>Come gestire o eliminare gli strumenti</H>
         <P>

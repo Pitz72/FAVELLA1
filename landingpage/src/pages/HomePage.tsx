@@ -1,5 +1,6 @@
 import React from "react";
 import ManualBanner from "../components/ManualBanner";
+import VideoStoria from "../components/VideoStoria";
 import LivingBook, { evidenzia } from "../ui/LivingBook";
 import { Btn, Counter, Eyebrow, GlyphField, Ink, Marquee, Pill, Reveal, SectionHead, Spot } from "../ui/primitives";
 import { Link } from "../router";
@@ -116,6 +117,27 @@ const Home = () => {
               <LivingBook />
             </Reveal>
           </div>
+        </div>
+      </section>
+
+      {/* ═════════ IL VIDEO ═════════ */}
+      <section aria-label="Il video: FAVELLA, la storia" className="relative px-6 pb-24">
+        <div className="mx-auto max-w-[1040px]">
+          <Reveal>
+            <SectionHead
+              align="center"
+              eyebrow="Il video"
+              title={
+                <>
+                  La storia di <Ink>FAVELLA.</Ink>
+                </>
+              }
+              lead="Da dove viene l’idea, che cosa vuol dire scrivere codice in italiano, e i giochi che ne sono nati. In due minuti e mezzo."
+            />
+          </Reveal>
+          <Reveal delay={120} y={36}>
+            <VideoStoria />
+          </Reveal>
         </div>
       </section>
 

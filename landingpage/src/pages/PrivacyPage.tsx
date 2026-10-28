@@ -60,6 +60,18 @@ const PrivacyPage = () => (
           natura tecnica ricevono il tuo indirizzo IP. Non vengono trasmessi altri dati e nulla viene salvato sui loro server a tuo nome.
         </P>
 
+        <H>Il video su YouTube</H>
+        <P>
+          Nella home c'è il video «FAVELLA — La storia», pubblicato su YouTube. Finché non premi play vedi soltanto un'immagine di copertina servita dal nostro dominio:
+          nessuna richiesta parte verso YouTube. Quando premi play, il lettore viene caricato da{" "}
+          <em>youtube-nocookie.com</em>, la modalità con privacy avanzata di YouTube (Google Ireland Limited), che riceve il tuo indirizzo IP e, durante la riproduzione,
+          può salvare dati tecnici nel tuo browser secondo la propria{" "}
+          <a href="https://policies.google.com/privacy?hl=it" target="_blank" rel="noopener noreferrer" className="text-favella-cyan hover:underline">
+            informativa
+          </a>
+          . Avviene <strong className="text-favella-text-primary">solo se scegli di guardare il video</strong>; in alternativa puoi aprirlo direttamente su YouTube.
+        </P>
+
         <H>Memoria locale del browser</H>
         <P>
           Il sito può salvare nella memoria locale del tuo browser (localStorage) informazioni tecniche: il fatto che tu abbia già chiuso l'avviso informativo sulla privacy
