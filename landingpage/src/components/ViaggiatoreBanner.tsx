@@ -1,9 +1,7 @@
 import {
   VIAGGIATORE_DESKTOP_VERSION,
-  VIAGGIATORE_PAGES_URL,
   VIAGGIATORE_RELEASE_URL,
   VIAGGIATORE_REPO_URL,
-  VIAGGIATORE_WEB_VERSION,
 } from "../constants";
 
 // ====================================================================
@@ -17,20 +15,19 @@ import {
 //  telefoni. Tipografia del gioco: Sora per il titolo spaziato, Lora per la
 //  prosa, Source Code Pro per le etichette.
 //
-//  Sotto, le due versioni: la web (1.23.0, definitiva) si gioca su GitHub
-//  Pages (pitz72.github.io/il-viaggiatore-favella), con un vero <a href> che
-//  apre il gioco in una scheda nuova; la desktop (1.35.0, la più completa) si
-//  scarica dalla sua release.
+//  Sotto, il download: dalla 1.40.0 il gioco si scarica e basta, per Windows
+//  e Linux, in italiano e in inglese (Simone, 31/10/2026): la versione da
+//  giocare nel browser non si offre più.
 // ====================================================================
 
 const FATTI = ["7 zone", "39 luoghi", "14 personaggi", "6 finali"];
 
-// Ciò che ha in più la versione desktop (le note della release v1.35.0).
-const PIU_DESKTOP = [
-  "le opzioni a schede: volumi, accessibilità, finestra e qualità della grafica",
+// Che cosa c'è nel gioco da scaricare (le note delle release fino alla v1.40.0).
+const NEL_GIOCO = [
+  "il testo in italiano o in inglese, e la voce italiana (quella inglese è in lavorazione)",
+  "le opzioni a schede: lingua, volumi, accessibilità, finestra e qualità della grafica",
   "la pausa, i salvataggi con nome e quelli rapidi (F5 e F9)",
-  "trenta trofei",
-  "la musica di ogni zona, e la colonna sonora da scaricare",
+  "trenta trofei, la musica di ogni zona e la colonna sonora da scaricare",
   "la sequenza finale, con i titoli di coda e la loro canzone",
 ];
 
@@ -96,36 +93,16 @@ const ViaggiatoreBanner = () => (
       </div>
 
       <div className="grid content-start gap-4">
-        {/* La versione web: definitiva, su GitHub Pages. */}
-        <div className="rounded-[14px] border border-[#f3b37a]/15 bg-[#0c0706]/70 p-5">
-          <p className="m-0 font-mono text-[10.5px] uppercase tracking-[0.22em] text-[#f0b27a]">
-            Nel browser · {VIAGGIATORE_WEB_VERSION} · definitiva
-          </p>
-          <p className="mb-4 mt-2 font-serif text-[15.5px] leading-[1.6] text-[#d9cfc2]">
-            La storia intera, doppiata, col suo trailer. Si gioca nel browser, senza installare
-            nulla, su GitHub Pages: resta così com'è.
-          </p>
-          <a
-            href={VIAGGIATORE_PAGES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2.5 rounded-full border border-[#f0b27a]/50 bg-[#0c0706]/60 px-5 py-2.5 font-display text-[14px] font-semibold text-[#f3c89a] transition-colors hover:border-[#f3c89a] hover:text-[#fff3e2]"
-          >
-            Gioca nel browser
-            <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">→</span>
-          </a>
-        </div>
-
-        {/* La versione desktop: la più completa. */}
+        {/* Il gioco si scarica: Windows e Linux, in italiano e in inglese. */}
         <div className="rounded-[14px] border border-[#f3b37a]/40 bg-[linear-gradient(160deg,rgba(242,168,106,0.12),rgba(12,7,6,0.7)_60%)] p-5 shadow-[0_18px_50px_-24px_rgba(246,183,116,0.45)]">
           <p className="m-0 font-mono text-[10.5px] uppercase tracking-[0.22em] text-[#fbe0b4]">
-            Windows e Linux · {VIAGGIATORE_DESKTOP_VERSION} · la più completa
+            Windows e Linux · {VIAGGIATORE_DESKTOP_VERSION} · italiano e inglese
           </p>
           <p className="mb-2 mt-2 font-serif text-[15.5px] leading-[1.6] text-[#d9cfc2]">
-            La stessa storia, con le stesse voci; e in più:
+            Il gioco si scarica e si installa; si aggiorna da solo. Dentro:
           </p>
           <ul className="m-0 mb-5 grid list-none gap-1.5 p-0 font-serif text-[15px] leading-[1.5] text-[#e9e2d6]">
-            {PIU_DESKTOP.map((p) => (
+            {NEL_GIOCO.map((p) => (
               <li key={p} className="flex gap-2.5">
                 <span aria-hidden="true" className="text-[#f0b27a]">·</span>
                 {p}
@@ -160,7 +137,7 @@ const ViaggiatoreBanner = () => (
         <p className="m-0 max-w-[820px] font-mono text-[10.5px] leading-[1.6] tracking-[0.04em] text-[#d9cfc2]/55">
           Codice MIT · storia, testi, musica dell'intro, grafica e voci Google Gemini CC BY-SA 4.0 · fuori dalla
           licenza libera: le voci ElevenLabs di Imma, Rosaria, Tore e Vito (elevenlabs.io), solo per uso non
-          commerciale, e nella versione desktop le musiche di The Runtimers, generate con Lyria 3.5 di Google
+          commerciale, e le musiche di The Runtimers, generate con Lyria 3.5 di Google
         </p>
       </div>
     </div>

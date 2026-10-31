@@ -51,7 +51,7 @@ const PrivacyPage = () => (
           .
         </P>
 
-        <H>Strumenti interattivi (corso, programma, galleria, Il Viaggiatore)</H>
+        <H>Strumenti interattivi (corso, programma, galleria)</H>
         <P>
           Le pagine che permettono di scrivere ed eseguire storie nel browser funzionano grazie a un motore Python (Pyodide) che viene scaricato da una rete di
           distribuzione pubblica (CDN jsDelivr, gestita da terzi), e a una libreria Python (Lark) che viene scaricata da PyPI (<em>pypi.org</em> e{" "}

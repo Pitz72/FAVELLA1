@@ -241,7 +241,7 @@ const SEZIONI = [
   ["programma", "Programma", "Scrivi e gioca le tue storie nel browser."],
   ["studio", "Favella Studio", `L'ambiente di scrittura ${STUDIO}, per Windows e Linux.`],
   ["galleria", "Galleria", `${AVVENTURE} avventure da giocare, tutte vincibili.`],
-  ["viaggio", "Il Viaggiatore", "Il gioco completo scritto in FAVELLA, nel browser."],
+  ["viaggio", "Il Viaggiatore", "Il gioco completo scritto in FAVELLA, da scaricare."],
   ["libreria", "Libreria", "Moduli .fav pronti da includere nelle storie."],
   ["download", "Download", "pip install favella1, le app desktop, il manuale."],
   ["collabora", "Collabora", "Open source, licenza MIT: codice, storie, idee."],
