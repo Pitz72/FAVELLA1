@@ -1,7 +1,7 @@
 # FAVELLA 1
 
 <p align="center">
-  <img src="branding/materiale/banner-favella1-v1.6.2.svg" alt="FAVELLA 1 — versione 1.6.2 — L'italiano è il linguaggio di programmazione" width="880">
+  <img src="https://raw.githubusercontent.com/Pitz72/FAVELLA1/main/branding/materiale/banner-favella1-v1.6.3.png" alt="FAVELLA 1 — versione 1.6.3 — L'italiano è il linguaggio di programmazione" width="880">
 </p>
 
 **FAVELLA 1 è un motore di gioco per narrativa interattiva (Interactive Fiction) che ti permette di creare mondi virtuali scrivendo semplici frasi in italiano.**

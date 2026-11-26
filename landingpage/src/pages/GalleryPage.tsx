@@ -5,6 +5,7 @@ import { GALLERY_STORIES } from "../data/course";
 import { GITHUB_ESEMPI_URL } from "../constants";
 import { Ink, PageHero, Reveal, Spot } from "../ui/primitives";
 import ViaggiatoreBanner from "../components/ViaggiatoreBanner";
+import RelittoBanner from "../components/RelittoBanner";
 import type { GameCassette } from "../data/course";
 
 const ACCENTI = ["text-favella-cyan", "text-favella-emerald", "text-favella-amber"];
@@ -109,6 +110,7 @@ const GalleryPage = () => {
       <section className="px-6 pb-14">
         <div className="mx-auto max-w-[1240px]">
           <ViaggiatoreBanner />
+          <RelittoBanner />
         </div>
       </section>
 

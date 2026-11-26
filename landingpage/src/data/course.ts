@@ -234,17 +234,6 @@ export const COURSE_GAMES: GameCassette[] = [
       "Tua zia Adele è morta da tre giorni. Sei venuto per firmare le carte e chiudere la casa. Solo che la casa non torna. Sta a te capire cos'è successo — e decidere cosa farne.",
     comandiEsempio: ["guarda", "esamina il tavolino", "nord", "inventario"],
   },
-  {
-    numero: 2,
-    titolo: "Il Relitto Silente",
-    fonte: "Demo ufficiale · 15 stanze",
-    gameId: "relitto",
-    entry: "relitto.fav",
-    files: ["relitto.fav", "stanze.fav", "oggetti.fav", "regole.fav", "traduci.fav", "echi.fav", "dialoghi.fav"],
-    intro:
-      "Ti risvegli alla deriva su un relitto silenzioso, in mezzo al nulla. Quindici stanze, artefatti da decifrare, una lingua aliena da tradurre e qualcosa che, nel silenzio, ti osserva.",
-    comandiEsempio: ["guarda", "esamina l'oblò", "ovest", "inventario"],
-  },
 ];
 
 // --------------------------------------------------------------------
@@ -292,7 +281,7 @@ export const GALLERY_STORIES: GameCassette[] = [
       "Un giardino perfetto e senza uscita, un giardiniere che sa più di quanto dice, e una rosa d'oro sotto una campana di vetro. Parlagli nel modo giusto. Mostra: dialogo a nodi, opzione condizionale che porta alla vittoria, regola a due oggetti.",
     comandiEsempio: ["guarda", "parla con il giardiniere", "nord", "inventario"],
   },
-  // — Le due storie del manuale —
+  // — La storia del manuale —
   {
     numero: 4,
     titolo: "La Casa di Via Stradivari",
@@ -304,18 +293,6 @@ export const GALLERY_STORIES: GameCassette[] = [
     intro:
       "Tua zia Adele è morta da tre giorni. Sei venuto per firmare le carte e chiudere la casa. Solo che la casa non torna. È la storia-guida del manuale, costruita un costrutto alla volta, dall'inizio alla fine — con tre finali diversi.",
     comandiEsempio: ["guarda", "esamina il tavolino", "nord", "inventario"],
-  },
-  {
-    numero: 5,
-    titolo: "Il Relitto Silente",
-    fonte: "⭐⭐⭐ ampia · fantascienza",
-    gameId: "relitto",
-    cover: "cover-relitto.webp",
-    entry: "relitto.fav",
-    files: ["relitto.fav", "stanze.fav", "oggetti.fav", "regole.fav", "traduci.fav", "echi.fav", "dialoghi.fav"],
-    intro:
-      "Ti risvegli alla deriva su un relitto silenzioso, in mezzo al nulla. Quindici stanze, artefatti da decifrare, una lingua aliena da tradurre e qualcosa che, nel silenzio, ti osserva. La demo ufficiale, esaustiva, vincibile dall'inizio alla fine.",
-    comandiEsempio: ["guarda", "esamina l'oblò", "ovest", "inventario"],
   },
   // — Gli stress-test di genere —
   {

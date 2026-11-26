@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.2)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.3)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.6.2";
-export const VERSION_LABEL = "v1.6.2 — Le frontiere nuove";
+export const VERSION = "1.6.3";
+export const VERSION_LABEL = "v1.6.3 — Le frontiere nuove";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.6.2";
+export const ENGINE_VERSION = "1.6.3";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -85,7 +85,11 @@ export const SITE_URL = "https://favella.eu";
 // · 2.14.1 = motore 1.6.2: il linter e il collaudo vedono i teletrasporti e le procedure (nessuna frase nuova, gioco
 //   invariato). Download, motore del browser, notizia, changelog e conteggio dei test (1520, collaudo 54) allineati.
 //   Favella Studio resta alla 1.4.0 (motore 1.6.0 dentro): si aggiorna con la sua release.
-export const SITE_VERSION = "2.14.1";
+// · 2.15.0 = motore 1.6.3 (l'impronta di stato distingue relazioni e scorte dei contabili; cache del parser con un
+//   tetto; storie ufficiali byte-identiche; 1534 test, collaudo 54) e galleria rifatta: Il Viaggiatore alla 1.43.1
+//   (anche in inglese), Il Relitto Silente diventato un gioco a sé (remake desktop, demo dell'atto I) con un box suo,
+//   tolto dalle storie-demo giocabili; notizia in evidenza della 1.6.3.
+export const SITE_VERSION = "2.15.0";
 
 /** Il video racconto di FAVELLA su YouTube (vedi components/VideoStoria.tsx). */
 export const VIDEO_STORIA = {
@@ -102,10 +106,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.2";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.2-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.2-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.2-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.3";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.3-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.3-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.3-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -117,8 +121,17 @@ export const VIAGGIATORE_REPO_URL = "https://github.com/Pitz72/il-viaggiatore-fa
 // voce recitata in inglese è in lavorazione) e raccoglie tutto quello della versione desktop: opzioni a schede, pausa,
 // salvataggi con nome e rapidi, i trofei, la musica delle zone, la sequenza finale coi titoli di coda. La storia è quella
 // della 1.12.0, la definitiva, col motore FAVELLA 1.5.0 e il doppiaggio integrale.
-export const VIAGGIATORE_DESKTOP_VERSION = "1.40.0";
+export const VIAGGIATORE_DESKTOP_VERSION = "1.43.1";
 export const VIAGGIATORE_RELEASE_URL = `${VIAGGIATORE_REPO_URL}/releases/tag/v${VIAGGIATORE_DESKTOP_VERSION}`;
+
+// Il Relitto Silente: dal novembre 2026 è un gioco a sé, un remake desktop (app
+// Tauri) con la storia scritta in FAVELLA 1. In sviluppo (0.2.x → 1.0.0): c'è una
+// DEMO dell'atto I da scaricare per Windows e Linux. Download DIRETTI degli
+// eseguibili (il clic scarica il file), SENZA mostrare nel sito il link o il nome
+// di GitHub e senza link al repository (scelta di Simone, 26/11/2026).
+const _RELITTO_DEMO = "https://github.com/Pitz72/il-relitto-silente-opensource/releases/download/demo-atto-1";
+export const RELITTO_DEMO_WINDOWS = `${_RELITTO_DEMO}/Il-Relitto-Silente-Demo-atto-I-Windows.exe`;
+export const RELITTO_DEMO_LINUX = `${_RELITTO_DEMO}/Il-Relitto-Silente-Demo-atto-I-Linux.AppImage`;
 
 // Favella Studio: l'ambiente di scrittura visuale (cartella studio/ del repository).
 // Ha le sue Release («studio-v<versione>», mai «Latest»): Windows e Linux; macOS si costruisce da sé.
@@ -177,7 +190,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1520, collaudo: 54, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1534, collaudo: 54, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -224,7 +237,7 @@ export const FEATURES: Feature[] = [
   {
     icon: "play",
     title: "Una demo che si gioca",
-    body: "«Il Relitto Silente» è l'avventura ufficiale: 15 stanze, enigmi a catena, traduzioni aliene e un finale. Vincibile dall'inizio alla fine.",
+    body: "«La Casa di Via Stradivari» è l'avventura ufficiale, giocabile qui nel browser: otto stanze, una trentina di oggetti, enigmi a catena e un finale. Vincibile dall'inizio alla fine.",
   },
 ];
 
@@ -246,6 +259,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    tag: "Linguaggio",
+    date: "Novembre 2026",
+    emphasis: "primary",
+    title: "FAVELLA 1.6.3: l'impronta di stato vede relazioni e scorte",
+    body: "Due correzioni interne del motore, nessuna frase nuova: le storie si giocano identiche, byte per byte. L'impronta di stato — il riassunto con cui il motore riconosce una partita, e con cui i salvataggi, rigiocati dal principio, controllano di essere integri — era cieca a due cose arrivate con la 1.6.0: le coppie delle relazioni («il giocatore si fida di X») e le quantità dei contabili («tre pozioni contro una»). Due partite che differivano solo lì risultavano identiche, e un salvataggio divergente solo lì passava il controllo. Ora l'impronta le distingue, ma solo quando la storia le usa: chi non ha relazioni né contabili mantiene l'impronta identica a prima, perciò le dieci storie ufficiali non cambiano. E la cache dei parser, che in un processo che compila molte storie diverse cresceva senza limite, ora ha un tetto. Suite a 1534 asserzioni più 54 di collaudo, tutte verdi.",
+    cta: { label: "Scarica FAVELLA 1.6.3", href: "/download" },
+  },
+  {
+    tag: "Il Relitto Silente",
+    date: "Novembre 2026",
+    emphasis: "normal",
+    title: "Il Relitto Silente: un gioco a sé, con la demo dell'atto I",
+    body: "«Il Relitto Silente» — l'avventura di fantascienza a bordo della Santa Maria, scritta in FAVELLA 1 — è diventata un gioco a sé: un'app desktop con la sua interfaccia a pulsanti, la musica e i suoni, le voci. Ventitré stanze, novantatré oggetti, sei finali; si gioca col mouse o con la tastiera, e chi preferisce l'avventura testuale classica può scrivere i comandi. Il gioco è in sviluppo — il primo rilascio intero sarà la 1.0.0 — ma c'è già una demo dell'atto I da scaricare e giocare, per Windows e per Linux. La trovi nella Galleria.",
+    cta: { label: "Vai alla Galleria", href: "/galleria" },
+  },
+  {
     tag: "Il Viaggiatore",
     date: "Ottobre 2026",
     emphasis: "primary",
@@ -260,7 +289,7 @@ export const NEWS: NewsItem[] = [
     emphasis: "normal",
     title: "FAVELLA 1.6.2: il collaudo vede teletrasporti e procedure",
     body: "Nessuna frase nuova: la 1.6.2 raccoglie le correzioni trovate nella revisione finale del motore, e le storie si giocano identiche. Il linter e il collaudo statico, prima, non capivano due cose. Una stanza in cui si arriva solo con «e adesso il giocatore va in …» era data per irraggiungibile, e da lì le stanze seguenti per isolate; ora la destinazione conta come raggiunta e si prosegue per le uscite. Le conseguenze dentro una procedura («Definisci \"far passare la notte\" come: …») erano invisibili: un contatore cambiato solo da lì risultava «mai usato», e una vittoria dentro una procedura non si vedeva. Ora si vedono, con la condizione della regola che la richiama. Infine «esegui \"riposa\"» col nome fra virgolette non dà più «Mi aspettavo: PROCEDURA», ma dice di scrivere il nome senza virgolette, come nel manuale. Tre prove nuove nella suite, che arriva a 1520 asserzioni più 54 di collaudo, tutte verdi.",
-    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.3", href: "/download" },
   },
   {
     tag: "Linguaggio",
@@ -268,7 +297,7 @@ export const NEWS: NewsItem[] = [
     emphasis: "normal",
     title: "FAVELLA 1.6.1: la compilazione torna veloce",
     body: "Una correzione sola, trovata aggiornando il remake de «Il Relitto Silente» alla 1.6.0. La ricerca delle dichiarazioni degli oggetti contabili ripartiva da ogni carattere del sorgente, anche nelle storie che di contabili non ne hanno, e una storia lunga come il Relitto si compilava in quasi il doppio del tempo della 1.5.0. Ora la ricerca parte solo dove può cominciare una frase e trova le stesse dichiarazioni, provate su tutte le storie ufficiali e su ventimila testi costruiti a caso: il Relitto torna a 101 millisecondi, contro i 178 della 1.6.0. Nessuna frase nuova, e le storie si giocano identiche.",
-    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.3", href: "/download" },
   },
   {
     tag: "Linguaggio",
@@ -276,7 +305,7 @@ export const NEWS: NewsItem[] = [
     emphasis: "primary",
     title: "FAVELLA 1.6.0: le frontiere nuove",
     body: "Dopo la 1.5.0 il linguaggio apre cinque frontiere, tutte facoltative e additive: le storie di ieri girano identiche. Le relazioni di prima classe collegano due parti con una locuzione tua — «\"si fida di\" è una relazione molti a molti.», «La chiave di ottone apre la cella.» — da asserire, cambiare nelle regole e interrogare («se qualcuno si fida del giocatore»). Le procedure nominate danno un nome a una sequenza di conseguenze da richiamare dove serve («Definisci \"far passare la notte\" come: …», poi «esegui far passare la notte»). Gli oggetti contabili tengono una cosa in più copie con la concordanza che dichiari tu («La pozione, plurale \"pozioni\", è contabile.»): il giocatore ne prende, lascia e consuma quante vuole. L'invariante di clamp tiene un contatore in un intervallo con una frase sola («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («… collega giù a il pozzo senza ritorno.»). Dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità.",
-    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.3", href: "/download" },
   },
   {
     tag: "Studio",
@@ -489,7 +518,7 @@ export const NEWS: NewsItem[] = [
     date: "Giugno 2026",
     emphasis: "normal",
     title: "Il corso interattivo: ventuno cassette, e sotto gira FAVELLA davvero",
-    body: "Un omaggio ai corsi di programmazione su cassetta dei primi anni '80, ma vivo: ventuno «cassette», una per capitolo del manuale, che ti insegnano FAVELLA facendoti scrivere — fino ai Temi, le aggiunte più recenti (il caso, le quantità, il mondo che cambia, gli stati che si parlano). Quando una lezione ti chiede una frase, è il motore vero a compilarla. In più due avventure complete — «La Casa di Via Stradivari» e «Il Relitto Silente» — giocabili dentro la pagina.",
+    body: "Un omaggio ai corsi di programmazione su cassetta dei primi anni '80, ma vivo: ventuno «cassette», una per capitolo del manuale, che ti insegnano FAVELLA facendoti scrivere — fino ai Temi, le aggiunte più recenti (il caso, le quantità, il mondo che cambia, gli stati che si parlano). Quando una lezione ti chiede una frase, è il motore vero a compilarla. In più un'avventura completa — «La Casa di Via Stradivari» — giocabile dentro la pagina.",
     cta: { label: "Entra nel corso interattivo", href: "/corso" },
   },
 ];
@@ -606,6 +635,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.6.3",
+    title: "L'impronta di stato vede relazioni e scorte",
+    content: "Due correzioni interne, senza frasi nuove: grammatica e gioco invariati. L'impronta di stato — il riassunto con cui il motore riconosce una partita, e con cui i salvataggi, rigiocati dal principio, controllano di essere integri — era cieca alle coppie delle relazioni («il giocatore si fida di X») e alle quantità dei contabili («tre pozioni contro una»), arrivate con la 1.6.0: due partite che differivano solo lì risultavano identiche. Ora l'impronta le distingue, ma solo quando la storia le usa, perciò le dieci storie ufficiali restano byte-identiche. E la cache dei parser, che in un processo che compila molte storie diverse cresceva senza limite, ha un tetto. Suite a 1534 test più 54 di collaudo.",
+  },
   {
     version: "1.6.2",
     title: "Il collaudo vede teletrasporti e procedure",

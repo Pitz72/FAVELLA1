@@ -123,10 +123,10 @@ const CoursePage = () => {
             tone="amber"
             title={
               <>
-                Due avventure complete, <Ink>dentro la pagina.</Ink>
+                Un'avventura completa, <Ink>dentro la pagina.</Ink>
               </>
             }
-            lead="«La Casa di Via Stradivari» e «Il Relitto Silente», le storie-guida del manuale, giocabili col motore vero. Il corso ti porta fino ai Temi: il caso, le quantità, il mondo che cambia, gli stati che si parlano. La prima volta il «nastro» è un po' lungo da caricare."
+            lead="«La Casa di Via Stradivari», la storia-guida del manuale, giocabile col motore vero. Il corso ti porta fino ai Temi: il caso, le quantità, il mondo che cambia, gli stati che si parlano. La prima volta il «nastro» è un po' lungo da caricare."
           />
           <div className="grid gap-5 sm:grid-cols-2">
             {COURSE_GAMES.map((g, i) => (

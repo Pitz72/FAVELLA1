@@ -55,13 +55,13 @@ const ICONS = {
 
 // Definizione delle anteprime: chiave file, nome grande, occhiello, icona, accento.
 const PAGES = [
-  { key: "home", eyebrow: "Il linguaggio è completo · v1.5.0", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
+  { key: "home", eyebrow: "Il linguaggio è completo · v1.6.3", title: "Scrivi storie,\nnon codice", icon: "home", accent: C.cyan },
   { key: "progetto", eyebrow: "Il progetto", title: "L'italiano è\nil codice", icon: "progetto", accent: C.teal },
   { key: "aggiornamenti", eyebrow: "Novità & Roadmap", title: "A che punto\nsiamo", icon: "aggiornamenti", accent: C.amber },
   { key: "manuale", eyebrow: "Guida rapida", title: "Impara a\nscrivere storie", icon: "manuale", accent: C.cyan },
   { key: "corso", eyebrow: "Corso interattivo · 21 cassette", title: "Il corso\nsu cassetta", icon: "corso", accent: C.emerald },
   { key: "programma", eyebrow: "Laboratorio nel browser", title: "Programma\nsenza installare", icon: "programma", accent: C.cyanBright },
-  { key: "studio", eyebrow: "Favella Studio 1.2", title: "Scrivi senza\nperderti", icon: "studio", accent: C.emerald },
+  { key: "studio", eyebrow: "Favella Studio 1.4", title: "Scrivi senza\nperderti", icon: "studio", accent: C.emerald },
   { key: "galleria", eyebrow: "Galleria di storie", title: "Avventure da\ngiocare", icon: "galleria", accent: C.teal },
   { key: "libreria", eyebrow: "Libreria di moduli", title: "Moduli pronti\nda includere", icon: "libreria", accent: C.emerald },
   { key: "download", eyebrow: "Tutto in un posto solo", title: "Scarica\nFAVELLA 1", icon: "download", accent: C.cyan },
