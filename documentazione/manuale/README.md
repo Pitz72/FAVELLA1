@@ -4,7 +4,7 @@ Sorgente del manuale d'autore in **PDF tipografico**, generato con
 [Typst](https://typst.app). Focalizzato *esclusivamente sul linguaggio*; ogni
 costrutto è illustrato con esempi reali tratti dalla storia guida **«La Casa di Via
 Stradivari»** (`esempi/materiale-didattico/`). Edizione corrente: **Terza
-edizione · 2026**; il PDF è allineato al motore **v1.6.0** (le frontiere nuove della
+edizione · 2026**; il PDF è allineato al motore **v1.6.2** (le frontiere nuove della
 1.6 — invariante di clamp, connessioni «senza ritorno», relazioni di prima classe,
 procedure nominate, oggetti contabili — nei loro capitoli e nel riepilogo). Vedi il
 [CHANGELOG](../../CHANGELOG.md).
@@ -74,7 +74,7 @@ typst compile --font-path fonts copertina-kdp.typ copertina-kdp.pdf
 ## Stato
 
 **Completo** (Terza edizione · 2026): **22 capitoli**, copertina, doppia dedica e
-pagina dei diritti — **113 pagine** (ebook), allineato alla **v1.6.0**. L'interno KDP
+pagina dei diritti — **113 pagine** (ebook), allineato alla **v1.6.2**. L'interno KDP
 (colore standard, **112 pagine**) e la copertina wrap con dorso a 112 pp. (6,41 mm)
 sono stati rigenerati per la 1.6.0 nella cartella KDP esterna; l'invio ad Amazon
 resta all'autore.

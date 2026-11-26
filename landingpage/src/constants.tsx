@@ -1,17 +1,17 @@
 // ====================================================================
-//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.1)
+//  FAVELLA 1 — dati e contenuti del sito (aggiornati alla v1.6.2)
 // ====================================================================
 
 // VERSION = la versione PUBBLICAMENTE disponibile (release GitHub + PyPI). Non
 // alzarla finché non esistono davvero gli artefatti: pilota i link di download.
 // Dalla 1.0.1 coincide col motore vendorato nel sito: la patch è di sola
 // distribuzione (igiene dei nomi dei moduli installati), grammatica identica.
-export const VERSION = "1.6.1";
-export const VERSION_LABEL = "v1.6.1 — Le frontiere nuove";
+export const VERSION = "1.6.2";
+export const VERSION_LABEL = "v1.6.2 — Le frontiere nuove";
 // ENGINE_VERSION = il motore vendorato in public/favella-engine/ (quello che gira
 // nel browser: playground, cassette, galleria). Dalla 1.1.0 può precedere VERSION:
 // il sito serve il motore nuovo prima che esistano installer e pacchetto pip.
-export const ENGINE_VERSION = "1.6.1";
+export const ENGINE_VERSION = "1.6.2";
 
 // Indirizzo ufficiale del progetto.
 export const SITE_URL = "https://favella.eu";
@@ -82,7 +82,10 @@ export const SITE_URL = "https://favella.eu";
 //   il banner della Galleria non offre più la versione da giocare nel browser, soltanto il download per Windows e
 //   Linux; la notizia in evidenza; la vecchia notizia della 1.23 porta al download; la privacy non nomina più il gioco
 //   fra gli strumenti che girano nel browser.
-export const SITE_VERSION = "2.14.0";
+// · 2.14.1 = motore 1.6.2: il linter e il collaudo vedono i teletrasporti e le procedure (nessuna frase nuova, gioco
+//   invariato). Download, motore del browser, notizia, changelog e conteggio dei test (1520, collaudo 54) allineati.
+//   Favella Studio resta alla 1.4.0 (motore 1.6.0 dentro): si aggiorna con la sua release.
+export const SITE_VERSION = "2.14.1";
 
 /** Il video racconto di FAVELLA su YouTube (vedi components/VideoStoria.tsx). */
 export const VIDEO_STORIA = {
@@ -99,10 +102,10 @@ export const PYPI_URL = "https://pypi.org/project/favella1/";
 
 // Eseguibili desktop della release corrente (link diretti agli asset GitHub).
 // Aggiornare i nomi file a ogni nuova release.
-const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.1";
-export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.1-windows-x64.exe`;
-export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.1-macos-arm64.dmg`;
-export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.1-linux-x86_64.AppImage`;
+const _REL = "https://github.com/Pitz72/FAVELLA1/releases/download/v1.6.2";
+export const DOWNLOAD_WINDOWS = `${_REL}/favella1-setup-1.6.2-windows-x64.exe`;
+export const DOWNLOAD_MACOS = `${_REL}/favella1-1.6.2-macos-arm64.dmg`;
+export const DOWNLOAD_LINUX = `${_REL}/favella1-1.6.2-linux-x86_64.AppImage`;
 // Cartelle del repository pubblico: dall'agosto 2026 motore, sito e IDE stanno
 // tutti qui dentro, non più sparsi fra repo diversi.
 const _REPO = "https://github.com/Pitz72/FAVELLA1/tree/main";
@@ -174,7 +177,7 @@ export const YOUR_EMAIL = AUTHOR_EMAIL;
 // I numeri veri, verificati sul repository (python test_linguaggio.py, test_collaudo.py,
 // galleria in public/favella-engine/galleria, corso in data/course.ts). Un posto solo:
 // la Home, le FAQ e il testo del progetto li leggono da qui.
-export const STATS_NUMERI = { test: 1510, collaudo: 50, avventure: 10, cassette: 21 };
+export const STATS_NUMERI = { test: 1520, collaudo: 54, avventure: 10, cassette: 21 };
 
 export const STATS = [
   { value: String(STATS_NUMERI.test), label: "test verdi", hint: `+ ${STATS_NUMERI.collaudo} di collaudo` },
@@ -253,11 +256,19 @@ export const NEWS: NewsItem[] = [
   },
   {
     tag: "Linguaggio",
+    date: "Novembre 2026",
+    emphasis: "normal",
+    title: "FAVELLA 1.6.2: il collaudo vede teletrasporti e procedure",
+    body: "Nessuna frase nuova: la 1.6.2 raccoglie le correzioni trovate nella revisione finale del motore, e le storie si giocano identiche. Il linter e il collaudo statico, prima, non capivano due cose. Una stanza in cui si arriva solo con «e adesso il giocatore va in …» era data per irraggiungibile, e da lì le stanze seguenti per isolate; ora la destinazione conta come raggiunta e si prosegue per le uscite. Le conseguenze dentro una procedura («Definisci \"far passare la notte\" come: …») erano invisibili: un contatore cambiato solo da lì risultava «mai usato», e una vittoria dentro una procedura non si vedeva. Ora si vedono, con la condizione della regola che la richiama. Infine «esegui \"riposa\"» col nome fra virgolette non dà più «Mi aspettavo: PROCEDURA», ma dice di scrivere il nome senza virgolette, come nel manuale. Tre prove nuove nella suite, che arriva a 1520 asserzioni più 54 di collaudo, tutte verdi.",
+    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
+  },
+  {
+    tag: "Linguaggio",
     date: "Ottobre 2026",
     emphasis: "normal",
     title: "FAVELLA 1.6.1: la compilazione torna veloce",
     body: "Una correzione sola, trovata aggiornando il remake de «Il Relitto Silente» alla 1.6.0. La ricerca delle dichiarazioni degli oggetti contabili ripartiva da ogni carattere del sorgente, anche nelle storie che di contabili non ne hanno, e una storia lunga come il Relitto si compilava in quasi il doppio del tempo della 1.5.0. Ora la ricerca parte solo dove può cominciare una frase e trova le stesse dichiarazioni, provate su tutte le storie ufficiali e su ventimila testi costruiti a caso: il Relitto torna a 101 millisecondi, contro i 178 della 1.6.0. Nessuna frase nuova, e le storie si giocano identiche.",
-    cta: { label: "Scarica FAVELLA 1.6.1", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
   },
   {
     tag: "Linguaggio",
@@ -265,7 +276,7 @@ export const NEWS: NewsItem[] = [
     emphasis: "primary",
     title: "FAVELLA 1.6.0: le frontiere nuove",
     body: "Dopo la 1.5.0 il linguaggio apre cinque frontiere, tutte facoltative e additive: le storie di ieri girano identiche. Le relazioni di prima classe collegano due parti con una locuzione tua — «\"si fida di\" è una relazione molti a molti.», «La chiave di ottone apre la cella.» — da asserire, cambiare nelle regole e interrogare («se qualcuno si fida del giocatore»). Le procedure nominate danno un nome a una sequenza di conseguenze da richiamare dove serve («Definisci \"far passare la notte\" come: …», poi «esegui far passare la notte»). Gli oggetti contabili tengono una cosa in più copie con la concordanza che dichiari tu («La pozione, plurale \"pozioni\", è contabile.»): il giocatore ne prende, lascia e consuma quante vuole. L'invariante di clamp tiene un contatore in un intervallo con una frase sola («La sete resta sempre fra 0 e 100.»), applicata dopo ogni modifica. E le connessioni a senso unico sopprimono il ritorno automatico («… collega giù a il pozzo senza ritorno.»). Dieci storie ufficiali compilano e si giocano identiche, byte per byte. Suite a 1498 test più 50 di collaudo, grammatica sempre LALR(1) senza ambiguità.",
-    cta: { label: "Scarica FAVELLA 1.6.1", href: "/download" },
+    cta: { label: "Scarica FAVELLA 1.6.2", href: "/download" },
   },
   {
     tag: "Studio",
@@ -595,6 +606,11 @@ export interface UpdateLog {
 }
 
 export const UPDATE_LOGS: UpdateLog[] = [
+  {
+    version: "1.6.2",
+    title: "Il collaudo vede teletrasporti e procedure",
+    content: "Correzioni trovate nella revisione finale del motore, senza frasi nuove: grammatica e gioco invariati, cambiano solo gli avvisi e il collaudo statico. Una stanza raggiunta solo col teletrasporto del giocatore («e adesso il giocatore va in …») non è più segnalata «irraggiungibile», e da lì si prosegue per le uscite. Le conseguenze dentro le procedure («Definisci … come: …») sono viste dal linter e dal collaudo: un contatore cambiato solo da una procedura non è più «mai usato», e una vittoria dentro una procedura si vede, con la condizione della regola che la richiama. «esegui» col nome fra virgolette dice di scrivere il nome senza virgolette. Tre test nuovi nella suite del linguaggio (1520) e uno nel collaudo (54).",
+  },
   {
     version: "1.6.1",
     title: "La compilazione torna veloce",

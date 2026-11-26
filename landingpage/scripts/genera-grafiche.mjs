@@ -1,5 +1,5 @@
 // ====================================================================
-//  FAVELLA 1 — Banner e infografiche di marca (ottobre 2026)
+//  FAVELLA 1 — Banner e infografiche di marca (aggiornati a novembre 2026)
 // --------------------------------------------------------------------
 //  Disegna in HTML e fotografa con Chromium headless, a doppia densità:
 //  font di marca veri (Sora, Lora, Inter, Source Code Pro, gli stessi del
@@ -130,7 +130,7 @@ const bannerFavella = () =>
     <h1 class="marchio" style="font-size:132px;margin-top:20px">FAVELLA 1</h1>
     <div class="riga">
       <span class="versione ink">${MOTORE}</span>
-      <span class="chip" style="font-size:12px">le lezioni del Relitto</span>
+      <span class="chip" style="font-size:12px">le frontiere nuove</span>
     </div>
     <p class="serif" style="font-size:27px;margin-top:22px">L'italiano è il linguaggio di programmazione.</p>
     <p class="meta" style="font-size:12.5px;margin-top:26px"><b>${TEST}</b> test · <b>0</b> ambiguità · manuale di <b>${PAGINE_MANUALE}</b> pagine · <b>favella.eu</b></p>
@@ -359,6 +359,7 @@ const TAPPE = [
   ["Il linguaggio completo", "Il caso, le quantità, il mondo che si trasforma.", "1.0"],
   ["Salvataggi e collaudo", "Le partite si salvano; il collaudo gioca da solo.", "1.2"],
   ["«Prima di», pulsanti-verbo", "Regole più fini; si gioca anche toccando.", "1.3 · 1.4"],
+  ["Le frontiere nuove", "Relazioni, procedure, contabili, clamp, senso unico.", "1.5 · 1.6"],
 ];
 const infograficaVersione = () =>
   pagina(
@@ -366,11 +367,11 @@ const infograficaVersione = () =>
   <div class="alone" style="left:200px;top:60px;width:680px;height:400px;background:rgba(34,211,238,.12)"></div>
   <header>
     <img class="logo" src="${LOGO}" alt="">
-    <p class="occhiello" style="font-size:17px;letter-spacing:.42em;color:var(--text2)">FAVELLA 1 · versione definitiva</p>
+    <p class="occhiello" style="font-size:17px;letter-spacing:.42em;color:var(--text2)">FAVELLA 1 · le frontiere nuove</p>
     <h1 class="numero ink-caldo">${MOTORE}</h1>
     <p class="sotto">Il linguaggio è completo · Favella Studio ${STUDIO} · manuale in terza edizione</p>
   </header>
-  <h2>Dieci tappe che hanno fatto FAVELLA</h2>
+  <h2>Undici tappe che hanno fatto FAVELLA</h2>
   <ol>${TAPPE.map(
     ([t, d, v], i) => `<li><span class="n">${String(i + 1).padStart(2, "0")}</span><span class="c"><b>${t}</b><em>${d}</em></span>${v ? `<span class="v">${v}</span>` : ""}</li>`
   ).join("")}</ol>
@@ -382,8 +383,8 @@ const infograficaVersione = () =>
   .numero{font-family:Sora,sans-serif;font-weight:800;font-size:230px;letter-spacing:-.05em;line-height:1;margin:10px 0 18px;filter:drop-shadow(0 0 40px rgba(34,211,238,.2))}
   .sotto{font-family:Sora,sans-serif;font-weight:600;font-size:23px;color:var(--text2)}
   h2{position:absolute;top:668px;left:0;right:0;text-align:center;font-family:'Source Code Pro',monospace;font-weight:600;font-size:20px;letter-spacing:.3em;text-transform:uppercase}
-  ol{position:absolute;top:728px;left:76px;right:76px;list-style:none;display:grid;gap:12px}
-  li{display:flex;align-items:center;gap:24px;padding:12px 22px;border-radius:18px;background:linear-gradient(180deg,rgba(15,32,50,.7),rgba(11,23,38,.5));border:1px solid rgba(120,190,220,.12)}
+  ol{position:absolute;top:722px;left:76px;right:76px;list-style:none;display:grid;gap:10px}
+  li{display:flex;align-items:center;gap:24px;padding:10px 22px;border-radius:18px;background:linear-gradient(180deg,rgba(15,32,50,.7),rgba(11,23,38,.5));border:1px solid rgba(120,190,220,.12)}
   .n{flex:0 0 58px;height:58px;border-radius:16px;display:grid;place-items:center;font-family:Sora,sans-serif;font-weight:800;font-size:26px;color:#03111a;background:linear-gradient(140deg,var(--cyan2),var(--emerald))}
   .c{flex:1}
   .c b{display:block;font-family:Sora,sans-serif;font-weight:700;font-size:26px;letter-spacing:-.01em}
