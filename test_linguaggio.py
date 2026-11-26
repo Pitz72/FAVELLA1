@@ -9888,7 +9888,7 @@ def main():
         test_studio_160_vincibilita_sidecar,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.6.1)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.6.2)")
     print("=" * 60)
     for t in tests:
         t()

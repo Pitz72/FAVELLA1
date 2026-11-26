@@ -4,11 +4,10 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
-## [1.6.2] - non pubblicata (solo sul ramo `main`, 2026-10-28)
+## [1.6.2] - 2026-11-26
 ### 🔎 Il linter e il collaudo vedono teletrasporti e procedure
 Correzioni trovate nella revisione finale del motore. Nessuna frase nuova, grammatica e
-comportamento del gioco invariati: cambiano solo gli avvisi e il collaudo statico. Il
-numero di versione del motore resta 1.6.1 (niente Release, PyPI né sito).
+comportamento del gioco invariati: cambiano solo gli avvisi e il collaudo statico.
 
 - **Stanze raggiunte col teletrasporto.** Una stanza in cui si arriva solo con
   `e adesso il giocatore va in …` (o `è in`, `si ritrova in`) era segnalata
