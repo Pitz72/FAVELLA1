@@ -1,5 +1,5 @@
 # compilatore.py
-# Micro-Compilatore Formale per FAVELLA 1 (v1.6.2)
+# Micro-Compilatore Formale per FAVELLA 1 (v1.6.3)
 # Usa Lark (parser LALR(1), pipeline a due passate) per generare un AST senza regex.
 #
 # [1.4.0 / L-7] Questo è il NUCLEO del compilatore: parole riservate, scanner
@@ -12,6 +12,7 @@
 
 import re
 import difflib
+from collections import OrderedDict
 from lark import Lark, Transformer, v_args
 from lark.exceptions import UnexpectedInput
 from strutture import (
@@ -1460,7 +1461,31 @@ def costruisci_grammatica(simboli, variabili=(), direzioni=(), verbi_multi=(),
 # senza stato fra una .parse() e l'altra (il Transformer è separato e per-chiamata),
 # quindi cachare per chiave-grammatica è sicuro. Un GrammarError NON viene cachato
 # (si rilancia a ogni build, come prima), così la guardia anti-ambiguità resta valida.
-_CACHE_PARSER: dict = {}
+# [1.6.3] Cache LRU con un tetto. Prima era un dict senza limite: un processo
+# lungo che compila molte storie DIVERSE (il sito, Favella Studio) la faceva
+# crescere all'indefinito, una voce per ogni insieme di nomi. Il tetto sfratta la
+# grammatica usata meno di recente. Correttezza invariata: ricostruire un parser è
+# deterministico, e un GrammarError non arriva qui (si rilancia prima di salvare).
+_CACHE_PARSER: "OrderedDict" = OrderedDict()
+_CACHE_PARSER_MAX = 64
+
+
+def _parser_in_cache(chiave):
+    """Legge un parser dalla cache LRU, rinfrescandolo come «usato di recente»."""
+    parser = _CACHE_PARSER.get(chiave)
+    if parser is not None:
+        _CACHE_PARSER.move_to_end(chiave)
+    return parser
+
+
+def _parser_salva_in_cache(chiave, parser):
+    """Scrive un parser nella cache LRU e, oltre il tetto, sfratta la voce meno
+    recente. Chiamata SOLO dopo una build riuscita (un GrammarError si rilancia
+    prima di arrivare qui, così la guardia anti-ambiguità resta valida)."""
+    _CACHE_PARSER[chiave] = parser
+    _CACHE_PARSER.move_to_end(chiave)
+    while len(_CACHE_PARSER) > _CACHE_PARSER_MAX:
+        _CACHE_PARSER.popitem(last=False)
 
 
 def costruisci_parser(simboli, variabili=(), direzioni=(),
@@ -1476,11 +1501,11 @@ def costruisci_parser(simboli, variabili=(), direzioni=(),
     ricavare lo span sorgente di ogni frase ed editarle chirurgicamente."""
     grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, propagate_positions)
-    parser = _CACHE_PARSER.get(chiave)
+    parser = _parser_in_cache(chiave)
     if parser is None:
         parser = Lark(grammatica, start="start", parser="lalr",
                       propagate_positions=propagate_positions)
-        _CACHE_PARSER[chiave] = parser
+        _parser_salva_in_cache(chiave, parser)
     return parser
 
 
@@ -1490,10 +1515,10 @@ def costruisci_parser_condizioni(simboli, variabili=(), direzioni=(), verbi_mult
     aperta'), per i testi condizionali. Cachato come quello principale."""
     grammatica = costruisci_grammatica(simboli, variabili, direzioni, verbi_multi, relazioni, procedure)
     chiave = (grammatica, "condizione")
-    parser = _CACHE_PARSER.get(chiave)
+    parser = _parser_in_cache(chiave)
     if parser is None:
         parser = Lark(grammatica, start="condizione", parser="lalr")
-        _CACHE_PARSER[chiave] = parser
+        _parser_salva_in_cache(chiave, parser)
     return parser
 
 

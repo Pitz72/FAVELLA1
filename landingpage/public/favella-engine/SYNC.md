@@ -6,6 +6,8 @@ caricati nel browser via Pyodide (vedi `src/lib/favellaRuntime.ts`).
 **NON modificarli qui.** Sono copie. La fonte di verità è la cartella radice del
 progetto FAVELLA 1.
 
+> 🔁 **2026-11-26: le copie in `engine/` sono il motore 1.6.3** (l'impronta di stato distingue relazioni e scorte dei contabili; la cache del parser ha un tetto). Il sito pubblicato le riceve al prossimo deploy.
+>
 > 🔁 **2026-11-26: le copie in `engine/` sono il motore 1.6.2** (il linter e il collaudo vedono teletrasporti e procedure; sito 2.14.1). Il sito pubblicato le riceve al prossimo deploy.
 >
 > 🔁 **2026-10-27: le copie in `engine/` sono il motore 1.6.1** (la compilazione torna veloce; erano state portate alla 1.6.0 il 2026-10-24). Il sito pubblicato le riceve al prossimo deploy.

@@ -14,7 +14,7 @@ SEME_CASUALE_DEFAULT = 1972
 
 # Unico punto di verità della versione del motore: gli altri moduli (sidecar,
 # report di compilazione) la importano da qui invece di cablarla in proprio.
-VERSIONE_MOTORE = "1.6.2"
+VERSIONE_MOTORE = "1.6.3"
 
 class Mondo: # Forward declaration per i type hint
     pass
@@ -1772,7 +1772,8 @@ class Mondo:
         """[1.2.0] Tutto ciò che distingue una partita dall'altra, in forma
         confrontabile (liste ordinate, repr dei valori): luogo, turno, esito,
         dialogo, inventario, variabili, oggetti (posizione, proprietà, spostato,
-        contenuto), memoria dei demoni, stato del generatore casuale."""
+        contenuto), memoria dei demoni, stato del generatore casuale; e — quando
+        presenti — le relazioni (B3) e le scorte dei contabili (B1) [1.6.3]."""
         oggetti = []
         for o in self.oggetti.values():
             oggetti.append([o.nome, str(o.posizione), sorted(o.proprieta),
@@ -1806,6 +1807,26 @@ class Mondo:
             dati["visitate"] = sorted(self.stanze_visitate)
         if any(getattr(d, "tipo", "") == "dopo" for d in self.demoni):
             dati["conti"] = [getattr(d, "conto", None) for d in self.demoni]
+        # [1.6.3] Relazioni (B3) e scorte dei contabili (B1). Fino alla 1.6.2
+        # l'impronta le ignorava: due partite che differivano SOLO per una
+        # relazione (il giocatore si fida di X) o per una quantità (3 contro 1
+        # pozione) risultavano identiche. E poiché i salvataggi sono a replay con
+        # l'impronta come unico controllo d'integrità, un replay divergente solo
+        # lì sarebbe passato inosservato. Incluse SOLO quando presenti: una storia
+        # che non usa né relazioni né contabili mantiene l'impronta byte-identica
+        # (le dieci storie ufficiali non ne usano).
+        relazioni = sorted(
+            [nome, sorted(list(c) for c in rel.coppie)]
+            for nome, rel in self.relazioni.items() if rel.coppie
+        )
+        if relazioni:
+            dati["relazioni"] = relazioni
+        scorte = sorted(
+            [o.nome, sorted(o.quantita.items())]
+            for o in self.oggetti.values() if getattr(o, "quantita", None)
+        )
+        if scorte:
+            dati["scorte"] = scorte
         return dati
 
     def impronta_stato(self) -> str:

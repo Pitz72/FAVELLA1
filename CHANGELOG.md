@@ -4,6 +4,40 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ---
 
+## [1.6.3] - 2026-11-26
+### 🔐 L'impronta di stato vede le relazioni e le scorte; la cache del parser ha un tetto
+Due correzioni interne, nate da una revisione del motore. Nessuna frase nuova,
+grammatica e comportamento del gioco invariati: le dieci storie ufficiali hanno
+impronta e partita identiche, byte per byte.
+
+- **L'impronta di stato era cieca a relazioni e contabili.** `impronta_stato`
+  riassume una partita in poche righe confrontabili (luogo, turno, inventario,
+  stati, contatori, oggetti, demoni, caso), e i salvataggi sono a **replay**: si
+  rigioca la sequenza dei comandi dal mondo iniziale e si confronta l'impronta.
+  Fino alla 1.6.2 l'impronta NON includeva né le coppie delle relazioni (B3, «il
+  giocatore si fida di X») né le quantità dei contabili (B1, «3 pozioni»): due
+  partite che differivano solo lì risultavano identiche, e un replay divergente
+  solo lì avrebbe superato il controllo d'integrità senza che nessuno se ne
+  accorgesse. Ora l'impronta include relazioni e scorte, ma **solo quando la
+  storia le usa**: una storia che non ne ha mantiene l'impronta identica a prima
+  (perciò le storie ufficiali, che non usano i costrutti della 1.6, non cambiano).
+  L'ANNULLA già le riavvolgeva — stanno nelle istantanee —: a cambiare è solo
+  l'impronta.
+- **La cache dei parser cresceva senza limite.** `_CACHE_PARSER` era un dizionario
+  senza tetto, una voce per ogni insieme di nomi: un processo lungo che compila
+  molte storie diverse (il sito, Favella Studio) la faceva crescere
+  all'indefinito. Ora è una cache **LRU con un tetto** (64 grammatiche): oltre il
+  limite esce quella usata meno di recente. La correttezza non cambia (ricostruire
+  un parser è deterministico) e un `GrammarError` continua a non essere mai messo
+  in cache, così la guardia anti-ambiguità resta valida.
+
+Test: tre nuovi in `test_linguaggio.py` per l'impronta (una relazione asserita, una
+scorta che cala, e la regressione che prova l'invarianza su una storia senza quei
+costrutti) e uno per il tetto della cache; suite 1534 passati, collaudo 54. Copie
+del motore nel sito (`landingpage/public/favella-engine/engine/`) risincronizzate.
+
+---
+
 ## [1.6.2] - 2026-11-26
 ### 🔎 Il linter e il collaudo vedono teletrasporti e procedure
 Correzioni trovate nella revisione finale del motore. Nessuna frase nuova, grammatica e

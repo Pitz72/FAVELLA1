@@ -9327,6 +9327,94 @@ def test_studio_160_vincibilita_sidecar():
     _check(not w2.get("ok") and w2.get("errors"), "su una storia che non compila: ok=False + errors")
 
 
+# --- Test: [1.6.3] impronta cieca a relazioni/scorte + cache parser limitata ---
+
+def test_163_impronta_relazioni():
+    print("[1.6.3: l'impronta di stato distingue le relazioni (B3)]")
+    from strutture import REL_GIOCATORE
+    src = (
+        "La cella è una stanza.\nIl giocatore comincia nella cella.\n"
+        "Vito è un personaggio.\nVito è nella cella.\n"
+        '"si fida di" è una relazione molti a molti.\n'
+        '"accusa" è un comando.\n'
+        'Invece di accusa Vito: dire "Accusa." e adesso il giocatore si fida di Vito.\n'
+    )
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    imp0 = mondo.impronta_stato()
+    _check("relazioni" not in mondo.stato_essenziale(),
+           "senza coppie asserite la chiave 'relazioni' non compare")
+    esegui(mondo, "accusa Vito")
+    _check(mondo.relazioni["si fida di"].vale(REL_GIOCATORE, "vito"),
+           "la conseguenza asserisce la coppia")
+    imp1 = mondo.impronta_stato()
+    _check(imp0 != imp1, "asserire una relazione CAMBIA l'impronta (fino alla 1.6.2 no)")
+    _check("relazioni" in mondo.stato_essenziale(),
+           "ora la chiave 'relazioni' è nell'impronta")
+    esegui(mondo, "annulla")
+    _check(mondo.impronta_stato() == imp0, "ANNULLA riporta all'impronta di partenza")
+
+
+def test_163_impronta_scorte():
+    print("[1.6.3: l'impronta di stato distingue le scorte dei contabili (B1)]")
+    src = _B1_BASE + "Il giocatore ha 3 pozioni.\n"
+    mondo = runtime(src)
+    _check(mondo is not None, "compila")
+    _check("scorte" in mondo.stato_essenziale(),
+           "con contabili in gioco la chiave 'scorte' è nell'impronta")
+    imp0 = mondo.impronta_stato()
+    esegui(mondo, "consuma una pozione")   # 3 -> 2, la pozione resta in inventario
+    _check(mondo.quantita_posseduta("pozione") == 2, "ne restano 2 dopo 'consuma'")
+    imp1 = mondo.impronta_stato()
+    _check(imp0 != imp1, "una scorta che cala CAMBIA l'impronta (fino alla 1.6.2 no)")
+    esegui(mondo, "annulla")
+    _check(mondo.impronta_stato() == imp0, "ANNULLA riavvolge la scorta")
+
+
+def test_163_impronta_additivo_senza_feature():
+    print("[1.6.3: una storia senza relazioni né contabili ha l'impronta invariata]")
+    src = (
+        "La cucina è una stanza.\nIl giocatore comincia nella cucina.\n"
+        "Il coltello è una cosa.\nIl coltello è prendibile.\nIl coltello è nella cucina.\n"
+        "La forza è un contatore.\nLa forza parte da 3.\n"
+    )
+    mondo = runtime(src)
+    se = mondo.stato_essenziale()
+    _check("relazioni" not in se and "scorte" not in se,
+           "nessuna chiave nuova se la storia non usa relazioni né contabili")
+    _storiche = {"luogo", "turno", "esito", "dialogo", "inventario", "variabili",
+                 "oggetti", "buio", "demoni", "caso", "uscite",
+                 "uscite_con_condizione", "prime_volte", "prendibili",
+                 "visitate", "conti"}
+    _check(set(se.keys()) <= _storiche,
+           "l'insieme delle chiavi resta quello storico (byte-stabilità)")
+
+
+def test_163_cache_parser_limitata():
+    print("[1.6.3: la cache dei parser ha un tetto e sfratta la voce meno usata]")
+    import compilatore
+    salva_cache = compilatore._CACHE_PARSER
+    salva_max = compilatore._CACHE_PARSER_MAX
+    compilatore._CACHE_PARSER = type(salva_cache)()   # OrderedDict vuoto
+    compilatore._CACHE_PARSER_MAX = 4
+    try:
+        for i in range(compilatore._CACHE_PARSER_MAX + 5):  # 9 grammatiche DIVERSE
+            src = f"La st{i} è una stanza.\nIl giocatore comincia nella st{i}.\n"
+            simboli = compilatore.costruisci_symbol_table(src)
+            _coppie, nomi, _err = compilatore.valida_direzioni_dichiarate(
+                simboli.coppie_direzioni, simboli)
+            compilatore.costruisci_parser(
+                simboli.tutti, simboli.variabili, nomi,
+                verbi_multi=simboli.verbi_multi, relazioni=simboli.relazioni,
+                procedure=simboli.procedure)
+        n = len(compilatore._CACHE_PARSER)
+        _check(n == compilatore._CACHE_PARSER_MAX,
+               f"la cache resta al tetto dopo molte grammatiche diverse ({n} == 4)")
+    finally:
+        compilatore._CACHE_PARSER = salva_cache
+        compilatore._CACHE_PARSER_MAX = salva_max
+
+
 def main():
     # [1.4.3] Con l'uscita rediretta su file, in Windows la console è cp1252 e le
     # descrizioni dei test con «→» o simili interrompevano la suite a metà.
@@ -9878,6 +9966,11 @@ def main():
         test_162_linter_teletrasporto,
         test_162_linter_procedure,
         test_162_esegui_fra_virgolette,
+        # [1.6.3] impronta cieca a relazioni/scorte + cache parser limitata
+        test_163_impronta_relazioni,
+        test_163_impronta_scorte,
+        test_163_impronta_additivo_senza_feature,
+        test_163_cache_parser_limitata,
         test_studio_160_b1_round_trip,
         test_studio_160_calcolati_round_trip,
         test_studio_160_percorso_completo_con_relazioni,
@@ -9888,7 +9981,7 @@ def main():
         test_studio_160_vincibilita_sidecar,
     ]
     print("=" * 60)
-    print("FAVELLA 1 — Suite di test del linguaggio (v1.6.2)")
+    print("FAVELLA 1 — Suite di test del linguaggio (v1.6.3)")
     print("=" * 60)
     for t in tests:
         t()
